@@ -1,3 +1,40 @@
+#![deny(missing_docs)]
+
+//! JSON Value
+//!
+//! This module is centered around the `Value` type, which can represent all possible JSON values.
+//!
+//! # Example of use:
+//!
+//! ```rust
+//! extern crate serde_json;
+//!
+//! use serde_json::Value;
+//!
+//! fn main() {
+//!     let s = "{\"x\": 1.0, \"y\": 2.0}";
+//!     let value: Value = serde_json::from_str(s).unwrap();
+//! }
+//! ```
+//!
+//! It is also possible to deserialize from a `Value` type:
+//!
+//! ```rust
+//! extern crate serde_json;
+//!
+//! use serde_json::Value;
+//! use std::collections::BTreeMap;
+//!
+//! fn main() {
+//!     let mut map = BTreeMap::new();
+//!     map.insert("x".to_string(), Value::F64(1.0));
+//!     map.insert("y".to_string(), Value::F64(2.0));
+//!     let value = Value::Object(map);
+//!
+//!     let map: BTreeMap<String, f64> = serde_json::from_value(value).unwrap();
+//! }
+//! ```
+
 use std::collections::{BTreeMap, btree_map};
 use std::fmt;
 use std::io;
@@ -11,15 +48,31 @@ use serde::ser;
 
 use error::Error;
 
+/// Represents a JSON value
 #[derive(Clone, PartialEq)]
 pub enum Value {
+    /// Represents a JSON numm value
     Null,
+
+    /// Represents a JSON array
     Bool(bool),
+
+    /// Represents a JSON signed integer
     I64(i64),
+
+    /// Represents a JSON unsigned integer
     U64(u64),
+
+    /// Represents a JSON floating point number
     F64(f64),
+
+    /// Represents a JSON string
     String(String),
+
+    /// Represents a JSON array
     Array(Vec<Value>),
+
+    /// Represents a JSON object
     Object(BTreeMap<String, Value>),
 }
 
@@ -378,17 +431,20 @@ enum State {
     Object(BTreeMap<String, Value>),
 }
 
+/// Create a `serde::Serializer` that serializes a `Serialize`e into a `Value`.
 pub struct Serializer {
     state: Vec<State>,
 }
 
 impl Serializer {
+    /// Construct a new `Serializer`.
     pub fn new() -> Serializer {
         Serializer {
             state: Vec::with_capacity(4),
         }
     }
 
+    /// Unwrap the `Serializer` and return the `Value`.
     pub fn unwrap(mut self) -> Value {
         match self.state.pop().unwrap() {
             State::Value(value) => value,
@@ -628,6 +684,7 @@ impl ser::Serializer for Serializer {
     }
 }
 
+/// Creates a `serde::Deserializer` from a `json::Value` object.
 pub struct Deserializer {
     value: Option<Value>,
 }
