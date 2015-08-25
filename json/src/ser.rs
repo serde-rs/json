@@ -527,7 +527,9 @@ fn escape_char<W>(wr: &mut W, value: char) -> Result<()>
 {
     // FIXME: this allocation is required in order to be compatible with stable
     // rust, which doesn't support encoding a `char` into a stack buffer.
-    escape_bytes(wr, value.to_string().as_bytes())
+    let mut s = String::new();
+    s.push(value);
+    escape_bytes(wr, s.as_bytes())
 }
 
 fn fmt_f32_or_null<W>(wr: &mut W, value: f32) -> Result<()>

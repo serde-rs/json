@@ -163,7 +163,7 @@ impl de::Error for Error {
     }
 
     fn unknown_field(field: &str) -> Error {
-        Error::SyntaxError(ErrorCode::UnknownField(field.to_string()), 0, 0)
+        Error::SyntaxError(ErrorCode::UnknownField(String::from(field)), 0, 0)
     }
 
     fn missing_field(field: &'static str) -> Error {

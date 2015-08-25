@@ -27,8 +27,8 @@
 //!
 //! fn main() {
 //!     let mut map = BTreeMap::new();
-//!     map.insert("x".to_string(), Value::F64(1.0));
-//!     map.insert("y".to_string(), Value::F64(2.0));
+//!     map.insert(String::from("x"), Value::F64(1.0));
+//!     map.insert(String::from("y"), Value::F64(2.0));
 //!     let value = Value::Object(map);
 //!
 //!     let map: BTreeMap<String, f64> = serde_json::from_value(value).unwrap();
@@ -353,7 +353,7 @@ impl de::Deserialize for Value {
             fn visit_str<E>(&mut self, value: &str) -> Result<Value, E>
                 where E: de::Error,
             {
-                self.visit_string(value.to_string())
+                self.visit_string(String::from(value))
             }
 
             #[inline]
@@ -486,13 +486,14 @@ impl ser::Serializer for Serializer {
 
     #[inline]
     fn visit_char(&mut self, value: char) -> Result<(), ()> {
-        self.state.push(State::Value(Value::String(value.to_string())));
-        Ok(())
+        let mut s = String::new();
+        s.push(value);
+        self.visit_str(s)
     }
 
     #[inline]
     fn visit_str(&mut self, value: &str) -> Result<(), ()> {
-        self.state.push(State::Value(Value::String(value.to_string())));
+        self.state.push(State::Value(Value::String(String::from(value))));
         Ok(())
     }
 
@@ -520,7 +521,7 @@ impl ser::Serializer for Serializer {
                           _variant_index: usize,
                           variant: &str) -> Result<(), ()> {
         let mut values = BTreeMap::new();
-        values.insert(variant.to_string(), Value::Array(vec![]));
+        values.insert(String::from(variant), Value::Array(vec![]));
 
         self.state.push(State::Value(Value::Object(values)));
 
@@ -536,7 +537,7 @@ impl ser::Serializer for Serializer {
         where T: ser::Serialize,
     {
         let mut values = BTreeMap::new();
-        values.insert(variant.to_string(), to_value(&value));
+        values.insert(String::from(variant), to_value(&value));
 
         self.state.push(State::Value(Value::Object(values)));
 
@@ -581,7 +582,7 @@ impl ser::Serializer for Serializer {
 
         let mut object = BTreeMap::new();
 
-        object.insert(variant.to_string(), value);
+        object.insert(String::from(variant), value);
 
         self.state.push(State::Value(Value::Object(object)));
 
@@ -644,7 +645,7 @@ impl ser::Serializer for Serializer {
 
         let mut object = BTreeMap::new();
 
-        object.insert(variant.to_string(), value);
+        object.insert(String::from(variant), value);
 
         self.state.push(State::Value(Value::Object(object)));
 

@@ -486,7 +486,8 @@ impl<Iter> Deserializer<Iter>
 
                             // FIXME: this allocation is required in order to be compatible with stable
                             // rust, which doesn't support encoding a `char` into a stack buffer.
-                            let buf = c.to_string();
+                            let buf = String::new();
+                            buf.push(c);
                             self.str_buf.extend(buf.bytes());
                         }
                         _ => {
