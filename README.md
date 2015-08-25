@@ -4,7 +4,7 @@ Serde JSON Serialization Library
 [![Build status](https://api.travis-ci.org/serde-rs/json.png)](https://travis-ci.org/serde-rs/json)
 [![Latest Version](https://img.shields.io/crates/v/serde_json.svg)](https://crates.io/crates/serde\_json)
 
-[Documentation](https://serde-rs.github.io/serde-rs/json/serde_json)
+[Documentation](https://serde-rs.github.io/json/serde_json)
 
 This crate is a Rust library for parsing and generating the
 [JSON](http://json.org) (JavaScript Object Notation) file format. It is built
