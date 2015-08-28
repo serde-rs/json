@@ -14,14 +14,8 @@ pub enum ErrorCode {
     EOFWhileParsingString,
     EOFWhileParsingValue,
     ExpectedColon,
-    ExpectedConversion,
-    ExpectedEnumEnd,
-    ExpectedEnumEndToken,
-    ExpectedEnumMapStart,
-    ExpectedEnumToken,
-    ExpectedEnumVariantString,
+
     ExpectedListCommaOrEnd,
-    ExpectedName,
     ExpectedObjectCommaOrEnd,
     ExpectedSomeIdent,
     ExpectedSomeValue,
@@ -32,12 +26,8 @@ pub enum ErrorCode {
     LoneLeadingSurrogateInHexEscape,
     UnknownField(String),
     MissingField(&'static str),
-    NotFourDigit,
-    NotUtf8,
     TrailingCharacters,
     UnexpectedEndOfHexEscape,
-    UnknownVariant,
-    UnrecognizedHex,
 }
 
 impl fmt::Debug for ErrorCode {
@@ -50,14 +40,7 @@ impl fmt::Debug for ErrorCode {
             ErrorCode::EOFWhileParsingString => "EOF While parsing string".fmt(f),
             ErrorCode::EOFWhileParsingValue => "EOF While parsing value".fmt(f),
             ErrorCode::ExpectedColon => "expected `:`".fmt(f),
-            ErrorCode::ExpectedConversion => "expected conversion".fmt(f),
-            ErrorCode::ExpectedEnumEnd => "expected enum end".fmt(f),
-            ErrorCode::ExpectedEnumEndToken => "expected enum map end".fmt(f),
-            ErrorCode::ExpectedEnumMapStart => "expected enum map start".fmt(f),
-            ErrorCode::ExpectedEnumToken => "expected enum token".fmt(f),
-            ErrorCode::ExpectedEnumVariantString => "expected variant".fmt(f),
             ErrorCode::ExpectedListCommaOrEnd => "expected `,` or `]`".fmt(f),
-            ErrorCode::ExpectedName => "expected name".fmt(f),
             ErrorCode::ExpectedObjectCommaOrEnd => "expected `,` or `}`".fmt(f),
             ErrorCode::ExpectedSomeIdent => "expected ident".fmt(f),
             ErrorCode::ExpectedSomeValue => "expected value".fmt(f),
@@ -68,12 +51,8 @@ impl fmt::Debug for ErrorCode {
             ErrorCode::LoneLeadingSurrogateInHexEscape => "lone leading surrogate in hex escape".fmt(f),
             ErrorCode::UnknownField(ref field) => write!(f, "unknown field \"{}\"", field),
             ErrorCode::MissingField(ref field) => write!(f, "missing field \"{}\"", field),
-            ErrorCode::NotFourDigit => "invalid \\u escape (not four digits)".fmt(f),
-            ErrorCode::NotUtf8 => "contents not utf-8".fmt(f),
             ErrorCode::TrailingCharacters => "trailing characters".fmt(f),
             ErrorCode::UnexpectedEndOfHexEscape => "unexpected end of hex escape".fmt(f),
-            ErrorCode::UnknownVariant => "unknown variant".fmt(f),
-            ErrorCode::UnrecognizedHex => "invalid \\u escape (unrecognized hex)".fmt(f),
         }
     }
 }
