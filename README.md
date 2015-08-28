@@ -83,3 +83,4 @@ fn main() {
     assert_eq!(point, deserialized_point);
 }
 ```
+
