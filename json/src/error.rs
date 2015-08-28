@@ -1,3 +1,8 @@
+//! JSON Errors
+//!
+//! This module is centered around the `Error` and `ErrorCode` types, which represents all possible
+//! `serde_json` errors.
+
 use std::error;
 use std::fmt;
 use std::io;
@@ -9,24 +14,58 @@ use serde::de;
 /// The errors that can arise while parsing a JSON stream.
 #[derive(Clone, PartialEq)]
 pub enum ErrorCode {
+    /// EOF while parsing a list.
     EOFWhileParsingList,
+
+    /// EOF while parsing an object.
     EOFWhileParsingObject,
+
+    /// EOF while parsing a string.
     EOFWhileParsingString,
+
+    /// EOF while parsing a JSON value.
     EOFWhileParsingValue,
+
+    /// Expected this character to be a `':'`.
     ExpectedColon,
 
+    /// Expected this character to be either a `','` or a `]`.
     ExpectedListCommaOrEnd,
+
+    /// Expected this character to be either a `','` or a `}`.
     ExpectedObjectCommaOrEnd,
+
+    /// Expected to parse either a `true`, `false`, or a `null`.
     ExpectedSomeIdent,
+
+    /// Expected this character to start a JSON value.
     ExpectedSomeValue,
+
+    /// Invalid hex escape code.
     InvalidEscape,
+
+    /// Invalid number.
     InvalidNumber,
+
+    /// Invalid unicode code point.
     InvalidUnicodeCodePoint,
+
+    /// Object key is not a string.
     KeyMustBeAString,
+
+    /// Lone leading surrogate in hex escape.
     LoneLeadingSurrogateInHexEscape,
+
+    /// Unknown field in struct.
     UnknownField(String),
+
+    /// Struct is missing a field.
     MissingField(&'static str),
+
+    /// JSON has non-whitespace trailing characters after the value.
     TrailingCharacters,
+
+    /// Unexpected end of hex excape.
     UnexpectedEndOfHexEscape,
 }
 
@@ -35,10 +74,10 @@ impl fmt::Debug for ErrorCode {
         use std::fmt::Debug;
 
         match *self {
-            ErrorCode::EOFWhileParsingList => "EOF While parsing list".fmt(f),
-            ErrorCode::EOFWhileParsingObject => "EOF While parsing object".fmt(f),
-            ErrorCode::EOFWhileParsingString => "EOF While parsing string".fmt(f),
-            ErrorCode::EOFWhileParsingValue => "EOF While parsing value".fmt(f),
+            ErrorCode::EOFWhileParsingList => "EOF while parsing a list".fmt(f),
+            ErrorCode::EOFWhileParsingObject => "EOF while parsing an object".fmt(f),
+            ErrorCode::EOFWhileParsingString => "EOF while parsing a string".fmt(f),
+            ErrorCode::EOFWhileParsingValue => "EOF while parsing a value".fmt(f),
             ErrorCode::ExpectedColon => "expected `:`".fmt(f),
             ErrorCode::ExpectedListCommaOrEnd => "expected `,` or `]`".fmt(f),
             ErrorCode::ExpectedObjectCommaOrEnd => "expected `,` or `}`".fmt(f),
@@ -57,12 +96,17 @@ impl fmt::Debug for ErrorCode {
     }
 }
 
+/// This type represents all possible errors that can occur when serializing or deserializing a
+/// value into JSON.
 #[derive(Debug)]
 pub enum Error {
-    /// msg, line, col
+    /// The JSON value had some syntatic error.
     SyntaxError(ErrorCode, usize, usize),
+
+    /// Some IO error occurred when serializing or deserializing a value.
     IoError(io::Error),
-    MissingFieldError(&'static str),
+
+    /// Some UTF8 error occurred while serializing or deserializing a value.
     FromUtf8Error(FromUtf8Error),
 }
 
@@ -71,7 +115,6 @@ impl error::Error for Error {
         match *self {
             Error::SyntaxError(..) => "syntax error",
             Error::IoError(ref error) => error::Error::description(error),
-            Error::MissingFieldError(_) => "missing field",
             Error::FromUtf8Error(ref error) => error.description(),
         }
     }
@@ -94,9 +137,6 @@ impl fmt::Display for Error {
             }
             Error::IoError(ref error) => fmt::Display::fmt(error, fmt),
             Error::FromUtf8Error(ref error) => fmt::Display::fmt(error, fmt),
-            Error::MissingFieldError(ref field) => {
-                write!(fmt, "missing field {}", field)
-            }
         }
     }
 }
@@ -126,7 +166,7 @@ impl From<de::value::Error> for Error {
                 Error::SyntaxError(ErrorCode::UnknownField(field), 0, 0)
             }
             de::value::Error::MissingFieldError(field) => {
-                de::Error::missing_field(field)
+                Error::SyntaxError(ErrorCode::MissingField(field), 0, 0)
             }
         }
     }
@@ -146,7 +186,7 @@ impl de::Error for Error {
     }
 
     fn missing_field(field: &'static str) -> Error {
-        Error::MissingFieldError(field)
+        Error::SyntaxError(ErrorCode::MissingField(field), 0, 0)
     }
 }
 

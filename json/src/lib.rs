@@ -92,7 +92,7 @@
 //! }
 //! ```
 
-#![allow(missing_docs)]
+#![deny(missing_docs)]
 
 extern crate num;
 extern crate serde;
