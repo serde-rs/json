@@ -7,6 +7,7 @@ use std::u64;
 
 use serde::de;
 use serde::ser;
+use serde::bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     self,
@@ -1360,4 +1361,35 @@ fn test_serialize_rejects_non_key_maps() {
         serde_json::Error::SyntaxError(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
         _ => panic!("integers used as keys"),
     }
+}
+
+#[test]
+fn test_bytes_ser() {
+    let buf = vec![];
+    let bytes = Bytes::from(&buf);
+    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[]".to_string());
+
+    let buf = vec![1, 2, 3];
+    let bytes = Bytes::from(&buf);
+    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[1,2,3]".to_string());
+}
+
+#[test]
+fn test_byte_buf_ser() {
+    let bytes = ByteBuf::new();
+    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[]".to_string());
+
+    let bytes = ByteBuf::from(vec![1, 2, 3]);
+    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[1,2,3]".to_string());
+}
+
+#[test]
+fn test_byte_buf_de() {
+    let bytes = ByteBuf::new();
+    let v: ByteBuf = serde_json::from_str("[]").unwrap();
+    assert_eq!(v, bytes);
+
+    let bytes = ByteBuf::from(vec![1, 2, 3]);
+    let v: ByteBuf = serde_json::from_str("[1, 2, 3]").unwrap();
+    assert_eq!(v, bytes);
 }
