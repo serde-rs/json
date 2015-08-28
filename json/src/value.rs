@@ -488,7 +488,7 @@ impl ser::Serializer for Serializer {
     fn visit_char(&mut self, value: char) -> Result<(), ()> {
         let mut s = String::new();
         s.push(value);
-        self.visit_str(s)
+        self.visit_str(&s)
     }
 
     #[inline]
