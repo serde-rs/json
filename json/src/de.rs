@@ -1,3 +1,7 @@
+//! JSON Deserialization
+//!
+//! This module provides for JSON deserialization with the type `Deserializer`.
+
 use std::char;
 use std::i32;
 use std::io;
@@ -8,6 +12,7 @@ use serde::iter::LineColIterator;
 
 use super::error::{Error, ErrorCode, Result};
 
+/// A structure that deserializes JSON into Rust values.
 pub struct Deserializer<Iter: Iterator<Item=io::Result<u8>>> {
     rdr: LineColIterator<Iter>,
     ch: Option<u8>,
@@ -36,6 +41,9 @@ impl<Iter> Deserializer<Iter>
         }
     }
 
+    /// The `Deserializer::end` method should be called after a value has been fully deserialized.
+    /// This allows the `Deserializer` to validate that the input stream is at the end or that it
+    /// only has trailing whitespace.
     #[inline]
     pub fn end(&mut self) -> Result<()> {
         try!(self.parse_whitespace());

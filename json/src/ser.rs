@@ -1,10 +1,14 @@
+//! JSON Serialization
+//!
+//! This module provides for JSON serialization with the type `Serializer`.
+
 use std::io;
 use std::num::FpCategory;
 
 use serde::ser;
 use super::error::{Error, ErrorCode, Result};
 
-/// A structure for implementing serialization to JSON.
+/// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F=CompactFormatter> {
     writer: W,
     formatter: F,
@@ -376,20 +380,27 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 }
 
+/// This trait abstracts away serializing the JSON control characters, which allows the user to
+/// optionally pretty print the JSON output.
 pub trait Formatter {
+    /// Called when serializing a '{' or '['.
     fn open<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
         where W: io::Write;
 
+    /// Called when serializing a ','.
     fn comma<W>(&mut self, writer: &mut W, first: bool) -> Result<()>
         where W: io::Write;
 
+    /// Called when serializing a ':'.
     fn colon<W>(&mut self, writer: &mut W) -> Result<()>
         where W: io::Write;
 
+    /// Called when serializing a '}' or ']'.
     fn close<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
         where W: io::Write;
 }
 
+/// This structure compacts a JSON value with no extra whitespace.
 pub struct CompactFormatter;
 
 impl Formatter for CompactFormatter {
@@ -422,6 +433,7 @@ impl Formatter for CompactFormatter {
     }
 }
 
+/// This structure pretty prints a JSON value to make it human readable.
 pub struct PrettyFormatter<'a> {
     current_indent: usize,
     indent: &'a [u8],
@@ -477,6 +489,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 }
 
+/// Serializes and escapes a `&[u8]` into a JSON string.
 #[inline]
 pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
     where W: io::Write
@@ -514,6 +527,7 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
     Ok(())
 }
 
+/// Serializes and escapes a `&str` into a JSON string.
 #[inline]
 pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
     where W: io::Write

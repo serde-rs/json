@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! JSON Value
 //!
 //! This module is centered around the `Value` type, which can represent all possible JSON values.

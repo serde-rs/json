@@ -8,30 +8,61 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! JSON Builders
+//!
+//! This module provides Builders that simplify constructing complex `Value`s. This can be useful
+//! when dynamically constructing a `Value`, or when it is inconvenient to write a custom
+//! `Serialize` implementation or to use `#[derive(Serialize)]`.
+//!
+//! # Example
+//!
+//! ```rust
+//! use serde_json::builder::ObjectBuilder;
+//!
+//! let value = ObjectBuilder::new()
+//!     .insert("name", "point")
+//!     .insert_array("points", |builder| {
+//!         builder
+//!             .push_object(|builder| {
+//!                 builder.insert("x", 1).insert("y", 2)
+//!             })
+//!             .push_object(|builder| {
+//!                 builder.insert("x", 3).insert("y", 4)
+//!             })
+//!     })
+//!     .unwrap();
+//! ```
+
 use std::collections::BTreeMap;
 
 use serde::ser::{self, Serialize};
 
 use value::{self, Value};
 
+/// This structure provides a simple interface for constructing a JSON array.
 pub struct ArrayBuilder {
     array: Vec<Value>,
 }
 
 impl ArrayBuilder {
+    /// Construct an `ObjectBuilder`.
     pub fn new() -> ArrayBuilder {
         ArrayBuilder { array: Vec::new() }
     }
 
+    /// Return the constructed `Value`.
     pub fn unwrap(self) -> Value {
         Value::Array(self.array)
     }
 
+    /// Insert a value into the array.
     pub fn push<T: ser::Serialize>(mut self, v: T) -> ArrayBuilder {
         self.array.push(value::to_value(&v));
         self
     }
 
+    /// Creates and passes an `ArrayBuilder` into a closure, then inserts the resulting array into
+    /// this array.
     pub fn push_array<F>(mut self, f: F) -> ArrayBuilder where
         F: FnOnce(ArrayBuilder) -> ArrayBuilder
     {
@@ -40,6 +71,8 @@ impl ArrayBuilder {
         self
     }
 
+    /// Creates and passes an `ArrayBuilder` into a closure, then inserts the resulting object into
+    /// this array.
     pub fn push_object<F>(mut self, f: F) -> ArrayBuilder where
         F: FnOnce(ObjectBuilder) -> ObjectBuilder
     {
@@ -49,37 +82,50 @@ impl ArrayBuilder {
     }
 }
 
+/// This structure provides a simple interface for constructing a JSON object.
 pub struct ObjectBuilder {
     object: BTreeMap<String, Value>,
 }
 
 impl ObjectBuilder {
+    /// Construct an `ObjectBuilder`.
     pub fn new() -> ObjectBuilder {
         ObjectBuilder { object: BTreeMap::new() }
     }
 
+    /// Return the constructed `Value`.
     pub fn unwrap(self) -> Value {
         Value::Object(self.object)
     }
 
-    pub fn insert<V: ser::Serialize>(mut self, k: String, v: V) -> ObjectBuilder {
-        self.object.insert(k, value::to_value(&v));
+    /// Insert a key-value pair into the object.
+    pub fn insert<S, V>(mut self, key: S, value: V) -> ObjectBuilder
+        where S: Into<String>,
+              V: ser::Serialize,
+    {
+        self.object.insert(key.into(), value::to_value(&value));
         self
     }
 
-    pub fn insert_array<F>(mut self, key: String, f: F) -> ObjectBuilder where
-        F: FnOnce(ArrayBuilder) -> ArrayBuilder
+    /// Creates and passes an `ObjectBuilder` into a closure, then inserts the resulting array into
+    /// this object.
+    pub fn insert_array<S, F>(mut self, key: S, f: F) -> ObjectBuilder
+        where S: Into<String>,
+              F: FnOnce(ArrayBuilder) -> ArrayBuilder
     {
         let builder = ArrayBuilder::new();
-        self.object.insert(key, f(builder).unwrap());
+        self.object.insert(key.into(), f(builder).unwrap());
         self
     }
 
-    pub fn insert_object<F>(mut self, key: String, f: F) -> ObjectBuilder where
-        F: FnOnce(ObjectBuilder) -> ObjectBuilder
+    /// Creates and passes an `ObjectBuilder` into a closure, then inserts the resulting object into
+    /// this object.
+    pub fn insert_object<S, F>(mut self, key: S, f: F) -> ObjectBuilder
+        where S: Into<String>,
+              F: FnOnce(ObjectBuilder) -> ObjectBuilder
     {
         let builder = ObjectBuilder::new();
-        self.object.insert(key, f(builder).unwrap());
+        self.object.insert(key.into(), f(builder).unwrap());
         self
     }
 }
