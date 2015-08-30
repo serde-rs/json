@@ -2,6 +2,7 @@ Serde JSON Serialization Library
 ================================
 
 [![Build status](https://api.travis-ci.org/serde-rs/json.png)](https://travis-ci.org/serde-rs/json)
+[![Coverage Status](https://coveralls.io/repos/serde-rs/json/badge.svg?branch=master&service=github)](https://coveralls.io/github/serde-rs/json?branch=master)
 [![Latest Version](https://img.shields.io/crates/v/serde_json.svg)](https://crates.io/crates/serde\_json)
 
 [Documentation](https://serde-rs.github.io/json/serde_json)
