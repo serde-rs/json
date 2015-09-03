@@ -62,7 +62,7 @@ serde_macros = "*"
 Then run:
 
 ```rust
-#![features(plugin)]
+#![feature(plugin)]
 #![plugin(serde_macros)]
 
 extern crate serde;
