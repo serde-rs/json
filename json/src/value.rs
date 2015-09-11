@@ -49,7 +49,7 @@ use error::Error;
 /// Represents a JSON value
 #[derive(Clone, PartialEq)]
 pub enum Value {
-    /// Represents a JSON numm value
+    /// Represents a JSON null value
     Null,
 
     /// Represents a JSON array
