@@ -793,7 +793,8 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
     }
 }
 
-/// Decodes a json value from a `std::io::Read`.
+/// Decodes a json value from an iterator over an iterator
+/// `Interator<Item=io::Result<u8>>`.
 pub fn from_iter<I, T>(iter: I) -> Result<T>
     where I: Iterator<Item=io::Result<u8>>,
           T: de::Deserialize,
@@ -814,7 +815,7 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
     from_iter(rdr.bytes())
 }
 
-/// Decodes a json value from a `&str`.
+/// Decodes a json value from a byte slice `&[u8]`.
 pub fn from_slice<T>(v: &[u8]) -> Result<T>
     where T: de::Deserialize
 {
