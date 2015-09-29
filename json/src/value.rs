@@ -52,7 +52,7 @@ pub enum Value {
     /// Represents a JSON null value
     Null,
 
-    /// Represents a JSON array
+    /// Represents a JSON Boolean
     Bool(bool),
 
     /// Represents a JSON signed integer
