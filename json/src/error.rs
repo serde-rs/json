@@ -50,6 +50,12 @@ pub enum ErrorCode {
     /// Invalid unicode code point.
     InvalidUnicodeCodePoint,
 
+    /// Invalid value type.
+    InvalidType(de::Type),
+
+    /// Invalid length.
+    InvalidLength(usize),
+
     /// Object key is not a string.
     KeyMustBeAString,
 
@@ -67,6 +73,9 @@ pub enum ErrorCode {
 
     /// Unexpected end of hex excape.
     UnexpectedEndOfHexEscape,
+
+    /// Custom error message.
+    Custom(String),
 }
 
 impl fmt::Debug for ErrorCode {
@@ -86,12 +95,15 @@ impl fmt::Debug for ErrorCode {
             ErrorCode::InvalidEscape => "invalid escape".fmt(f),
             ErrorCode::InvalidNumber => "invalid number".fmt(f),
             ErrorCode::InvalidUnicodeCodePoint => "invalid unicode code point".fmt(f),
+            ErrorCode::InvalidType(ref _type) => write!(f, "invalid type \"{:?}\"", _type),
+            ErrorCode::InvalidLength(ref length) => write!(f, "invalid length \"{}\"", length),
             ErrorCode::KeyMustBeAString => "key must be a string".fmt(f),
             ErrorCode::LoneLeadingSurrogateInHexEscape => "lone leading surrogate in hex escape".fmt(f),
             ErrorCode::UnknownField(ref field) => write!(f, "unknown field \"{}\"", field),
             ErrorCode::MissingField(ref field) => write!(f, "missing field \"{}\"", field),
             ErrorCode::TrailingCharacters => "trailing characters".fmt(f),
             ErrorCode::UnexpectedEndOfHexEscape => "unexpected end of hex escape".fmt(f),
+            ErrorCode::Custom(ref msg) => write!(f, "custom message: \"{}\"", msg),
         }
     }
 }
@@ -156,14 +168,20 @@ impl From<FromUtf8Error> for Error {
 impl From<de::value::Error> for Error {
     fn from(error: de::value::Error) -> Error {
         match error {
-            de::value::Error::SyntaxError => {
-                Error::SyntaxError(ErrorCode::ExpectedSomeValue, 0, 0)
+            de::value::Error::SyntaxError(msg) => {
+                Error::SyntaxError(ErrorCode::Custom(msg.into()), 0, 0)
+            }
+            de::value::Error::TypeError(type_) => {
+                Error::SyntaxError(ErrorCode::InvalidType(type_), 0, 0)
+            }
+            de::value::Error::LengthError(length) => {
+                Error::SyntaxError(ErrorCode::InvalidLength(length), 0, 0)
             }
             de::value::Error::EndOfStreamError => {
                 de::Error::end_of_stream()
             }
             de::value::Error::UnknownFieldError(field) => {
-                Error::SyntaxError(ErrorCode::UnknownField(field), 0, 0)
+                Error::SyntaxError(ErrorCode::UnknownField(String::from(field)), 0, 0)
             }
             de::value::Error::MissingFieldError(field) => {
                 Error::SyntaxError(ErrorCode::MissingField(field), 0, 0)
@@ -173,8 +191,16 @@ impl From<de::value::Error> for Error {
 }
 
 impl de::Error for Error {
-    fn syntax(_: &str) -> Error {
-        Error::SyntaxError(ErrorCode::ExpectedSomeValue, 0, 0)
+    fn syntax(msg: &str) -> Self {
+        Error::SyntaxError(ErrorCode::Custom(msg.into()), 0, 0)
+    }
+
+    fn length_mismatch(length: usize) -> Self {
+        Error::SyntaxError(ErrorCode::InvalidLength(length), 0, 0)
+    }
+
+    fn type_mismatch(type_: de::Type) -> Self {
+        Error::SyntaxError(ErrorCode::InvalidType(type_), 0, 0)
     }
 
     fn end_of_stream() -> Error {
