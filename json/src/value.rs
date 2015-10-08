@@ -393,7 +393,7 @@ impl de::Deserialize for Value {
             }
         }
 
-        deserializer.visit(ValueVisitor)
+        deserializer.deserialize(ValueVisitor)
     }
 }
 
@@ -701,7 +701,7 @@ impl de::Deserializer for Deserializer {
     type Error = Error;
 
     #[inline]
-    fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+    fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         let value = match self.value.take() {
@@ -737,7 +737,7 @@ impl de::Deserializer for Deserializer {
     }
 
     #[inline]
-    fn visit_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+    fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         match self.value {
@@ -748,7 +748,7 @@ impl de::Deserializer for Deserializer {
     }
 
     #[inline]
-    fn visit_enum<V>(&mut self,
+    fn deserialize_enum<V>(&mut self,
                      _name: &str,
                      _variants: &'static [&'static str],
                      mut visitor: V) -> Result<V::Value, Error>
@@ -779,7 +779,7 @@ impl de::Deserializer for Deserializer {
     }
 
     #[inline]
-    fn visit_newtype_struct<V>(&mut self,
+    fn deserialize_newtype_struct<V>(&mut self,
                                _name: &'static str,
                                mut visitor: V) -> Result<V::Value, Self::Error>
         where V: de::Visitor,
@@ -824,7 +824,7 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
         where V: de::Visitor,
     {
         if let Value::Array(fields) = self.val.take().unwrap() {
-            de::Deserializer::visit(
+            de::Deserializer::deserialize(
                 &mut SeqDeserializer {
                     de: self.de,
                     len: fields.len(),
@@ -843,7 +843,7 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
         where V: de::Visitor,
     {
         if let Value::Object(fields) = self.val.take().unwrap() {
-            de::Deserializer::visit(
+            de::Deserializer::deserialize(
                 &mut MapDeserializer {
                     de: self.de,
                     len: fields.len(),
@@ -868,7 +868,7 @@ impl<'a> de::Deserializer for SeqDeserializer<'a> {
     type Error = Error;
 
     #[inline]
-    fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+    fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         if self.len == 0 {
@@ -957,13 +957,13 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
         impl de::Deserializer for UnitDeserializer {
             type Error = Error;
 
-            fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+            fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
                 where V: de::Visitor,
             {
                 visitor.visit_unit()
             }
 
-            fn visit_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+            fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
                 where V: de::Visitor,
             {
                 visitor.visit_none()
@@ -982,7 +982,7 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
     type Error = Error;
 
     #[inline]
-    fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+    fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         visitor.visit_map(self)

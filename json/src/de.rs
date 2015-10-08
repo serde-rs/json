@@ -527,7 +527,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
     type Error = Error;
 
     #[inline]
-    fn visit<V>(&mut self, visitor: V) -> Result<V::Value>
+    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         self.parse_value(visitor)
@@ -535,7 +535,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
 
     /// Parses a `null` as a None, and any other values as a `Some(...)`.
     #[inline]
-    fn visit_option<V>(&mut self, mut visitor: V) -> Result<V::Value>
+    fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         try!(self.parse_whitespace());
@@ -554,7 +554,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
 
     /// Parses a newtype struct as the underlying value.
     #[inline]
-    fn visit_newtype_struct<V>(&mut self,
+    fn deserialize_newtype_struct<V>(&mut self,
                                _name: &str,
                                mut visitor: V) -> Result<V::Value>
         where V: de::Visitor,
@@ -565,7 +565,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
     /// Parses an enum as an object like `{"$KEY":$VALUE}`, where $VALUE is either a straight
     /// value, a `[..]`, or a `{..}`.
     #[inline]
-    fn visit_enum<V>(&mut self,
+    fn deserialize_enum<V>(&mut self,
                      _name: &str,
                      _variants: &'static [&'static str],
                      mut visitor: V) -> Result<V::Value>
@@ -781,7 +781,7 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
                       visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        de::Deserializer::visit(self, visitor)
+        de::Deserializer::deserialize(self, visitor)
     }
 
     fn visit_struct<V>(&mut self,
@@ -789,7 +789,7 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
                        visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        de::Deserializer::visit(self, visitor)
+        de::Deserializer::deserialize(self, visitor)
     }
 }
 
