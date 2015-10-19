@@ -10,5 +10,8 @@ readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 
 [dependencies]
-num = "*"
 serde = "*"
+
+[dependencies.num]
+version = "*"
+default-features = false
