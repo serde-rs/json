@@ -39,6 +39,24 @@
 //!     ]
 //! }
 //! ```
+//! If we assume that FirstName is optional and all other fields are mandatory, the above JSON could correspond to the following Rust structs:
+//! ```rust
+//! #[derive(Serialize, Deserialize)]
+//! struct Data {
+//!     FirstName: Option<String>,
+//!     LastName: String,
+//!     Age: u32,
+//!     Address: Address,
+//!     PhoneNumbers: Vec<String>
+//! }
+//! 
+//! #[derive(Serialize, Deserialize)]
+//! struct Address {
+//!     Street: String,
+//!     City: String,
+//!     Country: String
+//! }
+//! ``` 
 //!
 //! # Type-based Serialization and Deserialization
 //!
