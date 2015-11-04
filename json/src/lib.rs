@@ -44,6 +44,7 @@
 //! correspond to the following Rust structs:
 //!
 //! ```rust
+//! //#![feature(custom_derive, plugin)]
 //! #[derive(Serialize, Deserialize)]
 //! struct Data {
 //!     #[serde(rename="FirstName")] // to comply with Rust coding standards
