@@ -10,8 +10,8 @@ readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 
 [dependencies]
-serde = "*"
+serde = "~0.6.1"
 
 [dependencies.num]
-version = "*"
+version = "~0.1.27"
 default-features = false
