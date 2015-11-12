@@ -12,7 +12,7 @@
 //! * `Boolean`: equivalent to rust's `bool`
 //! * `I64`: equivalent to rust's `i64`
 //! * `U64`: equivalent to rust's `u64`
-//! * `F64`: equivalent to rust's `i64`
+//! * `F64`: equivalent to rust's `f64`
 //! * `String`: equivalent to rust's `String`
 //! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
 //!    same array
