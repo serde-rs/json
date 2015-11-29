@@ -42,7 +42,7 @@
 //!
 //! If we assume that FirstName is optional and all other fields are mandatory, the above JSON could correspond to the following Rust structs:
 //!
-//! ```rust
+//! ```ignore
 //! #[derive(Serialize, Deserialize)]
 //! struct Data {
 //!     FirstName: Option<String>,
