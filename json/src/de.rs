@@ -794,7 +794,7 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
 }
 
 /// Decodes a json value from an iterator over an iterator
-/// `Interator<Item=io::Result<u8>>`.
+/// `Iterator<Item=io::Result<u8>>`.
 pub fn from_iter<I, T>(iter: I) -> Result<T>
     where I: Iterator<Item=io::Result<u8>>,
           T: de::Deserialize,
