@@ -14,6 +14,8 @@ use serde_json::{
     Value,
     from_str,
     from_value,
+    parse_stream,
+    JSONStream,
     to_value,
 };
 
@@ -1392,4 +1394,20 @@ fn test_byte_buf_de() {
     let bytes = ByteBuf::from(vec![1, 2, 3]);
     let v: ByteBuf = serde_json::from_str("[1, 2, 3]").unwrap();
     assert_eq!(v, bytes);
+}
+
+#[test]
+fn test_parse_stream() {
+    let stream = "{\"x\":40}{\"x\":41}\n{\"x\":42}".to_string();
+    let mut parsed:JSONStream<Value, _> = parse_stream(stream
+                                                   .as_bytes()
+                                                   .iter()
+                                                   .map(|byte| Ok(*byte)));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(40));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(41));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(42));
+    assert!(parsed.next().is_none());
 }

@@ -115,8 +115,8 @@
 //! ```
 
 #![deny(missing_docs)]
-
 extern crate num;
+extern crate core;
 extern crate serde;
 
 pub use self::de::{
@@ -125,6 +125,8 @@ pub use self::de::{
     from_reader,
     from_slice,
     from_str,
+    parse_stream,
+    JSONStream,
 };
 pub use self::error::{Error, ErrorCode, Result};
 pub use self::ser::{
