@@ -990,7 +990,13 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
 }
 
 /// Shortcut function to encode a `T` into a JSON `Value`
-pub fn to_value<T>(value: &T) -> Value
+///
+/// ```rust
+/// use serde_json::to_value;
+/// let val = to_value("foo");
+/// assert_eq!(val.as_string(), Some("foo"))
+/// ```
+pub fn to_value<T: ?Sized>(value: &T) -> Value
     where T: ser::Serialize
 {
     let mut ser = Serializer::new();
