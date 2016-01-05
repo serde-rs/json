@@ -440,11 +440,11 @@ pub struct PrettyFormatter<'a> {
 }
 
 impl<'a> PrettyFormatter<'a> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         PrettyFormatter::with_indent(b"  ")
     }
 
-    fn with_indent(indent: &'a [u8]) -> Self {
+    pub fn with_indent(indent: &'a [u8]) -> Self {
         PrettyFormatter {
             current_indent: 0,
             indent: indent,
