@@ -745,11 +745,10 @@ impl<'a, Iter> de::MapVisitor for MapVisitor<'a, Iter>
         }
     }
 
-    fn missing_field<V>(&mut self, _field: &'static str) -> Result<V>
+    fn missing_field<V>(&mut self, field: &'static str) -> Result<V>
         where V: de::Deserialize,
     {
-        let mut de = de::value::ValueDeserializer::into_deserializer(());
-        Ok(try!(de::Deserialize::deserialize(&mut de)))
+        Err(Error::SyntaxError(ErrorCode::MissingField(field), 0, 0))
     }
 }
 
