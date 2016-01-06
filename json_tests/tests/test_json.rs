@@ -28,6 +28,7 @@ macro_rules! treemap {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(disallow_unknown)]
 enum Animal {
     Dog,
     Frog(String, Vec<isize>),
@@ -43,6 +44,7 @@ struct Inner {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(disallow_unknown)]
 struct Outer {
     inner: Vec<Inner>,
 }
@@ -643,10 +645,10 @@ fn test_write_option() {
     ]);
 }
 
-fn test_parse_ok<T>(errors: Vec<(&str, T)>)
+fn test_parse_ok<T>(cases: Vec<(&str, T)>)
     where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
 {
-    for (s, value) in errors {
+    for (s, value) in cases {
         let v: T = from_str(s).unwrap();
         assert_eq!(v, value.clone());
 
@@ -911,9 +913,19 @@ fn test_parse_struct() {
         ("5", Error::SyntaxError(ErrorCode::ExpectedSomeValue, 1, 1)),
         ("\"hello\"", Error::SyntaxError(ErrorCode::ExpectedSomeValue, 1, 7)),
         ("{\"inner\": true}", Error::SyntaxError(ErrorCode::ExpectedSomeValue, 1, 14)),
+        ("{\"inner\": [], \"bad\": true}",
+            Error::SyntaxError(ErrorCode::UnknownField("bad".to_string()), 1, 19)),
     ]);
 
     test_parse_ok(vec![
+        (
+            "{
+                \"inner\": []
+            }",
+            Outer {
+                inner: vec![]
+            },
+        ),
         (
             "{
                 \"inner\": []
@@ -958,6 +970,54 @@ fn test_parse_struct() {
             inner: vec![
                 Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }
             ],
+        }
+    );
+}
+
+#[test]
+fn test_parse_struct_skip_unknown() {
+    // This is almost the same as test_parse_ok, except here we avoid comparing
+    // deserialize<Value>(json) with serialize<Value>(expected) since they
+    // should differ
+    fn test_parse<T>(json: &str, expected: T)
+        where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
+    {
+        let v: T = from_str(json).unwrap();
+        assert_eq!(v, expected.clone());
+
+        // Make sure we can deserialize into a `Value`.
+        let json_value: Value = from_str(json).unwrap();
+
+        // Make sure we can deserialize from a `Value`.
+        let v: T = from_value(json_value.clone()).unwrap();
+        assert_eq!(v, expected);
+
+        // Make sure we can round trip back to `Value`.
+        let json_value2: Value = from_value(json_value.clone()).unwrap();
+        assert_eq!(json_value2, json_value);
+    }
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    struct Foo {
+        x: i32
+    }
+
+    test_parse(
+        "{
+            \"x\": 1,
+            \"ignore_me\": {\"a\": [1, 1.0, {}]}
+        }",
+        Foo {
+            x: 1
+        }
+    );
+    test_parse(
+        "{
+            \"ignore_me\": \"f\",
+            \"x\": 1
+        }",
+        Foo {
+            x: 1
         }
     );
 }
