@@ -440,10 +440,12 @@ pub struct PrettyFormatter<'a> {
 }
 
 impl<'a> PrettyFormatter<'a> {
+    /// Construct a pretty printer formatter that defaults to using two spaces for indentation.
     pub fn new() -> Self {
         PrettyFormatter::with_indent(b"  ")
     }
 
+    /// Construct a pretty printer formatter that uses the `indent` string for indentation.
     pub fn with_indent(indent: &'a [u8]) -> Self {
         PrettyFormatter {
             current_indent: 0,

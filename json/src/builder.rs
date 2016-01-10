@@ -35,7 +35,7 @@
 
 use std::collections::BTreeMap;
 
-use serde::ser::{self, Serialize};
+use serde::ser;
 
 use value::{self, Value};
 
