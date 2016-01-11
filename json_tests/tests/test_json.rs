@@ -28,7 +28,7 @@ macro_rules! treemap {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(disallow_unknown)]
+#[serde(deny_unknown_fields)]
 enum Animal {
     Dog,
     Frog(String, Vec<isize>),
@@ -44,7 +44,7 @@ struct Inner {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(disallow_unknown)]
+#[serde(deny_unknown_fields)]
 struct Outer {
     inner: Vec<Inner>,
 }
