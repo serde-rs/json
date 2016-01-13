@@ -6,7 +6,7 @@ use std::char;
 use std::i32;
 use std::io;
 use std::str;
-use core::marker::PhantomData;
+use std::marker::PhantomData;
 
 use serde::de;
 use serde::iter::LineColIterator;
@@ -830,7 +830,7 @@ pub fn from_str<T>(s: &str) -> Result<T>
     from_slice(s.as_bytes())
 }
 
-/// Iterator over JSON values
+/// Iterator over parsed JSON values
 pub struct JSONStream<T, Iter>
     where Iter: Iterator<Item=io::Result<u8>>,
           T: de::Deserialize
@@ -839,10 +839,13 @@ pub struct JSONStream<T, Iter>
     _marker: PhantomData<T>,
 }
 
-impl <T, Iter>JSONStream<T, Iter>
+/// Iterator over parsed JSON values
+impl <T, Iter> JSONStream<T, Iter>
     where Iter:Iterator<Item=io::Result<u8>>,
           T: de::Deserialize {
-    fn new(i: Iter) -> JSONStream<T, Iter> {
+    /// Returns Iterator of decoded JSON value from an iterator over
+    /// `Iterator<Item=io::Result<u8>>`.
+    pub fn new(i: Iter) -> JSONStream<T, Iter> {
         JSONStream {
             deser: Deserializer::new(i),
             _marker: PhantomData
@@ -850,32 +853,20 @@ impl <T, Iter>JSONStream<T, Iter>
     }
 }
 
-impl <T, Iter>Iterator for JSONStream<T, Iter>
+impl <T, Iter> Iterator for JSONStream<T, Iter>
     where Iter:Iterator<Item=io::Result<u8>>,
           T: de::Deserialize {
     type Item = Result<T>;
     fn next(&mut self) -> Option<Result<T>> {
-        match de::Deserialize::deserialize(&mut self.deser) {
-            Ok(v) => Some(Ok(v)),
-            Err(e) => {
-                match e {
-                    Error::SyntaxError(
-                        ErrorCode::EOFWhileParsingValue, _, _) =>
-                        match self.deser.end() {
-                            Ok(_) => None,
-                            Err(e) => Some(Err(e))
-                        },
-                    _ => Some(Err(e))
-                }
-            }
+        match self.deser.eof() {
+            Ok(true) => None,
+            Ok(false) => match de::Deserialize::deserialize(&mut self.deser) {
+                Ok(v) => Some(Ok(v)),
+                // EOF is handled beforehand, so report any error
+                Err(e) => Some(Err(e))
+            },
+            // Should not happen, seek .eof()
+            Err(e) => Some(Err(e))
         }
     }
-}
-
-/// Returns Iterator of decoded JSON value from an iterator over
-/// `Iterator<Item=io::Result<u8>>`.
-pub fn parse_stream<T, Iter>(i: Iter) -> JSONStream<T, Iter>
-    where Iter: Iterator<Item=io::Result<u8>>,
-          T: de::Deserialize {
-    JSONStream::new(i)
 }

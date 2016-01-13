@@ -12,10 +12,9 @@ use serde::bytes::{ByteBuf, Bytes};
 use serde_json::{
     self,
     Value,
+    JSONStream,
     from_str,
     from_value,
-    parse_stream,
-    JSONStream,
     to_value,
 };
 
@@ -1397,17 +1396,28 @@ fn test_byte_buf_de() {
 }
 
 #[test]
-fn test_parse_stream() {
-    let stream = "{\"x\":40}{\"x\":41}\n{\"x\":42}".to_string();
-    let mut parsed:JSONStream<Value, _> = parse_stream(stream
-                                                   .as_bytes()
-                                                   .iter()
-                                                   .map(|byte| Ok(*byte)));
+fn test_json_stream_newlines() {
+    let stream = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}".to_string();
+    let mut parsed:JSONStream<Value, _> = JSONStream::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte)));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(39));
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
                &Value::U64(40));
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
                &Value::U64(41));
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
                &Value::U64(42));
+    assert!(parsed.next().is_none());
+}
+
+#[test]
+fn test_json_stream_truncated() {
+    let stream = "{\"x\":40}\n{\"x\":".to_string();
+    let mut parsed:JSONStream<Value, _> = JSONStream::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte)));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(40));
+    assert!(parsed.next().unwrap().is_err());
     assert!(parsed.next().is_none());
 }

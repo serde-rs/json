@@ -53,14 +53,14 @@
 //!     Address: Address,
 //!     PhoneNumbers: Vec<String>
 //! }
-//! 
+//!
 //! #[derive(Serialize, Deserialize)]
 //! struct Address {
 //!     Street: String,
 //!     City: String,
 //!     Country: String
 //! }
-//! ``` 
+//! ```
 //!
 //! # Type-based Serialization and Deserialization
 //!
@@ -121,12 +121,11 @@ extern crate serde;
 
 pub use self::de::{
     Deserializer,
+    JSONStream,
     from_iter,
     from_reader,
     from_slice,
     from_str,
-    parse_stream,
-    JSONStream,
 };
 pub use self::error::{Error, ErrorCode, Result};
 pub use self::ser::{
