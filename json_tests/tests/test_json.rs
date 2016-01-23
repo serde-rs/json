@@ -911,6 +911,8 @@ fn test_parse_struct() {
         ("5", Error::SyntaxError(ErrorCode::ExpectedSomeValue, 1, 1)),
         ("\"hello\"", Error::SyntaxError(ErrorCode::ExpectedSomeValue, 1, 7)),
         ("{\"inner\": true}", Error::SyntaxError(ErrorCode::ExpectedSomeValue, 1, 14)),
+        ("{}", Error::SyntaxError(ErrorCode::MissingField("inner"), 1, 2)),
+        (r#"{"inner": [{"b": 42, "c": []}]}"#, Error::SyntaxError(ErrorCode::MissingField("a"), 1, 29)),
     ]);
 
     test_parse_ok(vec![
@@ -935,15 +937,6 @@ fn test_parse_struct() {
             },
         ),
     ]);
-
-    let v: Outer = from_str("{}").unwrap();
-
-    assert_eq!(
-        v,
-        Outer {
-            inner: vec![],
-        }
-    );
 
     let v: Outer = from_str(
         "[
@@ -1057,7 +1050,7 @@ fn test_multiline_errors() {
 }
 
 #[test]
-fn test_missing_field() {
+fn test_missing_option_field() {
     #[derive(Debug, PartialEq, Deserialize)]
     struct Foo {
         x: Option<u32>,
@@ -1076,6 +1069,18 @@ fn test_missing_field() {
         "x".to_string() => Value::I64(5)
     ))).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
+}
+
+#[test]
+fn test_missing_nonoption_field() {
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct Foo {
+        x: u32,
+    }
+
+    test_parse_err::<Foo>(vec![
+        ("{}", Error::SyntaxError(ErrorCode::MissingField("x"), 1, 2)),
+    ]);
 }
 
 #[test]
