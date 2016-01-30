@@ -1431,3 +1431,11 @@ fn test_json_stream_truncated() {
     assert!(parsed.next().unwrap().is_err());
     assert!(parsed.next().is_none());
 }
+
+#[test]
+fn test_json_stream_empty() {
+    let stream = "".to_string();
+    let mut parsed:JSONStream<Value, _> = JSONStream::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte)));
+    assert!(parsed.next().is_none());
+}
