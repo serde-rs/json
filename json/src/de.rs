@@ -858,15 +858,19 @@ impl <T, Iter> Iterator for JSONStream<T, Iter>
           T: de::Deserialize {
     type Item = Result<T>;
     fn next(&mut self) -> Option<Result<T>> {
-        match self.deser.eof() {
-            Ok(true) => None,
-            Ok(false) => match de::Deserialize::deserialize(&mut self.deser) {
+        // skip whitespaces, if any
+        // this helps with trailing whitespaces, since whitespaces between
+        // values are handled for us.
+        let _:Result<()> = self.deser.parse_whitespace();
+        // Since Deserializer.eof() always return Ok(_), it's safe to
+        // call .ok() here
+        if self.deser.eof().ok().unwrap() {
+            None
+        } else {
+            match de::Deserialize::deserialize(&mut self.deser) {
                 Ok(v) => Some(Ok(v)),
-                // EOF is handled beforehand, so report any error
                 Err(e) => Some(Err(e))
-            },
-            // Should not happen, seek .eof()
-            Err(e) => Some(Err(e))
+            }
         }
     }
 }

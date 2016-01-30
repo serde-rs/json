@@ -1412,6 +1412,16 @@ fn test_json_stream_newlines() {
 }
 
 #[test]
+fn test_json_stream_trailing_whitespaces() {
+    let stream = "{\"x\":42} \t\n".to_string();
+    let mut parsed:JSONStream<Value, _> = JSONStream::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte)));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(42));
+    assert!(parsed.next().is_none());
+}
+
+#[test]
 fn test_json_stream_truncated() {
     let stream = "{\"x\":40}\n{\"x\":".to_string();
     let mut parsed:JSONStream<Value, _> = JSONStream::new(
