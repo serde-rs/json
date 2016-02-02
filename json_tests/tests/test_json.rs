@@ -33,6 +33,7 @@ macro_rules! treemap {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 enum Animal {
     Dog,
     Frog(String, Vec<isize>),
@@ -1120,29 +1121,6 @@ fn test_missing_renamed_field() {
 }
 
 #[test]
-fn test_missing_fmt_renamed_field() {
-    #[derive(Debug, PartialEq, Deserialize)]
-    struct Foo {
-        #[serde(rename(json="y"))]
-        x: Option<u32>,
-    }
-
-    let value: Foo = from_str("{}").unwrap();
-    assert_eq!(value, Foo { x: None });
-
-    let value: Foo = from_str("{\"y\": 5}").unwrap();
-    assert_eq!(value, Foo { x: Some(5) });
-
-    let value: Foo = from_value(Value::Object(treemap!())).unwrap();
-    assert_eq!(value, Foo { x: None });
-
-    let value : Foo = from_value(Value::Object(treemap!(
-        "y".to_string() => Value::I64(5)
-            ))).unwrap();
-    assert_eq!(value, Foo { x: Some(5) });
-}
-
-#[test]
 fn test_find_path() {
     let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 
@@ -1172,7 +1150,7 @@ fn test_serialize_seq_with_no_len() {
         fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
             where S: ser::Serializer,
         {
-            serializer.visit_seq(ser::impls::SeqIteratorVisitor::new(self.0.iter(), None))
+            serializer.serialize_seq(ser::impls::SeqIteratorVisitor::new(self.0.iter(), None))
         }
     }
 
@@ -1214,7 +1192,7 @@ fn test_serialize_seq_with_no_len() {
         fn deserialize<D>(deserializer: &mut D) -> Result<MyVec<T>, D::Error>
             where D: de::Deserializer,
         {
-            deserializer.visit_map(Visitor { marker: PhantomData })
+            deserializer.deserialize_map(Visitor { marker: PhantomData })
         }
     }
 
@@ -1257,7 +1235,7 @@ fn test_serialize_map_with_no_len() {
         fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
             where S: ser::Serializer,
         {
-            serializer.visit_map(ser::impls::MapIteratorVisitor::new(self.0.iter(), None))
+            serializer.serialize_map(ser::impls::MapIteratorVisitor::new(self.0.iter(), None))
         }
     }
 
@@ -1301,7 +1279,7 @@ fn test_serialize_map_with_no_len() {
         fn deserialize<D>(deserializer: &mut D) -> Result<Map<K, V>, D::Error>
             where D: de::Deserializer,
         {
-            deserializer.visit_map(Visitor { marker: PhantomData })
+            deserializer.deserialize_map(Visitor { marker: PhantomData })
         }
     }
 

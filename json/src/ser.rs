@@ -67,7 +67,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     type Error = Error;
 
     #[inline]
-    fn visit_bool(&mut self, value: bool) -> Result<()> {
+    fn serialize_bool(&mut self, value: bool) -> Result<()> {
         if value {
             self.writer.write_all(b"true").map_err(From::from)
         } else {
@@ -76,95 +76,95 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn visit_isize(&mut self, value: isize) -> Result<()> {
+    fn serialize_isize(&mut self, value: isize) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_i8(&mut self, value: i8) -> Result<()> {
+    fn serialize_i8(&mut self, value: i8) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_i16(&mut self, value: i16) -> Result<()> {
+    fn serialize_i16(&mut self, value: i16) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_i32(&mut self, value: i32) -> Result<()> {
+    fn serialize_i32(&mut self, value: i32) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_i64(&mut self, value: i64) -> Result<()> {
+    fn serialize_i64(&mut self, value: i64) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_usize(&mut self, value: usize) -> Result<()> {
+    fn serialize_usize(&mut self, value: usize) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_u8(&mut self, value: u8) -> Result<()> {
+    fn serialize_u8(&mut self, value: u8) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_u16(&mut self, value: u16) -> Result<()> {
+    fn serialize_u16(&mut self, value: u16) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_u32(&mut self, value: u32) -> Result<()> {
+    fn serialize_u32(&mut self, value: u32) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_u64(&mut self, value: u64) -> Result<()> {
+    fn serialize_u64(&mut self, value: u64) -> Result<()> {
         write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_f32(&mut self, value: f32) -> Result<()> {
+    fn serialize_f32(&mut self, value: f32) -> Result<()> {
         fmt_f32_or_null(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_f64(&mut self, value: f64) -> Result<()> {
+    fn serialize_f64(&mut self, value: f64) -> Result<()> {
         fmt_f64_or_null(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_char(&mut self, value: char) -> Result<()> {
+    fn serialize_char(&mut self, value: char) -> Result<()> {
         escape_char(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_str(&mut self, value: &str) -> Result<()> {
+    fn serialize_str(&mut self, value: &str) -> Result<()> {
         escape_str(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
-    fn visit_none(&mut self) -> Result<()> {
-        self.visit_unit()
+    fn serialize_none(&mut self) -> Result<()> {
+        self.serialize_unit()
     }
 
     #[inline]
-    fn visit_some<V>(&mut self, value: V) -> Result<()>
+    fn serialize_some<V>(&mut self, value: V) -> Result<()>
         where V: ser::Serialize
     {
         value.serialize(self)
     }
 
     #[inline]
-    fn visit_unit(&mut self) -> Result<()> {
+    fn serialize_unit(&mut self) -> Result<()> {
         self.writer.write_all(b"null").map_err(From::from)
     }
 
     /// Override `visit_newtype_struct` to serialize newtypes without an object wrapper.
     #[inline]
-    fn visit_newtype_struct<T>(&mut self,
+    fn serialize_newtype_struct<T>(&mut self,
                                _name: &'static str,
                                value: T) -> Result<()>
         where T: ser::Serialize,
@@ -173,20 +173,20 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn visit_unit_variant(&mut self,
+    fn serialize_unit_variant(&mut self,
                           _name: &str,
                           _variant_index: usize,
                           variant: &str) -> Result<()> {
         try!(self.formatter.open(&mut self.writer, b'{'));
         try!(self.formatter.comma(&mut self.writer, true));
-        try!(self.visit_str(variant));
+        try!(self.serialize_str(variant));
         try!(self.formatter.colon(&mut self.writer));
         try!(self.writer.write_all(b"[]"));
         self.formatter.close(&mut self.writer, b'}')
     }
 
     #[inline]
-    fn visit_newtype_variant<T>(&mut self,
+    fn serialize_newtype_variant<T>(&mut self,
                                 _name: &str,
                                 _variant_index: usize,
                                 variant: &str,
@@ -195,14 +195,14 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     {
         try!(self.formatter.open(&mut self.writer, b'{'));
         try!(self.formatter.comma(&mut self.writer, true));
-        try!(self.visit_str(variant));
+        try!(self.serialize_str(variant));
         try!(self.formatter.colon(&mut self.writer));
         try!(value.serialize(self));
         self.formatter.close(&mut self.writer, b'}')
     }
 
     #[inline]
-    fn visit_seq<V>(&mut self, mut visitor: V) -> Result<()>
+    fn serialize_seq<V>(&mut self, mut visitor: V) -> Result<()>
         where V: ser::SeqVisitor,
     {
         match visitor.len() {
@@ -223,7 +223,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn visit_tuple_variant<V>(&mut self,
+    fn serialize_tuple_variant<V>(&mut self,
                               _name: &str,
                               _variant_index: usize,
                               variant: &str,
@@ -232,14 +232,14 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     {
         try!(self.formatter.open(&mut self.writer, b'{'));
         try!(self.formatter.comma(&mut self.writer, true));
-        try!(self.visit_str(variant));
+        try!(self.serialize_str(variant));
         try!(self.formatter.colon(&mut self.writer));
-        try!(self.visit_seq(visitor));
+        try!(self.serialize_seq(visitor));
         self.formatter.close(&mut self.writer, b'}')
     }
 
     #[inline]
-    fn visit_seq_elt<T>(&mut self, value: T) -> Result<()>
+    fn serialize_seq_elt<T>(&mut self, value: T) -> Result<()>
         where T: ser::Serialize,
     {
         try!(self.formatter.comma(&mut self.writer, self.first));
@@ -251,7 +251,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn visit_map<V>(&mut self, mut visitor: V) -> Result<()>
+    fn serialize_map<V>(&mut self, mut visitor: V) -> Result<()>
         where V: ser::MapVisitor,
     {
         match visitor.len() {
@@ -271,7 +271,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn visit_struct_variant<V>(&mut self,
+    fn serialize_struct_variant<V>(&mut self,
                                _name: &str,
                                _variant_index: usize,
                                variant: &str,
@@ -280,15 +280,15 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     {
         try!(self.formatter.open(&mut self.writer, b'{'));
         try!(self.formatter.comma(&mut self.writer, true));
-        try!(self.visit_str(variant));
+        try!(self.serialize_str(variant));
         try!(self.formatter.colon(&mut self.writer));
-        try!(self.visit_map(visitor));
+        try!(self.serialize_map(visitor));
 
         self.formatter.close(&mut self.writer, b'}')
     }
 
     #[inline]
-    fn visit_map_elt<K, V>(&mut self, key: K, value: V) -> Result<()>
+    fn serialize_map_elt<K, V>(&mut self, key: K, value: V) -> Result<()>
         where K: ser::Serialize,
               V: ser::Serialize,
     {
@@ -301,11 +301,6 @@ impl<W, F> ser::Serializer for Serializer<W, F>
         self.first = false;
 
         Ok(())
-    }
-
-    #[inline]
-    fn format() -> &'static str {
-        "json"
     }
 }
 
@@ -320,59 +315,59 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     type Error = Error;
 
     #[inline]
-    fn visit_str(&mut self, value: &str) -> Result<()> {
-        self.ser.visit_str(value)
+    fn serialize_str(&mut self, value: &str) -> Result<()> {
+        self.ser.serialize_str(value)
     }
 
-    fn visit_bool(&mut self, _value: bool) -> Result<()> {
+    fn serialize_bool(&mut self, _value: bool) -> Result<()> {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_i64(&mut self, _value: i64) -> Result<()> {
+    fn serialize_i64(&mut self, _value: i64) -> Result<()> {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_u64(&mut self, _value: u64) -> Result<()> {
+    fn serialize_u64(&mut self, _value: u64) -> Result<()> {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_f64(&mut self, _value: f64) -> Result<()> {
+    fn serialize_f64(&mut self, _value: f64) -> Result<()> {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_unit(&mut self) -> Result<()> {
+    fn serialize_unit(&mut self) -> Result<()> {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_none(&mut self) -> Result<()> {
+    fn serialize_none(&mut self) -> Result<()> {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_some<V>(&mut self, _value: V) -> Result<()>
+    fn serialize_some<V>(&mut self, _value: V) -> Result<()>
         where V: ser::Serialize
     {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_seq<V>(&mut self, _visitor: V) -> Result<()>
+    fn serialize_seq<V>(&mut self, _visitor: V) -> Result<()>
         where V: ser::SeqVisitor,
     {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_seq_elt<T>(&mut self, _value: T) -> Result<()>
+    fn serialize_seq_elt<T>(&mut self, _value: T) -> Result<()>
         where T: ser::Serialize,
     {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_map<V>(&mut self, _visitor: V) -> Result<()>
+    fn serialize_map<V>(&mut self, _visitor: V) -> Result<()>
         where V: ser::MapVisitor,
     {
         Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn visit_map_elt<K, V>(&mut self, _key: K, _value: V) -> Result<()>
+    fn serialize_map_elt<K, V>(&mut self, _key: K, _value: V) -> Result<()>
         where K: ser::Serialize,
               V: ser::Serialize,
     {
