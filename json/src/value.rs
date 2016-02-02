@@ -301,12 +301,12 @@ impl ser::Serialize for Value {
         where S: ser::Serializer,
     {
         match *self {
-            Value::Null => serializer.visit_unit(),
-            Value::Bool(v) => serializer.visit_bool(v),
-            Value::I64(v) => serializer.visit_i64(v),
-            Value::U64(v) => serializer.visit_u64(v),
-            Value::F64(v) => serializer.visit_f64(v),
-            Value::String(ref v) => serializer.visit_str(&v),
+            Value::Null => serializer.serialize_unit(),
+            Value::Bool(v) => serializer.serialize_bool(v),
+            Value::I64(v) => serializer.serialize_i64(v),
+            Value::U64(v) => serializer.serialize_u64(v),
+            Value::F64(v) => serializer.serialize_f64(v),
+            Value::String(ref v) => serializer.serialize_str(&v),
             Value::Array(ref v) => v.serialize(serializer),
             Value::Object(ref v) => v.serialize(serializer),
         }
@@ -393,7 +393,7 @@ impl de::Deserialize for Value {
             }
         }
 
-        deserializer.visit(ValueVisitor)
+        deserializer.deserialize(ValueVisitor)
     }
 }
 
@@ -455,13 +455,13 @@ impl ser::Serializer for Serializer {
     type Error = ();
 
     #[inline]
-    fn visit_bool(&mut self, value: bool) -> Result<(), ()> {
+    fn serialize_bool(&mut self, value: bool) -> Result<(), ()> {
         self.state.push(State::Value(Value::Bool(value)));
         Ok(())
     }
 
     #[inline]
-    fn visit_i64(&mut self, value: i64) -> Result<(), ()> {
+    fn serialize_i64(&mut self, value: i64) -> Result<(), ()> {
         if value < 0 {
             self.state.push(State::Value(Value::I64(value)));
         } else {
@@ -471,50 +471,50 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn visit_u64(&mut self, value: u64) -> Result<(), ()> {
+    fn serialize_u64(&mut self, value: u64) -> Result<(), ()> {
         self.state.push(State::Value(Value::U64(value)));
         Ok(())
     }
 
     #[inline]
-    fn visit_f64(&mut self, value: f64) -> Result<(), ()> {
+    fn serialize_f64(&mut self, value: f64) -> Result<(), ()> {
         self.state.push(State::Value(Value::F64(value as f64)));
         Ok(())
     }
 
     #[inline]
-    fn visit_char(&mut self, value: char) -> Result<(), ()> {
+    fn serialize_char(&mut self, value: char) -> Result<(), ()> {
         let mut s = String::new();
         s.push(value);
-        self.visit_str(&s)
+        self.serialize_str(&s)
     }
 
     #[inline]
-    fn visit_str(&mut self, value: &str) -> Result<(), ()> {
+    fn serialize_str(&mut self, value: &str) -> Result<(), ()> {
         self.state.push(State::Value(Value::String(String::from(value))));
         Ok(())
     }
 
     #[inline]
-    fn visit_none(&mut self) -> Result<(), ()> {
-        self.visit_unit()
+    fn serialize_none(&mut self) -> Result<(), ()> {
+        self.serialize_unit()
     }
 
     #[inline]
-    fn visit_some<V>(&mut self, value: V) -> Result<(), ()>
+    fn serialize_some<V>(&mut self, value: V) -> Result<(), ()>
         where V: ser::Serialize,
     {
         value.serialize(self)
     }
 
     #[inline]
-    fn visit_unit(&mut self) -> Result<(), ()> {
+    fn serialize_unit(&mut self) -> Result<(), ()> {
         self.state.push(State::Value(Value::Null));
         Ok(())
     }
 
     #[inline]
-    fn visit_unit_variant(&mut self,
+    fn serialize_unit_variant(&mut self,
                           _name: &str,
                           _variant_index: usize,
                           variant: &str) -> Result<(), ()> {
@@ -527,7 +527,7 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn visit_newtype_variant<T>(&mut self,
+    fn serialize_newtype_variant<T>(&mut self,
                                 _name: &str,
                                 _variant_index: usize,
                                 variant: &str,
@@ -543,7 +543,7 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn visit_seq<V>(&mut self, mut visitor: V) -> Result<(), ()>
+    fn serialize_seq<V>(&mut self, mut visitor: V) -> Result<(), ()>
         where V: ser::SeqVisitor,
     {
         let len = visitor.len().unwrap_or(0);
@@ -564,14 +564,14 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn visit_tuple_variant<V>(&mut self,
+    fn serialize_tuple_variant<V>(&mut self,
                               _name: &str,
                               _variant_index: usize,
                               variant: &str,
                               visitor: V) -> Result<(), ()>
         where V: ser::SeqVisitor,
     {
-        try!(self.visit_seq(visitor));
+        try!(self.serialize_seq(visitor));
 
         let value = match self.state.pop().unwrap() {
             State::Value(value) => value,
@@ -588,7 +588,7 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn visit_seq_elt<T>(&mut self, value: T) -> Result<(), ()>
+    fn serialize_seq_elt<T>(&mut self, value: T) -> Result<(), ()>
         where T: ser::Serialize,
     {
         try!(value.serialize(self));
@@ -607,7 +607,7 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn visit_map<V>(&mut self, mut visitor: V) -> Result<(), ()>
+    fn serialize_map<V>(&mut self, mut visitor: V) -> Result<(), ()>
         where V: ser::MapVisitor,
     {
         let values = BTreeMap::new();
@@ -627,14 +627,14 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn visit_struct_variant<V>(&mut self,
+    fn serialize_struct_variant<V>(&mut self,
                                _name: &str,
                                _variant_index: usize,
                                variant: &str,
                                visitor: V) -> Result<(), ()>
         where V: ser::MapVisitor,
     {
-        try!(self.visit_map(visitor));
+        try!(self.serialize_map(visitor));
 
         let value = match self.state.pop().unwrap() {
             State::Value(value) => value,
@@ -651,7 +651,7 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn visit_map_elt<K, V>(&mut self, key: K, value: V) -> Result<(), ()>
+    fn serialize_map_elt<K, V>(&mut self, key: K, value: V) -> Result<(), ()>
         where K: ser::Serialize,
               V: ser::Serialize,
     {
@@ -701,7 +701,7 @@ impl de::Deserializer for Deserializer {
     type Error = Error;
 
     #[inline]
-    fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+    fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         let value = match self.value.take() {
@@ -737,7 +737,7 @@ impl de::Deserializer for Deserializer {
     }
 
     #[inline]
-    fn visit_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+    fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         match self.value {
@@ -748,7 +748,7 @@ impl de::Deserializer for Deserializer {
     }
 
     #[inline]
-    fn visit_enum<V>(&mut self,
+    fn deserialize_enum<V>(&mut self,
                      _name: &str,
                      _variants: &'static [&'static str],
                      mut visitor: V) -> Result<V::Value, Error>
@@ -779,7 +779,7 @@ impl de::Deserializer for Deserializer {
     }
 
     #[inline]
-    fn visit_newtype_struct<V>(&mut self,
+    fn deserialize_newtype_struct<V>(&mut self,
                                _name: &'static str,
                                mut visitor: V) -> Result<V::Value, Self::Error>
         where V: de::Visitor,
@@ -824,7 +824,7 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
         where V: de::Visitor,
     {
         if let Value::Array(fields) = self.val.take().unwrap() {
-            de::Deserializer::visit(
+            de::Deserializer::deserialize(
                 &mut SeqDeserializer {
                     de: self.de,
                     len: fields.len(),
@@ -843,7 +843,7 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
         where V: de::Visitor,
     {
         if let Value::Object(fields) = self.val.take().unwrap() {
-            de::Deserializer::visit(
+            de::Deserializer::deserialize(
                 &mut MapDeserializer {
                     de: self.de,
                     len: fields.len(),
@@ -868,7 +868,7 @@ impl<'a> de::Deserializer for SeqDeserializer<'a> {
     type Error = Error;
 
     #[inline]
-    fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+    fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         if self.len == 0 {
@@ -957,13 +957,13 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
         impl de::Deserializer for UnitDeserializer {
             type Error = Error;
 
-            fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+            fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
                 where V: de::Visitor,
             {
                 visitor.visit_unit()
             }
 
-            fn visit_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+            fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
                 where V: de::Visitor,
             {
                 visitor.visit_none()
@@ -982,7 +982,7 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
     type Error = Error;
 
     #[inline]
-    fn visit<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+    fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
         visitor.visit_map(self)

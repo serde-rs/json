@@ -28,6 +28,7 @@ macro_rules! treemap {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 enum Animal {
     Dog,
     Frog(String, Vec<isize>),
@@ -1154,7 +1155,7 @@ fn test_serialize_seq_with_no_len() {
         fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
             where S: ser::Serializer,
         {
-            serializer.visit_seq(ser::impls::SeqIteratorVisitor::new(self.0.iter(), None))
+            serializer.serialize_seq(ser::impls::SeqIteratorVisitor::new(self.0.iter(), None))
         }
     }
 
@@ -1196,7 +1197,7 @@ fn test_serialize_seq_with_no_len() {
         fn deserialize<D>(deserializer: &mut D) -> Result<MyVec<T>, D::Error>
             where D: de::Deserializer,
         {
-            deserializer.visit_map(Visitor { marker: PhantomData })
+            deserializer.deserialize_map(Visitor { marker: PhantomData })
         }
     }
 
@@ -1239,7 +1240,7 @@ fn test_serialize_map_with_no_len() {
         fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
             where S: ser::Serializer,
         {
-            serializer.visit_map(ser::impls::MapIteratorVisitor::new(self.0.iter(), None))
+            serializer.serialize_map(ser::impls::MapIteratorVisitor::new(self.0.iter(), None))
         }
     }
 
@@ -1283,7 +1284,7 @@ fn test_serialize_map_with_no_len() {
         fn deserialize<D>(deserializer: &mut D) -> Result<Map<K, V>, D::Error>
             where D: de::Deserializer,
         {
-            deserializer.visit_map(Visitor { marker: PhantomData })
+            deserializer.deserialize_map(Visitor { marker: PhantomData })
         }
     }
 

@@ -67,6 +67,12 @@ pub enum ErrorCode {
 
     /// Unexpected end of hex excape.
     UnexpectedEndOfHexEscape,
+
+    /// Invalid length
+    Length(usize),
+
+    /// Incorrect type from value
+    Type(de::Type),
 }
 
 impl fmt::Debug for ErrorCode {
@@ -92,6 +98,8 @@ impl fmt::Debug for ErrorCode {
             ErrorCode::MissingField(ref field) => write!(f, "missing field \"{}\"", field),
             ErrorCode::TrailingCharacters => "trailing characters".fmt(f),
             ErrorCode::UnexpectedEndOfHexEscape => "unexpected end of hex escape".fmt(f),
+            ErrorCode::Length(ref len) => write!(f, "incorrect value length {}", len),
+            ErrorCode::Type(ref ty) => write!(f, "incorrect value type: {:?}", ty),
         }
     }
 }
@@ -156,17 +164,23 @@ impl From<FromUtf8Error> for Error {
 impl From<de::value::Error> for Error {
     fn from(error: de::value::Error) -> Error {
         match error {
-            de::value::Error::SyntaxError => {
+            de::value::Error::Syntax(_) => {
                 Error::SyntaxError(ErrorCode::ExpectedSomeValue, 0, 0)
             }
-            de::value::Error::EndOfStreamError => {
+            de::value::Error::EndOfStream => {
                 de::Error::end_of_stream()
             }
-            de::value::Error::UnknownFieldError(field) => {
+            de::value::Error::UnknownField(field) => {
                 Error::SyntaxError(ErrorCode::UnknownField(field), 0, 0)
             }
-            de::value::Error::MissingFieldError(field) => {
+            de::value::Error::MissingField(field) => {
                 Error::SyntaxError(ErrorCode::MissingField(field), 0, 0)
+            }
+            de::value::Error::Length(len) => {
+                Error::SyntaxError(ErrorCode::Length(len), 0, 0)
+            }
+            de::value::Error::Type(ty) => {
+                Error::SyntaxError(ErrorCode::Type(ty), 0, 0)
             }
         }
     }
