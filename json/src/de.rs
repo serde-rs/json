@@ -861,16 +861,16 @@ impl <T, Iter> Iterator for JSONStream<T, Iter>
         // skip whitespaces, if any
         // this helps with trailing whitespaces, since whitespaces between
         // values are handled for us.
-        let _:Result<()> = self.deser.parse_whitespace();
-        // Since Deserializer.eof() always return Ok(_), it's safe to
-        // call .ok() here
-        if self.deser.eof().ok().unwrap() {
-            None
-        } else {
-            match de::Deserialize::deserialize(&mut self.deser) {
+        if let Err(e) = self.deser.parse_whitespace() {
+            return Some(Err(e))
+        };
+        match self.deser.eof() {
+            Ok(true) => None,
+            Ok(false) => match de::Deserialize::deserialize(&mut self.deser) {
                 Ok(v) => Some(Ok(v)),
                 Err(e) => Some(Err(e))
-            }
+            },
+            Err(e) => Some(Err(e))
         }
     }
 }
