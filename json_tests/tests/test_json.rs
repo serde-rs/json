@@ -755,6 +755,14 @@ fn test_parse_u64() {
 }
 
 #[test]
+fn test_parse_negative_zero() {
+    assert_eq!(0, from_str::<u32>("-0").unwrap());
+    assert_eq!(0, from_str::<u32>("-0.0").unwrap());
+    assert_eq!(0, from_str::<u32>("-0e2").unwrap());
+    assert_eq!(0, from_str::<u32>("-0.0e2").unwrap());
+}
+
+#[test]
 fn test_parse_f64() {
     test_parse_ok(vec![
         ("0.0", 0.0f64),
