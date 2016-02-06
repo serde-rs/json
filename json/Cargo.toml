@@ -13,10 +13,6 @@ keywords = ["json", "serde", "serialization"]
 git = "https://github.com/serde-rs/serde"
 rev = "9ae47a261e2e2f7dacc44c91e315fc90675e4e4b"
 
-[dependencies.serde_macros]
-git = "https://github.com/serde-rs/serde"
-rev = "9ae47a261e2e2f7dacc44c91e315fc90675e4e4b"
-
 [dependencies.num]
 version = "~0.1.27"
 default-features = false
