@@ -25,7 +25,7 @@ git = "https://github.com/serde-rs/serde"
 optional = true
 rev = "9ae47a261e2e2f7dacc44c91e315fc90675e4e4b"
 
-[dependencies.serde_codegen]
+[build-dependencies.serde_codegen]
 git = "https://github.com/serde-rs/serde"
 optional = true
 rev = "9ae47a261e2e2f7dacc44c91e315fc90675e4e4b"
