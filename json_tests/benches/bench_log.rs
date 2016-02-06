@@ -73,7 +73,7 @@ impl ser::Serialize for HttpProtocol {
     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
         where S: ser::Serializer,
     {
-        serializer.visit_u8(*self as u8)
+        serializer.serialize_u8(*self as u8)
     }
 }
 
@@ -82,7 +82,7 @@ impl de::Deserialize for HttpProtocol {
     fn deserialize<
         S: Deserializer,
     >(state: &mut S) -> Result<HttpProtocol, S::Error> {
-        state.visit(de::impls::PrimitiveVisitor::new())
+        state.deserialize(de::impls::PrimitiveVisitor::new())
     }
 }
 
@@ -150,7 +150,7 @@ impl ser::Serialize for HttpMethod {
     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
         where S: ser::Serializer,
     {
-        serializer.visit_u8(*self as u8)
+        serializer.serialize_u8(*self as u8)
     }
 }
 
@@ -159,7 +159,7 @@ impl de::Deserialize for HttpMethod {
     fn deserialize<
         S: de::Deserializer,
     >(state: &mut S) -> Result<HttpMethod, S::Error> {
-        state.visit(de::impls::PrimitiveVisitor::new())
+        state.deserialize(de::impls::PrimitiveVisitor::new())
     }
 }
 
@@ -213,7 +213,7 @@ impl ser::Serialize for CacheStatus {
     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
         where S: ser::Serializer,
     {
-        serializer.visit_u8(*self as u8)
+        serializer.serialize_u8(*self as u8)
     }
 }
 
@@ -222,7 +222,7 @@ impl de::Deserialize for CacheStatus {
     fn deserialize<
         S: de::Deserializer,
     >(state: &mut S) -> Result<CacheStatus, S::Error> {
-        state.visit(de::impls::PrimitiveVisitor::new())
+        state.deserialize(de::impls::PrimitiveVisitor::new())
     }
 }
 
@@ -282,7 +282,7 @@ impl ser::Serialize for OriginProtocol {
     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
         where S: ser::Serializer,
     {
-        serializer.visit_u8(*self as u8)
+        serializer.serialize_u8(*self as u8)
     }
 }
 
@@ -291,7 +291,7 @@ impl de::Deserialize for OriginProtocol {
     fn deserialize<
         S: de::Deserializer,
     >(state: &mut S) -> Result<OriginProtocol, S::Error> {
-        state.visit(de::impls::PrimitiveVisitor::new())
+        state.deserialize(de::impls::PrimitiveVisitor::new())
     }
 }
 
@@ -347,7 +347,7 @@ impl ser::Serialize for ZonePlan {
     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
         where S: ser::Serializer,
     {
-        serializer.visit_u8(*self as u8)
+        serializer.serialize_u8(*self as u8)
     }
 }
 
@@ -356,7 +356,7 @@ impl de::Deserialize for ZonePlan {
     fn deserialize<
         S: de::Deserializer,
     >(state: &mut S) -> Result<ZonePlan, S::Error> {
-        state.visit(de::impls::PrimitiveVisitor::new())
+        state.deserialize(de::impls::PrimitiveVisitor::new())
     }
 }
 
@@ -913,7 +913,7 @@ impl ser::Serialize for Country {
     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
         where S: ser::Serializer,
     {
-        serializer.visit_u8(*self as u8)
+        serializer.serialize_u8(*self as u8)
     }
 }
 
@@ -922,7 +922,7 @@ impl de::Deserialize for Country {
     fn deserialize<
         S: de::Deserializer,
     >(state: &mut S) -> Result<Country, S::Error> {
-        state.visit(de::impls::PrimitiveVisitor::new())
+        state.deserialize(de::impls::PrimitiveVisitor::new())
     }
 }
 
