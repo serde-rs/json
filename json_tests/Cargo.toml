@@ -10,25 +10,14 @@ with-syntex = ["syntex", "serde_codegen"]
 
 [build-dependencies]
 syntex = { version = "*", optional = true }
+serde_codegen = { version = "*", optional = true }
 
 [dependencies]
 num = "*"
 rustc-serialize = "*"
+serde = "*"
 serde_json = { version = "*", path = "../json" }
-
-[dependencies.serde]
-git = "https://github.com/serde-rs/serde"
-rev = "46f88037db239ac87c65081523941db104f56aab"
-
-[dependencies.serde_macros]
-git = "https://github.com/serde-rs/serde"
-optional = true
-rev = "46f88037db239ac87c65081523941db104f56aab"
-
-[build-dependencies.serde_codegen]
-git = "https://github.com/serde-rs/serde"
-optional = true
-rev = "46f88037db239ac87c65081523941db104f56aab"
+serde_macros = { version = "*", optional = true }
 
 [[test]]
 name = "test"

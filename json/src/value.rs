@@ -452,16 +452,16 @@ impl Serializer {
 }
 
 impl ser::Serializer for Serializer {
-    type Error = ();
+    type Error = Error;
 
     #[inline]
-    fn serialize_bool(&mut self, value: bool) -> Result<(), ()> {
+    fn serialize_bool(&mut self, value: bool) -> Result<(), Error> {
         self.state.push(State::Value(Value::Bool(value)));
         Ok(())
     }
 
     #[inline]
-    fn serialize_i64(&mut self, value: i64) -> Result<(), ()> {
+    fn serialize_i64(&mut self, value: i64) -> Result<(), Error> {
         if value < 0 {
             self.state.push(State::Value(Value::I64(value)));
         } else {
@@ -471,44 +471,44 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn serialize_u64(&mut self, value: u64) -> Result<(), ()> {
+    fn serialize_u64(&mut self, value: u64) -> Result<(), Error> {
         self.state.push(State::Value(Value::U64(value)));
         Ok(())
     }
 
     #[inline]
-    fn serialize_f64(&mut self, value: f64) -> Result<(), ()> {
+    fn serialize_f64(&mut self, value: f64) -> Result<(), Error> {
         self.state.push(State::Value(Value::F64(value as f64)));
         Ok(())
     }
 
     #[inline]
-    fn serialize_char(&mut self, value: char) -> Result<(), ()> {
+    fn serialize_char(&mut self, value: char) -> Result<(), Error> {
         let mut s = String::new();
         s.push(value);
         self.serialize_str(&s)
     }
 
     #[inline]
-    fn serialize_str(&mut self, value: &str) -> Result<(), ()> {
+    fn serialize_str(&mut self, value: &str) -> Result<(), Error> {
         self.state.push(State::Value(Value::String(String::from(value))));
         Ok(())
     }
 
     #[inline]
-    fn serialize_none(&mut self) -> Result<(), ()> {
+    fn serialize_none(&mut self) -> Result<(), Error> {
         self.serialize_unit()
     }
 
     #[inline]
-    fn serialize_some<V>(&mut self, value: V) -> Result<(), ()>
+    fn serialize_some<V>(&mut self, value: V) -> Result<(), Error>
         where V: ser::Serialize,
     {
         value.serialize(self)
     }
 
     #[inline]
-    fn serialize_unit(&mut self) -> Result<(), ()> {
+    fn serialize_unit(&mut self) -> Result<(), Error> {
         self.state.push(State::Value(Value::Null));
         Ok(())
     }
@@ -517,7 +517,7 @@ impl ser::Serializer for Serializer {
     fn serialize_unit_variant(&mut self,
                           _name: &str,
                           _variant_index: usize,
-                          variant: &str) -> Result<(), ()> {
+                          variant: &str) -> Result<(), Error> {
         let mut values = BTreeMap::new();
         values.insert(String::from(variant), Value::Array(vec![]));
 
@@ -531,7 +531,7 @@ impl ser::Serializer for Serializer {
                                 _name: &str,
                                 _variant_index: usize,
                                 variant: &str,
-                                value: T) -> Result<(), ()>
+                                value: T) -> Result<(), Error>
         where T: ser::Serialize,
     {
         let mut values = BTreeMap::new();
@@ -543,7 +543,7 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn serialize_seq<V>(&mut self, mut visitor: V) -> Result<(), ()>
+    fn serialize_seq<V>(&mut self, mut visitor: V) -> Result<(), Error>
         where V: ser::SeqVisitor,
     {
         let len = visitor.len().unwrap_or(0);
@@ -568,7 +568,7 @@ impl ser::Serializer for Serializer {
                               _name: &str,
                               _variant_index: usize,
                               variant: &str,
-                              visitor: V) -> Result<(), ()>
+                              visitor: V) -> Result<(), Error>
         where V: ser::SeqVisitor,
     {
         try!(self.serialize_seq(visitor));
@@ -588,7 +588,7 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn serialize_seq_elt<T>(&mut self, value: T) -> Result<(), ()>
+    fn serialize_seq_elt<T>(&mut self, value: T) -> Result<(), Error>
         where T: ser::Serialize,
     {
         try!(value.serialize(self));
@@ -607,7 +607,7 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn serialize_map<V>(&mut self, mut visitor: V) -> Result<(), ()>
+    fn serialize_map<V>(&mut self, mut visitor: V) -> Result<(), Error>
         where V: ser::MapVisitor,
     {
         let values = BTreeMap::new();
@@ -631,7 +631,7 @@ impl ser::Serializer for Serializer {
                                _name: &str,
                                _variant_index: usize,
                                variant: &str,
-                               visitor: V) -> Result<(), ()>
+                               visitor: V) -> Result<(), Error>
         where V: ser::MapVisitor,
     {
         try!(self.serialize_map(visitor));
@@ -651,7 +651,7 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn serialize_map_elt<K, V>(&mut self, key: K, value: V) -> Result<(), ()>
+    fn serialize_map_elt<K, V>(&mut self, key: K, value: V) -> Result<(), Error>
         where K: ser::Serialize,
               V: ser::Serialize,
     {
@@ -675,11 +675,6 @@ impl ser::Serializer for Serializer {
         }
 
         Ok(())
-    }
-
-    #[inline]
-    fn format() -> &'static str {
-        "json"
     }
 }
 
@@ -785,11 +780,6 @@ impl de::Deserializer for Deserializer {
         where V: de::Visitor,
     {
         visitor.visit_newtype_struct(self)
-    }
-
-    #[inline]
-    fn format() -> &'static str {
-        "json"
     }
 }
 

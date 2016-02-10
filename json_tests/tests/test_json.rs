@@ -1103,29 +1103,6 @@ fn test_missing_renamed_field() {
 }
 
 #[test]
-fn test_missing_fmt_renamed_field() {
-    #[derive(Debug, PartialEq, Deserialize)]
-    struct Foo {
-        #[serde(rename(json="y"))]
-        x: Option<u32>,
-    }
-
-    let value: Foo = from_str("{}").unwrap();
-    assert_eq!(value, Foo { x: None });
-
-    let value: Foo = from_str("{\"y\": 5}").unwrap();
-    assert_eq!(value, Foo { x: Some(5) });
-
-    let value: Foo = from_value(Value::Object(treemap!())).unwrap();
-    assert_eq!(value, Foo { x: None });
-
-    let value : Foo = from_value(Value::Object(treemap!(
-        "y".to_string() => Value::I64(5)
-            ))).unwrap();
-    assert_eq!(value, Foo { x: Some(5) });
-}
-
-#[test]
 fn test_find_path() {
     let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 

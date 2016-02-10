@@ -302,11 +302,6 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
         Ok(())
     }
-
-    #[inline]
-    fn format() -> &'static str {
-        "json"
-    }
 }
 
 struct MapKeySerializer<'a, W: 'a, F: 'a> {

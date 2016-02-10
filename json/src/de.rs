@@ -597,11 +597,6 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
             }
         }
     }
-
-    #[inline]
-    fn format() -> &'static str {
-        "json"
-    }
 }
 
 struct SeqVisitor<'a, Iter: 'a + Iterator<Item=io::Result<u8>>> {
