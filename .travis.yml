@@ -24,7 +24,7 @@ script:
 - |
   mkdir .travis-deps
   mkdir .cargo
-  echo 'paths = ["./travis-deps/serde"]' > .cargo/config
+  echo 'paths = ["./.travis-deps/serde"]' > .cargo/config
   git clone https://github.com/serde-rs/serde .travis-deps/serde
   pushd .travis-deps/serde
   git reset --hard origin/master
