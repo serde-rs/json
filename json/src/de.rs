@@ -17,6 +17,7 @@ pub struct Deserializer<Iter: Iterator<Item=io::Result<u8>>> {
     rdr: LineColIterator<Iter>,
     ch: Option<u8>,
     str_buf: Vec<u8>,
+    key_only_enum_variant: bool
 }
 
 macro_rules! try_or_invalid {
@@ -38,6 +39,7 @@ impl<Iter> Deserializer<Iter>
             rdr: LineColIterator::new(rdr),
             ch: None,
             str_buf: Vec::with_capacity(128),
+            key_only_enum_variant: false
         }
     }
 
@@ -513,8 +515,11 @@ impl<Iter> Deserializer<Iter>
     fn parse_object_colon(&mut self) -> Result<()> {
         try!(self.parse_whitespace());
 
-        match try!(self.next_char()) {
-            Some(b':') => Ok(()),
+        match try!(self.peek()) {
+            Some(b':') => {
+                self.eat_char();
+                Ok(())
+            },
             Some(_) => Err(self.error(ErrorCode::ExpectedColon)),
             None => Err(self.error(ErrorCode::EOFWhileParsingObject)),
         }
@@ -573,8 +578,9 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
     {
         try!(self.parse_whitespace());
 
-        match try!(self.next_char_or_null()) {
+        match try!(self.peek_or_null()) {
             b'{' => {
+                self.eat_char();
                 try!(self.parse_whitespace());
 
                 let value = {
@@ -591,7 +597,11 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
                         Err(self.error(ErrorCode::ExpectedSomeValue))
                     }
                 }
-            }
+            },
+            b'"' => {
+                self.key_only_enum_variant = true;
+                visitor.visit(&mut *self)
+            },
             _ => {
                 Err(self.error(ErrorCode::ExpectedSomeValue))
             }
@@ -762,17 +772,25 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
         where V: de::Deserialize
     {
         let val = try!(de::Deserialize::deserialize(self));
-        try!(self.parse_object_colon());
+        if !self.key_only_enum_variant{
+            try!(self.parse_object_colon());
+        }
         Ok(val)
     }
 
     fn visit_unit(&mut self) -> Result<()> {
-        de::Deserialize::deserialize(self)
+        if self.key_only_enum_variant{
+            self.key_only_enum_variant = false;
+            Ok(())
+        }else{
+            de::Deserialize::deserialize(self)	
+        }
     }
 
     fn visit_newtype<T>(&mut self) -> Result<T>
         where T: de::Deserialize,
     {
+        self.key_only_enum_variant = false;
         de::Deserialize::deserialize(self)
     }
 
@@ -781,6 +799,7 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
                       visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
+        self.key_only_enum_variant = false;
         de::Deserializer::visit(self, visitor)
     }
 
@@ -789,6 +808,7 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
                        visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
+        self.key_only_enum_variant = false;
         de::Deserializer::visit(self, visitor)
     }
 }

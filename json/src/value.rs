@@ -518,11 +518,7 @@ impl ser::Serializer for Serializer {
                           _name: &str,
                           _variant_index: usize,
                           variant: &str) -> Result<(), ()> {
-        let mut values = BTreeMap::new();
-        values.insert(String::from(variant), Value::Array(vec![]));
-
-        self.state.push(State::Value(Value::Object(values)));
-
+        self.state.push(State::Value(Value::String(String::from(variant))));
         Ok(())
     }
 
@@ -754,28 +750,32 @@ impl de::Deserializer for Deserializer {
                      mut visitor: V) -> Result<V::Value, Error>
         where V: de::EnumVisitor,
     {
-        let value = match self.value.take() {
-            Some(Value::Object(value)) => value,
-            Some(_) => { return Err(de::Error::syntax("expected an enum")); }
+        let (variant, value) = match self.value.take() {
+            Some(Value::Object(value)) => {
+                let mut iter = value.into_iter();
+                let output = match iter.next() {
+                    Some((variant, value)) => (variant, Some(value)),
+                    None => return Err(de::Error::syntax("expected a variant name")),
+                };
+                // non-unit enums are encoded in json as maps with a single key:value pair
+                if iter.next().is_some(){
+                    return Err(de::Error::syntax("expected map"))
+                }
+                output
+            },
+            Some(Value::String(variant)) => {
+                (variant, None)
+            },
+            Some(_) => {
+                return Err(de::Error::syntax("expected an enum"));
+            }
             None => { return Err(de::Error::end_of_stream()); }
         };
-
-        let mut iter = value.into_iter();
-
-        let (variant, value) = match iter.next() {
-            Some(v) => v,
-            None => return Err(de::Error::syntax("expected a variant name")),
-        };
-
-        // enums are encoded in json as maps with a single key:value pair
-        match iter.next() {
-            Some(_) => Err(de::Error::syntax("expected map")),
-            None => visitor.visit(VariantDeserializer {
-                de: self,
-                val: Some(value),
-                variant: Some(Value::String(variant)),
-            }),
-        }
+        visitor.visit(VariantDeserializer {
+            de: self,
+            val: value,
+            variant: Some(Value::String(variant)),
+        })
     }
 
     #[inline]
@@ -809,7 +809,10 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
     }
 
     fn visit_unit(&mut self) -> Result<(), Error> {
-        de::Deserialize::deserialize(&mut Deserializer::new(self.val.take().unwrap()))
+        match self.val.take(){
+            Some(val) => de::Deserialize::deserialize(&mut Deserializer::new(val)),
+            None => Ok(())
+        }
     }
 
     fn visit_newtype<T>(&mut self) -> Result<T, Error>

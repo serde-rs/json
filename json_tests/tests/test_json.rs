@@ -538,7 +538,7 @@ fn test_write_enum() {
     test_encode_ok(&[
         (
             Animal::Dog,
-            "{\"Dog\":[]}",
+            "\"Dog\"",
         ),
         (
             Animal::Frog("Henry".to_string(), vec![]),
@@ -565,11 +565,7 @@ fn test_write_enum() {
     test_pretty_encode_ok(&[
         (
             Animal::Dog,
-            concat!(
-                "{\n",
-                "  \"Dog\": []\n",
-                "}"
-            ),
+            "\"Dog\""
         ),
         (
             Animal::Frog("Henry".to_string(), vec![]),
@@ -999,8 +995,8 @@ fn test_parse_enum_errors() {
 #[test]
 fn test_parse_enum() {
     test_parse_ok(vec![
-        ("{\"Dog\":[]}", Animal::Dog),
-        (" { \"Dog\" : [ ] } ", Animal::Dog),
+        ("\"Dog\"", Animal::Dog),
+        (" \"Dog\" ", Animal::Dog),
         (
             "{\"Frog\":[\"Henry\",[]]}",
             Animal::Frog("Henry".to_string(), vec![]),
@@ -1027,7 +1023,7 @@ fn test_parse_enum() {
         (
             concat!(
                 "{",
-                "  \"a\": {\"Dog\": []},",
+                "  \"a\": \"Dog\",",
                 "  \"b\": {\"Frog\":[\"Henry\", []]}",
                 "}"
             ),
