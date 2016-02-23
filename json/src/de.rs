@@ -284,9 +284,7 @@ impl<Iter> Deserializer<Iter>
                 if pos {
                     visitor.visit_u64(res)
                 } else {
-                    // FIXME: `wrapping_neg` will be stable in Rust 1.2
-                    //let res_i64 = (res as i64).wrapping_neg();
-                    let res_i64 = (!res + 1) as i64;
+                    let res_i64 = (res as i64).wrapping_neg();
 
                     // Convert into a float if we underflow.
                     if res_i64 > 0 {
