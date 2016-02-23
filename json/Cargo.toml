@@ -9,9 +9,10 @@ documentation = "https://serde-rs.github.io/json/serde_json/"
 readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 
-[dependencies.serde]
-serde = "0.6"
+[features]
+nightly-testing = ["clippy"]
 
-[dependencies.num]
-version = "~0.1.27"
-default-features = false
+[dependencies]
+serde = "~0.6.1"
+num = { version = "~0.1.27", default-features = false }
+clippy = { version = "^0.*", optional = true }

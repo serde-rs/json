@@ -53,14 +53,14 @@
 //!     Address: Address,
 //!     PhoneNumbers: Vec<String>
 //! }
-//! 
+//!
 //! #[derive(Serialize, Deserialize)]
 //! struct Address {
 //!     Street: String,
 //!     City: String,
 //!     Country: String
 //! }
-//! ``` 
+//! ```
 //!
 //! # Type-based Serialization and Deserialization
 //!
@@ -114,13 +114,15 @@
 //! }
 //! ```
 
+#![cfg_attr(feature = "nightly-testing", plugin(clippy))]
 #![deny(missing_docs)]
-
 extern crate num;
+extern crate core;
 extern crate serde;
 
 pub use self::de::{
     Deserializer,
+    StreamDeserializer,
     from_iter,
     from_reader,
     from_slice,

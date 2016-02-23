@@ -11,6 +11,7 @@ use serde::bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     self,
+    StreamDeserializer,
     Value,
     from_str,
     from_value,
@@ -20,11 +21,16 @@ use serde_json::{
 use serde_json::error::{Error, ErrorCode};
 
 macro_rules! treemap {
-    ($($k:expr => $v:expr),*) => ({
-        let mut _m = BTreeMap::new();
-        $(_m.insert($k, $v);)*
-        _m
-    })
+    () => {
+        BTreeMap::new()
+    };
+    ($($k:expr => $v:expr),+) => {
+        {
+            let mut m = BTreeMap::new();
+            $(m.insert($k, $v);)+
+            m
+        }
+    };
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -756,6 +762,14 @@ fn test_parse_u64() {
 }
 
 #[test]
+fn test_parse_negative_zero() {
+    assert_eq!(0, from_str::<u32>("-0").unwrap());
+    assert_eq!(0, from_str::<u32>("-0.0").unwrap());
+    assert_eq!(0, from_str::<u32>("-0e2").unwrap());
+    assert_eq!(0, from_str::<u32>("-0.0e2").unwrap());
+}
+
+#[test]
 fn test_parse_f64() {
     test_parse_ok(vec![
         ("0.0", 0.0f64),
@@ -912,6 +926,8 @@ fn test_parse_struct() {
         ("5", Error::SyntaxError(ErrorCode::ExpectedSomeValue, 1, 1)),
         ("\"hello\"", Error::SyntaxError(ErrorCode::ExpectedSomeValue, 1, 7)),
         ("{\"inner\": true}", Error::SyntaxError(ErrorCode::ExpectedSomeValue, 1, 14)),
+        ("{}", Error::SyntaxError(ErrorCode::MissingField("inner"), 1, 2)),
+        (r#"{"inner": [{"b": 42, "c": []}]}"#, Error::SyntaxError(ErrorCode::MissingField("a"), 1, 29)),
     ]);
 
     test_parse_ok(vec![
@@ -936,15 +952,6 @@ fn test_parse_struct() {
             },
         ),
     ]);
-
-    let v: Outer = from_str("{}").unwrap();
-
-    assert_eq!(
-        v,
-        Outer {
-            inner: vec![],
-        }
-    );
 
     let v: Outer = from_str(
         "[
@@ -1058,7 +1065,7 @@ fn test_multiline_errors() {
 }
 
 #[test]
-fn test_missing_field() {
+fn test_missing_option_field() {
     #[derive(Debug, PartialEq, Deserialize)]
     struct Foo {
         x: Option<u32>,
@@ -1077,6 +1084,18 @@ fn test_missing_field() {
         "x".to_string() => Value::I64(5)
     ))).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
+}
+
+#[test]
+fn test_missing_nonoption_field() {
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct Foo {
+        x: u32,
+    }
+
+    test_parse_err::<Foo>(vec![
+        ("{}", Error::SyntaxError(ErrorCode::MissingField("x"), 1, 2)),
+    ]);
 }
 
 #[test]
@@ -1370,4 +1389,57 @@ fn test_byte_buf_de() {
     let bytes = ByteBuf::from(vec![1, 2, 3]);
     let v: ByteBuf = serde_json::from_str("[1, 2, 3]").unwrap();
     assert_eq!(v, bytes);
+}
+
+#[test]
+fn test_json_stream_newlines() {
+    let stream = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}".to_string();
+    let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte))
+    );
+
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(39));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(40));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(41));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(42));
+    assert!(parsed.next().is_none());
+}
+
+#[test]
+fn test_json_stream_trailing_whitespaces() {
+    let stream = "{\"x\":42} \t\n".to_string();
+    let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte))
+    );
+
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(42));
+    assert!(parsed.next().is_none());
+}
+
+#[test]
+fn test_json_stream_truncated() {
+    let stream = "{\"x\":40}\n{\"x\":".to_string();
+    let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte))
+    );
+
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(40));
+    assert!(parsed.next().unwrap().is_err());
+    assert!(parsed.next().is_none());
+}
+
+#[test]
+fn test_json_stream_empty() {
+    let stream = "".to_string();
+    let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte))
+    );
+
+    assert!(parsed.next().is_none());
 }

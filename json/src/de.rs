@@ -6,6 +6,7 @@ use std::char;
 use std::i32;
 use std::io;
 use std::str;
+use std::marker::PhantomData;
 
 use serde::de;
 use serde::iter::LineColIterator;
@@ -284,9 +285,7 @@ impl<Iter> Deserializer<Iter>
                 if pos {
                     visitor.visit_u64(res)
                 } else {
-                    // FIXME: `wrapping_neg` will be stable in Rust 1.2
-                    //let res_i64 = (res as i64).wrapping_neg();
-                    let res_i64 = (!res + 1) as i64;
+                    let res_i64 = (res as i64).wrapping_neg();
 
                     // Convert into a float if we underflow.
                     if res_i64 > 0 {
@@ -740,11 +739,33 @@ impl<'a, Iter> de::MapVisitor for MapVisitor<'a, Iter>
         }
     }
 
-    fn missing_field<V>(&mut self, _field: &'static str) -> Result<V>
+    fn missing_field<V>(&mut self, field: &'static str) -> Result<V>
         where V: de::Deserialize,
     {
-        let mut de = de::value::ValueDeserializer::into_deserializer(());
-        de::Deserialize::deserialize(&mut de)
+        use std;
+
+        struct MissingFieldDeserializer(&'static str);
+
+        impl de::Deserializer for MissingFieldDeserializer {
+            type Error = de::value::Error;
+
+            fn deserialize<V>(&mut self, _visitor: V) -> std::result::Result<V::Value, Self::Error>
+                where V: de::Visitor,
+            {
+                let &mut MissingFieldDeserializer(field) = self;
+                Err(de::value::Error::MissingField(field))
+            }
+
+            fn deserialize_option<V>(&mut self,
+                                     mut visitor: V) -> std::result::Result<V::Value, Self::Error>
+                where V: de::Visitor,
+            {
+                visitor.visit_none()
+            }
+        }
+
+        let mut de = MissingFieldDeserializer(field);
+        Ok(try!(de::Deserialize::deserialize(&mut de)))
     }
 }
 
@@ -787,6 +808,58 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
         de::Deserializer::deserialize(self, visitor)
     }
 }
+
+//////////////////////////////////////////////////////////////////////////////
+
+/// Iterator that deserializes a stream into multiple JSON values.
+pub struct StreamDeserializer<T, Iter>
+    where Iter: Iterator<Item=io::Result<u8>>,
+          T: de::Deserialize
+{
+    deser: Deserializer<Iter>,
+    _marker: PhantomData<T>,
+}
+
+impl <T, Iter> StreamDeserializer<T, Iter>
+    where Iter:Iterator<Item=io::Result<u8>>,
+          T: de::Deserialize
+{
+    /// Returns an `Iterator` of decoded JSON values from an iterator over
+    /// `Iterator<Item=io::Result<u8>>`.
+    pub fn new(iter: Iter) -> StreamDeserializer<T, Iter> {
+        StreamDeserializer {
+            deser: Deserializer::new(iter),
+            _marker: PhantomData
+        }
+    }
+}
+
+impl <T, Iter> Iterator for StreamDeserializer<T, Iter>
+    where Iter: Iterator<Item=io::Result<u8>>,
+          T: de::Deserialize
+{
+    type Item = Result<T>;
+
+    fn next(&mut self) -> Option<Result<T>> {
+        // skip whitespaces, if any
+        // this helps with trailing whitespaces, since whitespaces between
+        // values are handled for us.
+        if let Err(e) = self.deser.parse_whitespace() {
+            return Some(Err(e))
+        };
+
+        match self.deser.eof() {
+            Ok(true) => None,
+            Ok(false) => match de::Deserialize::deserialize(&mut self.deser) {
+                Ok(v) => Some(Ok(v)),
+                Err(e) => Some(Err(e))
+            },
+            Err(e) => Some(Err(e))
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 /// Decodes a json value from an iterator over an iterator
 /// `Iterator<Item=io::Result<u8>>`.
