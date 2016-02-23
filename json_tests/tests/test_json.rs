@@ -12,6 +12,7 @@ use serde::bytes::{ByteBuf, Bytes};
 use serde_json::{
     self,
     Value,
+    JSONStream,
     from_str,
     from_value,
     to_value,
@@ -1410,4 +1411,49 @@ fn test_byte_buf_de() {
     let bytes = ByteBuf::from(vec![1, 2, 3]);
     let v: ByteBuf = serde_json::from_str("[1, 2, 3]").unwrap();
     assert_eq!(v, bytes);
+}
+
+#[test]
+fn test_json_stream_newlines() {
+    let stream = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}".to_string();
+    let mut parsed:JSONStream<Value, _> = JSONStream::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte)));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(39));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(40));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(41));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(42));
+    assert!(parsed.next().is_none());
+}
+
+#[test]
+fn test_json_stream_trailing_whitespaces() {
+    let stream = "{\"x\":42} \t\n".to_string();
+    let mut parsed:JSONStream<Value, _> = JSONStream::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte)));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(42));
+    assert!(parsed.next().is_none());
+}
+
+#[test]
+fn test_json_stream_truncated() {
+    let stream = "{\"x\":40}\n{\"x\":".to_string();
+    let mut parsed:JSONStream<Value, _> = JSONStream::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte)));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(40));
+    assert!(parsed.next().unwrap().is_err());
+    assert!(parsed.next().is_none());
+}
+
+#[test]
+fn test_json_stream_empty() {
+    let stream = "".to_string();
+    let mut parsed:JSONStream<Value, _> = JSONStream::new(
+        stream.as_bytes().iter().map(|byte| Ok(*byte)));
+    assert!(parsed.next().is_none());
 }
