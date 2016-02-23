@@ -24,9 +24,9 @@ script:
     (cd json && travis-cargo build) &&
     (cd json && travis-cargo test) &&
     (cd json_tests && travis-cargo test -- --features with-syntex --no-default-features) &&
-    (cd json_tests && travis-cargo --only nightly test) &&
-    (cd json_tests && travis-cargo --only nightly bench) &&
-    (cd json_tests && travis-cargo --only nightly bench -- --features with-syntex --no-default-features) &&
+    (cd json_tests && travis-cargo --only nightly test -- features nightly-testing) &&
+    (cd json_tests && travis-cargo --only nightly bench -- features nightly-testing) &&
+    (cd json_tests && travis-cargo --only nightly bench -- --features "nightly-testing with-syntex" --no-default-features) &&
     (cd json && travis-cargo --only stable doc)
 
 after_success:

@@ -4,7 +4,7 @@ use test::{Bencher, black_box};
 
 use rustc_serialize;
 
-use serde::de::{self, Deserialize, Deserializer};
+use serde::de::{self, Deserializer};
 use serde::ser::{self, Serialize, Serializer};
 use serde_json::ser::escape_str;
 use serde_json;

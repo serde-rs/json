@@ -20,11 +20,16 @@ use serde_json::{
 use serde_json::error::{Error, ErrorCode};
 
 macro_rules! treemap {
-    ($($k:expr => $v:expr),*) => ({
-        let mut _m = BTreeMap::new();
-        $(_m.insert($k, $v);)*
-        _m
-    })
+    () => {
+        BTreeMap::new()
+    };
+    ($($k:expr => $v:expr),+) => {
+        {
+            let mut m = BTreeMap::new();
+            $(m.insert($k, $v);)+
+            m
+        }
+    };
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

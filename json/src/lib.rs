@@ -114,6 +114,7 @@
 //! }
 //! ```
 
+#![cfg_attr(feature = "nightly-testing", plugin(clippy))]
 #![deny(missing_docs)]
 
 extern crate num;
