@@ -122,7 +122,7 @@ extern crate serde;
 
 pub use self::de::{
     Deserializer,
-    JSONStream,
+    StreamDeserializer,
     from_iter,
     from_reader,
     from_slice,

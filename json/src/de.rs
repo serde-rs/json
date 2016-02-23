@@ -813,6 +813,58 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
     }
 }
 
+//////////////////////////////////////////////////////////////////////////////
+
+/// Iterator that deserializes a stream into multiple JSON values.
+pub struct StreamDeserializer<T, Iter>
+    where Iter: Iterator<Item=io::Result<u8>>,
+          T: de::Deserialize
+{
+    deser: Deserializer<Iter>,
+    _marker: PhantomData<T>,
+}
+
+impl <T, Iter> StreamDeserializer<T, Iter>
+    where Iter:Iterator<Item=io::Result<u8>>,
+          T: de::Deserialize
+{
+    /// Returns an `Iterator` of decoded JSON values from an iterator over
+    /// `Iterator<Item=io::Result<u8>>`.
+    pub fn new(iter: Iter) -> StreamDeserializer<T, Iter> {
+        StreamDeserializer {
+            deser: Deserializer::new(iter),
+            _marker: PhantomData
+        }
+    }
+}
+
+impl <T, Iter> Iterator for StreamDeserializer<T, Iter>
+    where Iter: Iterator<Item=io::Result<u8>>,
+          T: de::Deserialize
+{
+    type Item = Result<T>;
+
+    fn next(&mut self) -> Option<Result<T>> {
+        // skip whitespaces, if any
+        // this helps with trailing whitespaces, since whitespaces between
+        // values are handled for us.
+        if let Err(e) = self.deser.parse_whitespace() {
+            return Some(Err(e))
+        };
+
+        match self.deser.eof() {
+            Ok(true) => None,
+            Ok(false) => match de::Deserialize::deserialize(&mut self.deser) {
+                Ok(v) => Some(Ok(v)),
+                Err(e) => Some(Err(e))
+            },
+            Err(e) => Some(Err(e))
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
 /// Decodes a json value from an iterator over an iterator
 /// `Iterator<Item=io::Result<u8>>`.
 pub fn from_iter<I, T>(iter: I) -> Result<T>
@@ -847,49 +899,4 @@ pub fn from_str<T>(s: &str) -> Result<T>
     where T: de::Deserialize
 {
     from_slice(s.as_bytes())
-}
-
-/// Iterator over parsed JSON values
-pub struct JSONStream<T, Iter>
-    where Iter: Iterator<Item=io::Result<u8>>,
-          T: de::Deserialize
-{
-    deser: Deserializer<Iter>,
-    _marker: PhantomData<T>,
-}
-
-/// Iterator over parsed JSON values
-impl <T, Iter> JSONStream<T, Iter>
-    where Iter:Iterator<Item=io::Result<u8>>,
-          T: de::Deserialize {
-    /// Returns Iterator of decoded JSON value from an iterator over
-    /// `Iterator<Item=io::Result<u8>>`.
-    pub fn new(i: Iter) -> JSONStream<T, Iter> {
-        JSONStream {
-            deser: Deserializer::new(i),
-            _marker: PhantomData
-        }
-    }
-}
-
-impl <T, Iter> Iterator for JSONStream<T, Iter>
-    where Iter:Iterator<Item=io::Result<u8>>,
-          T: de::Deserialize {
-    type Item = Result<T>;
-    fn next(&mut self) -> Option<Result<T>> {
-        // skip whitespaces, if any
-        // this helps with trailing whitespaces, since whitespaces between
-        // values are handled for us.
-        if let Err(e) = self.deser.parse_whitespace() {
-            return Some(Err(e))
-        };
-        match self.deser.eof() {
-            Ok(true) => None,
-            Ok(false) => match de::Deserialize::deserialize(&mut self.deser) {
-                Ok(v) => Some(Ok(v)),
-                Err(e) => Some(Err(e))
-            },
-            Err(e) => Some(Err(e))
-        }
-    }
 }
