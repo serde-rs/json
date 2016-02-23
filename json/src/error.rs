@@ -65,6 +65,9 @@ pub enum ErrorCode {
     /// Unknown field in struct.
     UnknownField(String),
 
+    /// Unknown variant in enum.
+    UnknownVariant(String),
+
     /// Struct is missing a field.
     MissingField(&'static str),
 
@@ -100,6 +103,7 @@ impl fmt::Debug for ErrorCode {
             ErrorCode::KeyMustBeAString => "key must be a string".fmt(f),
             ErrorCode::LoneLeadingSurrogateInHexEscape => "lone leading surrogate in hex escape".fmt(f),
             ErrorCode::UnknownField(ref field) => write!(f, "unknown field \"{}\"", field),
+            ErrorCode::UnknownVariant(ref variant) => write!(f, "unknown variant \"{}\"", variant),
             ErrorCode::MissingField(ref field) => write!(f, "missing field \"{}\"", field),
             ErrorCode::TrailingCharacters => "trailing characters".fmt(f),
             ErrorCode::UnexpectedEndOfHexEscape => "unexpected end of hex escape".fmt(f),
@@ -209,6 +213,10 @@ impl de::Error for Error {
 
     fn unknown_field(field: &str) -> Self {
         Error::Syntax(ErrorCode::UnknownField(String::from(field)), 0, 0)
+    }
+
+    fn unknown_variant(variant: &str) -> Self {
+        Error::Syntax(ErrorCode::UnknownVariant(String::from(variant)), 0, 0)
     }
 
     fn missing_field(field: &'static str) -> Self {
