@@ -20,6 +20,15 @@ before_script:
     export PATH=$HOME/.local/bin:$PATH
 
 script:
+# TEMPORARY UNTIL SERDE 0.7 IS RELEASED
+- |
+  mkdir .travis-deps
+  mkdir .cargo
+  echo 'paths = ["./.travis-deps/serde"]' > .cargo/config
+  git clone https://github.com/serde-rs/serde .travis-deps/serde
+  pushd .travis-deps/serde
+  git reset --hard origin/master
+  popd
 - |
     (cd json && travis-cargo build) &&
     (cd json && travis-cargo test) &&
