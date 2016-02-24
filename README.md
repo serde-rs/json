@@ -40,10 +40,10 @@ fn main() {
     map.insert("x".to_string(), 1.0);
     map.insert("y".to_string(), 2.0);
 
-    let s = serde_json::to_string(&map);
+    let s = serde_json::to_string(&map).unwrap();
     assert_eq!(s, "{\"x\":1,\"y\":2}");
 
-    let deserialized_map: BTreeMap<String, f64> = serde_json::from_str(s).unwrap();
+    let deserialized_map: BTreeMap<String, f64> = serde_json::from_str(&s).unwrap();
     assert_eq!(map, deserialized_map);
 }
 ```
@@ -77,10 +77,10 @@ struct Point {
 fn main() {
     let point = Point { x: 1.0, y: 2.0 };
 
-    let s = serde_json::to_string(&point);
+    let s = serde_json::to_string(&point).unwrap();
     assert_eq!(s, "{\"x\":1,\"y\":2}");
 
-    let deserialized_point: Point = serde_json::from_str(s).unwrap();
+    let deserialized_point: Point = serde_json::from_str(&s).unwrap();
     assert_eq!(point, deserialized_point);
 }
 ```
