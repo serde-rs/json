@@ -320,58 +320,58 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_bool(&mut self, _value: bool) -> Result<()> {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_i64(&mut self, _value: i64) -> Result<()> {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_u64(&mut self, _value: u64) -> Result<()> {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_f64(&mut self, _value: f64) -> Result<()> {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_unit(&mut self) -> Result<()> {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_none(&mut self) -> Result<()> {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_some<V>(&mut self, _value: V) -> Result<()>
         where V: ser::Serialize
     {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_seq<V>(&mut self, _visitor: V) -> Result<()>
         where V: ser::SeqVisitor,
     {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_seq_elt<T>(&mut self, _value: T) -> Result<()>
         where T: ser::Serialize,
     {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_map<V>(&mut self, _visitor: V) -> Result<()>
         where V: ser::MapVisitor,
     {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
     fn serialize_map_elt<K, V>(&mut self, _key: K, _value: V) -> Result<()>
         where K: ser::Serialize,
               V: ser::Serialize,
     {
-        Err(Error::SyntaxError(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 }
 

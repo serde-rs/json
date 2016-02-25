@@ -751,7 +751,7 @@ impl de::Deserializer for Deserializer {
     {
         let value = match self.value.take() {
             Some(Value::Object(value)) => value,
-            Some(_) => { return Err(de::Error::syntax("expected an enum")); }
+            Some(_) => { return Err(de::Error::invalid_type(de::Type::Enum)); }
             None => { return Err(de::Error::end_of_stream()); }
         };
 
@@ -759,12 +759,12 @@ impl de::Deserializer for Deserializer {
 
         let (variant, value) = match iter.next() {
             Some(v) => v,
-            None => return Err(de::Error::syntax("expected a variant name")),
+            None => { return Err(de::Error::invalid_type(de::Type::VariantName)); }
         };
 
         // enums are encoded in json as maps with a single key:value pair
         match iter.next() {
-            Some(_) => Err(de::Error::syntax("expected map")),
+            Some(_) => Err(de::Error::invalid_type(de::Type::Map)),
             None => visitor.visit(VariantDeserializer {
                 de: self,
                 val: Some(value),
@@ -823,7 +823,7 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
                 visitor,
             )
         } else {
-            Err(de::Error::syntax("expected a tuple"))
+            Err(de::Error::invalid_type(de::Type::Tuple))
         }
     }
 
@@ -843,7 +843,7 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
                 visitor,
             )
         } else {
-            Err(de::Error::syntax("expected a struct"))
+            Err(de::Error::invalid_type(de::Type::Struct))
         }
     }
 }
@@ -889,7 +889,7 @@ impl<'a> de::SeqVisitor for SeqDeserializer<'a> {
         if self.len == 0 {
             Ok(())
         } else {
-            Err(de::Error::length_mismatch(self.len))
+            Err(de::Error::invalid_length(self.len))
         }
     }
 
@@ -934,7 +934,7 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
         if self.len == 0 {
             Ok(())
         } else {
-            Err(de::Error::length_mismatch(self.len))
+            Err(de::Error::invalid_length(self.len))
         }
     }
 

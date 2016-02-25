@@ -64,7 +64,7 @@ impl<Iter> Deserializer<Iter>
             Some(ch) => Ok(Some(ch)),
             None => {
                 match self.rdr.next() {
-                    Some(Err(err)) => Err(Error::IoError(err)),
+                    Some(Err(err)) => Err(Error::Io(err)),
                     Some(Ok(ch)) => {
                         self.ch = Some(ch);
                         Ok(self.ch)
@@ -88,7 +88,7 @@ impl<Iter> Deserializer<Iter>
             Some(ch) => Ok(Some(ch)),
             None => {
                 match self.rdr.next() {
-                    Some(Err(err)) => Err(Error::IoError(err)),
+                    Some(Err(err)) => Err(Error::Io(err)),
                     Some(Ok(ch)) => Ok(Some(ch)),
                     None => Ok(None),
                 }
@@ -101,7 +101,7 @@ impl<Iter> Deserializer<Iter>
     }
 
     fn error(&mut self, reason: ErrorCode) -> Error {
-        Error::SyntaxError(reason, self.rdr.line(), self.rdr.col())
+        Error::Syntax(reason, self.rdr.line(), self.rdr.col())
     }
 
     fn parse_whitespace(&mut self) -> Result<()> {
@@ -168,7 +168,7 @@ impl<Iter> Deserializer<Iter>
 
         match value {
             Ok(value) => Ok(value),
-            Err(Error::SyntaxError(code, _, _)) => Err(self.error(code)),
+            Err(Error::Syntax(code, _, _)) => Err(self.error(code)),
             Err(err) => Err(err),
         }
     }

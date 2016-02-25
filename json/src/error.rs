@@ -15,6 +15,27 @@ use serde::ser;
 /// The errors that can arise while parsing a JSON stream.
 #[derive(Clone, PartialEq)]
 pub enum ErrorCode {
+    /// Catchall for syntax error messages
+    Custom(String),
+
+    /// Incorrect type from value
+    InvalidType(de::Type),
+
+    /// Incorrect value
+    InvalidValue(String),
+
+    /// Invalid length
+    InvalidLength(usize),
+
+    /// Unknown variant in an enum.
+    UnknownVariant(String),
+
+    /// Unknown field in struct.
+    UnknownField(String),
+
+    /// Struct is missing a field.
+    MissingField(&'static str),
+
     /// EOF while parsing a list.
     EOFWhileParsingList,
 
@@ -57,26 +78,11 @@ pub enum ErrorCode {
     /// Lone leading surrogate in hex escape.
     LoneLeadingSurrogateInHexEscape,
 
-    /// Unknown field in struct.
-    UnknownField(String),
-
-    /// Struct is missing a field.
-    MissingField(&'static str),
-
     /// JSON has non-whitespace trailing characters after the value.
     TrailingCharacters,
 
     /// Unexpected end of hex excape.
     UnexpectedEndOfHexEscape,
-
-    /// Invalid length
-    Length(usize),
-
-    /// Incorrect type from value
-    Type(de::Type),
-
-    /// Catchall for syntax error messages
-    Syntax(String),
 }
 
 impl fmt::Debug for ErrorCode {
@@ -84,6 +90,13 @@ impl fmt::Debug for ErrorCode {
         use std::fmt::Debug;
 
         match *self {
+            ErrorCode::Custom(ref msg) => write!(f, "{}", msg),
+            ErrorCode::InvalidType(ref ty) => write!(f, "invalid value type: {:?}", ty),
+            ErrorCode::InvalidValue(ref msg) => write!(f, "invalid value: {}", msg),
+            ErrorCode::InvalidLength(ref len) => write!(f, "invalid value length {}", len),
+            ErrorCode::UnknownVariant(ref variant) => write!(f, "unknown variant \"{}\"", variant),
+            ErrorCode::UnknownField(ref field) => write!(f, "unknown field \"{}\"", field),
+            ErrorCode::MissingField(ref field) => write!(f, "missing field \"{}\"", field),
             ErrorCode::EOFWhileParsingList => "EOF while parsing a list".fmt(f),
             ErrorCode::EOFWhileParsingObject => "EOF while parsing an object".fmt(f),
             ErrorCode::EOFWhileParsingString => "EOF while parsing a string".fmt(f),
@@ -98,13 +111,8 @@ impl fmt::Debug for ErrorCode {
             ErrorCode::InvalidUnicodeCodePoint => "invalid unicode code point".fmt(f),
             ErrorCode::KeyMustBeAString => "key must be a string".fmt(f),
             ErrorCode::LoneLeadingSurrogateInHexEscape => "lone leading surrogate in hex escape".fmt(f),
-            ErrorCode::UnknownField(ref field) => write!(f, "unknown field \"{}\"", field),
-            ErrorCode::MissingField(ref field) => write!(f, "missing field \"{}\"", field),
             ErrorCode::TrailingCharacters => "trailing characters".fmt(f),
             ErrorCode::UnexpectedEndOfHexEscape => "unexpected end of hex escape".fmt(f),
-            ErrorCode::Length(ref len) => write!(f, "incorrect value length {}", len),
-            ErrorCode::Type(ref ty) => write!(f, "incorrect value type: {:?}", ty),
-            ErrorCode::Syntax(ref msg) => write!(f, "syntax error: {:?}", msg),
         }
     }
 }
@@ -114,28 +122,28 @@ impl fmt::Debug for ErrorCode {
 #[derive(Debug)]
 pub enum Error {
     /// The JSON value had some syntatic error.
-    SyntaxError(ErrorCode, usize, usize),
+    Syntax(ErrorCode, usize, usize),
 
     /// Some IO error occurred when serializing or deserializing a value.
-    IoError(io::Error),
+    Io(io::Error),
 
     /// Some UTF8 error occurred while serializing or deserializing a value.
-    FromUtf8Error(FromUtf8Error),
+    FromUtf8(FromUtf8Error),
 }
 
 impl error::Error for Error {
     fn description(&self) -> &str {
         match *self {
-            Error::SyntaxError(..) => "syntax error",
-            Error::IoError(ref error) => error::Error::description(error),
-            Error::FromUtf8Error(ref error) => error.description(),
+            Error::Syntax(..) => "syntax error",
+            Error::Io(ref error) => error::Error::description(error),
+            Error::FromUtf8(ref error) => error.description(),
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
         match *self {
-            Error::IoError(ref error) => Some(error),
-            Error::FromUtf8Error(ref error) => Some(error),
+            Error::Io(ref error) => Some(error),
+            Error::FromUtf8(ref error) => Some(error),
             _ => None,
         }
     }
@@ -145,74 +153,96 @@ impl error::Error for Error {
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::SyntaxError(ref code, line, col) => {
+            Error::Syntax(ref code, line, col) => {
                 write!(fmt, "{:?} at line {} column {}", code, line, col)
             }
-            Error::IoError(ref error) => fmt::Display::fmt(error, fmt),
-            Error::FromUtf8Error(ref error) => fmt::Display::fmt(error, fmt),
+            Error::Io(ref error) => fmt::Display::fmt(error, fmt),
+            Error::FromUtf8(ref error) => fmt::Display::fmt(error, fmt),
         }
     }
 }
 
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
-        Error::IoError(error)
+        Error::Io(error)
     }
 }
 
 impl From<FromUtf8Error> for Error {
     fn from(error: FromUtf8Error) -> Error {
-        Error::FromUtf8Error(error)
+        Error::FromUtf8(error)
     }
 }
 
 impl From<de::value::Error> for Error {
     fn from(error: de::value::Error) -> Error {
         match error {
-            de::value::Error::Syntax(_) => {
-                Error::SyntaxError(ErrorCode::ExpectedSomeValue, 0, 0)
+            de::value::Error::Custom(e) => {
+                Error::Syntax(ErrorCode::Custom(e), 0, 0)
             }
             de::value::Error::EndOfStream => {
                 de::Error::end_of_stream()
             }
+            de::value::Error::InvalidType(ty) => {
+                Error::Syntax(ErrorCode::InvalidType(ty), 0, 0)
+            }
+            de::value::Error::InvalidValue(msg) => {
+                Error::Syntax(ErrorCode::InvalidValue(msg), 0, 0)
+            }
+            de::value::Error::InvalidLength(len) => {
+                Error::Syntax(ErrorCode::InvalidLength(len), 0, 0)
+            }
+            de::value::Error::UnknownVariant(variant) => {
+                Error::Syntax(ErrorCode::UnknownVariant(variant), 0, 0)
+            }
             de::value::Error::UnknownField(field) => {
-                Error::SyntaxError(ErrorCode::UnknownField(field), 0, 0)
+                Error::Syntax(ErrorCode::UnknownField(field), 0, 0)
             }
             de::value::Error::MissingField(field) => {
-                Error::SyntaxError(ErrorCode::MissingField(field), 0, 0)
-            }
-            de::value::Error::Length(len) => {
-                Error::SyntaxError(ErrorCode::Length(len), 0, 0)
-            }
-            de::value::Error::Type(ty) => {
-                Error::SyntaxError(ErrorCode::Type(ty), 0, 0)
+                Error::Syntax(ErrorCode::MissingField(field), 0, 0)
             }
         }
     }
 }
 
 impl de::Error for Error {
-    fn syntax(_: &str) -> Error {
-        Error::SyntaxError(ErrorCode::ExpectedSomeValue, 0, 0)
+    fn custom(msg: String) -> Error {
+        Error::Syntax(ErrorCode::Custom(msg), 0, 0)
     }
 
     fn end_of_stream() -> Error {
-        Error::SyntaxError(ErrorCode::EOFWhileParsingValue, 0, 0)
+        Error::Syntax(ErrorCode::EOFWhileParsingValue, 0, 0)
+    }
+
+    fn invalid_type(ty: de::Type) -> Error {
+        Error::Syntax(ErrorCode::InvalidType(ty), 0, 0)
+    }
+
+    fn invalid_value(msg: &str) -> Error {
+        Error::Syntax(ErrorCode::InvalidValue(msg.to_owned()), 0, 0)
+    }
+
+    fn invalid_length(len: usize) -> Error {
+        Error::Syntax(ErrorCode::InvalidLength(len), 0, 0)
+    }
+
+    fn unknown_variant(variant: &str) -> Error {
+        Error::Syntax(ErrorCode::UnknownVariant(String::from(variant)), 0, 0)
     }
 
     fn unknown_field(field: &str) -> Error {
-        Error::SyntaxError(ErrorCode::UnknownField(String::from(field)), 0, 0)
+        Error::Syntax(ErrorCode::UnknownField(String::from(field)), 0, 0)
     }
 
     fn missing_field(field: &'static str) -> Error {
-        Error::SyntaxError(ErrorCode::MissingField(field), 0, 0)
+        Error::Syntax(ErrorCode::MissingField(field), 0, 0)
     }
 }
 
 impl ser::Error for Error {
     /// Raised when there is general error when deserializing a type.
-    fn syntax(msg: &str) -> Self {
-        Error::SyntaxError(ErrorCode::Syntax(String::from(msg)), 0, 0)
+    fn custom(msg: String) -> Self {
+        Error::Syntax(ErrorCode::Custom(msg), 0, 0)
     }
 }
 

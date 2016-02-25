@@ -79,10 +79,10 @@ impl ser::Serialize for HttpProtocol {
 
 impl de::Deserialize for HttpProtocol {
     #[inline]
-    fn deserialize<
-        S: Deserializer,
-    >(state: &mut S) -> Result<HttpProtocol, S::Error> {
-        state.deserialize(de::impls::PrimitiveVisitor::new())
+    fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
 }
 
@@ -156,10 +156,10 @@ impl ser::Serialize for HttpMethod {
 
 impl de::Deserialize for HttpMethod {
     #[inline]
-    fn deserialize<
-        S: de::Deserializer,
-    >(state: &mut S) -> Result<HttpMethod, S::Error> {
-        state.deserialize(de::impls::PrimitiveVisitor::new())
+    fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
 }
 
@@ -219,10 +219,10 @@ impl ser::Serialize for CacheStatus {
 
 impl de::Deserialize for CacheStatus {
     #[inline]
-    fn deserialize<
-        S: de::Deserializer,
-    >(state: &mut S) -> Result<CacheStatus, S::Error> {
-        state.deserialize(de::impls::PrimitiveVisitor::new())
+    fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
 }
 
@@ -288,10 +288,10 @@ impl ser::Serialize for OriginProtocol {
 
 impl de::Deserialize for OriginProtocol {
     #[inline]
-    fn deserialize<
-        S: de::Deserializer,
-    >(state: &mut S) -> Result<OriginProtocol, S::Error> {
-        state.deserialize(de::impls::PrimitiveVisitor::new())
+    fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
 }
 
@@ -353,10 +353,10 @@ impl ser::Serialize for ZonePlan {
 
 impl de::Deserialize for ZonePlan {
     #[inline]
-    fn deserialize<
-        S: de::Deserializer,
-    >(state: &mut S) -> Result<ZonePlan, S::Error> {
-        state.deserialize(de::impls::PrimitiveVisitor::new())
+    fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
 }
 
@@ -919,10 +919,10 @@ impl ser::Serialize for Country {
 
 impl de::Deserialize for Country {
     #[inline]
-    fn deserialize<
-        S: de::Deserializer,
-    >(state: &mut S) -> Result<Country, S::Error> {
-        state.deserialize(de::impls::PrimitiveVisitor::new())
+    fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
+        where D: Deserializer
+    {
+        Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
 }
 
