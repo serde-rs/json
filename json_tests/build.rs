@@ -1,5 +1,5 @@
 #[cfg(feature = "with-syntex")]
-mod inner {
+mod with_syntex {
     extern crate syntex;
     extern crate serde_codegen;
 
@@ -25,10 +25,25 @@ mod inner {
 }
 
 #[cfg(not(feature = "with-syntex"))]
-mod inner {
+mod with_syntex {
+    pub fn main() {}
+}
+
+#[cfg(feature = "nightly-testing")]
+mod nightly {
+    extern crate skeptic;
+
+    pub fn main() {
+        skeptic::generate_doc_tests(&["../README.md"]);
+    }
+}
+
+#[cfg(not(feature = "nightly-testing"))]
+mod nightly {
     pub fn main() {}
 }
 
 pub fn main() {
-    inner::main();
+    with_syntex::main();
+    nightly::main();
 }

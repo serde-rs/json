@@ -1,17 +1,18 @@
 [package]
 name = "serde_json_tests"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 build = "build.rs"
 
 [features]
 default = ["serde_macros"]
 with-syntex = ["syntex", "serde_codegen"]
-nightly-testing = ["clippy", "serde_json/clippy"]
+nightly-testing = ["clippy", "skeptic", "serde_json/clippy"]
 
 [build-dependencies]
 syntex = { version = "*", optional = true }
 serde_codegen = { version = "*", optional = true }
+skeptic = { version = "^0.4.0", optional = true }
 
 [dependencies]
 clippy = { version = "^0.*", optional = true }
@@ -20,6 +21,7 @@ rustc-serialize = "*"
 serde = "*"
 serde_json = { version = "*", path = "../json" }
 serde_macros = { version = "*", optional = true }
+skeptic = { version = "^0.4.0", optional = true }
 
 [[test]]
 name = "test"
