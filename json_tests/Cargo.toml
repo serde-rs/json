@@ -7,12 +7,12 @@ build = "build.rs"
 [features]
 default = ["serde_macros"]
 with-syntex = ["syntex", "serde_codegen"]
-nightly-testing = ["clippy", "skeptic", "serde_json/clippy"]
+nightly-testing = ["clippy", "serde_json/clippy"]
 
 [build-dependencies]
 syntex = { version = "*", optional = true }
 serde_codegen = { version = "*", optional = true }
-skeptic = { version = "^0.4.0", optional = true }
+skeptic = "^0.4.0"
 
 [dependencies]
 clippy = { version = "^0.*", optional = true }
@@ -21,7 +21,7 @@ rustc-serialize = "*"
 serde = "*"
 serde_json = { version = "*", path = "../json" }
 serde_macros = { version = "*", optional = true }
-skeptic = { version = "^0.4.0", optional = true }
+skeptic = "^0.4.0"
 
 [[test]]
 name = "test"

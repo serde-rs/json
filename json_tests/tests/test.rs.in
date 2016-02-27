@@ -1,3 +1,2 @@
-mod skeptic;
 mod test_json;
 mod test_json_builder;

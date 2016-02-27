@@ -1,3 +1,5 @@
+extern crate skeptic;
+
 #[cfg(feature = "with-syntex")]
 mod with_syntex {
     extern crate syntex;
@@ -29,21 +31,8 @@ mod with_syntex {
     pub fn main() {}
 }
 
-#[cfg(feature = "nightly-testing")]
-mod nightly {
-    extern crate skeptic;
-
-    pub fn main() {
-        skeptic::generate_doc_tests(&["../README.md"]);
-    }
-}
-
-#[cfg(not(feature = "nightly-testing"))]
-mod nightly {
-    pub fn main() {}
-}
-
 pub fn main() {
     with_syntex::main();
-    nightly::main();
+
+    skeptic::generate_doc_tests(&["../README.md"]);
 }

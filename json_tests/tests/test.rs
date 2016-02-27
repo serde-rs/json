@@ -6,9 +6,18 @@
 
 extern crate serde;
 extern crate serde_json;
+extern crate skeptic;
 
 #[cfg(feature = "with-syntex")]
 include!(concat!(env!("OUT_DIR"), "/test.rs"));
 
 #[cfg(not(feature = "with-syntex"))]
 include!("test.rs.in");
+
+#[cfg(feature = "nightly-testing")]
+mod skeptic_tests {
+    #![cfg_attr(feature = "nightly-testing", allow(toplevel_ref_arg))]
+    #![cfg_attr(feature = "nightly-testing", allow(useless_format))]
+
+    include!(concat!(env!("OUT_DIR"), "/skeptic-tests.rs"));
+}
