@@ -162,6 +162,7 @@ impl<Iter> Deserializer<Iter>
                 visitor.visit_map(MapVisitor::new(self))
             }
             _ => {
+                self.eat_char();
                 Err(self.error(ErrorCode::ExpectedSomeValue))
             }
         };
