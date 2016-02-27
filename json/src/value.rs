@@ -98,6 +98,8 @@ impl Value {
         Some(target)
     }
 
+    /// **Deprecated**: Use `Value.pointer()` and pointer syntax instead.
+    ///
     /// Looks up a value by path.
     ///
     /// This is a convenience method that splits the path by `'.'`
@@ -116,6 +118,46 @@ impl Value {
                 Some(t) => { target = t; },
                 None => return None
             }
+        }
+        Some(target)
+    }
+
+    /// Looks up a value by a JSON Pointer.
+    ///
+    /// JSON Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (JSON) document.
+    ///
+    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
+    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
+    /// addressed value is returned and if there is no such value `None` is
+    /// returned.
+    ///
+    /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
+    pub fn pointer<'a>(&'a self, pointer: &str) -> Option<&'a Value> {
+        fn parse_index(s: &str) -> Option<usize> {
+            if s.starts_with("+") || (s.starts_with("0") && s.len() != 1) {
+                return None
+            }
+            s.parse().ok()
+        }
+        if pointer == "" {
+            return Some(self);
+        }
+        if !pointer.starts_with('/') {
+            return None;
+        }
+        let mut target = self;
+        for escaped_token in pointer.split('/').skip(1) {
+            let token = escaped_token.replace("~1", "/").replace("~0", "~");
+            let target_opt = match target {
+                &Value::Object(ref map) => map.get(&token[..]),
+                &Value::Array(ref list) => parse_index(&token[..])
+                    .and_then(|x| list.get(x)),
+                _ => return None,
+            };
+            if let Some(t) = target_opt {
+                target = t;
+            } else { return None }
         }
         Some(target)
     }
