@@ -206,8 +206,8 @@ impl From<de::value::Error> for Error {
 }
 
 impl de::Error for Error {
-    fn custom(msg: String) -> Error {
-        Error::Syntax(ErrorCode::Custom(msg), 0, 0)
+    fn custom<T: Into<String>>(msg: T) -> Error {
+        Error::Syntax(ErrorCode::Custom(msg.into()), 0, 0)
     }
 
     fn end_of_stream() -> Error {
@@ -241,8 +241,8 @@ impl de::Error for Error {
 
 impl ser::Error for Error {
     /// Raised when there is general error when deserializing a type.
-    fn custom(msg: String) -> Self {
-        Error::Syntax(ErrorCode::Custom(msg), 0, 0)
+    fn custom<T: Into<String>>(msg: T) -> Error {
+        Error::Syntax(ErrorCode::Custom(msg.into()), 0, 0)
     }
 }
 
