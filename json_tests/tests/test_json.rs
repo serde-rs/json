@@ -923,9 +923,9 @@ fn test_parse_object() {
 #[test]
 fn test_parse_struct() {
     test_parse_err::<Outer>(vec![
-        ("5", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
-        ("\"hello\"", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 7)),
-        ("{\"inner\": true}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 14)),
+        ("5", Error::Syntax(ErrorCode::InvalidType(de::Type::U64), 1, 1)),
+        ("\"hello\"", Error::Syntax(ErrorCode::InvalidType(de::Type::Str), 1, 7)),
+        ("{\"inner\": true}", Error::Syntax(ErrorCode::InvalidType(de::Type::Bool), 1, 14)),
         ("{}", Error::Syntax(ErrorCode::MissingField("inner"), 1, 2)),
         (r#"{"inner": [{"b": 42, "c": []}]}"#, Error::Syntax(ErrorCode::MissingField("a"), 1, 29)),
     ]);
@@ -998,8 +998,8 @@ fn test_parse_enum_errors() {
         ("{\"Dog\":", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 7)),
         ("{\"Dog\":}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 8)),
         ("{\"unknown\":[]}", Error::Syntax(ErrorCode::UnknownVariant("unknown".to_string()), 1, 10)),
-        ("{\"Dog\":{}}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 8)),
-        ("{\"Frog\":{}}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 9)),
+        ("{\"Dog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 8)),
+        ("{\"Frog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 9)),
         ("{\"Cat\":[]}", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 9)),
         (
             "{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",

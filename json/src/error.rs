@@ -91,7 +91,7 @@ impl fmt::Debug for ErrorCode {
 
         match *self {
             ErrorCode::Custom(ref msg) => write!(f, "{}", msg),
-            ErrorCode::InvalidType(ref ty) => write!(f, "invalid value type: {:?}", ty),
+            ErrorCode::InvalidType(ref ty) => write!(f, "invalid type: {:?}", ty),
             ErrorCode::InvalidValue(ref msg) => write!(f, "invalid value: {}", msg),
             ErrorCode::InvalidLength(ref len) => write!(f, "invalid value length {}", len),
             ErrorCode::UnknownVariant(ref variant) => write!(f, "unknown variant \"{}\"", variant),
