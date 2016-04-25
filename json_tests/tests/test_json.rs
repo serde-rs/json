@@ -819,12 +819,17 @@ fn test_parse_string() {
         ("\"foo\"", "foo".to_string()),
         (" \"foo\" ", "foo".to_string()),
         ("\"\\\"\"", "\"".to_string()),
+        ("\"\\/\"", "/".to_string()),
         ("\"\\b\"", "\x08".to_string()),
+        ("\"\\f\"", "\x0C".to_string()),
         ("\"\\n\"", "\n".to_string()),
         ("\"\\r\"", "\r".to_string()),
         ("\"\\t\"", "\t".to_string()),
         ("\"\\u12ab\"", "\u{12ab}".to_string()),
         ("\"\\uAB12\"", "\u{AB12}".to_string()),
+        ("\"\\uDBFF\\uDFFF\"", "\u{10FFFF}".to_string()),
+        ("\"\u{FFFF}\"", "\u{FFFF}".to_string()),
+        ("\"\u{10FFFF}\"", "\u{10FFFF}".to_string()),
     ]);
 }
 
