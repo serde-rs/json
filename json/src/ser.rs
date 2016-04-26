@@ -494,6 +494,7 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
     try!(wr.write_all(b"\""));
 
     let mut start = 0;
+    let mut last_byte_was_c2 = false;
 
     for (i, byte) in bytes.iter().enumerate() {
         let escaped = match *byte {
@@ -513,6 +514,21 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
 
                 start = i + 1;
 
+                continue;
+            },
+            b'\x80' ... b'\x9F' if last_byte_was_c2 => {
+                if start < (i - 1) {
+                    try!(wr.write_all(&bytes[start..(i - 1)]));
+                }
+
+                try!(write!(wr,"\\u{:04X}", *byte));
+
+                start = i + 1;
+
+                continue;
+            },
+            b'\xC2' => {
+                last_byte_was_c2 = true;
                 continue;
             },
             _ => { continue; }
