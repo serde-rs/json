@@ -494,9 +494,12 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
     try!(wr.write_all(b"\""));
 
     let mut start = 0;
-    let mut last_byte_was_c2 = false;
+    let mut last_byte = 0u8;
 
     for (i, byte) in bytes.iter().enumerate() {
+        let last_byte_was_c2 = last_byte == b'\xC2';
+        last_byte = *byte;
+
         let escaped = match *byte {
             b'"' => b"\\\"",
             b'\\' => b"\\\\",
@@ -525,10 +528,6 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
 
                 start = i + 1;
 
-                continue;
-            },
-            b'\xC2' => {
-                last_byte_was_c2 = true;
                 continue;
             },
             _ => { continue; }
