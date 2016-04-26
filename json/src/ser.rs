@@ -504,12 +504,12 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
             b'\n' => b"\\n",
             b'\r' => b"\\r",
             b'\t' => b"\\t",
-            c @ b'\x00' ... b'\x1F' => {
+            b'\x00' ... b'\x1F' | b'\x7F' => {
                 if start < i {
                     try!(wr.write_all(&bytes[start..i]));
                 }
 
-                try!(write!(wr,"\\u{:04X}", c));
+                try!(write!(wr,"\\u{:04X}", *byte));
 
                 start = i + 1;
 
