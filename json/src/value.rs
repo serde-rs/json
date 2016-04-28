@@ -40,6 +40,7 @@ use std::str;
 use std::vec;
 
 use num::NumCast;
+use decimal::d128;
 
 use serde::de;
 use serde::ser;
@@ -63,6 +64,9 @@ pub enum Value {
 
     /// Represents a JSON floating point number
     F64(f64),
+
+    /// Represents a JSON floating point number, but as a decimal.
+    D128(d128),
 
     /// Represents a JSON string
     String(String),
@@ -306,6 +310,7 @@ impl ser::Serialize for Value {
             Value::I64(v) => serializer.serialize_i64(v),
             Value::U64(v) => serializer.serialize_u64(v),
             Value::F64(v) => serializer.serialize_f64(v),
+            Value::D128(v) => serializer.serialize_d128(v),
             Value::String(ref v) => serializer.serialize_str(&v),
             Value::Array(ref v) => v.serialize(serializer),
             Value::Object(ref v) => v.serialize(serializer),
@@ -479,6 +484,12 @@ impl ser::Serializer for Serializer {
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<(), Error> {
         self.state.push(State::Value(Value::F64(value as f64)));
+        Ok(())
+    }
+
+    #[inline]
+    fn serialize_d128(&mut self, value: d128) -> Result<(), Error> {
+        self.state.push(State::Value(Value::D128(value as d128)));
         Ok(())
     }
 
@@ -710,6 +721,7 @@ impl de::Deserializer for Deserializer {
             Value::I64(v) => visitor.visit_i64(v),
             Value::U64(v) => visitor.visit_u64(v),
             Value::F64(v) => visitor.visit_f64(v),
+            Value::D128(v) => visitor.visit_d128(v),
             Value::String(v) => visitor.visit_string(v),
             Value::Array(v) => {
                 let len = v.len();

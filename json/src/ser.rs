@@ -6,6 +6,7 @@ use std::io;
 use std::num::FpCategory;
 
 use serde::ser;
+use serde::d128;
 use super::error::{Error, ErrorCode, Result};
 
 /// A structure for serializing Rust values into JSON.
@@ -133,6 +134,11 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<()> {
         fmt_f64_or_null(&mut self.writer, value).map_err(From::from)
+    }
+
+    #[inline]
+    fn serialize_d128(&mut self, value: d128) -> Result<()> {
+        write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
@@ -332,6 +338,10 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_f64(&mut self, _value: f64) -> Result<()> {
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    }
+
+    fn serialize_d128(&mut self, _value: d128) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 

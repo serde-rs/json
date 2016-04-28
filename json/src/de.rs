@@ -10,6 +10,8 @@ use std::marker::PhantomData;
 
 use serde::de;
 use serde::iter::LineColIterator;
+use serde::d128;
+use core::str::FromStr;
 
 use super::error::{Error, ErrorCode, Result};
 
@@ -141,11 +143,10 @@ impl<Iter> Deserializer<Iter>
                 visitor.visit_bool(false)
             }
             b'-' => {
-                self.eat_char();
-                self.parse_integer(false, visitor)
+                self.parse_d128(visitor)
             }
             b'0' ... b'9' => {
-                self.parse_integer(true, visitor)
+                self.parse_d128(visitor)
             }
             b'"' => {
                 self.eat_char();
@@ -181,6 +182,37 @@ impl<Iter> Deserializer<Iter>
         }
 
         Ok(())
+    }
+
+    fn parse_d128<V>(&mut self, mut visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        // Do I really need a new buffer?
+        // Can I match more than one thing on a let arm.
+        // is let m and then return m the way to go? Can it be a oneliner?
+        // Indentation is 2 spaces wtf.
+        let mut buf = vec![];
+        loop {
+            match try!(self.peek_or_null()) {
+              ch @ b'0' ... b'9' => {
+                self.eat_char();
+                buf.push(ch)
+              },
+              ch @ b'.' => {
+                self.eat_char();
+                buf.push(ch)
+              },
+              _ => {
+                let whole = str::from_utf8(&buf).unwrap();
+                println!("{:?}", whole);
+                let m = match d128::from_str(whole) {
+                  Ok(d) => visitor.visit_d128(d),
+                  _ => Err(self.error(ErrorCode::InvalidNumber))
+                };
+                return m
+              }
+           }
+        }
     }
 
     fn parse_integer<V>(&mut self, pos: bool, visitor: V) -> Result<V::Value>
