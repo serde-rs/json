@@ -204,7 +204,7 @@ impl<Iter> Deserializer<Iter>
               },
               _ => {
                 let whole = str::from_utf8(&buf).unwrap();
-                println!("{:?}", whole);
+                println!("Whole {:?}", whole);
                 let m = match d128::from_str(whole) {
                   Ok(d) => visitor.visit_d128(d),
                   _ => Err(self.error(ErrorCode::InvalidNumber))

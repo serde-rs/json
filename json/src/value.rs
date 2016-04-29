@@ -210,7 +210,7 @@ impl Value {
     /// Returns true if the `Value` is a Number. Returns false otherwise.
     pub fn is_number(&self) -> bool {
         match *self {
-            Value::I64(_) | Value::U64(_) | Value::F64(_) => true,
+            Value::I64(_) | Value::U64(_) | Value::F64(_) | Value::D128(_) => true,
             _ => false,
         }
     }
@@ -235,6 +235,14 @@ impl Value {
     pub fn is_f64(&self) -> bool {
         match *self {
             Value::F64(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if the `Value` is a d128. Returns false otherwise.
+    pub fn is_d128(&self) -> bool {
+        match *self {
+            Value::D128(_) => true,
             _ => false,
         }
     }
@@ -266,6 +274,18 @@ impl Value {
             Value::I64(n) => NumCast::from(n),
             Value::U64(n) => NumCast::from(n),
             Value::F64(n) => Some(n),
+            _ => None
+        }
+    }
+
+    /// If the `Value` is a number, return or cast it to a d128.
+    /// Returns None otherwise.
+    pub fn as_d128(&self) -> Option<d128> {
+        match *self {
+            Value::I64(n) => Some(d128::from(0)),
+            Value::U64(n) => Some(d128::from(0)),
+            Value::F64(n) => Some(d128::from(0)),
+            Value::D128(n) => Some(n),
             _ => None
         }
     }
@@ -350,6 +370,11 @@ impl de::Deserialize for Value {
             #[inline]
             fn visit_f64<E>(&mut self, value: f64) -> Result<Value, E> {
                 Ok(Value::F64(value))
+            }
+
+            #[inline]
+            fn visit_d128<E>(&mut self, value: d128) -> Result<Value, E> {
+                Ok(Value::D128(value))
             }
 
             #[inline]
@@ -937,6 +962,7 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
     fn visit_value<T>(&mut self) -> Result<T, Error>
         where T: de::Deserialize
     {
+        println!("IS THIS UNWRAP? {:?}", self.value.take());
         let value = self.value.take().unwrap();
         self.de.value = Some(value);
         Ok(try!(de::Deserialize::deserialize(self.de)))
