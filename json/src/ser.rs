@@ -555,7 +555,47 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
 pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
     where W: io::Write
 {
-    escape_bytes(wr, value.as_bytes())
+    let mut start = 0;
+
+    try!(wr.write_all(b"\""));
+
+    for (i, char) in value.char_indices() {
+        let escaped = match char {
+            '"'      => b"\\\"",
+            '\\'     => b"\\\\",
+            '\u{08}' => b"\\b",
+            '\u{0c}' => b"\\f",
+            '\n'     => b"\\n",
+            '\r'     => b"\\r",
+            '\t'     => b"\\t",
+            '\u{00}' ... '\u{1F}' | '\u{7F}' | '\u{80}' ... '\u{9F}' => {
+                // only Unicode C0 control characters ('\u{00}' ... '\u{1F}') are mandated to be escaped by ECMA-404.
+                // DEL ('\u{7F}') and C1 ('\u{80}' ... '\u{9F}') control characters are also escaped for convenience.
+
+                debug_assert_eq!(char.len_utf16(), 1); // C0, DEL and C1 control characters fit on one utf16 code unit by specification.
+                try!(write!(wr, "{}\\u{:04X}", &value[start..i], char as u32));
+
+                start = i + char.len_utf8();
+                continue;
+            },
+            _        => { continue; }
+        };
+
+        if start < i {
+            try!(wr.write_all(&value[start..i].as_bytes()));
+        }
+        try!(wr.write_all(escaped));
+
+        debug_assert_eq!(char.len_utf8(), 1);
+        start = i + 1;
+    }
+
+    if start != value.len() {
+        try!(wr.write_all(&value[start..].as_bytes()));
+    }
+
+    try!(wr.write_all(b"\""));
+    Ok(())
 }
 
 #[inline]
