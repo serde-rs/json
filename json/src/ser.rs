@@ -578,7 +578,7 @@ pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
                 start = i + char.len_utf8();
                 continue;
             },
-            _        => { continue; }
+            _ => continue
         };
 
         if start < i {
