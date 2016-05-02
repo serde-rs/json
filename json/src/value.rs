@@ -938,29 +938,33 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
         }
     }
 
-    fn missing_field<V>(&mut self, _field: &'static str) -> Result<V, Error>
+    fn missing_field<V>(&mut self, field: &'static str) -> Result<V, Error>
         where V: de::Deserialize,
     {
-        // See if the type can deserialize from a unit.
-        struct UnitDeserializer;
+        use std;
 
-        impl de::Deserializer for UnitDeserializer {
-            type Error = Error;
+        struct MissingFieldDeserializer(&'static str);
 
-            fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+        impl de::Deserializer for MissingFieldDeserializer {
+            type Error = de::value::Error;
+
+            fn deserialize<V>(&mut self, _visitor: V) -> std::result::Result<V::Value, Self::Error>
                 where V: de::Visitor,
             {
-                visitor.visit_unit()
+                let &mut MissingFieldDeserializer(field) = self;
+                Err(de::value::Error::MissingField(field))
             }
 
-            fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+            fn deserialize_option<V>(&mut self,
+                                     mut visitor: V) -> std::result::Result<V::Value, Self::Error>
                 where V: de::Visitor,
             {
                 visitor.visit_none()
             }
         }
 
-        Ok(try!(de::Deserialize::deserialize(&mut UnitDeserializer)))
+        let mut de = MissingFieldDeserializer(field);
+        Ok(try!(de::Deserialize::deserialize(&mut de)))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
