@@ -461,7 +461,7 @@ fn test_write_object() {
 
     let complex_obj = Value::Object(treemap!(
         "b".to_string() => Value::Array(vec![
-            Value::Object(treemap!("c".to_string() => Value::String("\x0c\r".to_string()))),
+            Value::Object(treemap!("c".to_string() => Value::String("\x0c\x1f\r".to_string()))),
             Value::Object(treemap!("d".to_string() => Value::String("".to_string())))
         ])
     ));
@@ -471,7 +471,7 @@ fn test_write_object() {
             complex_obj.clone(),
             "{\
                 \"b\":[\
-                    {\"c\":\"\\f\\r\"},\
+                    {\"c\":\"\\f\\u001f\\r\"},\
                     {\"d\":\"\"}\
                 ]\
             }"
@@ -485,7 +485,7 @@ fn test_write_object() {
                 "{\n",
                 "  \"b\": [\n",
                 "    {\n",
-                "      \"c\": \"\\f\\r\"\n",
+                "      \"c\": \"\\f\\u001f\\r\"\n",
                 "    },\n",
                 "    {\n",
                 "      \"d\": \"\"\n",
