@@ -6,16 +6,18 @@ build = "build.rs"
 
 [features]
 default = ["serde_macros"]
-with-syntex = ["syntex", "serde_codegen"]
+with-syntex = ["syntex", "serde_codegen", "indoc/with-syntex"]
 nightly-testing = ["clippy", "serde_json/clippy"]
 
 [build-dependencies]
-syntex = { version = "*", optional = true }
+indoc = "*"
 serde_codegen = { version = "*", optional = true }
 skeptic = "^0.4.0"
+syntex = { version = "*", optional = true }
 
 [dependencies]
 clippy = { version = "^0.*", optional = true }
+indoc = "*"
 num = "*"
 rustc-serialize = "*"
 serde = "*"

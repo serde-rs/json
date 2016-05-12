@@ -172,54 +172,54 @@ fn test_write_list() {
     test_pretty_encode_ok(&[
         (
             vec![vec![], vec![], vec![]],
-            concat!(
-                "[\n",
-                "  [],\n",
-                "  [],\n",
-                "  []\n",
-                "]"
+            indoc!("
+                [
+                  [],
+                  [],
+                  []
+                ]"
             ),
         ),
         (
             vec![vec![1, 2, 3], vec![], vec![]],
-            concat!(
-                "[\n",
-                "  [\n",
-                "    1,\n",
-                "    2,\n",
-                "    3\n",
-                "  ],\n",
-                "  [],\n",
-                "  []\n",
-                "]"
+            indoc!("
+                [
+                  [
+                    1,
+                    2,
+                    3
+                  ],
+                  [],
+                  []
+                ]"
             ),
         ),
         (
             vec![vec![], vec![1, 2, 3], vec![]],
-            concat!(
-                "[\n",
-                "  [],\n",
-                "  [\n",
-                "    1,\n",
-                "    2,\n",
-                "    3\n",
-                "  ],\n",
-                "  []\n",
-                "]"
+            indoc!("
+                [
+                  [],
+                  [
+                    1,
+                    2,
+                    3
+                  ],
+                  []
+                ]"
             ),
         ),
         (
             vec![vec![], vec![], vec![1, 2, 3]],
-            concat!(
-                "[\n",
-                "  [],\n",
-                "  [],\n",
-                "  [\n",
-                "    1,\n",
-                "    2,\n",
-                "    3\n",
-                "  ]\n",
-                "]"
+            indoc!("
+                [
+                  [],
+                  [],
+                  [
+                    1,
+                    2,
+                    3
+                  ]
+                ]"
             ),
         ),
     ]);
@@ -228,19 +228,19 @@ fn test_write_list() {
         (vec![], "[]"),
         (
             vec![true],
-            concat!(
-                "[\n",
-                "  true\n",
-                "]"
+            indoc!("
+                [
+                  true
+                ]"
             ),
         ),
         (
             vec![true, false],
-            concat!(
-                "[\n",
-                "  true,\n",
-                "  false\n",
-                "]"
+            indoc!("
+                [
+                  true,
+                  false
+                ]"
             ),
         ),
     ]);
@@ -260,15 +260,15 @@ fn test_write_list() {
     test_pretty_encode_ok(&[
         (
             long_test_list,
-            concat!(
-                "[\n",
-                "  false,\n",
-                "  null,\n",
-                "  [\n",
-                "    \"foo\\nbar\",\n",
-                "    3.5\n",
-                "  ]\n",
-                "]"
+            indoc!(r#"
+                [
+                  false,
+                  null,
+                  [
+                    "foo\nbar",
+                    3.5
+                  ]
+                ]"#
             ),
         )
     ]);
@@ -341,12 +341,12 @@ fn test_write_object() {
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-            concat!(
-                "{\n",
-                "  \"a\": {},\n",
-                "  \"b\": {},\n",
-                "  \"c\": {}\n",
-                "}",
+            indoc!(r#"
+                {
+                  "a": {},
+                  "b": {},
+                  "c": {}
+                }"#
             ),
         ),
         (
@@ -359,22 +359,22 @@ fn test_write_object() {
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-            concat!(
-                "{\n",
-                "  \"a\": {\n",
-                "    \"a\": {\n",
-                "      \"a\": [\n",
-                "        1,\n",
-                "        2,\n",
-                "        3\n",
-                "      ]\n",
-                "    },\n",
-                "    \"b\": {},\n",
-                "    \"c\": {}\n",
-                "  },\n",
-                "  \"b\": {},\n",
-                "  \"c\": {}\n",
-                "}"
+            indoc!(r#"
+                {
+                  "a": {
+                    "a": {
+                      "a": [
+                        1,
+                        2,
+                        3
+                      ]
+                    },
+                    "b": {},
+                    "c": {}
+                  },
+                  "b": {},
+                  "c": {}
+                }"#
             ),
         ),
         (
@@ -387,22 +387,22 @@ fn test_write_object() {
                 ],
                 "c".to_string() => treemap![]
             ],
-            concat!(
-                "{\n",
-                "  \"a\": {},\n",
-                "  \"b\": {\n",
-                "    \"a\": {\n",
-                "      \"a\": [\n",
-                "        1,\n",
-                "        2,\n",
-                "        3\n",
-                "      ]\n",
-                "    },\n",
-                "    \"b\": {},\n",
-                "    \"c\": {}\n",
-                "  },\n",
-                "  \"c\": {}\n",
-                "}"
+            indoc!(r#"
+                {
+                  "a": {},
+                  "b": {
+                    "a": {
+                      "a": [
+                        1,
+                        2,
+                        3
+                      ]
+                    },
+                    "b": {},
+                    "c": {}
+                  },
+                  "c": {}
+                }"#
             ),
         ),
         (
@@ -415,22 +415,22 @@ fn test_write_object() {
                     "c".to_string() => treemap![]
                 ]
             ],
-            concat!(
-                "{\n",
-                "  \"a\": {},\n",
-                "  \"b\": {},\n",
-                "  \"c\": {\n",
-                "    \"a\": {\n",
-                "      \"a\": [\n",
-                "        1,\n",
-                "        2,\n",
-                "        3\n",
-                "      ]\n",
-                "    },\n",
-                "    \"b\": {},\n",
-                "    \"c\": {}\n",
-                "  }\n",
-                "}"
+            indoc!(r#"
+                {
+                  "a": {},
+                  "b": {},
+                  "c": {
+                    "a": {
+                      "a": [
+                        1,
+                        2,
+                        3
+                      ]
+                    },
+                    "b": {},
+                    "c": {}
+                  }
+                }"#
             ),
         ),
     ]);
@@ -439,10 +439,10 @@ fn test_write_object() {
         (treemap!(), "{}"),
         (
             treemap!("a".to_string() => true),
-            concat!(
-                "{\n",
-                "  \"a\": true\n",
-                "}"
+            indoc!(r#"
+                {
+                  "a": true
+                }"#
             ),
         ),
         (
@@ -450,11 +450,11 @@ fn test_write_object() {
                 "a".to_string() => true,
                 "b".to_string() => false
             ),
-            concat!(
-                "{\n",
-                "  \"a\": true,\n",
-                "  \"b\": false\n",
-                "}"
+            indoc!(r#"
+                {
+                  "a": true,
+                  "b": false
+                }"#
             ),
         ),
     ]);
@@ -481,17 +481,17 @@ fn test_write_object() {
     test_pretty_encode_ok(&[
         (
             complex_obj.clone(),
-            concat!(
-                "{\n",
-                "  \"b\": [\n",
-                "    {\n",
-                "      \"c\": \"\\f\\r\"\n",
-                "    },\n",
-                "    {\n",
-                "      \"d\": \"\"\n",
-                "    }\n",
-                "  ]\n",
-                "}"
+            indoc!(r#"
+                {
+                  "b": [
+                    {
+                      "c": "\f\r"
+                    },
+                    {
+                      "d": ""
+                    }
+                  ]
+                }"#
             ),
         )
     ]);
@@ -509,10 +509,10 @@ fn test_write_tuple() {
     test_pretty_encode_ok(&[
         (
             (5,),
-            concat!(
-                "[\n",
-                "  5\n",
-                "]"
+            indoc!("
+                [
+                  5
+                ]"
             ),
         ),
     ]);
@@ -527,14 +527,14 @@ fn test_write_tuple() {
     test_pretty_encode_ok(&[
         (
             (5, (6, "abc")),
-            concat!(
-                "[\n",
-                "  5,\n",
-                "  [\n",
-                "    6,\n",
-                "    \"abc\"\n",
-                "  ]\n",
-                "]"
+            indoc!(r#"
+                [
+                  5,
+                  [
+                    6,
+                    "abc"
+                  ]
+                ]"#
             ),
         ),
     ]);
@@ -572,48 +572,48 @@ fn test_write_enum() {
     test_pretty_encode_ok(&[
         (
             Animal::Dog,
-            concat!(
-                "{\n",
-                "  \"Dog\": []\n",
-                "}"
+            indoc!(r#"
+                {
+                  "Dog": []
+                }"#
             ),
         ),
         (
             Animal::Frog("Henry".to_string(), vec![]),
-            concat!(
-                "{\n",
-                "  \"Frog\": [\n",
-                "    \"Henry\",\n",
-                "    []\n",
-                "  ]\n",
-                "}"
+            indoc!(r#"
+                {
+                  "Frog": [
+                    "Henry",
+                    []
+                  ]
+                }"#
             ),
         ),
         (
             Animal::Frog("Henry".to_string(), vec![349]),
-            concat!(
-                "{\n",
-                "  \"Frog\": [\n",
-                "    \"Henry\",\n",
-                "    [\n",
-                "      349\n",
-                "    ]\n",
-                "  ]\n",
-                "}"
+            indoc!(r#"
+                {
+                  "Frog": [
+                    "Henry",
+                    [
+                      349
+                    ]
+                  ]
+                }"#
             ),
         ),
         (
             Animal::Frog("Henry".to_string(), vec![349, 102]),
-            concat!(
-                "{\n",
-                "  \"Frog\": [\n",
-                "    \"Henry\",\n",
-                "    [\n",
-                "      349,\n",
-                "      102\n",
-                "    ]\n",
-                "  ]\n",
-                "}"
+            indoc!(r#"
+                {
+                  "Frog": [
+                    "Henry",
+                    [
+                      349,
+                      102
+                    ]
+                  ]
+                }"#
             ),
         ),
     ]);
@@ -640,11 +640,11 @@ fn test_write_option() {
         (None, "null"),
         (
             Some(vec!["foo", "bar"]),
-            concat!(
-                "[\n",
-                "  \"foo\",\n",
-                "  \"bar\"\n",
-                "]"
+            indoc!(r#"
+                [
+                  "foo",
+                  "bar"
+                ]"#
             ),
         ),
     ]);
@@ -1214,17 +1214,14 @@ fn test_serialize_seq_with_no_len() {
     ]);
 
     let s = serde_json::to_string_pretty(&vec).unwrap();
-    assert_eq!(
-        s,
-        concat!(
-            "[\n",
-            "  [\n",
-            "  ],\n",
-            "  [\n",
-            "  ]\n",
-            "]"
-        )
-    );
+    let expected = indoc!("
+        [
+          [
+          ],
+          [
+          ]
+        ]");
+    assert_eq!(s, expected);
 }
 
 #[test]
@@ -1301,17 +1298,14 @@ fn test_serialize_map_with_no_len() {
     ]);
 
     let s = serde_json::to_string_pretty(&map).unwrap();
-    assert_eq!(
-        s,
-        concat!(
-            "{\n",
-            "  \"a\": {\n",
-            "  },\n",
-            "  \"b\": {\n",
-            "  }\n",
-            "}"
-        )
-    );
+    let expected = indoc!(r#"
+        {
+          "a": {
+          },
+          "b": {
+          }
+        }"#);
+    assert_eq!(s, expected);
 }
 
 #[test]

@@ -2,7 +2,7 @@
 #![cfg_attr(feature = "nightly-testing", plugin(clippy))]
 
 #![cfg_attr(not(feature = "with-syntex"), feature(custom_attribute, custom_derive, plugin))]
-#![cfg_attr(not(feature = "with-syntex"), plugin(serde_macros))]
+#![cfg_attr(not(feature = "with-syntex"), plugin(serde_macros, indoc))]
 
 #![feature(test)]
 
