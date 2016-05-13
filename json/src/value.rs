@@ -464,6 +464,21 @@ impl fmt::Debug for Value {
     }
 }
 
+impl fmt::Display for Value {
+    /// Serializes a json value into a string
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut wr = WriterFormatter { inner: f };
+        super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
+    }
+}
+
+impl str::FromStr for Value {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Value, Error> {
+        super::de::from_str(s)
+    }
+}
+
 #[derive(Debug)]
 enum State {
     Value(Value),
