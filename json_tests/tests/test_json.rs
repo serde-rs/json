@@ -1441,3 +1441,40 @@ fn test_json_stream_empty() {
 
     assert!(parsed.next().is_none());
 }
+
+#[test]
+fn test_json_pointer() {
+    // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
+    let data: Value = serde_json::from_str(r#"{
+        "foo": ["bar", "baz"],
+        "": 0,
+        "a/b": 1,
+        "c%d": 2,
+        "e^f": 3,
+        "g|h": 4,
+        "i\\j": 5,
+        "k\"l": 6,
+        " ": 7,
+        "m~n": 8
+    }"#).unwrap();
+    assert_eq!(data.pointer("").unwrap(), &data);
+    assert_eq!(data.pointer("/foo").unwrap(),
+        &Value::Array(vec![Value::String("bar".to_owned()),
+                           Value::String("baz".to_owned())]));
+    assert_eq!(data.pointer("/foo/0").unwrap(),
+        &Value::String("bar".to_owned()));
+    assert_eq!(data.pointer("/").unwrap(), &Value::U64(0));
+    assert_eq!(data.pointer("/a~1b").unwrap(), &Value::U64(1));
+    assert_eq!(data.pointer("/c%d").unwrap(), &Value::U64(2));
+    assert_eq!(data.pointer("/e^f").unwrap(), &Value::U64(3));
+    assert_eq!(data.pointer("/g|h").unwrap(), &Value::U64(4));
+    assert_eq!(data.pointer("/i\\j").unwrap(), &Value::U64(5));
+    assert_eq!(data.pointer("/k\"l").unwrap(), &Value::U64(6));
+    assert_eq!(data.pointer("/ ").unwrap(), &Value::U64(7));
+    assert_eq!(data.pointer("/m~0n").unwrap(), &Value::U64(8));
+    // Invalid pointers
+    assert!(data.pointer("/unknown").is_none());
+    assert!(data.pointer("/e^f/ertz").is_none());
+    assert!(data.pointer("/foo/00").is_none());
+    assert!(data.pointer("/foo/01").is_none());
+}
