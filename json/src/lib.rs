@@ -116,6 +116,7 @@
 
 #![cfg_attr(feature = "nightly-testing", plugin(clippy))]
 #![deny(missing_docs)]
+#![feature(unicode)]
 extern crate num;
 extern crate core;
 extern crate serde;

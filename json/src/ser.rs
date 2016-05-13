@@ -8,6 +8,16 @@ use std::num::FpCategory;
 use serde::ser;
 use super::error::{Error, ErrorCode, Result};
 
+/// An enum for specifying which characters should be escaped
+pub enum EscapeCharacters {
+    /// only escapes characters as mandated by the JSON specification (ECMA-404): `'"'` (`'\u{22}'`), `'\\'` (`'\u{5C}'`) and C0 control characters (`'\u{00}' ... '\u{1F}'`)
+    Standard,
+    /// same as `Standard` by also escapes the other Unicode control characters: DEL `'\u{x7F}'`) and C1 (`'\u{80}' ... '\u{9F}'`)
+    AllControlCharacters,
+    /// same as `AllControlCharacters` but also escapes all non ASCII characters `> '\u{7F}'`
+    AllNonAscii,
+}
+
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F=CompactFormatter> {
     writer: W,
@@ -142,7 +152,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     #[inline]
     fn serialize_str(&mut self, value: &str) -> Result<()> {
-        escape_str(&mut self.writer, value).map_err(From::from)
+        escape_str(&mut self.writer, value, EscapeCharacters::AllControlCharacters).map_err(From::from)
     }
 
     #[inline]
@@ -494,8 +504,12 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
     try!(wr.write_all(b"\""));
 
     let mut start = 0;
+    let mut last_byte = 0u8;
 
     for (i, byte) in bytes.iter().enumerate() {
+        let last_byte_was_c2 = last_byte == b'\xC2';
+        last_byte = *byte;
+
         let escaped = match *byte {
             b'"' => b"\\\"",
             b'\\' => b"\\\\",
@@ -504,6 +518,28 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
             b'\n' => b"\\n",
             b'\r' => b"\\r",
             b'\t' => b"\\t",
+            b'\x00' ... b'\x1F' | b'\x7F' => {
+                if start < i {
+                    try!(wr.write_all(&bytes[start..i]));
+                }
+
+                try!(write!(wr,"\\u{:04X}", *byte));
+
+                start = i + 1;
+
+                continue;
+            },
+            b'\x80' ... b'\x9F' if last_byte_was_c2 => {
+                if start < (i - 1) {
+                    try!(wr.write_all(&bytes[start..(i - 1)]));
+                }
+
+                try!(write!(wr,"\\u{:04X}", *byte));
+
+                start = i + 1;
+
+                continue;
+            },
             _ => { continue; }
         };
 
@@ -526,10 +562,120 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
 
 /// Serializes and escapes a `&str` into a JSON string.
 #[inline]
-pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
+pub fn escape_str<W>(wr: &mut W, value: &str, escape_characters: EscapeCharacters) -> Result<()>
     where W: io::Write
 {
-    escape_bytes(wr, value.as_bytes())
+    let mut start = 0;
+
+    try!(wr.write_all(b"\""));
+
+    match escape_characters {
+        EscapeCharacters::Standard => {
+            for (i, char) in value.char_indices() {
+                let escaped = match char {
+                    '"'      => b"\\\"",
+                    '\\'     => b"\\\\",
+                    '\u{08}' => b"\\b",
+                    '\u{0c}' => b"\\f",
+                    '\n'     => b"\\n",
+                    '\r'     => b"\\r",
+                    '\t'     => b"\\t",
+                    '\u{00}' ... '\u{1F}' => { // only Unicode C0 control characters ('\u{00}' ... '\u{1F}') are mandated to be escaped by ECMA-404.
+                        debug_assert_eq!(char.len_utf16(), 1); // C0 control characters fit on one utf16 code unit by specification.
+                        try!(write!(wr, "{}\\u{:04X}", &value[start..i], char as u16));
+
+                        debug_assert_eq!(char.len_utf8(), 1); // C0 control characters fit on one utf8 code unit by specification.
+                        start = i + 1;
+                        continue;
+                    },
+                    _ => continue
+                };
+
+                if start < i {
+                    try!(wr.write_all(&value[start..i].as_bytes()));
+                }
+                try!(wr.write_all(escaped));
+
+                debug_assert_eq!(char.len_utf8(), 1);
+                start = i + 1;
+            }
+        },
+        EscapeCharacters::AllControlCharacters => {
+            for (i, char) in value.char_indices() {
+                let escaped = match char {
+                    '"'      => b"\\\"",
+                    '\\'     => b"\\\\",
+                    '\u{08}' => b"\\b",
+                    '\u{0c}' => b"\\f",
+                    '\n'     => b"\\n",
+                    '\r'     => b"\\r",
+                    '\t'     => b"\\t",
+                    '\u{00}' ... '\u{1F}' | '\u{7F}' ... '\u{9F}' => {
+                        // only Unicode C0 control characters ('\u{00}' ... '\u{1F}') are mandated to be escaped by ECMA-404.
+                        // DEL ('\u{7F}') and C1 ('\u{80}' ... '\u{9F}') control characters are also escaped for convenience.
+
+                        debug_assert_eq!(char.len_utf16(), 1); // C0, DEL and C1 control characters fit on one utf16 code unit by specification.
+                        try!(write!(wr, "{}\\u{:04X}", &value[start..i], char as u16));
+
+                        start = i + char.len_utf8();
+                        continue;
+                    },
+                    _ => continue
+                };
+
+                if start < i {
+                    try!(wr.write_all(&value[start..i].as_bytes()));
+                }
+                try!(wr.write_all(escaped));
+
+                debug_assert_eq!(char.len_utf8(), 1);
+                start = i + 1;
+            }
+        },
+        EscapeCharacters::AllNonAscii => {
+            for (i, char) in value.char_indices() {
+                let escaped = match char {
+                    '"'      => b"\\\"",
+                    '\\'     => b"\\\\",
+                    '\u{08}' => b"\\b",
+                    '\u{0c}' => b"\\f",
+                    '\n'     => b"\\n",
+                    '\r'     => b"\\r",
+                    '\t'     => b"\\t",
+                    '\u{00}' ... '\u{1F}' | '\u{7F}' ... '\u{10FFFF}' => {
+                        // only Unicode C0 control characters ('\u{00}' ... '\u{1F}') are mandated to be escaped by ECMA-404.
+                        // DEL ('\u{7F}') control characters is also escaped for convenience.
+
+                        let mut utf16 = [0u16; 2];
+                        match char.encode_utf16(&mut utf16).unwrap() {
+                            1 => try!(write!(wr, "{}\\u{:04X}", &value[start..i], utf16[0] as u16)),
+                            2 => try!(write!(wr, "{}\\u{:04X}\\u{:04X}", &value[start..i], utf16[0] as u16, utf16[1] as u16)),
+                            _ => unreachable!(),
+                        }
+
+                        start = i + char.len_utf8();
+                        continue;
+                    },
+                    _ => continue
+                };
+
+                if start < i {
+                    try!(wr.write_all(&value[start..i].as_bytes()));
+                }
+                try!(wr.write_all(escaped));
+
+                debug_assert_eq!(char.len_utf8(), 1);
+                start = i + 1;
+            }
+        },
+    }
+
+    if start != value.len() {
+        try!(wr.write_all(&value[start..].as_bytes()));
+    }
+
+    try!(wr.write_all(b"\""));
+    Ok(())
 }
 
 #[inline]
