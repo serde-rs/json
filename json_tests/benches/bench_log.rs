@@ -1,5 +1,5 @@
 use std::io::{self, Read, Write};
-use num::FromPrimitive;
+use num_traits::FromPrimitive;
 use test::{Bencher, black_box};
 
 use rustc_serialize;

@@ -18,7 +18,7 @@ syntex = { version = "*", optional = true }
 [dependencies]
 clippy = { version = "^0.*", optional = true }
 indoc = "*"
-num = "*"
+num-traits = "*"
 rustc-serialize = "*"
 serde = "*"
 serde_json = { version = "*", path = "../json" }
