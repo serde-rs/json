@@ -39,7 +39,7 @@ use std::io;
 use std::str;
 use std::vec;
 
-use num::NumCast;
+use num_traits::NumCast;
 
 use serde::de;
 use serde::ser;
