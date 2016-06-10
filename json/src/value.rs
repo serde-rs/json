@@ -19,14 +19,16 @@
 //!
 //! ```rust
 //! extern crate serde_json;
+//! #[macro_use]
+//! extern crate decimal;
 //!
 //! use serde_json::Value;
 //! use std::collections::BTreeMap;
 //!
 //! fn main() {
 //!     let mut map = BTreeMap::new();
-//!     map.insert(String::from("x"), Value::F64(1.0));
-//!     map.insert(String::from("y"), Value::F64(2.0));
+//!     map.insert(String::from("x"), Value::Number(d128!(1.0)));
+//!     map.insert(String::from("y"), Value::Number(d128!(2.0)));
 //!     let value = Value::Object(map);
 //!
 //!     let map: BTreeMap<String, f64> = serde_json::from_value(value).unwrap();
@@ -41,6 +43,7 @@ use std::vec;
 
 use num::NumCast;
 use decimal::d128;
+use core::str::FromStr;
 
 use serde::de;
 use serde::ser;
@@ -56,17 +59,8 @@ pub enum Value {
     /// Represents a JSON Boolean
     Bool(bool),
 
-    /// Represents a JSON signed integer
-    I64(i64),
-
-    /// Represents a JSON unsigned integer
-    U64(u64),
-
-    /// Represents a JSON floating point number
-    F64(f64),
-
-    /// Represents a JSON floating point number, but as a decimal.
-    D128(d128),
+    /// Represents a JSON Number.
+    Number(d128),
 
     /// Represents a JSON string
     String(String),
@@ -111,7 +105,7 @@ impl Value {
     /// ``` ignore
     /// let obj: Value = json::from_str(r#"{"x": {"a": 1}}"#).unwrap();
     ///
-    /// assert!(obj.lookup("x.a").unwrap() == &Value::U64(1));
+    /// assert!(obj.lookup("x.a").unwrap() == &Value::Number(d128!(1.0)));
     /// ```
     pub fn lookup<'a>(&'a self, path: &str) -> Option<&'a Value> {
         let mut target = self;
@@ -209,83 +203,14 @@ impl Value {
 
     /// Returns true if the `Value` is a Number. Returns false otherwise.
     pub fn is_number(&self) -> bool {
-        match *self {
-            Value::I64(_) | Value::U64(_) | Value::F64(_) | Value::D128(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if the `Value` is a i64. Returns false otherwise.
-    pub fn is_i64(&self) -> bool {
-        match *self {
-            Value::I64(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if the `Value` is a u64. Returns false otherwise.
-    pub fn is_u64(&self) -> bool {
-        match *self {
-            Value::U64(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if the `Value` is a f64. Returns false otherwise.
-    pub fn is_f64(&self) -> bool {
-        match *self {
-            Value::F64(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if the `Value` is a d128. Returns false otherwise.
-    pub fn is_d128(&self) -> bool {
-        match *self {
-            Value::D128(_) => true,
-            _ => false,
-        }
-    }
-
-    /// If the `Value` is a number, return or cast it to a i64.
-    /// Returns None otherwise.
-    pub fn as_i64(&self) -> Option<i64> {
-        match *self {
-            Value::I64(n) => Some(n),
-            Value::U64(n) => NumCast::from(n),
-            _ => None
-        }
-    }
-
-    /// If the `Value` is a number, return or cast it to a u64.
-    /// Returns None otherwise.
-    pub fn as_u64(&self) -> Option<u64> {
-        match *self {
-            Value::I64(n) => NumCast::from(n),
-            Value::U64(n) => Some(n),
-            _ => None
-        }
-    }
-
-    /// If the `Value` is a number, return or cast it to a f64.
-    /// Returns None otherwise.
-    pub fn as_f64(&self) -> Option<f64> {
-        match *self {
-            Value::I64(n) => NumCast::from(n),
-            Value::U64(n) => NumCast::from(n),
-            Value::F64(n) => Some(n),
-            _ => None
-        }
+        self.as_d128().is_some()
     }
 
     /// If the `Value` is a number, return or cast it to a d128.
     /// Returns None otherwise.
     pub fn as_d128(&self) -> Option<d128> {
         match *self {
-            Value::I64(n) => Some(d128::from(0)),
-            Value::U64(n) => Some(d128::from(0)),
-            Value::F64(n) => Some(d128::from(0)),
-            Value::D128(n) => Some(n),
+            Value::Number(s) => Some(s),
             _ => None
         }
     }
@@ -327,10 +252,7 @@ impl ser::Serialize for Value {
         match *self {
             Value::Null => serializer.serialize_unit(),
             Value::Bool(v) => serializer.serialize_bool(v),
-            Value::I64(v) => serializer.serialize_i64(v),
-            Value::U64(v) => serializer.serialize_u64(v),
-            Value::F64(v) => serializer.serialize_f64(v),
-            Value::D128(v) => serializer.serialize_d128(v),
+            Value::Number(v) => serializer.serialize_d128(v),
             Value::String(ref v) => serializer.serialize_str(&v),
             Value::Array(ref v) => v.serialize(serializer),
             Value::Object(ref v) => v.serialize(serializer),
@@ -354,27 +276,9 @@ impl de::Deserialize for Value {
             }
 
             #[inline]
-            fn visit_i64<E>(&mut self, value: i64) -> Result<Value, E> {
-                if value < 0 {
-                    Ok(Value::I64(value))
-                } else {
-                    Ok(Value::U64(value as u64))
-                }
-            }
-
-            #[inline]
-            fn visit_u64<E>(&mut self, value: u64) -> Result<Value, E> {
-                Ok(Value::U64(value))
-            }
-
-            #[inline]
-            fn visit_f64<E>(&mut self, value: f64) -> Result<Value, E> {
-                Ok(Value::F64(value))
-            }
-
-            #[inline]
             fn visit_d128<E>(&mut self, value: d128) -> Result<Value, E> {
-                Ok(Value::D128(value))
+                println!("Visiting d128 with {:?}", value);
+                Ok(Value::Number(value))
             }
 
             #[inline]
@@ -492,29 +396,31 @@ impl ser::Serializer for Serializer {
 
     #[inline]
     fn serialize_i64(&mut self, value: i64) -> Result<(), Error> {
-        if value < 0 {
-            self.state.push(State::Value(Value::I64(value)));
-        } else {
-            self.state.push(State::Value(Value::U64(value as u64)));
-        }
+        self.state.push(State::Value(Value::Number(
+          d128::from_str(&format!("{:?}", value)).unwrap()
+        )));
         Ok(())
     }
 
     #[inline]
     fn serialize_u64(&mut self, value: u64) -> Result<(), Error> {
-        self.state.push(State::Value(Value::U64(value)));
+        self.state.push(State::Value(Value::Number(
+          d128::from_str(&format!("{:?}", value)).unwrap()
+        )));
         Ok(())
     }
 
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<(), Error> {
-        self.state.push(State::Value(Value::F64(value as f64)));
+        self.state.push(State::Value(Value::Number(
+          d128::from_str(&format!("{:?}", value)).unwrap()
+        )));
         Ok(())
     }
 
     #[inline]
     fn serialize_d128(&mut self, value: d128) -> Result<(), Error> {
-        self.state.push(State::Value(Value::D128(value as d128)));
+        self.state.push(State::Value(Value::Number(value)));
         Ok(())
     }
 
@@ -743,10 +649,7 @@ impl de::Deserializer for Deserializer {
         match value {
             Value::Null => visitor.visit_unit(),
             Value::Bool(v) => visitor.visit_bool(v),
-            Value::I64(v) => visitor.visit_i64(v),
-            Value::U64(v) => visitor.visit_u64(v),
-            Value::F64(v) => visitor.visit_f64(v),
-            Value::D128(v) => visitor.visit_d128(v),
+            Value::Number(v) => visitor.visit_d128(v),
             Value::String(v) => visitor.visit_string(v),
             Value::Array(v) => {
                 let len = v.len();
@@ -962,7 +865,7 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
     fn visit_value<T>(&mut self) -> Result<T, Error>
         where T: de::Deserialize
     {
-        println!("IS THIS UNWRAP? {:?}", self.value.take());
+        //println!("IS THIS UNWRAP? {:?}", self.value.take());
         let value = self.value.take().unwrap();
         self.de.value = Some(value);
         Ok(try!(de::Deserialize::deserialize(self.de)))

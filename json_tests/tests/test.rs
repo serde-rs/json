@@ -4,9 +4,11 @@
 #![cfg_attr(not(feature = "with-syntex"), feature(custom_attribute, custom_derive, plugin))]
 #![cfg_attr(not(feature = "with-syntex"), plugin(serde_macros))]
 
+#[macro_use(d128)]
 extern crate serde;
 extern crate serde_json;
 extern crate skeptic;
+
 
 #[cfg(feature = "with-syntex")]
 include!(concat!(env!("OUT_DIR"), "/test.rs"));

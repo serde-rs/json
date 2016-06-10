@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::f64;
 use std::fmt::Debug;
+use std::str::FromStr;
 use std::i64;
 use std::marker::PhantomData;
 use std::u64;
@@ -8,6 +9,8 @@ use std::u64;
 use serde::de;
 use serde::ser;
 use serde::bytes::{ByteBuf, Bytes};
+use serde::de::from_primitive::ToPrimitive;
+use serde::d128;
 
 use serde_json::{
     self,
@@ -58,14 +61,19 @@ fn test_encode_ok<T>(errors: &[(T, &str)])
     where T: PartialEq + Debug + ser::Serialize,
 {
     for &(ref value, out) in errors {
+        println!("Testing if {:?} encodes to {:?}", value, out);
         let out = out.to_string();
-
-        let s = serde_json::to_string(value).unwrap();
-        assert_eq!(s, out);
 
         let v = to_value(&value);
         let s = serde_json::to_string(&v).unwrap();
+        println!("Is s' {:?} equal to {:?}", s, out);
         assert_eq!(s, out);
+        println!("yes it was");
+
+        let s = serde_json::to_string(value).unwrap();
+        println!("Is s {:?} equal to {:?}", s, out);
+        assert_eq!(s, out);
+        println!("yes it was");
     }
 }
 
@@ -117,9 +125,9 @@ fn test_write_i64() {
 
 #[test]
 fn test_write_f64() {
-    let min_string = format!("{:?}", f64::MIN);
-    let max_string = format!("{:?}", f64::MAX);
-    let epsilon_string = format!("{:?}", f64::EPSILON);
+    let min_string = format!("{}", f64::MIN.to_d128().unwrap());
+    let max_string = format!("{}", f64::MAX.to_d128().unwrap());
+    let epsilon_string = format!("{}", f64::EPSILON.to_d128().unwrap());
 
     let tests = &[
         (3.0, "3"),
@@ -248,7 +256,7 @@ fn test_write_list() {
     let long_test_list = Value::Array(vec![
         Value::Bool(false),
         Value::Null,
-        Value::Array(vec![Value::String("foo\nbar".to_string()), Value::F64(3.5)])]);
+        Value::Array(vec![Value::String("foo\nbar".to_string()), Value::Number(d128!(3.5))])]);
 
     test_encode_ok(&[
         (
@@ -736,7 +744,7 @@ fn test_parse_number_errors() {
         ("1e", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
         ("1e+", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
         ("1a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
-        ("1e777777777777777777777777777", Error::Syntax(ErrorCode::InvalidNumber, 1, 22)),
+        ("1e777777777777777777777777777", Error::Syntax(ErrorCode::InvalidNumber, 1, 29)),
     ]);
 }
 
@@ -792,6 +800,29 @@ fn test_parse_f64() {
         (&format!("{:?}", (i64::MIN as f64) - 1.0), (i64::MIN as f64) - 1.0),
         (&format!("{:?}", (u64::MAX as f64) + 1.0), (u64::MAX as f64) + 1.0),
         (&format!("{:?}", f64::EPSILON), f64::EPSILON),
+    ]);
+}
+
+#[test]
+fn test_parse_d128() {
+    test_parse_ok(vec![
+        ("0.0", d128!(0.0)),
+        ("3.0", d128!(3.0)),
+        ("3.00", d128!(3.0)),
+        ("3.1", d128!(3.1)),
+        ("-1.2", d128!(-1.2)),
+        ("0.4", d128!(0.4)),
+        ("0.4e5", d128!(0.4e5)),
+        ("0.4e+5", d128!(0.4e5)),
+        ("0.4e15", d128!(0.4e15)),
+        ("0.4e+15", d128!(0.4e15)),
+        ("0.4e-01", d128!(0.4e-1)),
+        (" 0.4e-01 ", d128!(0.4e-1)),
+        ("0.4e-001", d128!(0.4e-1)),
+        ("0.4e-0", d128!(0.4e0)),
+        ("0.00e00", d128!(0.0)),
+        ("0.00e+00", d128!(0.0)),
+        ("0.00e-00", d128!(0.0)),
     ]);
 }
 
@@ -923,7 +954,7 @@ fn test_parse_object() {
 #[test]
 fn test_parse_struct() {
     test_parse_err::<Outer>(vec![
-        ("5", Error::Syntax(ErrorCode::InvalidType(de::Type::U64), 1, 1)),
+        ("5", Error::Syntax(ErrorCode::InvalidType(de::Type::D128), 1, 1)),
         ("\"hello\"", Error::Syntax(ErrorCode::InvalidType(de::Type::Str), 1, 7)),
         ("{\"inner\": true}", Error::Syntax(ErrorCode::InvalidType(de::Type::Bool), 1, 14)),
         ("{}", Error::Syntax(ErrorCode::MissingField("inner"), 1, 2)),
@@ -1085,7 +1116,7 @@ fn test_missing_option_field() {
     assert_eq!(value, Foo { x: None });
 
     let value: Foo = from_value(Value::Object(treemap!(
-        "x".to_string() => Value::I64(5)
+        "x".to_string() => Value::Number(d128!(5))
     ))).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
@@ -1120,7 +1151,7 @@ fn test_missing_renamed_field() {
     assert_eq!(value, Foo { x: None });
 
     let value: Foo = from_value(Value::Object(treemap!(
-        "y".to_string() => Value::I64(5)
+        "y".to_string() => Value::Number(d128!(5))
     ))).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
@@ -1128,9 +1159,9 @@ fn test_missing_renamed_field() {
 #[test]
 fn test_find_path() {
     let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
-
-    assert!(obj.find_path(&["x", "a"]).unwrap() == &Value::U64(1));
-    assert!(obj.find_path(&["y"]).unwrap() == &Value::U64(2));
+    
+    assert!(obj.find_path(&["x", "a"]).unwrap() == &Value::Number(d128!(1.0)));
+    assert!(obj.find_path(&["y"]).unwrap() == &Value::Number(d128!(2)));
     assert!(obj.find_path(&["z"]).is_none());
 }
 
@@ -1138,8 +1169,8 @@ fn test_find_path() {
 fn test_lookup() {
     let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 
-    assert!(obj.lookup("x.a").unwrap() == &Value::U64(1));
-    assert!(obj.lookup("y").unwrap() == &Value::U64(2));
+    assert!(obj.lookup("x.a").unwrap() == &Value::Number(d128!(1)));
+    assert!(obj.lookup("y").unwrap() == &Value::Number(d128!(2)));
     assert!(obj.lookup("z").is_none());
 }
 
@@ -1403,13 +1434,13 @@ fn test_json_stream_newlines() {
     );
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(39));
+               &Value::Number(d128!(39)));
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(40));
+               &Value::Number(d128!(40)));
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(41));
+               &Value::Number(d128!(41)));
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(42));
+               &Value::Number(d128!(42)));
     assert!(parsed.next().is_none());
 }
 
@@ -1421,7 +1452,7 @@ fn test_json_stream_trailing_whitespaces() {
     );
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(42));
+               &Value::Number(d128!(42)));
     assert!(parsed.next().is_none());
 }
 
@@ -1433,7 +1464,7 @@ fn test_json_stream_truncated() {
     );
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(40));
+               &Value::Number(d128!(40)));
     assert!(parsed.next().unwrap().is_err());
     assert!(parsed.next().is_none());
 }

@@ -13,12 +13,12 @@ fn test_array_builder() {
         .push(2)
         .push(3)
         .unwrap();
-    assert_eq!(value, Value::Array(vec!(Value::U64(1), Value::U64(2), Value::U64(3))));
+    assert_eq!(value, Value::Array(vec!(Value::Number(d128!(1)), Value::Number(d128!(2)), Value::Number(d128!(3)))));
 
     let value = ArrayBuilder::new()
         .push_array(|bld| bld.push(1).push(2).push(3))
         .unwrap();
-    assert_eq!(value, Value::Array(vec!(Value::Array(vec!(Value::U64(1), Value::U64(2), Value::U64(3))))));
+    assert_eq!(value, Value::Array(vec!(Value::Array(vec!(Value::Number(d128!(1)), Value::Number(d128!(2)), Value::Number(d128!(3)))))));
 
     let value = ArrayBuilder::new()
         .push_object(|bld|
@@ -28,8 +28,8 @@ fn test_array_builder() {
         .unwrap();
 
     let mut map = BTreeMap::new();
-    map.insert("a".to_string(), Value::U64(1));
-    map.insert("b".to_string(), Value::U64(2));
+    map.insert("a".to_string(), Value::Number(d128!(1)));
+    map.insert("b".to_string(), Value::Number(d128!(2)));
     assert_eq!(value, Value::Array(vec!(Value::Object(map))));
 }
 
@@ -44,7 +44,7 @@ fn test_object_builder() {
         .unwrap();
 
     let mut map = BTreeMap::new();
-    map.insert("a".to_string(), Value::U64(1));
-    map.insert("b".to_string(), Value::U64(2));
+    map.insert("a".to_string(), Value::Number(d128!(1)));
+    map.insert("b".to_string(), Value::Number(d128!(2)));
     assert_eq!(value, Value::Object(map));
 }

@@ -4,6 +4,7 @@
 
 use std::io;
 use std::num::FpCategory;
+use std::str::FromStr;
 
 use serde::ser;
 use serde::d128;
@@ -128,12 +129,12 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     #[inline]
     fn serialize_f32(&mut self, value: f32) -> Result<()> {
-        fmt_f32_or_null(&mut self.writer, value).map_err(From::from)
+        self.serialize_d128(d128::from_str(&format!("{}", value)).unwrap())
     }
 
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<()> {
-        fmt_f64_or_null(&mut self.writer, value).map_err(From::from)
+        self.serialize_d128(d128::from_str(&format!("{}", value)).unwrap())
     }
 
     #[inline]
@@ -551,36 +552,6 @@ fn escape_char<W>(wr: &mut W, value: char) -> Result<()>
     let mut s = String::new();
     s.push(value);
     escape_bytes(wr, s.as_bytes())
-}
-
-fn fmt_f32_or_null<W>(wr: &mut W, value: f32) -> Result<()>
-    where W: io::Write
-{
-    match value.classify() {
-        FpCategory::Nan | FpCategory::Infinite => {
-            try!(wr.write_all(b"null"))
-        }
-        _ => {
-            try!(write!(wr, "{:?}", value))
-        }
-    }
-
-    Ok(())
-}
-
-fn fmt_f64_or_null<W>(wr: &mut W, value: f64) -> Result<()>
-    where W: io::Write
-{
-    match value.classify() {
-        FpCategory::Nan | FpCategory::Infinite => {
-            try!(wr.write_all(b"null"))
-        }
-        _ => {
-            try!(write!(wr, "{:?}", value))
-        }
-    }
-
-    Ok(())
 }
 
 /// Encode the specified struct into a json `[u8]` writer.
