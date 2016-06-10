@@ -113,7 +113,7 @@
 
 #![cfg_attr(feature = "nightly-testing", plugin(clippy))]
 #![deny(missing_docs)]
-extern crate num;
+extern crate num_traits;
 extern crate core;
 extern crate serde;
 extern crate decimal;

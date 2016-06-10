@@ -41,7 +41,7 @@ use std::io;
 use std::str;
 use std::vec;
 
-use num::NumCast;
+use num_traits::NumCast;
 use decimal::d128;
 use core::str::FromStr;
 
@@ -96,6 +96,8 @@ impl Value {
         Some(target)
     }
 
+    /// **Deprecated**: Use `Value.pointer()` and pointer syntax instead.
+    ///
     /// Looks up a value by path.
     ///
     /// This is a convenience method that splits the path by `'.'`
@@ -114,6 +116,46 @@ impl Value {
                 Some(t) => { target = t; },
                 None => return None
             }
+        }
+        Some(target)
+    }
+
+    /// Looks up a value by a JSON Pointer.
+    ///
+    /// JSON Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (JSON) document.
+    ///
+    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
+    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
+    /// addressed value is returned and if there is no such value `None` is
+    /// returned.
+    ///
+    /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
+    pub fn pointer<'a>(&'a self, pointer: &str) -> Option<&'a Value> {
+        fn parse_index(s: &str) -> Option<usize> {
+            if s.starts_with("+") || (s.starts_with("0") && s.len() != 1) {
+                return None
+            }
+            s.parse().ok()
+        }
+        if pointer == "" {
+            return Some(self);
+        }
+        if !pointer.starts_with('/') {
+            return None;
+        }
+        let mut target = self;
+        for escaped_token in pointer.split('/').skip(1) {
+            let token = escaped_token.replace("~1", "/").replace("~0", "~");
+            let target_opt = match target {
+                &Value::Object(ref map) => map.get(&token[..]),
+                &Value::Array(ref list) => parse_index(&token[..])
+                    .and_then(|x| list.get(x)),
+                _ => return None,
+            };
+            if let Some(t) = target_opt {
+                target = t;
+            } else { return None }
         }
         Some(target)
     }
@@ -353,6 +395,21 @@ impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut wr = WriterFormatter { inner: f };
         super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
+    }
+}
+
+impl fmt::Display for Value {
+    /// Serializes a json value into a string
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut wr = WriterFormatter { inner: f };
+        super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
+    }
+}
+
+impl str::FromStr for Value {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Value, Error> {
+        super::de::from_str(s)
     }
 }
 
@@ -879,29 +936,31 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
         }
     }
 
-    fn missing_field<V>(&mut self, _field: &'static str) -> Result<V, Error>
+    fn missing_field<V>(&mut self, field: &'static str) -> Result<V, Error>
         where V: de::Deserialize,
     {
-        // See if the type can deserialize from a unit.
-        struct UnitDeserializer;
+        struct MissingFieldDeserializer(&'static str);
 
-        impl de::Deserializer for UnitDeserializer {
-            type Error = Error;
+        impl de::Deserializer for MissingFieldDeserializer {
+            type Error = de::value::Error;
 
-            fn deserialize<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+            fn deserialize<V>(&mut self, _visitor: V) -> Result<V::Value, Self::Error>
                 where V: de::Visitor,
             {
-                visitor.visit_unit()
+                let &mut MissingFieldDeserializer(field) = self;
+                Err(de::value::Error::MissingField(field))
             }
 
-            fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value, Error>
+            fn deserialize_option<V>(&mut self,
+                                     mut visitor: V) -> Result<V::Value, Self::Error>
                 where V: de::Visitor,
             {
                 visitor.visit_none()
             }
         }
 
-        Ok(try!(de::Deserialize::deserialize(&mut UnitDeserializer)))
+        let mut de = MissingFieldDeserializer(field);
+        Ok(try!(de::Deserialize::deserialize(&mut de)))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -941,4 +1000,16 @@ pub fn from_value<T>(value: Value) -> Result<T, Error>
 {
     let mut de = Deserializer::new(value);
     de::Deserialize::deserialize(&mut de)
+}
+
+/// A trait for converting values to JSON
+pub trait ToJson {
+    /// Converts the value of `self` to an instance of JSON
+    fn to_json(&self) -> Value;
+}
+
+impl<T: ?Sized> ToJson for T where T: ser::Serialize {
+    fn to_json(&self) -> Value {
+        to_value(&self)
+    }
 }
