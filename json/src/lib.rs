@@ -116,7 +116,6 @@
 extern crate num_traits;
 extern crate core;
 extern crate serde;
-extern crate decimal;
 
 pub use self::de::{
     Deserializer,

@@ -3,7 +3,6 @@
 //! This module provides for JSON deserialization with the type `Deserializer`.
 
 use std::char;
-use std::i32;
 use std::io;
 use std::str;
 use std::marker::PhantomData;
@@ -193,58 +192,45 @@ impl<Iter> Deserializer<Iter>
         let mut trailing_chars = false;
         loop {
             match try!(self.peek_or_null()) {
-              ch @ b'0' => {
-                trailing_chars = false;
-                match leading_zeros {
-                  1 => {
-                    println!("Leading zeros {:?}", buf);
-                    return Err(self.error(ErrorCode::InvalidNumber))
-                  },
-                  -1 => {
-                    self.eat_char();
-                    buf.push(ch)
-                  },
-                  _ => {
-                    leading_zeros += 1;
-                    self.eat_char();
-                    buf.push(ch)
-                  }
-                }
-              },
-              ch @ b'1' ... b'9' => {
-                leading_zeros = -1;
-                trailing_chars = false;
-                self.eat_char();
-                buf.push(ch)
-              },
-              ch @ b'.' | ch @ b'-' | ch @ b'e' | ch @ b'+' => {
-                leading_zeros = -1;
-                trailing_chars = true;
-                self.eat_char();
-                buf.push(ch)
-              },
-              _ => {
-                if trailing_chars {
-                  println!("Trailing chars {:?}", buf);
-                  return Err(self.error(ErrorCode::InvalidNumber))
-                };
-                let whole = str::from_utf8(&buf).unwrap();
-                println!("Whole is {:?}", whole);
-                let m = match d128::from_str(whole) {
-                  Ok(d) => {
-                    if !d.is_nan() && !d.is_infinite() {
-                      println!("Whole was {:?}, d128 was {:?}", whole, d);
-                      visitor.visit_d128(d)
-                    }else{
-                      println!("NaN or Inf {:?}", whole);
-                      Err(self.error(ErrorCode::InvalidNumber))
+                ch @ b'0' => {
+                    trailing_chars = false;
+                    match leading_zeros {
+                        1 => return Err(self.error(ErrorCode::InvalidNumber)),
+                        -1 => {
+                            self.eat_char();
+                            buf.push(ch)
+                        },
+                        _ => {
+                            leading_zeros += 1;
+                            self.eat_char();
+                            buf.push(ch)
+                        }
                     }
-                  },
-                  _ => Err(self.error(ErrorCode::InvalidNumber))
-                };
-                return m
-              }
-           }
+                },
+                ch @ b'1' ... b'9' => {
+                    leading_zeros = -1;
+                    trailing_chars = false;
+                    self.eat_char();
+                    buf.push(ch)
+                },
+                ch @ b'.' | ch @ b'-' | ch @ b'e' | ch @ b'+' => {
+                    leading_zeros = -1;
+                    trailing_chars = true;
+                    self.eat_char();
+                    buf.push(ch)
+                },
+                _ => {
+                    if trailing_chars {
+                        return Err(self.error(ErrorCode::InvalidNumber))
+                    };
+                    let whole = str::from_utf8(&buf).unwrap();
+                    let m = match d128::from_str(whole) {
+                        Ok(d) if !d.is_nan() && !d.is_infinite() => visitor.visit_d128(d),
+                        _ => Err(self.error(ErrorCode::InvalidNumber))
+                    };
+                    return m
+                }
+            }
         }
     }
 

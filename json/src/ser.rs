@@ -3,11 +3,10 @@
 //! This module provides for JSON serialization with the type `Serializer`.
 
 use std::io;
-use std::num::FpCategory;
-use std::str::FromStr;
 
 use serde::ser;
 use serde::d128;
+use serde::de::from_primitive::ToPrimitive;
 use super::error::{Error, ErrorCode, Result};
 
 /// A structure for serializing Rust values into JSON.
@@ -129,12 +128,12 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     #[inline]
     fn serialize_f32(&mut self, value: f32) -> Result<()> {
-        self.serialize_d128(d128::from_str(&format!("{}", value)).unwrap())
+        self.serialize_d128(value.to_d128().unwrap())
     }
 
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<()> {
-        self.serialize_d128(d128::from_str(&format!("{}", value)).unwrap())
+        self.serialize_d128(value.to_d128().unwrap())
     }
 
     #[inline]

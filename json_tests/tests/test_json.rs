@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 use std::f64;
 use std::fmt::Debug;
-use std::str::FromStr;
 use std::i64;
 use std::marker::PhantomData;
 use std::u64;
@@ -10,7 +9,6 @@ use serde::de;
 use serde::ser;
 use serde::bytes::{ByteBuf, Bytes};
 use serde::de::from_primitive::ToPrimitive;
-use serde::d128;
 
 use serde_json::{
     self,
@@ -1494,15 +1492,15 @@ fn test_json_pointer() {
                            Value::String("baz".to_owned())]));
     assert_eq!(data.pointer("/foo/0").unwrap(),
         &Value::String("bar".to_owned()));
-    assert_eq!(data.pointer("/").unwrap(), &Value::U64(0));
-    assert_eq!(data.pointer("/a~1b").unwrap(), &Value::U64(1));
-    assert_eq!(data.pointer("/c%d").unwrap(), &Value::U64(2));
-    assert_eq!(data.pointer("/e^f").unwrap(), &Value::U64(3));
-    assert_eq!(data.pointer("/g|h").unwrap(), &Value::U64(4));
-    assert_eq!(data.pointer("/i\\j").unwrap(), &Value::U64(5));
-    assert_eq!(data.pointer("/k\"l").unwrap(), &Value::U64(6));
-    assert_eq!(data.pointer("/ ").unwrap(), &Value::U64(7));
-    assert_eq!(data.pointer("/m~0n").unwrap(), &Value::U64(8));
+    assert_eq!(data.pointer("/").unwrap(), &Value::Number(d128!(0)));
+    assert_eq!(data.pointer("/a~1b").unwrap(), &Value::Number(d128!(1)));
+    assert_eq!(data.pointer("/c%d").unwrap(), &Value::Number(d128!(2)));
+    assert_eq!(data.pointer("/e^f").unwrap(), &Value::Number(d128!(3)));
+    assert_eq!(data.pointer("/g|h").unwrap(), &Value::Number(d128!(4)));
+    assert_eq!(data.pointer("/i\\j").unwrap(), &Value::Number(d128!(5)));
+    assert_eq!(data.pointer("/k\"l").unwrap(), &Value::Number(d128!(6)));
+    assert_eq!(data.pointer("/ ").unwrap(), &Value::Number(d128!(7)));
+    assert_eq!(data.pointer("/m~0n").unwrap(), &Value::Number(d128!(8)));
     // Invalid pointers
     assert!(data.pointer("/unknown").is_none());
     assert!(data.pointer("/e^f/ertz").is_none());

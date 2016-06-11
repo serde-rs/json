@@ -18,9 +18,9 @@
 //! It is also possible to deserialize from a `Value` type:
 //!
 //! ```rust
-//! extern crate serde_json;
 //! #[macro_use]
-//! extern crate decimal;
+//! extern crate serde;
+//! extern crate serde_json;
 //!
 //! use serde_json::Value;
 //! use std::collections::BTreeMap;
@@ -41,12 +41,10 @@ use std::io;
 use std::str;
 use std::vec;
 
-use num_traits::NumCast;
-use decimal::d128;
-use core::str::FromStr;
-
 use serde::de;
 use serde::ser;
+use serde::d128;
+use serde::de::from_primitive::ToPrimitive;
 
 use error::Error;
 
@@ -454,7 +452,7 @@ impl ser::Serializer for Serializer {
     #[inline]
     fn serialize_i64(&mut self, value: i64) -> Result<(), Error> {
         self.state.push(State::Value(Value::Number(
-          d128::from_str(&format!("{:?}", value)).unwrap()
+            value.to_d128().unwrap()
         )));
         Ok(())
     }
@@ -462,7 +460,7 @@ impl ser::Serializer for Serializer {
     #[inline]
     fn serialize_u64(&mut self, value: u64) -> Result<(), Error> {
         self.state.push(State::Value(Value::Number(
-          d128::from_str(&format!("{:?}", value)).unwrap()
+            value.to_d128().unwrap()
         )));
         Ok(())
     }
@@ -470,7 +468,7 @@ impl ser::Serializer for Serializer {
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<(), Error> {
         self.state.push(State::Value(Value::Number(
-          d128::from_str(&format!("{:?}", value)).unwrap()
+            value.to_d128().unwrap()
         )));
         Ok(())
     }
