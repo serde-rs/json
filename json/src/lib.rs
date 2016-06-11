@@ -10,9 +10,7 @@
 //! details):
 //!
 //! * `Boolean`: equivalent to rust's `bool`
-//! * `I64`: equivalent to rust's `i64`
-//! * `U64`: equivalent to rust's `u64`
-//! * `F64`: equivalent to rust's `f64`
+//! * `Number`: represented as a `d128` from the decimal crate.
 //! * `String`: equivalent to rust's `String`
 //! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
 //!    same array
@@ -99,18 +97,17 @@
 //!
 //!     println!("array? {:?}", foo.as_array());
 //!     // array? None
-//!     println!("u64? {:?}", foo.as_u64());
-//!     // u64? Some(13u64)
+//!     println!("d128? {:?}", foo.as_d128());
 //!
 //!     for (key, value) in obj.iter() {
 //!         println!("{}: {}", key, match *value {
-//!             Value::U64(v) => format!("{} (u64)", v),
+//!             Value::Number(v) => format!("{} (d128)", v),
 //!             Value::String(ref v) => format!("{} (string)", v),
 //!             _ => format!("other")
 //!         });
 //!     }
 //!     // bar: baz (string)
-//!     // foo: 13 (u64)
+//!     // foo: 13 (d128)
 //! }
 //! ```
 

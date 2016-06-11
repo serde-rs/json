@@ -3,13 +3,14 @@
 //! This module provides for JSON deserialization with the type `Deserializer`.
 
 use std::char;
-use std::i32;
 use std::io;
 use std::str;
 use std::marker::PhantomData;
 
 use serde::de;
 use serde::iter::LineColIterator;
+use serde::d128;
+use core::str::FromStr;
 
 use super::error::{Error, ErrorCode, Result};
 
@@ -140,12 +141,8 @@ impl<Iter> Deserializer<Iter>
                 try!(self.parse_ident(b"alse"));
                 visitor.visit_bool(false)
             }
-            b'-' => {
-                self.eat_char();
-                self.parse_integer(false, visitor)
-            }
-            b'0' ... b'9' => {
-                self.parse_integer(true, visitor)
+            b'-' | b'0' ... b'9' => {
+                self.parse_d128(visitor)
             }
             b'"' => {
                 self.eat_char();
@@ -183,214 +180,57 @@ impl<Iter> Deserializer<Iter>
         Ok(())
     }
 
-    fn parse_integer<V>(&mut self, pos: bool, visitor: V) -> Result<V::Value>
+    fn parse_d128<V>(&mut self, mut visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        match try!(self.next_char_or_null()) {
-            b'0' => {
-                // There can be only one leading '0'.
-                match try!(self.peek_or_null()) {
-                    b'0' ... b'9' => {
-                        Err(self.error(ErrorCode::InvalidNumber))
-                    }
-                    _ => {
-                        self.parse_number(pos, 0, visitor)
-                    }
-                }
-            },
-            c @ b'1' ... b'9' => {
-                let mut res: u64 = (c as u64) - ('0' as u64);
-
-                loop {
-                    match try!(self.peek_or_null()) {
-                        c @ b'0' ... b'9' => {
+        // Do I really need a new buffer?
+        // Can I match more than one thing on a let arm?
+        // is let m and then return m the way to go? Can it be a oneliner?
+        // Indentation is 2 spaces wtf.
+        let mut buf = vec![];
+        let mut leading_zeros = 0; 
+        let mut trailing_chars = false;
+        loop {
+            match try!(self.peek_or_null()) {
+                ch @ b'0' => {
+                    trailing_chars = false;
+                    match leading_zeros {
+                        1 => return Err(self.error(ErrorCode::InvalidNumber)),
+                        -1 => {
                             self.eat_char();
-
-                            let digit = (c as u64) - ('0' as u64);
-
-                            // We need to be careful with overflow. If we can, try to keep the
-                            // number as a `u64` until we grow too large. At that point, switch to
-                            // parsing the value as a `f64`.
-                            match res.checked_mul(10).and_then(|val| val.checked_add(digit)) {
-                                Some(res_) => { res = res_; }
-                                None => {
-                                    return self.parse_float(
-                                        pos,
-                                        (res as f64) * 10.0 + (digit as f64),
-                                        visitor);
-                                }
-                            }
-                        }
+                            buf.push(ch)
+                        },
                         _ => {
-                            return self.parse_number(pos, res, visitor);
+                            leading_zeros += 1;
+                            self.eat_char();
+                            buf.push(ch)
                         }
                     }
-                }
-            }
-            _ => {
-                Err(self.error(ErrorCode::InvalidNumber))
-            }
-        }
-    }
-
-    fn parse_float<V>(&mut self,
-                      pos: bool,
-                      mut res: f64,
-                      mut visitor: V) -> Result<V::Value>
-        where V: de::Visitor,
-    {
-        loop {
-            match try!(self.next_char_or_null()) {
-                c @ b'0' ... b'9' => {
-                    let digit = (c as u64) - ('0' as u64);
-
-                    res *= 10.0;
-                    res += digit as f64;
-                }
+                },
+                ch @ b'1' ... b'9' => {
+                    leading_zeros = -1;
+                    trailing_chars = false;
+                    self.eat_char();
+                    buf.push(ch)
+                },
+                ch @ b'.' | ch @ b'-' | ch @ b'e' | ch @ b'+' => {
+                    leading_zeros = -1;
+                    trailing_chars = true;
+                    self.eat_char();
+                    buf.push(ch)
+                },
                 _ => {
-                    match try!(self.peek_or_null()) {
-                        b'.' => {
-                            return self.parse_decimal(pos, res, visitor);
-                        }
-                        b'e' | b'E' => {
-                            return self.parse_exponent(pos, res, visitor);
-                        }
-                        _ => {
-                            if !pos {
-                                res = -res;
-                            }
-
-                            return visitor.visit_f64(res);
-                        }
-                    }
+                    if trailing_chars {
+                        return Err(self.error(ErrorCode::InvalidNumber))
+                    };
+                    let whole = str::from_utf8(&buf).unwrap();
+                    let m = match d128::from_str(whole) {
+                        Ok(d) if !d.is_nan() && !d.is_infinite() => visitor.visit_d128(d),
+                        _ => Err(self.error(ErrorCode::InvalidNumber))
+                    };
+                    return m
                 }
             }
-        }
-    }
-
-    fn parse_number<V>(&mut self,
-                       pos: bool,
-                       res: u64,
-                       mut visitor: V) -> Result<V::Value>
-        where V: de::Visitor,
-    {
-        match try!(self.peek_or_null()) {
-            b'.' => {
-                self.parse_decimal(pos, res as f64, visitor)
-            }
-            b'e' | b'E' => {
-                self.parse_exponent(pos, res as f64, visitor)
-            }
-            _ => {
-                if pos {
-                    visitor.visit_u64(res)
-                } else {
-                    let res_i64 = (res as i64).wrapping_neg();
-
-                    // Convert into a float if we underflow.
-                    if res_i64 > 0 {
-                        visitor.visit_f64(-(res as f64))
-                    } else {
-                        visitor.visit_i64(res_i64)
-                    }
-                }
-            }
-        }
-    }
-
-    fn parse_decimal<V>(&mut self,
-                        pos: bool,
-                        mut res: f64,
-                        mut visitor: V) -> Result<V::Value>
-        where V: de::Visitor,
-    {
-        self.eat_char();
-
-        let mut dec = 0.1;
-
-        // Make sure a digit follows the decimal place.
-        match try!(self.next_char_or_null()) {
-            c @ b'0' ... b'9' => {
-                res += (((c as u64) - (b'0' as u64)) as f64) * dec;
-            }
-             _ => { return Err(self.error(ErrorCode::InvalidNumber)); }
-        }
-
-        loop {
-            match try!(self.peek_or_null()) {
-                c @ b'0' ... b'9' => {
-                    self.eat_char();
-
-                    dec /= 10.0;
-                    res += (((c as u64) - (b'0' as u64)) as f64) * dec;
-                }
-                _ => { break; }
-            }
-        }
-
-        match try!(self.peek_or_null()) {
-            b'e' | b'E' => {
-                self.parse_exponent(pos, res, visitor)
-            }
-            _ => {
-                if pos {
-                    visitor.visit_f64(res)
-                } else {
-                    visitor.visit_f64(-res)
-                }
-            }
-        }
-
-    }
-
-    fn parse_exponent<V>(&mut self,
-                         pos: bool,
-                         mut res: f64,
-                         mut visitor: V) -> Result<V::Value>
-        where V: de::Visitor,
-    {
-        self.eat_char();
-
-        let pos_exp = match try!(self.peek_or_null()) {
-            b'+' => { self.eat_char(); true }
-            b'-' => { self.eat_char(); false }
-            _ => { true }
-        };
-
-        // Make sure a digit follows the exponent place.
-        let mut exp = match try!(self.next_char_or_null()) {
-            c @ b'0' ... b'9' => { (c as u64) - (b'0' as u64) }
-            _ => { return Err(self.error(ErrorCode::InvalidNumber)); }
-        };
-
-        loop {
-            match try!(self.peek_or_null()) {
-                c @ b'0' ... b'9' => {
-                    self.eat_char();
-
-                    exp = try_or_invalid!(self, exp.checked_mul(10));
-                    exp = try_or_invalid!(self, exp.checked_add((c as u64) - (b'0' as u64)));
-                }
-                _ => { break; }
-            }
-        }
-
-        let exp = if exp <= i32::MAX as u64 {
-            10_f64.powi(exp as i32)
-        } else {
-            return Err(self.error(ErrorCode::InvalidNumber));
-        };
-
-        if pos_exp {
-            res *= exp;
-        } else {
-            res /= exp;
-        }
-
-        if pos {
-            visitor.visit_f64(res)
-        } else {
-            visitor.visit_f64(-res)
         }
     }
 

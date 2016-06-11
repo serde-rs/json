@@ -3,9 +3,10 @@
 //! This module provides for JSON serialization with the type `Serializer`.
 
 use std::io;
-use std::num::FpCategory;
 
 use serde::ser;
+use serde::d128;
+use serde::de::from_primitive::ToPrimitive;
 use super::error::{Error, ErrorCode, Result};
 
 /// A structure for serializing Rust values into JSON.
@@ -127,12 +128,17 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     #[inline]
     fn serialize_f32(&mut self, value: f32) -> Result<()> {
-        fmt_f32_or_null(&mut self.writer, value).map_err(From::from)
+        self.serialize_d128(value.to_d128().unwrap())
     }
 
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<()> {
-        fmt_f64_or_null(&mut self.writer, value).map_err(From::from)
+        self.serialize_d128(value.to_d128().unwrap())
+    }
+
+    #[inline]
+    fn serialize_d128(&mut self, value: d128) -> Result<()> {
+        write!(&mut self.writer, "{}", value).map_err(From::from)
     }
 
     #[inline]
@@ -332,6 +338,10 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_f64(&mut self, _value: f64) -> Result<()> {
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    }
+
+    fn serialize_d128(&mut self, _value: d128) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
@@ -541,36 +551,6 @@ fn escape_char<W>(wr: &mut W, value: char) -> Result<()>
     let mut s = String::new();
     s.push(value);
     escape_bytes(wr, s.as_bytes())
-}
-
-fn fmt_f32_or_null<W>(wr: &mut W, value: f32) -> Result<()>
-    where W: io::Write
-{
-    match value.classify() {
-        FpCategory::Nan | FpCategory::Infinite => {
-            try!(wr.write_all(b"null"))
-        }
-        _ => {
-            try!(write!(wr, "{:?}", value))
-        }
-    }
-
-    Ok(())
-}
-
-fn fmt_f64_or_null<W>(wr: &mut W, value: f64) -> Result<()>
-    where W: io::Write
-{
-    match value.classify() {
-        FpCategory::Nan | FpCategory::Infinite => {
-            try!(wr.write_all(b"null"))
-        }
-        _ => {
-            try!(write!(wr, "{:?}", value))
-        }
-    }
-
-    Ok(())
 }
 
 /// Encode the specified struct into a json `[u8]` writer.
