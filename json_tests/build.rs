@@ -2,7 +2,6 @@ extern crate skeptic;
 
 #[cfg(feature = "with-syntex")]
 mod with_syntex {
-    extern crate syntex;
     extern crate serde_codegen;
     extern crate indoc;
 
@@ -19,11 +18,8 @@ mod with_syntex {
             let src = Path::new(src);
             let dst = Path::new(&out_dir).join(dst);
 
-            let mut registry = syntex::Registry::new();
-
-            serde_codegen::register(&mut registry);
-            indoc::register(&mut registry);
-            registry.expand("", &src, &dst).unwrap();
+            serde_codegen::expand(&src, &dst).unwrap();
+            indoc::expand(&dst, &dst).unwrap();
         }
     }
 }
