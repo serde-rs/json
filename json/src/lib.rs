@@ -16,7 +16,7 @@
 //! * `String`: equivalent to rust's `String`
 //! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
 //!    same array
-//! * `Object`: equivalent to rust's `BTreeMap<String, serde_json::Value>`
+//! * `Object`: equivalent to rust's `serde_json::Map<String, serde_json::Value>`
 //! * `Null`
 //!
 //! An object is a series of string keys mapping to values, in `"key": value` format.  Arrays are
@@ -119,6 +119,8 @@
 extern crate num_traits;
 extern crate core;
 extern crate serde;
+#[cfg(feature = "preserve_order")]
+extern crate linked_hash_map;
 
 pub use self::de::{
     Deserializer,
@@ -139,7 +141,7 @@ pub use self::ser::{
     to_string_pretty,
     escape_str,
 };
-pub use self::value::{Value, to_value, from_value};
+pub use self::value::{Value, Map, to_value, from_value};
 
 pub mod builder;
 pub mod de;

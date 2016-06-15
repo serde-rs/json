@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::f64;
 use std::fmt::Debug;
 use std::i64;
@@ -13,6 +12,7 @@ use serde_json::{
     self,
     StreamDeserializer,
     Value,
+    Map,
     from_str,
     from_value,
     to_value,
@@ -22,11 +22,11 @@ use serde_json::error::{Error, ErrorCode};
 
 macro_rules! treemap {
     () => {
-        BTreeMap::new()
+        Map::new()
     };
     ($($k:expr => $v:expr),+) => {
         {
-            let mut m = BTreeMap::new();
+            let mut m = Map::new();
             $(m.insert($k, $v);)+
             m
         }
@@ -871,7 +871,7 @@ fn test_parse_list() {
 
 #[test]
 fn test_parse_object() {
-    test_parse_err::<BTreeMap<String, u32>>(vec![
+    test_parse_err::<Map<String, u32>>(vec![
         ("{", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 1)),
         ("{ ", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 2)),
         ("{1", Error::Syntax(ErrorCode::KeyMustBeAString, 1, 2)),
@@ -1063,7 +1063,7 @@ fn test_parse_trailing_whitespace() {
 
 #[test]
 fn test_multiline_errors() {
-    test_parse_err::<BTreeMap<String, String>>(vec![
+    test_parse_err::<Map<String, String>>(vec![
         ("{\n  \"foo\":\n \"bar\"", Error::Syntax(ErrorCode::EOFWhileParsingObject, 3, 6)),
     ]);
 }
@@ -1227,9 +1227,9 @@ fn test_serialize_seq_with_no_len() {
 #[test]
 fn test_serialize_map_with_no_len() {
     #[derive(Clone, Debug, PartialEq)]
-    struct Map<K, V>(BTreeMap<K, V>);
+    struct MyMap<K, V>(Map<K, V>);
 
-    impl<K, V> ser::Serialize for Map<K, V>
+    impl<K, V> ser::Serialize for MyMap<K, V>
         where K: ser::Serialize + Ord,
               V: ser::Serialize,
     {
@@ -1242,27 +1242,27 @@ fn test_serialize_map_with_no_len() {
     }
 
     struct Visitor<K, V> {
-        marker: PhantomData<Map<K, V>>,
+        marker: PhantomData<MyMap<K, V>>,
     }
 
     impl<K, V> de::Visitor for Visitor<K, V>
         where K: de::Deserialize + Eq + Ord,
               V: de::Deserialize,
     {
-        type Value = Map<K, V>;
+        type Value = MyMap<K, V>;
 
         #[inline]
-        fn visit_unit<E>(&mut self) -> Result<Map<K, V>, E>
+        fn visit_unit<E>(&mut self) -> Result<MyMap<K, V>, E>
             where E: de::Error,
         {
-            Ok(Map(BTreeMap::new()))
+            Ok(MyMap(Map::new()))
         }
 
         #[inline]
-        fn visit_map<Visitor>(&mut self, mut visitor: Visitor) -> Result<Map<K, V>, Visitor::Error>
+        fn visit_map<Visitor>(&mut self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
             where Visitor: de::MapVisitor,
         {
-            let mut values = BTreeMap::new();
+            let mut values = Map::new();
 
             while let Some((key, value)) = try!(visitor.visit()) {
                 values.insert(key, value);
@@ -1270,25 +1270,25 @@ fn test_serialize_map_with_no_len() {
 
             try!(visitor.end());
 
-            Ok(Map(values))
+            Ok(MyMap(values))
         }
     }
 
-    impl<K, V> de::Deserialize for Map<K, V>
+    impl<K, V> de::Deserialize for MyMap<K, V>
         where K: de::Deserialize + Eq + Ord,
               V: de::Deserialize,
     {
-        fn deserialize<D>(deserializer: &mut D) -> Result<Map<K, V>, D::Error>
+        fn deserialize<D>(deserializer: &mut D) -> Result<MyMap<K, V>, D::Error>
             where D: de::Deserializer,
         {
             deserializer.deserialize_map(Visitor { marker: PhantomData })
         }
     }
 
-    let mut map = BTreeMap::new();
-    map.insert("a", Map(BTreeMap::new()));
-    map.insert("b", Map(BTreeMap::new()));
-    let map: Map<_, Map<u32, u32>> = Map(map);
+    let mut map = Map::new();
+    map.insert("a", MyMap(Map::new()));
+    map.insert("b", MyMap(Map::new()));
+    let map: MyMap<_, MyMap<u32, u32>> = MyMap(map);
 
     test_encode_ok(&[
         (

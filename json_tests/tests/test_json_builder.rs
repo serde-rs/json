@@ -1,6 +1,5 @@
-use std::collections::BTreeMap;
 
-use serde_json::value::Value;
+use serde_json::value::{Value, Map};
 use serde_json::builder::{ArrayBuilder, ObjectBuilder};
 
 #[test]
@@ -27,7 +26,7 @@ fn test_array_builder() {
                 .insert("b".to_string(), 2))
         .unwrap();
 
-    let mut map = BTreeMap::new();
+    let mut map = Map::new();
     map.insert("a".to_string(), Value::U64(1));
     map.insert("b".to_string(), Value::U64(2));
     assert_eq!(value, Value::Array(vec!(Value::Object(map))));
@@ -36,14 +35,14 @@ fn test_array_builder() {
 #[test]
 fn test_object_builder() {
     let value = ObjectBuilder::new().unwrap();
-    assert_eq!(value, Value::Object(BTreeMap::new()));
+    assert_eq!(value, Value::Object(Map::new()));
 
     let value = ObjectBuilder::new()
         .insert("a".to_string(), 1)
         .insert("b".to_string(), 2)
         .unwrap();
 
-    let mut map = BTreeMap::new();
+    let mut map = Map::new();
     map.insert("a".to_string(), Value::U64(1));
     map.insert("b".to_string(), Value::U64(2));
     assert_eq!(value, Value::Object(map));
