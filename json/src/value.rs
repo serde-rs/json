@@ -54,9 +54,17 @@ use error::Error;
 #[cfg(not(feature = "preserve_order"))]
 pub type Map<K, V> = BTreeMap<K, V>;
 
+/// Represents the IntoIter type.
+#[cfg(not(feature = "preserve_order"))]
+pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
+
 /// Represents a key/value type.
 #[cfg(feature = "preserve_order")]
 pub type Map<K, V> = linked_hash_map::LinkedHashMap<K, V>;
+
+/// Represents the IntoIter type.
+#[cfg(feature = "preserve_order")]
+pub type MapIntoIter<K, V> = linked_hash_map::IntoIter<K, V>;
 
 /// Represents a JSON value
 #[derive(Clone, PartialEq)]
@@ -979,18 +987,9 @@ impl<'a> de::SeqVisitor for SeqDeserializer<'a> {
     }
 }
 
-#[cfg(not(feature = "preserve_order"))]
 struct MapDeserializer<'a> {
     de: &'a mut Deserializer,
-    iter: btree_map::IntoIter<String, Value>,
-    value: Option<Value>,
-    len: usize,
-}
-
-#[cfg(feature = "preserve_order")]
-struct MapDeserializer<'a> {
-    de: &'a mut Deserializer,
-    iter: linked_hash_map::Iter<'a, String, Value>,
+    iter: MapIntoIter<String, Value>,
     value: Option<Value>,
     len: usize,
 }
