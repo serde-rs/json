@@ -53,18 +53,22 @@ use error::Error;
 /// Represents a key/value type.
 #[cfg(not(feature = "preserve_order"))]
 pub type Map<K, V> = BTreeMap<K, V>;
-
-/// Represents the IntoIter type.
-#[cfg(not(feature = "preserve_order"))]
-pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
-
 /// Represents a key/value type.
 #[cfg(feature = "preserve_order")]
 pub type Map<K, V> = linked_hash_map::LinkedHashMap<K, V>;
 
 /// Represents the IntoIter type.
+#[cfg(not(feature = "preserve_order"))]
+pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
+/// Represents the IntoIter type.
 #[cfg(feature = "preserve_order")]
 pub type MapIntoIter<K, V> = linked_hash_map::IntoIter<K, V>;
+
+#[cfg(not(feature = "preserve_order"))]
+type Visitor<K, T> = de::impls::BTreeMapVisitor<K, T>;
+#[cfg(feature = "preserve_order")]
+type Visitor<K, T> = linked_hash_map::serde::LinkedHashMapVisitor<K, T>;
+
 
 /// Represents a JSON value
 #[derive(Clone, PartialEq)]
@@ -446,21 +450,11 @@ impl de::Deserialize for Value {
                 Ok(Value::Array(values))
             }
 
-            #[cfg(not(feature = "preserve_order"))]
             #[inline]
             fn visit_map<V>(&mut self, visitor: V) -> Result<Value, V::Error>
                 where V: de::MapVisitor,
             {
-                let values = try!(de::impls::BTreeMapVisitor::new().visit_map(visitor));
-                Ok(Value::Object(values))
-            }
-
-            #[cfg(feature = "preserve_order")]
-            #[inline]
-            fn visit_map<V>(&mut self, visitor: V) -> Result<Value, V::Error>
-                where V: de::MapVisitor,
-            {
-                let values = try!(linked_hash_map::serde::LinkedHashMapVisitor::new().visit_map(visitor));
+                let values = try!(Visitor::new().visit_map(visitor));
                 Ok(Value::Object(values))
             }
         }
@@ -599,8 +593,6 @@ impl ser::Serializer for Serializer {
         self.state.push(State::Value(Value::Null));
         Ok(())
     }
-
-    #[inline]
 
     #[inline]
     fn serialize_unit_variant(&mut self,
@@ -856,8 +848,8 @@ impl de::Deserializer for Deserializer {
             Some(_) => Err(de::Error::invalid_type(de::Type::Map)),
             None => visitor.visit(VariantDeserializer {
                 de: self,
-                val: Some(value.clone()),
-                variant: Some(Value::String(variant.clone())),
+                val: Some(value),
+                variant: Some(Value::String(variant)),
             }),
         }
     }
@@ -1003,8 +995,8 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
         match self.iter.next() {
             Some((key, value)) => {
                 self.len -= 1;
-                self.value = Some(value.clone());
-                self.de.value = Some(Value::String(key.clone()));
+                self.value = Some(value);
+                self.de.value = Some(Value::String(key));
                 Ok(Some(try!(de::Deserialize::deserialize(self.de))))
             }
             None => Ok(None),
