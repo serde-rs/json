@@ -10,7 +10,6 @@ readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 
 [features]
-#default = ["preserve_order"]
 nightly-testing = ["clippy"]
 preserve_order = ["linked-hash-map", "linked-hash-map/serde_impl"]
 
