@@ -20,20 +20,24 @@
 //! ```rust
 //! extern crate serde_json;
 //!
-//! use serde_json::Value;
-//! use std::collections::BTreeMap;
+//! use serde_json::{Value, Map};
 //!
 //! fn main() {
-//!     let mut map = BTreeMap::new();
+//!     let mut map = Map::new();
 //!     map.insert(String::from("x"), Value::F64(1.0));
 //!     map.insert(String::from("y"), Value::F64(2.0));
 //!     let value = Value::Object(map);
 //!
-//!     let map: BTreeMap<String, f64> = serde_json::from_value(value).unwrap();
+//!     let map: Map<String, f64> = serde_json::from_value(value).unwrap();
 //! }
 //! ```
 
+#[cfg(not(feature = "preserve_order"))]
 use std::collections::{BTreeMap, btree_map};
+
+#[cfg(feature = "preserve_order")]
+use linked_hash_map;
+
 use std::fmt;
 use std::io;
 use std::str;
@@ -45,6 +49,26 @@ use serde::de;
 use serde::ser;
 
 use error::Error;
+
+/// Represents a key/value type.
+#[cfg(not(feature = "preserve_order"))]
+pub type Map<K, V> = BTreeMap<K, V>;
+/// Represents a key/value type.
+#[cfg(feature = "preserve_order")]
+pub type Map<K, V> = linked_hash_map::LinkedHashMap<K, V>;
+
+/// Represents the IntoIter type.
+#[cfg(not(feature = "preserve_order"))]
+pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
+/// Represents the IntoIter type.
+#[cfg(feature = "preserve_order")]
+pub type MapIntoIter<K, V> = linked_hash_map::IntoIter<K, V>;
+
+#[cfg(not(feature = "preserve_order"))]
+type Visitor<K, T> = de::impls::BTreeMapVisitor<K, T>;
+#[cfg(feature = "preserve_order")]
+type Visitor<K, T> = linked_hash_map::serde::LinkedHashMapVisitor<K, T>;
+
 
 /// Represents a JSON value
 #[derive(Clone, PartialEq)]
@@ -71,7 +95,7 @@ pub enum Value {
     Array(Vec<Value>),
 
     /// Represents a JSON object
-    Object(BTreeMap<String, Value>),
+    Object(Map<String, Value>),
 }
 
 impl Value {
@@ -190,18 +214,18 @@ impl Value {
         self.as_object().is_some()
     }
 
-    /// If the `Value` is an Object, returns the associated BTreeMap.
+    /// If the `Value` is an Object, returns the associated Map.
     /// Returns None otherwise.
-    pub fn as_object<'a>(&'a self) -> Option<&'a BTreeMap<String, Value>> {
+    pub fn as_object<'a>(&'a self) -> Option<&'a Map<String, Value>> {
         match self {
             &Value::Object(ref map) => Some(map),
             _ => None
         }
     }
 
-    /// If the `Value` is an Object, returns the associated mutable BTreeMap.
+    /// If the `Value` is an Object, returns the associated mutable Map.
     /// Returns None otherwise.
-    pub fn as_object_mut<'a>(&'a mut self) -> Option<&'a mut BTreeMap<String, Value>> {
+    pub fn as_object_mut<'a>(&'a mut self) -> Option<&'a mut Map<String, Value>> {
         match self {
             &mut Value::Object(ref mut map) => Some(map),
             _ => None
@@ -430,7 +454,7 @@ impl de::Deserialize for Value {
             fn visit_map<V>(&mut self, visitor: V) -> Result<Value, V::Error>
                 where V: de::MapVisitor,
             {
-                let values = try!(de::impls::BTreeMapVisitor::new().visit_map(visitor));
+                let values = try!(Visitor::new().visit_map(visitor));
                 Ok(Value::Object(values))
             }
         }
@@ -483,7 +507,7 @@ impl str::FromStr for Value {
 enum State {
     Value(Value),
     Array(Vec<Value>),
-    Object(BTreeMap<String, Value>),
+    Object(Map<String, Value>),
 }
 
 /// Create a `serde::Serializer` that serializes a `Serialize`e into a `Value`.
@@ -575,7 +599,7 @@ impl ser::Serializer for Serializer {
                           _name: &str,
                           _variant_index: usize,
                           variant: &str) -> Result<(), Error> {
-        let mut values = BTreeMap::new();
+        let mut values = Map::new();
         values.insert(String::from(variant), Value::Array(vec![]));
 
         self.state.push(State::Value(Value::Object(values)));
@@ -591,7 +615,7 @@ impl ser::Serializer for Serializer {
                                 value: T) -> Result<(), Error>
         where T: ser::Serialize,
     {
-        let mut values = BTreeMap::new();
+        let mut values = Map::new();
         values.insert(String::from(variant), to_value(&value));
 
         self.state.push(State::Value(Value::Object(values)));
@@ -635,7 +659,7 @@ impl ser::Serializer for Serializer {
             state => panic!("expected value, found {:?}", state),
         };
 
-        let mut object = BTreeMap::new();
+        let mut object = Map::new();
 
         object.insert(String::from(variant), value);
 
@@ -667,7 +691,7 @@ impl ser::Serializer for Serializer {
     fn serialize_map<V>(&mut self, mut visitor: V) -> Result<(), Error>
         where V: ser::MapVisitor,
     {
-        let values = BTreeMap::new();
+        let values = Map::new();
 
         self.state.push(State::Object(values));
 
@@ -698,7 +722,7 @@ impl ser::Serializer for Serializer {
             state => panic!("expected value, found {:?}", state),
         };
 
-        let mut object = BTreeMap::new();
+        let mut object = Map::new();
 
         object.insert(String::from(variant), value);
 
@@ -957,7 +981,7 @@ impl<'a> de::SeqVisitor for SeqDeserializer<'a> {
 
 struct MapDeserializer<'a> {
     de: &'a mut Deserializer,
-    iter: btree_map::IntoIter<String, Value>,
+    iter: MapIntoIter<String, Value>,
     value: Option<Value>,
     len: usize,
 }
