@@ -16,7 +16,8 @@
 //! * `String`: equivalent to rust's `String`
 //! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
 //!    same array
-//! * `Object`: equivalent to rust's `serde_json::Map<String, serde_json::Value>`
+//! * `Object`: equivalent to rust's `BTreeMap<String, serde_json::Value>`; set the
+//!    `preserve_order` feature to use `LinkedHashMap<String, serde_json::Value>` instead
 //! * `Null`
 //!
 //! An object is a series of string keys mapping to values, in `"key": value` format.  Arrays are
