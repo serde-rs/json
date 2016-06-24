@@ -33,10 +33,10 @@
 //! ```
 
 #[cfg(not(feature = "preserve_order"))]
-use std::collections::{BTreeMap, btree_map};
+use std::collections::{btree_map, BTreeMap};
 
 #[cfg(feature = "preserve_order")]
-use linked_hash_map;
+use linked_hash_map::{self, LinkedHashMap};
 
 use std::fmt;
 use std::io;
@@ -55,7 +55,7 @@ use error::Error;
 pub type Map<K, V> = BTreeMap<K, V>;
 /// Represents a key/value type.
 #[cfg(feature = "preserve_order")]
-pub type Map<K, V> = linked_hash_map::LinkedHashMap<K, V>;
+pub type Map<K, V> = LinkedHashMap<K, V>;
 
 /// Represents the IntoIter type.
 #[cfg(not(feature = "preserve_order"))]
@@ -68,7 +68,6 @@ pub type MapIntoIter<K, V> = linked_hash_map::IntoIter<K, V>;
 type Visitor<K, T> = de::impls::BTreeMapVisitor<K, T>;
 #[cfg(feature = "preserve_order")]
 type Visitor<K, T> = linked_hash_map::serde::LinkedHashMapVisitor<K, T>;
-
 
 /// Represents a JSON value
 #[derive(Clone, PartialEq)]
