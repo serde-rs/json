@@ -18,5 +18,4 @@ preserve_order = ["linked-hash-map", "linked-hash-map/serde_impl"]
 serde = "^0.7.0"
 num-traits = "~0.1.32"
 clippy = { version = "^0.*", optional = true }
-#linked-hash-map = { version = "0.0.11" }
-linked-hash-map = { git = "https://github.com/contain-rs/linked-hash-map.git", optional = true }
+linked-hash-map = { version = "0.0.11", optional = true }
