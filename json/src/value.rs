@@ -65,9 +65,9 @@ pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
 pub type MapIntoIter<K, V> = linked_hash_map::IntoIter<K, V>;
 
 #[cfg(not(feature = "preserve_order"))]
-type Visitor<K, T> = de::impls::BTreeMapVisitor<K, T>;
+type MapVisitor<K, T> = de::impls::BTreeMapVisitor<K, T>;
 #[cfg(feature = "preserve_order")]
-type Visitor<K, T> = linked_hash_map::serde::LinkedHashMapVisitor<K, T>;
+type MapVisitor<K, T> = linked_hash_map::serde::LinkedHashMapVisitor<K, T>;
 
 /// Represents a JSON value
 #[derive(Clone, PartialEq)]
@@ -453,7 +453,7 @@ impl de::Deserialize for Value {
             fn visit_map<V>(&mut self, visitor: V) -> Result<Value, V::Error>
                 where V: de::MapVisitor,
             {
-                let values = try!(Visitor::new().visit_map(visitor));
+                let values = try!(MapVisitor::new().visit_map(visitor));
                 Ok(Value::Object(values))
             }
         }
