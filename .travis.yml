@@ -7,6 +7,11 @@ rust:
 - beta
 - nightly
 
+matrix:
+  include:
+    - rust: nightly
+      env: BENCH=1
+
 addons:
   apt:
     packages:
@@ -20,27 +25,20 @@ before_script:
     export PATH=$HOME/.local/bin:$PATH
 
 script:
-# TEMPORARY UNTIL SERDE 0.7 IS RELEASED
 - |
-  mkdir .travis-deps
-  mkdir .cargo
-  echo 'paths = ["./.travis-deps/serde"]' > .cargo/config
-  git clone https://github.com/serde-rs/serde .travis-deps/serde
-  pushd .travis-deps/serde
-  git reset --hard origin/master
-  popd
-- |
-    (cd json && travis-cargo build) &&
-    (cd json && travis-cargo test) &&
-    (cd json_tests && travis-cargo test -- --features with-syntex --no-default-features) &&
-    (cd json_tests && travis-cargo --only nightly test -- features nightly-testing) &&
-    (cd json_tests && travis-cargo --only nightly bench -- features nightly-testing) &&
-    (cd json_tests && travis-cargo --only nightly bench -- --features "nightly-testing with-syntex" --no-default-features) &&
-    (cd json && travis-cargo --only stable doc)
+    if [ -z $BENCH ]; then
+        (cd json && travis-cargo build) &&
+        (cd json && travis-cargo --only nightly test) &&
+        (cd json_tests && travis-cargo --skip nightly test -- --features with-syntex --no-default-features) &&
+        (cd json_tests && travis-cargo --only nightly test -- --features nightly-testing) &&
+        (cd json && travis-cargo --only stable doc)
+    else
+        (cd json_tests && travis-cargo bench)
+    fi
 
 after_success:
 - (cd json && travis-cargo --only stable doc-upload)
-- (cd json_tests && travis-cargo coveralls --no-sudo)
+- (cd json_tests && travis-cargo --only stable coveralls --no-sudo)
 
 env:
   global:
