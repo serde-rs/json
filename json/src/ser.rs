@@ -504,6 +504,7 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
             b'\n' => b"\\n",
             b'\r' => b"\\r",
             b'\t' => b"\\t",
+            b'\x00' ... b'\x1F' => b"\\u",
             _ => { continue; }
         };
 
@@ -512,6 +513,9 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
         }
 
         try!(wr.write_all(escaped));
+        if escaped[1] == b'u' {
+            try!(write!(wr, "{:04x}", *byte));
+        }
 
         start = i + 1;
     }
