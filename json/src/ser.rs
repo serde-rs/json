@@ -9,6 +9,7 @@ use serde::ser;
 use super::error::{Error, ErrorCode, Result};
 
 use itoa;
+use dtoa;
 
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F=CompactFormatter> {
@@ -588,7 +589,7 @@ fn fmt_f32_or_null<W>(wr: &mut W, value: f32) -> Result<()>
             try!(wr.write_all(b"null"))
         }
         _ => {
-            try!(write!(wr, "{:?}", value))
+            try!(dtoa::write(wr, value))
         }
     }
 
@@ -603,7 +604,7 @@ fn fmt_f64_or_null<W>(wr: &mut W, value: f64) -> Result<()>
             try!(wr.write_all(b"null"))
         }
         _ => {
-            try!(write!(wr, "{:?}", value))
+            try!(dtoa::write(wr, value))
         }
     }
 
