@@ -120,6 +120,8 @@
 extern crate num_traits;
 extern crate core;
 extern crate serde;
+extern crate itoa;
+extern crate dtoa;
 #[cfg(feature = "preserve_order")]
 extern crate linked_hash_map;
 
