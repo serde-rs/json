@@ -117,18 +117,14 @@ fn test_write_i64() {
 
 #[test]
 fn test_write_f64() {
-    let min_string = format!("{:?}", f64::MIN);
-    let max_string = format!("{:?}", f64::MAX);
-    let epsilon_string = format!("{:?}", f64::EPSILON);
-
     let tests = &[
-        (3.0, "3"),
+        (3.0, "3.0"),
         (3.1, "3.1"),
         (-1.5, "-1.5"),
         (0.5, "0.5"),
-        (f64::MIN, &min_string),
-        (f64::MAX, &max_string),
-        (f64::EPSILON, &epsilon_string),
+        (f64::MIN, "-1.7976931348623157e308"),
+        (f64::MAX, "1.7976931348623157e308"),
+        (f64::EPSILON, "2.220446049250313e-16"),
     ];
     test_encode_ok(tests);
     test_pretty_encode_ok(tests);
