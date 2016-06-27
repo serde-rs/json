@@ -8,6 +8,8 @@ use std::num::FpCategory;
 use serde::ser;
 use super::error::{Error, ErrorCode, Result};
 
+use itoa;
+
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F=CompactFormatter> {
     writer: W,
@@ -77,52 +79,52 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     #[inline]
     fn serialize_isize(&mut self, value: isize) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_i8(&mut self, value: i8) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_i16(&mut self, value: i16) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_i32(&mut self, value: i32) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_i64(&mut self, value: i64) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_usize(&mut self, value: usize) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_u8(&mut self, value: u8) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_u16(&mut self, value: u16) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_u32(&mut self, value: u32) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_u64(&mut self, value: u64) -> Result<()> {
-        write!(&mut self.writer, "{}", value).map_err(From::from)
+        itoa::write(&mut self.writer, value).map_err(From::from)
     }
 
     #[inline]
