@@ -488,7 +488,8 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 }
 
-/// Serializes and escapes a `&[u8]` into a JSON string.
+/// DEPRECATED. Will be removed in 0.8.0.
+/// https://github.com/serde-rs/json/issues/60
 #[inline]
 pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
     where W: io::Write
@@ -497,26 +498,25 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
 
     let mut start = 0;
 
-    for (i, byte) in bytes.iter().enumerate() {
-        let escaped = match *byte {
-            b'"' => b"\\\"",
-            b'\\' => b"\\\\",
-            b'\x08' => b"\\b",
-            b'\x0c' => b"\\f",
-            b'\n' => b"\\n",
-            b'\r' => b"\\r",
-            b'\t' => b"\\t",
-            b'\x00' ... b'\x1F' => b"\\u",
-            _ => { continue; }
-        };
+    for (i, &byte) in bytes.iter().enumerate() {
+        let escape = ESCAPE[byte as usize];
+        if escape == 0 {
+            continue;
+        }
 
         if start < i {
             try!(wr.write_all(&bytes[start..i]));
         }
 
-        try!(wr.write_all(escaped));
-        if escaped[1] == b'u' {
-            try!(write!(wr, "{:04x}", *byte));
+        if escape == b'u' {
+            static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
+            try!(wr.write_all(&[
+                b'\\', b'u', b'0', b'0',
+                HEX_DIGITS[(byte >> 4) as usize],
+                HEX_DIGITS[(byte & 0xF) as usize],
+            ]));
+        } else {
+            try!(wr.write_all(&[b'\\', escape]));
         }
 
         start = i + 1;
@@ -529,6 +529,37 @@ pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
     try!(wr.write_all(b"\""));
     Ok(())
 }
+
+const BB: u8 = b'b';  // \x08
+const TT: u8 = b't';  // \x09
+const NN: u8 = b'n';  // \x0A
+const FF: u8 = b'f';  // \x0C
+const RR: u8 = b'r';  // \x0D
+const QU: u8 = b'"';  // \x22
+const BS: u8 = b'\\'; // \x5C
+const U: u8 = b'u';   // \x00...\x1F except the ones above
+
+// Lookup table of escape sequences. A value of b'x' at index i means that byte
+// i is escaped as "\x" in JSON. A value of 0 means that byte i is not escaped.
+static ESCAPE: [u8; 256] = [
+    //  1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+    U,  U,  U,  U,  U,  U,  U,  U, BB, TT, NN,  U, FF, RR,  U,  U, // 0
+    U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U,  U, // 1
+    0,  0, QU,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 2
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 3
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 4
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, BS,  0,  0,  0, // 5
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 6
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 7
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 8
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 9
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // A
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // B
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // C
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // D
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // E
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // F
+];
 
 /// Serializes and escapes a `&str` into a JSON string.
 #[inline]
