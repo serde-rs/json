@@ -483,12 +483,12 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 }
 
-/// DEPRECATED. Will be removed in 0.8.0.
-/// https://github.com/serde-rs/json/issues/60
-#[inline]
-pub fn escape_bytes<W>(wr: &mut W, bytes: &[u8]) -> Result<()>
+/// Serializes and escapes a `&str` into a JSON string.
+pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
     where W: io::Write
 {
+    let bytes = value.as_bytes();
+
     try!(wr.write_all(b"\""));
 
     let mut start = 0;
@@ -556,14 +556,6 @@ static ESCAPE: [u8; 256] = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // F
 ];
 
-/// Serializes and escapes a `&str` into a JSON string.
-#[inline]
-pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
-    where W: io::Write
-{
-    escape_bytes(wr, value.as_bytes())
-}
-
 #[inline]
 fn escape_char<W>(wr: &mut W, value: char) -> Result<()>
     where W: io::Write
@@ -572,7 +564,7 @@ fn escape_char<W>(wr: &mut W, value: char) -> Result<()>
     // rust, which doesn't support encoding a `char` into a stack buffer.
     let mut s = String::new();
     s.push(value);
-    escape_bytes(wr, s.as_bytes())
+    escape_str(wr, &s)
 }
 
 fn fmt_f32_or_null<W>(wr: &mut W, value: f32) -> Result<()>
