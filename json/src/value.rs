@@ -256,12 +256,12 @@ impl Value {
 
     /// Returns true if the `Value` is a String. Returns false otherwise.
     pub fn is_string<'a>(&'a self) -> bool {
-        self.as_string().is_some()
+        self.as_str().is_some()
     }
 
     /// If the `Value` is a String, returns the associated str.
     /// Returns None otherwise.
-    pub fn as_string<'a>(&'a self) -> Option<&'a str> {
+    pub fn as_str<'a>(&'a self) -> Option<&'a str> {
         match *self {
             Value::String(ref s) => Some(&s),
             _ => None
@@ -333,12 +333,12 @@ impl Value {
 
     /// Returns true if the `Value` is a Boolean. Returns false otherwise.
     pub fn is_boolean(&self) -> bool {
-        self.as_boolean().is_some()
+        self.as_bool().is_some()
     }
 
     /// If the `Value` is a Boolean, returns the associated bool.
     /// Returns None otherwise.
-    pub fn as_boolean(&self) -> Option<bool> {
+    pub fn as_bool(&self) -> Option<bool> {
         match self {
             &Value::Bool(b) => Some(b),
             _ => None
@@ -1067,7 +1067,7 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
 /// ```rust
 /// use serde_json::to_value;
 /// let val = to_value("foo");
-/// assert_eq!(val.as_string(), Some("foo"))
+/// assert_eq!(val.as_str(), Some("foo"))
 /// ```
 pub fn to_value<T: ?Sized>(value: &T) -> Value
     where T: ser::Serialize
