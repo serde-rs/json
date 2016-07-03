@@ -598,12 +598,7 @@ impl ser::Serializer for Serializer {
                           _name: &str,
                           _variant_index: usize,
                           variant: &str) -> Result<(), Error> {
-        let mut values = Map::new();
-        values.insert(String::from(variant), Value::Array(vec![]));
-
-        self.state.push(State::Value(Value::Object(values)));
-
-        Ok(())
+        self.serialize_str(variant)
     }
 
     #[inline]
@@ -829,28 +824,31 @@ impl de::Deserializer for Deserializer {
                      mut visitor: V) -> Result<V::Value, Error>
         where V: de::EnumVisitor,
     {
-        let value = match self.value.take() {
-            Some(Value::Object(value)) => value,
+        let (variant, value) = match self.value.take() {
+            Some(Value::Object(value)) => {
+                let mut iter = value.into_iter();
+                let (variant, value) = match iter.next() {
+                    Some(v) => v,
+                    None => { return Err(de::Error::invalid_type(de::Type::VariantName)); }
+                };
+                // enums are encoded in json as maps with a single key:value pair
+                if iter.next().is_some() {
+                    return Err(de::Error::invalid_type(de::Type::Map));
+                }
+                (variant, Some(value))
+            }
+            Some(Value::String(variant)) => {
+                (variant, None)
+            },
             Some(_) => { return Err(de::Error::invalid_type(de::Type::Enum)); }
             None => { return Err(de::Error::end_of_stream()); }
         };
 
-        let mut iter = value.into_iter();
-
-        let (variant, value) = match iter.next() {
-            Some(v) => v,
-            None => { return Err(de::Error::invalid_type(de::Type::VariantName)); }
-        };
-
-        // enums are encoded in json as maps with a single key:value pair
-        match iter.next() {
-            Some(_) => Err(de::Error::invalid_type(de::Type::Map)),
-            None => visitor.visit(VariantDeserializer {
-                de: self,
-                val: Some(value),
-                variant: Some(Value::String(variant)),
-            }),
-        }
+        visitor.visit(VariantDeserializer {
+            de: self,
+            val: value,
+            variant: Some(Value::String(variant)),
+        })
     }
 
     #[inline]
@@ -879,7 +877,10 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
     }
 
     fn visit_unit(&mut self) -> Result<(), Error> {
-        de::Deserialize::deserialize(&mut Deserializer::new(self.val.take().unwrap()))
+        match self.val.take() {
+            Some(val) => de::Deserialize::deserialize(&mut Deserializer::new(val)),
+            None => Ok(()),
+        }
     }
 
     fn visit_newtype<T>(&mut self) -> Result<T, Error>

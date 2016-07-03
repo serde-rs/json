@@ -512,8 +512,11 @@ impl<Iter> Deserializer<Iter>
     fn parse_object_colon(&mut self) -> Result<()> {
         try!(self.parse_whitespace());
 
-        match try!(self.next_char()) {
-            Some(b':') => Ok(()),
+        match try!(self.peek()) {
+            Some(b':') => {
+                self.eat_char();
+                Ok(())
+            }
             Some(_) => Err(self.error(ErrorCode::ExpectedColon)),
             None => Err(self.error(ErrorCode::EOFWhileParsingObject)),
         }
@@ -572,12 +575,13 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
     {
         try!(self.parse_whitespace());
 
-        match try!(self.next_char_or_null()) {
+        match try!(self.peek_or_null()) {
             b'{' => {
+                self.eat_char();
                 try!(self.parse_whitespace());
 
                 let value = {
-                    try!(visitor.visit(&mut *self))
+                    try!(visitor.visit(VariantVisitor::new(self)))
                 };
 
                 try!(self.parse_whitespace());
@@ -590,6 +594,9 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
                         Err(self.error(ErrorCode::ExpectedSomeValue))
                     }
                 }
+            }
+            b'"' => {
+                visitor.visit(KeyOnlyVariantVisitor::new(self))
             }
             _ => {
                 Err(self.error(ErrorCode::ExpectedSomeValue))
@@ -769,7 +776,19 @@ impl<'a, Iter> de::MapVisitor for MapVisitor<'a, Iter>
     }
 }
 
-impl<Iter> de::VariantVisitor for Deserializer<Iter>
+struct VariantVisitor<'a, Iter: 'a + Iterator<Item=io::Result<u8>>> {
+    de: &'a mut Deserializer<Iter>,
+}
+
+impl<'a, Iter: Iterator<Item=io::Result<u8>>> VariantVisitor<'a, Iter> {
+    fn new(de: &'a mut Deserializer<Iter>) -> Self {
+        VariantVisitor {
+            de: de,
+        }
+    }
+}
+
+impl<'a, Iter> de::VariantVisitor for VariantVisitor<'a, Iter>
     where Iter: Iterator<Item=io::Result<u8>>,
 {
     type Error = Error;
@@ -777,19 +796,19 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
     fn visit_variant<V>(&mut self) -> Result<V>
         where V: de::Deserialize
     {
-        let val = try!(de::Deserialize::deserialize(self));
-        try!(self.parse_object_colon());
+        let val = try!(de::Deserialize::deserialize(self.de));
+        try!(self.de.parse_object_colon());
         Ok(val)
     }
 
     fn visit_unit(&mut self) -> Result<()> {
-        de::Deserialize::deserialize(self)
+        de::Deserialize::deserialize(self.de)
     }
 
     fn visit_newtype<T>(&mut self) -> Result<T>
         where T: de::Deserialize,
     {
-        de::Deserialize::deserialize(self)
+        de::Deserialize::deserialize(self.de)
     }
 
     fn visit_tuple<V>(&mut self,
@@ -797,7 +816,7 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
                       visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        de::Deserializer::deserialize(self, visitor)
+        de::Deserializer::deserialize(self.de, visitor)
     }
 
     fn visit_struct<V>(&mut self,
@@ -805,7 +824,57 @@ impl<Iter> de::VariantVisitor for Deserializer<Iter>
                        visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        de::Deserializer::deserialize(self, visitor)
+        de::Deserializer::deserialize(self.de, visitor)
+    }
+}
+
+struct KeyOnlyVariantVisitor<'a, Iter: 'a + Iterator<Item=io::Result<u8>>> {
+    de: &'a mut Deserializer<Iter>,
+}
+
+impl<'a, Iter: Iterator<Item=io::Result<u8>>> KeyOnlyVariantVisitor<'a, Iter> {
+    fn new(de: &'a mut Deserializer<Iter>) -> Self {
+        KeyOnlyVariantVisitor {
+            de: de,
+        }
+    }
+}
+
+impl<'a, Iter> de::VariantVisitor for KeyOnlyVariantVisitor<'a, Iter>
+    where Iter: Iterator<Item=io::Result<u8>>,
+{
+    type Error = Error;
+
+    fn visit_variant<V>(&mut self) -> Result<V>
+        where V: de::Deserialize
+    {
+        Ok(try!(de::Deserialize::deserialize(self.de)))
+    }
+
+    fn visit_unit(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn visit_newtype<T>(&mut self) -> Result<T>
+        where T: de::Deserialize,
+    {
+        de::Deserialize::deserialize(self.de)
+    }
+
+    fn visit_tuple<V>(&mut self,
+                      _len: usize,
+                      visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        de::Deserializer::deserialize(self.de, visitor)
+    }
+
+    fn visit_struct<V>(&mut self,
+                       _fields: &'static [&'static str],
+                       visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        de::Deserializer::deserialize(self.de, visitor)
     }
 }
 

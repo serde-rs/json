@@ -545,7 +545,7 @@ fn test_write_enum() {
     test_encode_ok(&[
         (
             Animal::Dog,
-            "{\"Dog\":[]}",
+            "\"Dog\"",
         ),
         (
             Animal::Frog("Henry".to_string(), vec![]),
@@ -572,11 +572,7 @@ fn test_write_enum() {
     test_pretty_encode_ok(&[
         (
             Animal::Dog,
-            indoc!(r#"
-                {
-                  "Dog": []
-                }"#
-            ),
+            "\"Dog\"",
         ),
         (
             Animal::Frog("Henry".to_string(), vec![]),
@@ -668,6 +664,17 @@ fn test_parse_ok<T>(errors: Vec<(&str, T)>)
         // Make sure we can round trip back to `Value`.
         let json_value2: Value = from_value(json_value.clone()).unwrap();
         assert_eq!(json_value2, json_value);
+    }
+}
+
+// For testing representations that the deserializer accepts but the serializer
+// never generates. These do not survive a round-trip through Value.
+fn test_parse_unusual_ok<T>(errors: Vec<(&str, T)>)
+    where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
+{
+    for (s, value) in errors {
+        let v: T = from_str(s).unwrap();
+        assert_eq!(v, value.clone());
     }
 }
 
@@ -995,10 +1002,14 @@ fn test_parse_option() {
 fn test_parse_enum_errors() {
     test_parse_err::<Animal>(vec![
         ("{}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 2)),
+        ("[]", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
+        ("\"unknown\"", Error::Syntax(ErrorCode::UnknownVariant("unknown".to_string()), 1, 9)),
+        ("{\"unknown\":[]}", Error::Syntax(ErrorCode::UnknownVariant("unknown".to_string()), 1, 10)),
         ("{\"Dog\":", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 7)),
         ("{\"Dog\":}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 8)),
-        ("{\"unknown\":[]}", Error::Syntax(ErrorCode::UnknownVariant("unknown".to_string()), 1, 10)),
         ("{\"Dog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 8)),
+        ("{\"Dog\":[0]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 9)),
+        ("\"Frog\"", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 6)),
         ("{\"Frog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 9)),
         ("{\"Cat\":[]}", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 9)),
         (
@@ -1011,8 +1022,8 @@ fn test_parse_enum_errors() {
 #[test]
 fn test_parse_enum() {
     test_parse_ok(vec![
-        ("{\"Dog\":[]}", Animal::Dog),
-        (" { \"Dog\" : [ ] } ", Animal::Dog),
+        ("\"Dog\"", Animal::Dog),
+        (" \"Dog\" ", Animal::Dog),
         (
             "{\"Frog\":[\"Henry\",[]]}",
             Animal::Frog("Henry".to_string(), vec![]),
@@ -1035,11 +1046,16 @@ fn test_parse_enum() {
         ),
     ]);
 
+    test_parse_unusual_ok(vec![
+        ("{\"Dog\":[]}", Animal::Dog),
+        (" { \"Dog\" : [ ] } ", Animal::Dog),
+    ]);
+
     test_parse_ok(vec![
         (
             concat!(
                 "{",
-                "  \"a\": {\"Dog\": []},",
+                "  \"a\": \"Dog\",",
                 "  \"b\": {\"Frog\":[\"Henry\", []]}",
                 "}"
             ),

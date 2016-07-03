@@ -179,12 +179,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
                           _name: &str,
                           _variant_index: usize,
                           variant: &str) -> Result<()> {
-        try!(self.formatter.open(&mut self.writer, b'{'));
-        try!(self.formatter.comma(&mut self.writer, true));
-        try!(self.serialize_str(variant));
-        try!(self.formatter.colon(&mut self.writer));
-        try!(self.writer.write_all(b"[]"));
-        self.formatter.close(&mut self.writer, b'}')
+        self.serialize_str(variant)
     }
 
     #[inline]
