@@ -9,14 +9,82 @@ use std::str;
 use std::marker::PhantomData;
 
 use serde::de;
-use serde::iter::LineColIterator;
 
 use super::error::{Error, ErrorCode, Result};
 
+use read::{self, Read};
+
+//////////////////////////////////////////////////////////////////////////////
+
 /// A structure that deserializes JSON into Rust values.
-pub struct Deserializer<Iter: Iterator<Item=io::Result<u8>>> {
-    rdr: LineColIterator<Iter>,
-    ch: Option<u8>,
+pub struct Deserializer<Iter>(DeserializerImpl<read::IteratorRead<Iter>>)
+    where Iter: Iterator<Item=io::Result<u8>>;
+
+impl<Iter> Deserializer<Iter>
+    where Iter: Iterator<Item=io::Result<u8>>,
+{
+    /// Creates the JSON parser from an `std::iter::Iterator`.
+    #[inline]
+    pub fn new(rdr: Iter) -> Self {
+        Deserializer(DeserializerImpl::new(read::IteratorRead::new(rdr)))
+    }
+
+    /// The `Deserializer::end` method should be called after a value has been fully deserialized.
+    /// This allows the `Deserializer` to validate that the input stream is at the end or that it
+    /// only has trailing whitespace.
+    #[inline]
+    pub fn end(&mut self) -> Result<()> {
+        self.0.end()
+    }
+}
+
+impl<Iter> de::Deserializer for Deserializer<Iter>
+    where Iter: Iterator<Item=io::Result<u8>>,
+{
+    type Error = Error;
+
+    #[inline]
+    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        self.0.deserialize(visitor)
+    }
+
+    /// Parses a `null` as a None, and any other values as a `Some(...)`.
+    #[inline]
+    fn deserialize_option<V>(&mut self, visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        self.0.deserialize_option(visitor)
+    }
+
+    /// Parses a newtype struct as the underlying value.
+    #[inline]
+    fn deserialize_newtype_struct<V>(&mut self,
+                                     name: &'static str,
+                                     visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        self.0.deserialize_newtype_struct(name, visitor)
+    }
+
+    /// Parses an enum as an object like `{"$KEY":$VALUE}`, where $VALUE is either a straight
+    /// value, a `[..]`, or a `{..}`.
+    #[inline]
+    fn deserialize_enum<V>(&mut self,
+                           name: &'static str,
+                           variants: &'static [&'static str],
+                           visitor: V) -> Result<V::Value>
+        where V: de::EnumVisitor,
+    {
+        self.0.deserialize_enum(name, variants, visitor)
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+struct DeserializerImpl<R: Read> {
+    read: R,
     str_buf: Vec<u8>,
 }
 
@@ -29,29 +97,20 @@ macro_rules! try_or_invalid {
     }
 }
 
-impl<Iter> Deserializer<Iter>
-    where Iter: Iterator<Item=io::Result<u8>>,
-{
-    /// Creates the JSON parser from an `std::iter::Iterator`.
-    #[inline]
-    pub fn new(rdr: Iter) -> Deserializer<Iter> {
-        Deserializer {
-            rdr: LineColIterator::new(rdr),
-            ch: None,
+impl<R: Read> DeserializerImpl<R> {
+    fn new(read: R) -> Self {
+        DeserializerImpl {
+            read: read,
             str_buf: Vec::with_capacity(128),
         }
     }
 
-    /// The `Deserializer::end` method should be called after a value has been fully deserialized.
-    /// This allows the `Deserializer` to validate that the input stream is at the end or that it
-    /// only has trailing whitespace.
-    #[inline]
-    pub fn end(&mut self) -> Result<()> {
+    fn end(&mut self) -> Result<()> {
         try!(self.parse_whitespace());
         if try!(self.eof()) {
             Ok(())
         } else {
-            Err(self.error(ErrorCode::TrailingCharacters))
+            Err(self.peek_error(ErrorCode::TrailingCharacters))
         }
     }
 
@@ -60,19 +119,7 @@ impl<Iter> Deserializer<Iter>
     }
 
     fn peek(&mut self) -> Result<Option<u8>> {
-        match self.ch {
-            Some(ch) => Ok(Some(ch)),
-            None => {
-                match self.rdr.next() {
-                    Some(Err(err)) => Err(Error::Io(err)),
-                    Some(Ok(ch)) => {
-                        self.ch = Some(ch);
-                        Ok(self.ch)
-                    }
-                    None => Ok(None),
-                }
-            }
-        }
+        self.read.peek().map_err(Error::Io)
     }
 
     fn peek_or_null(&mut self) -> Result<u8> {
@@ -80,28 +127,27 @@ impl<Iter> Deserializer<Iter>
     }
 
     fn eat_char(&mut self) {
-        self.ch = None;
+        self.read.discard();
     }
 
     fn next_char(&mut self) -> Result<Option<u8>> {
-        match self.ch.take() {
-            Some(ch) => Ok(Some(ch)),
-            None => {
-                match self.rdr.next() {
-                    Some(Err(err)) => Err(Error::Io(err)),
-                    Some(Ok(ch)) => Ok(Some(ch)),
-                    None => Ok(None),
-                }
-            }
-        }
+        self.read.next().map_err(Error::Io)
     }
 
     fn next_char_or_null(&mut self) -> Result<u8> {
         Ok(try!(self.next_char()).unwrap_or(b'\x00'))
     }
 
+    /// Error caused by a byte from next_char().
     fn error(&mut self, reason: ErrorCode) -> Error {
-        Error::Syntax(reason, self.rdr.line(), self.rdr.col())
+        let pos = self.read.position();
+        Error::Syntax(reason, pos.line, pos.column)
+    }
+
+    /// Error caused by a byte from peek().
+    fn peek_error(&mut self, reason: ErrorCode) -> Error {
+        let pos = self.read.peek_position();
+        Error::Syntax(reason, pos.line, pos.column)
     }
 
     fn parse_whitespace(&mut self) -> Result<()> {
@@ -121,7 +167,7 @@ impl<Iter> Deserializer<Iter>
         try!(self.parse_whitespace());
 
         if try!(self.eof()) {
-            return Err(self.error(ErrorCode::EOFWhileParsingValue));
+            return Err(self.peek_error(ErrorCode::EOFWhileParsingValue));
         }
 
         let value = match try!(self.peek_or_null()) {
@@ -162,13 +208,19 @@ impl<Iter> Deserializer<Iter>
                 visitor.visit_map(MapVisitor::new(self))
             }
             _ => {
-                Err(self.error(ErrorCode::ExpectedSomeValue))
+                Err(self.peek_error(ErrorCode::ExpectedSomeValue))
             }
         };
 
         match value {
             Ok(value) => Ok(value),
-            Err(Error::Syntax(code, _, _)) => Err(self.error(code)),
+            // The de::Error and From<de::value::Error> impls both create errors
+            // with unknown line and column. Fill in the position here by
+            // looking at the current index in the input. There is no way to
+            // tell whether this should call `error` or `peek_error` so pick the
+            // one that seems correct more often. Worst case, the position is
+            // off by one character.
+            Err(Error::Syntax(code, 0, 0)) => Err(self.error(code)),
             Err(err) => Err(err),
         }
     }
@@ -191,7 +243,7 @@ impl<Iter> Deserializer<Iter>
                 // There can be only one leading '0'.
                 match try!(self.peek_or_null()) {
                     b'0' ... b'9' => {
-                        Err(self.error(ErrorCode::InvalidNumber))
+                        Err(self.peek_error(ErrorCode::InvalidNumber))
                     }
                     _ => {
                         self.parse_number(pos, 0, visitor)
@@ -378,7 +430,7 @@ impl<Iter> Deserializer<Iter>
         let exp = if exp <= i32::MAX as u64 {
             10_f64.powi(exp as i32)
         } else {
-            return Err(self.error(ErrorCode::InvalidNumber));
+            return Err(self.peek_error(ErrorCode::InvalidNumber));
         };
 
         if pos_exp {
@@ -517,15 +569,13 @@ impl<Iter> Deserializer<Iter>
                 self.eat_char();
                 Ok(())
             }
-            Some(_) => Err(self.error(ErrorCode::ExpectedColon)),
-            None => Err(self.error(ErrorCode::EOFWhileParsingObject)),
+            Some(_) => Err(self.peek_error(ErrorCode::ExpectedColon)),
+            None => Err(self.peek_error(ErrorCode::EOFWhileParsingObject)),
         }
     }
 }
 
-impl<Iter> de::Deserializer for Deserializer<Iter>
-    where Iter: Iterator<Item=io::Result<u8>>,
-{
+impl<R: Read> de::Deserializer for DeserializerImpl<R> {
     type Error = Error;
 
     #[inline]
@@ -599,19 +649,19 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
                 visitor.visit(KeyOnlyVariantVisitor::new(self))
             }
             _ => {
-                Err(self.error(ErrorCode::ExpectedSomeValue))
+                Err(self.peek_error(ErrorCode::ExpectedSomeValue))
             }
         }
     }
 }
 
-struct SeqVisitor<'a, Iter: 'a + Iterator<Item=io::Result<u8>>> {
-    de: &'a mut Deserializer<Iter>,
+struct SeqVisitor<'a, R: Read + 'a> {
+    de: &'a mut DeserializerImpl<R>,
     first: bool,
 }
 
-impl<'a, Iter: Iterator<Item=io::Result<u8>>> SeqVisitor<'a, Iter> {
-    fn new(de: &'a mut Deserializer<Iter>) -> Self {
+impl<'a, R: Read + 'a> SeqVisitor<'a, R> {
+    fn new(de: &'a mut DeserializerImpl<R>) -> Self {
         SeqVisitor {
             de: de,
             first: true,
@@ -619,9 +669,7 @@ impl<'a, Iter: Iterator<Item=io::Result<u8>>> SeqVisitor<'a, Iter> {
     }
 }
 
-impl<'a, Iter> de::SeqVisitor for SeqVisitor<'a, Iter>
-    where Iter: Iterator<Item=io::Result<u8>>,
-{
+impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
     type Error = Error;
 
     fn visit<T>(&mut self) -> Result<Option<T>>
@@ -640,11 +688,11 @@ impl<'a, Iter> de::SeqVisitor for SeqVisitor<'a, Iter>
                 if self.first {
                     self.first = false;
                 } else {
-                    return Err(self.de.error(ErrorCode::ExpectedListCommaOrEnd));
+                    return Err(self.de.peek_error(ErrorCode::ExpectedListCommaOrEnd));
                 }
             }
             None => {
-                return Err(self.de.error(ErrorCode::EOFWhileParsingList));
+                return Err(self.de.peek_error(ErrorCode::EOFWhileParsingList));
             }
         }
 
@@ -667,13 +715,13 @@ impl<'a, Iter> de::SeqVisitor for SeqVisitor<'a, Iter>
     }
 }
 
-struct MapVisitor<'a, Iter: 'a + Iterator<Item=io::Result<u8>>> {
-    de: &'a mut Deserializer<Iter>,
+struct MapVisitor<'a, R: Read + 'a> {
+    de: &'a mut DeserializerImpl<R>,
     first: bool,
 }
 
-impl<'a, Iter: Iterator<Item=io::Result<u8>>> MapVisitor<'a, Iter> {
-    fn new(de: &'a mut Deserializer<Iter>) -> Self {
+impl<'a, R: Read + 'a> MapVisitor<'a, R> {
+    fn new(de: &'a mut DeserializerImpl<R>) -> Self {
         MapVisitor {
             de: de,
             first: true,
@@ -681,9 +729,7 @@ impl<'a, Iter: Iterator<Item=io::Result<u8>>> MapVisitor<'a, Iter> {
     }
 }
 
-impl<'a, Iter> de::MapVisitor for MapVisitor<'a, Iter>
-    where Iter: Iterator<Item=io::Result<u8>>
-{
+impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
     type Error = Error;
 
     fn visit_key<K>(&mut self) -> Result<Option<K>>
@@ -703,11 +749,11 @@ impl<'a, Iter> de::MapVisitor for MapVisitor<'a, Iter>
                 if self.first {
                     self.first = false;
                 } else {
-                    return Err(self.de.error(ErrorCode::ExpectedObjectCommaOrEnd));
+                    return Err(self.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
                 }
             }
             None => {
-                return Err(self.de.error(ErrorCode::EOFWhileParsingObject));
+                return Err(self.de.peek_error(ErrorCode::EOFWhileParsingObject));
             }
         }
 
@@ -716,10 +762,10 @@ impl<'a, Iter> de::MapVisitor for MapVisitor<'a, Iter>
                 Ok(Some(try!(de::Deserialize::deserialize(self.de))))
             }
             Some(_) => {
-                Err(self.de.error(ErrorCode::KeyMustBeAString))
+                Err(self.de.peek_error(ErrorCode::KeyMustBeAString))
             }
             None => {
-                Err(self.de.error(ErrorCode::EOFWhileParsingValue))
+                Err(self.de.peek_error(ErrorCode::EOFWhileParsingValue))
             }
         }
     }
@@ -776,21 +822,19 @@ impl<'a, Iter> de::MapVisitor for MapVisitor<'a, Iter>
     }
 }
 
-struct VariantVisitor<'a, Iter: 'a + Iterator<Item=io::Result<u8>>> {
-    de: &'a mut Deserializer<Iter>,
+struct VariantVisitor<'a, R: Read + 'a> {
+    de: &'a mut DeserializerImpl<R>,
 }
 
-impl<'a, Iter: Iterator<Item=io::Result<u8>>> VariantVisitor<'a, Iter> {
-    fn new(de: &'a mut Deserializer<Iter>) -> Self {
+impl<'a, R: Read + 'a> VariantVisitor<'a, R> {
+    fn new(de: &'a mut DeserializerImpl<R>) -> Self {
         VariantVisitor {
             de: de,
         }
     }
 }
 
-impl<'a, Iter> de::VariantVisitor for VariantVisitor<'a, Iter>
-    where Iter: Iterator<Item=io::Result<u8>>,
-{
+impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
     type Error = Error;
 
     fn visit_variant<V>(&mut self) -> Result<V>
@@ -828,21 +872,19 @@ impl<'a, Iter> de::VariantVisitor for VariantVisitor<'a, Iter>
     }
 }
 
-struct KeyOnlyVariantVisitor<'a, Iter: 'a + Iterator<Item=io::Result<u8>>> {
-    de: &'a mut Deserializer<Iter>,
+struct KeyOnlyVariantVisitor<'a, R: Read + 'a> {
+    de: &'a mut DeserializerImpl<R>,
 }
 
-impl<'a, Iter: Iterator<Item=io::Result<u8>>> KeyOnlyVariantVisitor<'a, Iter> {
-    fn new(de: &'a mut Deserializer<Iter>) -> Self {
+impl<'a, R: Read + 'a> KeyOnlyVariantVisitor<'a, R> {
+    fn new(de: &'a mut DeserializerImpl<R>) -> Self {
         KeyOnlyVariantVisitor {
             de: de,
         }
     }
 }
 
-impl<'a, Iter> de::VariantVisitor for KeyOnlyVariantVisitor<'a, Iter>
-    where Iter: Iterator<Item=io::Result<u8>>,
-{
+impl<'a, R: Read + 'a> de::VariantVisitor for KeyOnlyVariantVisitor<'a, R> {
     type Error = Error;
 
     fn visit_variant<V>(&mut self) -> Result<V>
@@ -885,7 +927,7 @@ pub struct StreamDeserializer<T, Iter>
     where Iter: Iterator<Item=io::Result<u8>>,
           T: de::Deserialize
 {
-    deser: Deserializer<Iter>,
+    deser: DeserializerImpl<read::IteratorRead<Iter>>,
     _marker: PhantomData<T>,
 }
 
@@ -897,7 +939,7 @@ impl <T, Iter> StreamDeserializer<T, Iter>
     /// `Iterator<Item=io::Result<u8>>`.
     pub fn new(iter: Iter) -> StreamDeserializer<T, Iter> {
         StreamDeserializer {
-            deser: Deserializer::new(iter),
+            deser: DeserializerImpl::new(read::IteratorRead::new(iter)),
             _marker: PhantomData
         }
     }
@@ -936,7 +978,7 @@ pub fn from_iter<I, T>(iter: I) -> Result<T>
     where I: Iterator<Item=io::Result<u8>>,
           T: de::Deserialize,
 {
-    let mut de = Deserializer::new(iter);
+    let mut de = DeserializerImpl::new(read::IteratorRead::new(iter));
     let value = try!(de::Deserialize::deserialize(&mut de));
 
     // Make sure the whole stream has been consumed.
@@ -956,7 +998,12 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
 pub fn from_slice<T>(v: &[u8]) -> Result<T>
     where T: de::Deserialize
 {
-    from_iter(v.iter().map(|byte| Ok(*byte)))
+    let mut de = DeserializerImpl::new(read::SliceRead::new(v));
+    let value = try!(de::Deserialize::deserialize(&mut de));
+
+    // Make sure the whole stream has been consumed.
+    try!(de.end());
+    Ok(value)
 }
 
 /// Decodes a json value from a `&str`.
