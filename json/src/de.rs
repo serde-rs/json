@@ -29,6 +29,36 @@ macro_rules! try_or_invalid {
     }
 }
 
+const QU: u8 = 1; // quote
+const BS: u8 = 2; // backslash
+const CT: u8 = 4; // control character
+
+// Look up table of valid codepoints permitted in strings. The only
+// checks done are within the 0x00 .. 0x7F ASCII range, as any values
+// higher constitue Unicode codepoint. The constants defined above are
+// here mostly informative, simply putting a `1` everywhere would
+// suffice. Note that whitespace (0x20) is not marked as a control
+// character, since it is permitted.
+static CHARCODES: [u8; 256] = [
+  //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+  CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, // 0
+  CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, // 1
+   0,  0, QU,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 2
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 3
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 4
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, BS,  0,  0,  0, // 5
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 6
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, CT, // 7
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 8
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 9
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // A
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // B
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // C
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // D
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // E
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // F
+];
+
 impl<Iter> Deserializer<Iter>
     where Iter: Iterator<Item=io::Result<u8>>,
 {
@@ -429,6 +459,11 @@ impl<Iter> Deserializer<Iter>
                 None => { return Err(self.error(ErrorCode::EOFWhileParsingString)); }
             };
 
+            if CHARCODES[ch as usize] == 0 {
+                self.str_buf.push(ch);
+                continue;
+            }
+
             match ch {
                 b'"' => {
                     return Ok(());
@@ -502,8 +537,8 @@ impl<Iter> Deserializer<Iter>
                         }
                     }
                 }
-                ch => {
-                    self.str_buf.push(ch);
+                _ => {
+                    return Err(self.error(ErrorCode::InvalidUnicodeCodePoint));
                 }
             }
         }
