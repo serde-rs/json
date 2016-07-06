@@ -13,6 +13,7 @@ use serde_json::{
     StreamDeserializer,
     Value,
     Map,
+    from_iter,
     from_str,
     from_value,
     to_value,
@@ -653,6 +654,9 @@ fn test_parse_ok<T>(errors: Vec<(&str, T)>)
         let v: T = from_str(s).unwrap();
         assert_eq!(v, value.clone());
 
+        let v: T = from_iter(s.bytes().map(Ok)).unwrap();
+        assert_eq!(v, value.clone());
+
         // Make sure we can deserialize into a `Value`.
         let json_value: Value = from_str(s).unwrap();
         assert_eq!(json_value, to_value(&value));
@@ -675,6 +679,9 @@ fn test_parse_unusual_ok<T>(errors: Vec<(&str, T)>)
     for (s, value) in errors {
         let v: T = from_str(s).unwrap();
         assert_eq!(v, value.clone());
+
+        let v: T = from_iter(s.bytes().map(Ok)).unwrap();
+        assert_eq!(v, value.clone());
     }
 }
 
@@ -682,19 +689,27 @@ fn test_parse_unusual_ok<T>(errors: Vec<(&str, T)>)
 fn test_parse_err<T>(errors: Vec<(&'static str, Error)>)
     where T: Debug + PartialEq + de::Deserialize,
 {
-    for (s, err) in errors {
-        match (err, from_str::<T>(s).unwrap_err()) {
+    for &(s, ref err) in &errors {
+        match (err, &from_str::<T>(s).unwrap_err()) {
             (
-                Error::Syntax(expected_code, expected_line, expected_col),
-                Error::Syntax(actual_code, actual_line, actual_col),
-            ) => {
-                assert_eq!(
-                    (expected_code, expected_line, expected_col),
-                    (actual_code, actual_line, actual_col)
-                )
-            }
+                &Error::Syntax(ref expected_code, expected_line, expected_col),
+                &Error::Syntax(ref actual_code, actual_line, actual_col),
+            ) if expected_code == actual_code
+                && expected_line == actual_line
+                && expected_col == actual_col => { /* pass */ }
             (expected_err, actual_err) => {
-                panic!("unexpected errors {} != {}", expected_err, actual_err)
+                panic!("unexpected from_str error: {}, expected: {}", actual_err, expected_err)
+            }
+        }
+        match (err, &from_iter::<_, T>(s.bytes().map(Ok)).unwrap_err()) {
+            (
+                &Error::Syntax(ref expected_code, expected_line, expected_col),
+                &Error::Syntax(ref actual_code, actual_line, actual_col),
+            ) if expected_code == actual_code
+              && expected_line == actual_line
+              && expected_col == actual_col => { /* pass */ }
+            (expected_err, actual_err) => {
+                panic!("unexpected from_iter error: {}, expected: {}", actual_err, expected_err)
             }
         }
     }
@@ -1011,7 +1026,9 @@ fn test_parse_enum_errors() {
         ("{\"Dog\":[0]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 9)),
         ("\"Frog\"", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 6)),
         ("{\"Frog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 9)),
-        ("{\"Cat\":[]}", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 9)),
+        ("{\"Cat\":[]}", Error::Syntax(ErrorCode::InvalidLength(0), 1, 9)),
+        ("{\"Cat\":[0]}", Error::Syntax(ErrorCode::InvalidLength(1), 1, 10)),
+        ("{\"Cat\":[0, \"\", 2]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 14)),
         (
             "{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",
             Error::Syntax(ErrorCode::UnknownField("foo".to_string()), 1, 39)
