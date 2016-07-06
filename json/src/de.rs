@@ -2,7 +2,6 @@
 //!
 //! This module provides for JSON deserialization with the type `Deserializer`.
 
-use std::char;
 use std::i32;
 use std::io;
 use std::str;
@@ -195,8 +194,8 @@ impl<R: Read> DeserializerImpl<R> {
             }
             b'"' => {
                 self.eat_char();
-                try!(self.parse_string());
-                let s = str::from_utf8(&self.str_buf).unwrap();
+                self.str_buf.clear();
+                let s = try!(self.read.parse_str(&mut self.str_buf));
                 visitor.visit_str(s)
             }
             b'[' => {
@@ -443,121 +442,6 @@ impl<R: Read> DeserializerImpl<R> {
             visitor.visit_f64(res)
         } else {
             visitor.visit_f64(-res)
-        }
-    }
-
-    fn decode_hex_escape(&mut self) -> Result<u16> {
-        let mut i = 0;
-        let mut n = 0u16;
-        while i < 4 && !try!(self.eof()) {
-            n = match try!(self.next_char_or_null()) {
-                c @ b'0' ... b'9' => n * 16_u16 + ((c as u16) - (b'0' as u16)),
-                b'a' | b'A' => n * 16_u16 + 10_u16,
-                b'b' | b'B' => n * 16_u16 + 11_u16,
-                b'c' | b'C' => n * 16_u16 + 12_u16,
-                b'd' | b'D' => n * 16_u16 + 13_u16,
-                b'e' | b'E' => n * 16_u16 + 14_u16,
-                b'f' | b'F' => n * 16_u16 + 15_u16,
-                _ => { return Err(self.error(ErrorCode::InvalidEscape)); }
-            };
-
-            i += 1;
-        }
-
-        // Error out if we didn't parse 4 digits.
-        if i != 4 {
-            return Err(self.error(ErrorCode::InvalidEscape));
-        }
-
-        Ok(n)
-    }
-
-    fn parse_string(&mut self) -> Result<()> {
-        self.str_buf.clear();
-
-        loop {
-            let ch = match try!(self.next_char()) {
-                Some(ch) => ch,
-                None => { return Err(self.error(ErrorCode::EOFWhileParsingString)); }
-            };
-
-            match ch {
-                b'"' => {
-                    return Ok(());
-                }
-                b'\\' => {
-                    let ch = match try!(self.next_char()) {
-                        Some(ch) => ch,
-                        None => { return Err(self.error(ErrorCode::EOFWhileParsingString)); }
-                    };
-
-                    match ch {
-                        b'"' => self.str_buf.push(b'"'),
-                        b'\\' => self.str_buf.push(b'\\'),
-                        b'/' => self.str_buf.push(b'/'),
-                        b'b' => self.str_buf.push(b'\x08'),
-                        b'f' => self.str_buf.push(b'\x0c'),
-                        b'n' => self.str_buf.push(b'\n'),
-                        b'r' => self.str_buf.push(b'\r'),
-                        b't' => self.str_buf.push(b'\t'),
-                        b'u' => {
-                            let c = match try!(self.decode_hex_escape()) {
-                                0xDC00 ... 0xDFFF => {
-                                    return Err(self.error(ErrorCode::LoneLeadingSurrogateInHexEscape));
-                                }
-
-                                // Non-BMP characters are encoded as a sequence of
-                                // two hex escapes, representing UTF-16 surrogates.
-                                n1 @ 0xD800 ... 0xDBFF => {
-                                    match (try!(self.next_char()), try!(self.next_char())) {
-                                        (Some(b'\\'), Some(b'u')) => (),
-                                        _ => {
-                                            return Err(self.error(ErrorCode::UnexpectedEndOfHexEscape));
-                                        }
-                                    }
-
-                                    let n2 = try!(self.decode_hex_escape());
-
-                                    if n2 < 0xDC00 || n2 > 0xDFFF {
-                                        return Err(self.error(ErrorCode::LoneLeadingSurrogateInHexEscape));
-                                    }
-
-                                    let n = (((n1 - 0xD800) as u32) << 10 |
-                                              (n2 - 0xDC00) as u32) + 0x1_0000;
-
-                                    match char::from_u32(n as u32) {
-                                        Some(c) => c,
-                                        None => {
-                                            return Err(self.error(ErrorCode::InvalidUnicodeCodePoint));
-                                        }
-                                    }
-                                }
-
-                                n => {
-                                    match char::from_u32(n as u32) {
-                                        Some(c) => c,
-                                        None => {
-                                            return Err(self.error(ErrorCode::InvalidUnicodeCodePoint));
-                                        }
-                                    }
-                                }
-                            };
-
-                            // FIXME: this allocation is required in order to be compatible with stable
-                            // rust, which doesn't support encoding a `char` into a stack buffer.
-                            let mut buf = String::new();
-                            buf.push(c);
-                            self.str_buf.extend(buf.bytes());
-                        }
-                        _ => {
-                            return Err(self.error(ErrorCode::InvalidEscape));
-                        }
-                    }
-                }
-                ch => {
-                    self.str_buf.push(ch);
-                }
-            }
         }
     }
 
