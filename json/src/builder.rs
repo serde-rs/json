@@ -30,7 +30,7 @@
 //!                 builder.insert("x", 3).insert("y", 4)
 //!             })
 //!     })
-//!     .unwrap();
+//!     .build();
 //! ```
 
 use serde::ser;
@@ -49,7 +49,7 @@ impl ArrayBuilder {
     }
 
     /// Return the constructed `Value`.
-    pub fn unwrap(self) -> Value {
+    pub fn build(self) -> Value {
         Value::Array(self.array)
     }
 
@@ -65,7 +65,7 @@ impl ArrayBuilder {
         F: FnOnce(ArrayBuilder) -> ArrayBuilder
     {
         let builder = ArrayBuilder::new();
-        self.array.push(f(builder).unwrap());
+        self.array.push(f(builder).build());
         self
     }
 
@@ -75,7 +75,7 @@ impl ArrayBuilder {
         F: FnOnce(ObjectBuilder) -> ObjectBuilder
     {
         let builder = ObjectBuilder::new();
-        self.array.push(f(builder).unwrap());
+        self.array.push(f(builder).build());
         self
     }
 }
@@ -93,7 +93,7 @@ impl ObjectBuilder {
     }
 
     /// Return the constructed `Value`.
-    pub fn unwrap(self) -> Value {
+    pub fn build(self) -> Value {
         Value::Object(self.object)
     }
 
@@ -113,7 +113,7 @@ impl ObjectBuilder {
               F: FnOnce(ArrayBuilder) -> ArrayBuilder
     {
         let builder = ArrayBuilder::new();
-        self.object.insert(key.into(), f(builder).unwrap());
+        self.object.insert(key.into(), f(builder).build());
         self
     }
 
@@ -124,7 +124,7 @@ impl ObjectBuilder {
               F: FnOnce(ObjectBuilder) -> ObjectBuilder
     {
         let builder = ObjectBuilder::new();
-        self.object.insert(key.into(), f(builder).unwrap());
+        self.object.insert(key.into(), f(builder).build());
         self
     }
 }
