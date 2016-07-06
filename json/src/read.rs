@@ -147,6 +147,8 @@ impl<'a> SliceRead<'a> {
 impl<'a> Read for SliceRead<'a> {
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
+        // `Ok(self.slice.get(self.index).map(|ch| { self.index += 1; *ch }))`
+        // is about 10% slower.
         Ok(if self.index < self.slice.len() {
             let ch = self.slice[self.index];
             self.index += 1;
@@ -158,6 +160,8 @@ impl<'a> Read for SliceRead<'a> {
 
     #[inline]
     fn peek(&mut self) -> io::Result<Option<u8>> {
+        // `Ok(self.slice.get(self.index).map(|ch| *ch))` is about 10% slower
+        // for some reason.
         Ok(if self.index < self.slice.len() {
             Some(self.slice[self.index])
         } else {
