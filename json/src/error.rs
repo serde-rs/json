@@ -13,7 +13,7 @@ use serde::de;
 use serde::ser;
 
 /// The errors that can arise while parsing a JSON stream.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum ErrorCode {
     /// Catchall for syntax error messages
     Custom(String),
@@ -85,7 +85,9 @@ pub enum ErrorCode {
     UnexpectedEndOfHexEscape,
 }
 
-impl fmt::Debug for ErrorCode {
+impl fmt::Display for ErrorCode {
+    // https://github.com/serde-rs/serde/issues/425
+    #[cfg_attr(feature = "clippy", allow(use_debug))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorCode::Custom(ref msg) => write!(f, "{}", msg),
@@ -152,7 +154,7 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Error::Syntax(ref code, line, col) => {
-                write!(fmt, "{:?} at line {} column {}", code, line, col)
+                write!(fmt, "{} at line {} column {}", code, line, col)
             }
             Error::Io(ref error) => fmt::Display::fmt(error, fmt),
             Error::FromUtf8(ref error) => fmt::Display::fmt(error, fmt),

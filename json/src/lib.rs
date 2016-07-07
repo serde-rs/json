@@ -41,7 +41,7 @@
 //! }
 //! ```
 //!
-//! If we assume that FirstName is optional and all other fields are mandatory, the above JSON could
+//! If we assume that `FirstName` is optional and all other fields are mandatory, the above JSON could
 //! correspond to the following Rust structs:
 //!
 //! ```ignore
@@ -115,8 +115,29 @@
 //! }
 //! ```
 
-#![cfg_attr(feature = "nightly-testing", plugin(clippy))]
+#![cfg_attr(feature = "clippy", feature(plugin))]
+#![cfg_attr(feature = "clippy", plugin(clippy))]
+#![cfg_attr(feature = "clippy", deny(clippy, clippy_pedantic))]
+// Because of "JavaScript"... fixed in Manishearth/rust-clippy#1071
+#![cfg_attr(feature = "clippy", allow(doc_markdown))]
+// Whitelisted clippy_pedantic lints
+#![cfg_attr(feature = "clippy", allow(
+    // integer and float ser/de requires these sorts of casts
+    cast_possible_truncation,
+    cast_possible_wrap,
+    cast_precision_loss,
+    cast_sign_loss,
+    // string ser/de uses indexing and slicing
+    indexing_slicing,
+    // things are often more readable this way
+    shadow_reuse,
+    shadow_unrelated,
+    single_match_else,
+    stutter,
+))]
+
 #![deny(missing_docs)]
+
 extern crate num_traits;
 extern crate core;
 extern crate serde;

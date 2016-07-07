@@ -364,19 +364,14 @@ impl<R: Read> DeserializerImpl<R> {
             c @ b'0' ... b'9' => {
                 res += (((c as u64) - (b'0' as u64)) as f64) * dec;
             }
-             _ => { return Err(self.error(ErrorCode::InvalidNumber)); }
+            _ => { return Err(self.error(ErrorCode::InvalidNumber)); }
         }
 
-        loop {
-            match try!(self.peek_or_null()) {
-                c @ b'0' ... b'9' => {
-                    self.eat_char();
+        while let c @ b'0' ... b'9' = try!(self.peek_or_null()) {
+            self.eat_char();
 
-                    dec /= 10.0;
-                    res += (((c as u64) - (b'0' as u64)) as f64) * dec;
-                }
-                _ => { break; }
-            }
+            dec /= 10.0;
+            res += (((c as u64) - (b'0' as u64)) as f64) * dec;
         }
 
         match try!(self.peek_or_null()) {
@@ -409,33 +404,28 @@ impl<R: Read> DeserializerImpl<R> {
         };
 
         // Make sure a digit follows the exponent place.
-        let mut exp = match try!(self.next_char_or_null()) {
+        let mut expi = match try!(self.next_char_or_null()) {
             c @ b'0' ... b'9' => { (c as u64) - (b'0' as u64) }
             _ => { return Err(self.error(ErrorCode::InvalidNumber)); }
         };
 
-        loop {
-            match try!(self.peek_or_null()) {
-                c @ b'0' ... b'9' => {
-                    self.eat_char();
+        while let c @ b'0' ... b'9' = try!(self.peek_or_null()) {
+            self.eat_char();
 
-                    exp = try_or_invalid!(self, exp.checked_mul(10));
-                    exp = try_or_invalid!(self, exp.checked_add((c as u64) - (b'0' as u64)));
-                }
-                _ => { break; }
-            }
+            expi = try_or_invalid!(self, expi.checked_mul(10));
+            expi = try_or_invalid!(self, expi.checked_add((c as u64) - (b'0' as u64)));
         }
 
-        let exp = if exp <= i32::MAX as u64 {
-            10_f64.powi(exp as i32)
+        let expf = if expi <= i32::MAX as u64 {
+            10_f64.powi(expi as i32)
         } else {
             return Err(self.peek_error(ErrorCode::InvalidNumber));
         };
 
         if pos_exp {
-            res *= exp;
+            res *= expf;
         } else {
-            res /= exp;
+            res /= expf;
         }
 
         if pos {
