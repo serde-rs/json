@@ -447,6 +447,12 @@ impl<'a> PrettyFormatter<'a> {
     }
 }
 
+impl<'a> Default for PrettyFormatter<'a> {
+    fn default() -> Self {
+        PrettyFormatter::new()
+    }
+}
+
 impl<'a> Formatter for PrettyFormatter<'a> {
     fn open<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
         where W: io::Write,

@@ -38,6 +38,7 @@ use serde::ser;
 use value::{self, Value, Map};
 
 /// This structure provides a simple interface for constructing a JSON array.
+#[derive(Default)]
 pub struct ArrayBuilder {
     array: Vec<Value>,
 }
@@ -45,7 +46,7 @@ pub struct ArrayBuilder {
 impl ArrayBuilder {
     /// Construct an `ObjectBuilder`.
     pub fn new() -> ArrayBuilder {
-        ArrayBuilder { array: Vec::new() }
+        ArrayBuilder::default()
     }
 
     /// Return the constructed `Value`.
@@ -81,15 +82,15 @@ impl ArrayBuilder {
 }
 
 /// This structure provides a simple interface for constructing a JSON object.
+#[derive(Default)]
 pub struct ObjectBuilder {
     object: Map<String, Value>,
 }
 
 impl ObjectBuilder {
-
     /// Construct an `ObjectBuilder`.
     pub fn new() -> ObjectBuilder {
-        ObjectBuilder { object: Map::new() }
+        ObjectBuilder::default()
     }
 
     /// Return the constructed `Value`.

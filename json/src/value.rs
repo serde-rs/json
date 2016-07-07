@@ -57,7 +57,7 @@ pub type Map<K, V> = BTreeMap<K, V>;
 #[cfg(feature = "preserve_order")]
 pub type Map<K, V> = LinkedHashMap<K, V>;
 
-/// Represents the IntoIter type.
+/// Represents the `IntoIter` type.
 #[cfg(not(feature = "preserve_order"))]
 pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
 /// Represents the IntoIter type.
@@ -101,8 +101,8 @@ impl Value {
     /// If the `Value` is an Object, returns the value associated with the provided key.
     /// Otherwise, returns None.
     pub fn find<'a>(&'a self, key: &str) -> Option<&'a Value>{
-        match self {
-            &Value::Object(ref map) => map.get(key),
+        match *self {
+            Value::Object(ref map) => map.get(key),
             _ => None
         }
     }
@@ -158,7 +158,7 @@ impl Value {
     /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
     pub fn pointer<'a>(&'a self, pointer: &str) -> Option<&'a Value> {
         fn parse_index(s: &str) -> Option<usize> {
-            if s.starts_with("+") || (s.starts_with("0") && s.len() != 1) {
+            if s.starts_with('+') || (s.starts_with('0') && s.len() != 1) {
                 return None
             }
             s.parse().ok()
@@ -172,9 +172,9 @@ impl Value {
         let mut target = self;
         for escaped_token in pointer.split('/').skip(1) {
             let token = escaped_token.replace("~1", "/").replace("~0", "~");
-            let target_opt = match target {
-                &Value::Object(ref map) => map.get(&token[..]),
-                &Value::Array(ref list) => parse_index(&token[..])
+            let target_opt = match *target {
+                Value::Object(ref map) => map.get(&token[..]),
+                Value::Array(ref list) => parse_index(&token[..])
                     .and_then(|x| list.get(x)),
                 _ => return None,
             };
@@ -189,8 +189,8 @@ impl Value {
     /// a value associated with the provided key is found. If no value is found
     /// or the `Value` is not an Object, returns None.
     pub fn search<'a>(&'a self, key: &str) -> Option<&'a Value> {
-        match self {
-            &Value::Object(ref map) => {
+        match *self {
+            Value::Object(ref map) => {
                 match map.get(key) {
                     Some(json_value) => Some(json_value),
                     None => {
@@ -209,61 +209,61 @@ impl Value {
     }
 
     /// Returns true if the `Value` is an Object. Returns false otherwise.
-    pub fn is_object<'a>(&'a self) -> bool {
+    pub fn is_object(&self) -> bool {
         self.as_object().is_some()
     }
 
     /// If the `Value` is an Object, returns the associated Map.
     /// Returns None otherwise.
-    pub fn as_object<'a>(&'a self) -> Option<&'a Map<String, Value>> {
-        match self {
-            &Value::Object(ref map) => Some(map),
+    pub fn as_object(&self) -> Option<&Map<String, Value>> {
+        match *self {
+            Value::Object(ref map) => Some(map),
             _ => None
         }
     }
 
     /// If the `Value` is an Object, returns the associated mutable Map.
     /// Returns None otherwise.
-    pub fn as_object_mut<'a>(&'a mut self) -> Option<&'a mut Map<String, Value>> {
-        match self {
-            &mut Value::Object(ref mut map) => Some(map),
+    pub fn as_object_mut(&mut self) -> Option<&mut Map<String, Value>> {
+        match *self {
+            Value::Object(ref mut map) => Some(map),
             _ => None
         }
     }
 
     /// Returns true if the `Value` is an Array. Returns false otherwise.
-    pub fn is_array<'a>(&'a self) -> bool {
+    pub fn is_array(&self) -> bool {
         self.as_array().is_some()
     }
 
     /// If the `Value` is an Array, returns the associated vector.
     /// Returns None otherwise.
-    pub fn as_array<'a>(&'a self) -> Option<&'a Vec<Value>> {
-        match self {
-            &Value::Array(ref array) => Some(&*array),
+    pub fn as_array(&self) -> Option<&Vec<Value>> {
+        match *self {
+            Value::Array(ref array) => Some(&*array),
             _ => None
         }
     }
 
     /// If the `Value` is an Array, returns the associated mutable vector.
     /// Returns None otherwise.
-    pub fn as_array_mut<'a>(&'a mut self) -> Option<&'a mut Vec<Value>> {
-        match self {
-            &mut Value::Array(ref mut list) => Some(list),
+    pub fn as_array_mut(&mut self) -> Option<&mut Vec<Value>> {
+        match *self {
+            Value::Array(ref mut list) => Some(list),
             _ => None
         }
     }
 
     /// Returns true if the `Value` is a String. Returns false otherwise.
-    pub fn is_string<'a>(&'a self) -> bool {
+    pub fn is_string(&self) -> bool {
         self.as_str().is_some()
     }
 
     /// If the `Value` is a String, returns the associated str.
     /// Returns None otherwise.
-    pub fn as_str<'a>(&'a self) -> Option<&'a str> {
+    pub fn as_str(&self) -> Option<&str> {
         match *self {
-            Value::String(ref s) => Some(&s),
+            Value::String(ref s) => Some(s),
             _ => None
         }
     }
@@ -339,8 +339,8 @@ impl Value {
     /// If the `Value` is a Boolean, returns the associated bool.
     /// Returns None otherwise.
     pub fn as_bool(&self) -> Option<bool> {
-        match self {
-            &Value::Bool(b) => Some(b),
+        match *self {
+            Value::Bool(b) => Some(b),
             _ => None
         }
     }
@@ -353,8 +353,8 @@ impl Value {
     /// If the `Value` is a Null, returns ().
     /// Returns None otherwise.
     pub fn as_null(&self) -> Option<()> {
-        match self {
-            &Value::Null => Some(()),
+        match *self {
+            Value::Null => Some(()),
             _ => None
         }
     }
@@ -371,7 +371,7 @@ impl ser::Serialize for Value {
             Value::I64(v) => serializer.serialize_i64(v),
             Value::U64(v) => serializer.serialize_u64(v),
             Value::F64(v) => serializer.serialize_f64(v),
-            Value::String(ref v) => serializer.serialize_str(&v),
+            Value::String(ref v) => serializer.serialize_str(v),
             Value::Array(ref v) => v.serialize(serializer),
             Value::Object(ref v) => v.serialize(serializer),
         }
@@ -468,10 +468,14 @@ struct WriterFormatter<'a, 'b: 'a> {
 
 impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match self.inner.write_str(str::from_utf8(buf).unwrap()) {
-            Ok(_) => Ok(buf.len()),
-            Err(_) => Err(io::Error::last_os_error()),
+        fn io_error<E>(_: E) -> io::Error {
+            // Value does not matter because fmt::Debug and fmt::Display impls
+            // below just map it to fmt::Error
+            io::Error::new(io::ErrorKind::Other, "fmt error")
         }
+        let s = try!(str::from_utf8(buf).map_err(io_error));
+        try!(self.inner.write_str(s).map_err(io_error));
+        Ok(buf.len())
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -524,10 +528,16 @@ impl Serializer {
 
     /// Unwrap the `Serializer` and return the `Value`.
     pub fn unwrap(mut self) -> Value {
-        match self.state.pop().unwrap() {
+        match self.state.pop().expect("state is empty") {
             State::Value(value) => value,
             state => panic!("expected value, found {:?}", state),
         }
+    }
+}
+
+impl Default for Serializer {
+    fn default() -> Self {
+        Serializer::new()
     }
 }
 
@@ -628,7 +638,7 @@ impl ser::Serializer for Serializer {
 
         while let Some(()) = try!(visitor.visit(self)) { }
 
-        let values = match self.state.pop().unwrap() {
+        let values = match self.state.pop().expect("state is empty") {
             State::Array(values) => values,
             state => panic!("Expected array, found {:?}", state),
         };
@@ -648,7 +658,7 @@ impl ser::Serializer for Serializer {
     {
         try!(self.serialize_seq(visitor));
 
-        let value = match self.state.pop().unwrap() {
+        let value = match self.state.pop().expect("state is empty") {
             State::Value(value) => value,
             state => panic!("expected value, found {:?}", state),
         };
@@ -668,12 +678,12 @@ impl ser::Serializer for Serializer {
     {
         try!(value.serialize(self));
 
-        let value = match self.state.pop().unwrap() {
+        let value = match self.state.pop().expect("state is empty") {
             State::Value(value) => value,
             state => panic!("expected value, found {:?}", state),
         };
 
-        match *self.state.last_mut().unwrap() {
+        match *self.state.last_mut().expect("state is empty") {
             State::Array(ref mut values) => { values.push(value); }
             ref state => panic!("expected array, found {:?}", state),
         }
@@ -691,7 +701,7 @@ impl ser::Serializer for Serializer {
 
         while let Some(()) = try!(visitor.visit(self)) { }
 
-        let values = match self.state.pop().unwrap() {
+        let values = match self.state.pop().expect("state is empty") {
             State::Object(values) => values,
             state => panic!("expected object, found {:?}", state),
         };
@@ -711,7 +721,7 @@ impl ser::Serializer for Serializer {
     {
         try!(self.serialize_map(visitor));
 
-        let value = match self.state.pop().unwrap() {
+        let value = match self.state.pop().expect("state is empty") {
             State::Value(value) => value,
             state => panic!("expected value, found {:?}", state),
         };
@@ -732,19 +742,19 @@ impl ser::Serializer for Serializer {
     {
         try!(key.serialize(self));
 
-        let key = match self.state.pop().unwrap() {
+        let key = match self.state.pop().expect("state is empty") {
             State::Value(Value::String(value)) => value,
             state => panic!("expected key, found {:?}", state),
         };
 
         try!(value.serialize(self));
 
-        let value = match self.state.pop().unwrap() {
+        let value = match self.state.pop().expect("state is empty") {
             State::Value(value) => value,
             state => panic!("expected value, found {:?}", state),
         };
 
-        match *self.state.last_mut().unwrap() {
+        match *self.state.last_mut().expect("state is empty") {
             State::Object(ref mut values) => { values.insert(key, value); }
             ref state => panic!("expected object, found {:?}", state),
         }
@@ -873,7 +883,8 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
     fn visit_variant<V>(&mut self) -> Result<V, Error>
         where V: de::Deserialize,
     {
-        de::Deserialize::deserialize(&mut Deserializer::new(self.variant.take().unwrap()))
+        let variant = self.variant.take().expect("variant is missing");
+        de::Deserialize::deserialize(&mut Deserializer::new(variant))
     }
 
     fn visit_unit(&mut self) -> Result<(), Error> {
@@ -886,7 +897,8 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
     fn visit_newtype<T>(&mut self) -> Result<T, Error>
         where T: de::Deserialize,
     {
-        de::Deserialize::deserialize(&mut Deserializer::new(self.val.take().unwrap()))
+        let val = self.val.take().expect("val is missing");
+        de::Deserialize::deserialize(&mut Deserializer::new(val))
     }
 
     fn visit_tuple<V>(&mut self,
@@ -894,7 +906,8 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
                       visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
-        if let Value::Array(fields) = self.val.take().unwrap() {
+        let val = self.val.take().expect("val is missing");
+        if let Value::Array(fields) = val {
             de::Deserializer::deserialize(
                 &mut SeqDeserializer {
                     de: self.de,
@@ -913,7 +926,8 @@ impl<'a> de::VariantVisitor for VariantDeserializer<'a> {
                        visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
-        if let Value::Object(fields) = self.val.take().unwrap() {
+        let val = self.val.take().expect("val is missing");
+        if let Value::Object(fields) = val {
             de::Deserializer::deserialize(
                 &mut MapDeserializer {
                     de: self.de,
@@ -1006,7 +1020,7 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
     fn visit_value<T>(&mut self) -> Result<T, Error>
         where T: de::Deserialize
     {
-        let value = self.value.take().unwrap();
+        let value = self.value.take().expect("value is missing");
         self.de.value = Some(value);
         Ok(try!(de::Deserialize::deserialize(self.de)))
     }
@@ -1073,7 +1087,7 @@ pub fn to_value<T: ?Sized>(value: &T) -> Value
     where T: ser::Serialize
 {
     let mut ser = Serializer::new();
-    value.serialize(&mut ser).ok().unwrap();
+    value.serialize(&mut ser).expect("failed to serialize");
     ser.unwrap()
 }
 
