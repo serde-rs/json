@@ -86,12 +86,10 @@ pub enum ErrorCode {
 }
 
 impl fmt::Display for ErrorCode {
-    // https://github.com/serde-rs/serde/issues/425
-    #[cfg_attr(feature = "clippy", allow(use_debug))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorCode::Custom(ref msg) => write!(f, "{}", msg),
-            ErrorCode::InvalidType(ref ty) => write!(f, "invalid type: {:?}", ty),
+            ErrorCode::InvalidType(ref ty) => write!(f, "invalid type: {}", ty),
             ErrorCode::InvalidValue(ref msg) => write!(f, "invalid value: {}", msg),
             ErrorCode::InvalidLength(ref len) => write!(f, "invalid value length {}", len),
             ErrorCode::UnknownVariant(ref variant) => write!(f, "unknown variant \"{}\"", variant),
