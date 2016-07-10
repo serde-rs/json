@@ -204,7 +204,8 @@ impl<'a> SliceRead<'a> {
                         &self.slice[start .. self.index]
                     } else {
                         scratch.extend_from_slice(&self.slice[start .. self.index]);
-                        scratch
+                        // "as &[u8]" is required for rustc 1.8.0
+                        scratch as &[u8]
                     };
                     self.index += 1;
                     return result(self, string);
