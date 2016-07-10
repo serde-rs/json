@@ -58,6 +58,11 @@ pub struct SliceRead<'a> {
     index: usize,
 }
 
+/// Elide UTF-8 checks by assuming that the input is valid UTF-8.
+pub struct StrRead<'a> {
+    delegate: SliceRead<'a>,
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 impl<Iter> IteratorRead<Iter>
@@ -173,6 +178,49 @@ impl<'a> SliceRead<'a> {
         }
         pos
     }
+
+    /// The big optimization here over IteratorRead is that if the string
+    /// contains no backslash escape sequences, the returned &str is a slice of
+    /// the raw JSON data so we avoid copying into the scratch space.
+    fn parse_str_bytes<'s, T, F>(&'s mut self, scratch: &'s mut Vec<u8>, result: F) -> Result<T>
+        where T: 's,
+              F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
+    {
+        // Index of the first byte not yet copied into the scratch space.
+        let mut start = self.index;
+
+        loop {
+            while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
+                self.index += 1;
+            }
+            if self.index == self.slice.len() {
+                return error(self, ErrorCode::EOFWhileParsingString);
+            }
+            match self.slice[self.index] {
+                b'"' => {
+                    let string = if scratch.is_empty() {
+                        // Fast path: return a slice of the raw JSON without any
+                        // copying.
+                        &self.slice[start .. self.index]
+                    } else {
+                        scratch.extend_from_slice(&self.slice[start .. self.index]);
+                        scratch
+                    };
+                    self.index += 1;
+                    return result(self, string);
+                }
+                b'\\' => {
+                    scratch.extend_from_slice(&self.slice[start .. self.index]);
+                    self.index += 1;
+                    try!(parse_escape(self, scratch));
+                    start = self.index;
+                }
+                _ => {
+                    return error(self, ErrorCode::InvalidUnicodeCodePoint);
+                }
+            }
+        }
+    }
 }
 
 impl<'a> Read for SliceRead<'a> {
@@ -215,44 +263,51 @@ impl<'a> Read for SliceRead<'a> {
         self.position_of_index(cmp::min(self.slice.len(), self.index + 1))
     }
 
-    /// The big optimization here over IteratorRead is that if the string
-    /// contains no backslash escape sequences, the returned &str is a slice of
-    /// the raw JSON data so we avoid copying into the scratch space.
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<&'s str> {
-        // Index of the first byte not yet copied into the scratch space.
-        let mut start = self.index;
+        self.parse_str_bytes(scratch, as_str)
+    }
+}
 
-        loop {
-            while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
-                self.index += 1;
-            }
-            if self.index == self.slice.len() {
-                return error(self, ErrorCode::EOFWhileParsingString);
-            }
-            match self.slice[self.index] {
-                b'"' => {
-                    if scratch.is_empty() {
-                        // Fast path: return a slice of the raw JSON without any
-                        // copying.
-                        let s = as_str(self, &self.slice[start .. self.index]);
-                        self.index += 1;
-                        return s;
-                    }
-                    scratch.extend_from_slice(&self.slice[start .. self.index]);
-                    self.index += 1;
-                    return as_str(self, scratch);
-                }
-                b'\\' => {
-                    scratch.extend_from_slice(&self.slice[start .. self.index]);
-                    self.index += 1;
-                    try!(parse_escape(self, scratch));
-                    start = self.index;
-                }
-                _ => {
-                    return error(self, ErrorCode::InvalidUnicodeCodePoint);
-                }
-            }
+//////////////////////////////////////////////////////////////////////////////
+
+impl<'a> StrRead<'a> {
+    pub fn new(s: &'a str) -> Self {
+        StrRead {
+            delegate: SliceRead::new(s.as_bytes()),
         }
+    }
+}
+
+impl<'a> Read for StrRead<'a> {
+    #[inline]
+    fn next(&mut self) -> io::Result<Option<u8>> {
+        self.delegate.next()
+    }
+
+    #[inline]
+    fn peek(&mut self) -> io::Result<Option<u8>> {
+        self.delegate.peek()
+    }
+
+    #[inline]
+    fn discard(&mut self) {
+        self.delegate.discard();
+    }
+
+    fn position(&self) -> Position {
+        self.delegate.position()
+    }
+
+    fn peek_position(&self) -> Position {
+        self.delegate.peek_position()
+    }
+
+    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<&'s str> {
+        self.delegate.parse_str_bytes(scratch, |_, bytes| {
+            // The input is assumed to be valid UTF-8 and the \u-escapes are
+            // checked along the way, so don't need to check here.
+            Ok(unsafe { str::from_utf8_unchecked(bytes) })
+        })
     }
 }
 
