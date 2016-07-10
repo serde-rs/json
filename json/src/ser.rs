@@ -656,7 +656,10 @@ pub fn to_string<T>(value: &T) -> Result<String>
     where T: ser::Serialize
 {
     let vec = try!(to_vec(value));
-    let string = try!(String::from_utf8(vec));
+    let string = unsafe {
+        // We do not emit invalid UTF-8.
+        String::from_utf8_unchecked(vec)
+    };
     Ok(string)
 }
 
@@ -666,7 +669,10 @@ pub fn to_string_pretty<T>(value: &T) -> Result<String>
     where T: ser::Serialize
 {
     let vec = try!(to_vec_pretty(value));
-    let string = try!(String::from_utf8(vec));
+    let string = unsafe {
+        // We do not emit invalid UTF-8.
+        String::from_utf8_unchecked(vec)
+    };
     Ok(string)
 }
 

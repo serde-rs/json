@@ -7,7 +7,6 @@ use std::error;
 use std::fmt;
 use std::io;
 use std::result;
-use std::string::FromUtf8Error;
 
 use serde::de;
 use serde::ser;
@@ -124,9 +123,6 @@ pub enum Error {
 
     /// Some IO error occurred when serializing or deserializing a value.
     Io(io::Error),
-
-    /// Some UTF8 error occurred while serializing or deserializing a value.
-    FromUtf8(FromUtf8Error),
 }
 
 impl error::Error for Error {
@@ -134,14 +130,12 @@ impl error::Error for Error {
         match *self {
             Error::Syntax(..) => "syntax error",
             Error::Io(ref error) => error::Error::description(error),
-            Error::FromUtf8(ref error) => error.description(),
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
         match *self {
             Error::Io(ref error) => Some(error),
-            Error::FromUtf8(ref error) => Some(error),
             _ => None,
         }
     }
@@ -155,7 +149,6 @@ impl fmt::Display for Error {
                 write!(fmt, "{} at line {} column {}", code, line, col)
             }
             Error::Io(ref error) => fmt::Display::fmt(error, fmt),
-            Error::FromUtf8(ref error) => fmt::Display::fmt(error, fmt),
         }
     }
 }
@@ -163,12 +156,6 @@ impl fmt::Display for Error {
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
         Error::Io(error)
-    }
-}
-
-impl From<FromUtf8Error> for Error {
-    fn from(error: FromUtf8Error) -> Error {
-        Error::FromUtf8(error)
     }
 }
 
