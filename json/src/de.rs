@@ -2,9 +2,8 @@
 //!
 //! This module provides for JSON deserialization with the type `Deserializer`.
 
-use std::i32;
+use std::{f64, i32, i64, u64};
 use std::io;
-use std::str;
 use std::marker::PhantomData;
 
 use serde::de;
@@ -87,12 +86,9 @@ struct DeserializerImpl<R: Read> {
     str_buf: Vec<u8>,
 }
 
-macro_rules! try_or_invalid {
-    ($self_:expr, $e:expr) => {
-        match $e {
-            Some(v) => v,
-            None => { return Err($self_.error(ErrorCode::InvalidNumber)); }
-        }
+macro_rules! overflow {
+    ($a:ident * 10 + $b:ident, $c:expr) => {
+        $a >= $c / 10 && ($a > $c / 10 || $b > $c % 10)
     }
 }
 
@@ -248,29 +244,27 @@ impl<R: Read> DeserializerImpl<R> {
                         self.parse_number(pos, 0, visitor)
                     }
                 }
-            },
+            }
             c @ b'1' ... b'9' => {
-                let mut res: u64 = (c as u64) - ('0' as u64);
+                let mut res = (c - b'0') as u64;
 
                 loop {
                     match try!(self.peek_or_null()) {
                         c @ b'0' ... b'9' => {
                             self.eat_char();
-
-                            let digit = (c as u64) - ('0' as u64);
+                            let digit = (c - b'0') as u64;
 
                             // We need to be careful with overflow. If we can, try to keep the
                             // number as a `u64` until we grow too large. At that point, switch to
                             // parsing the value as a `f64`.
-                            match res.checked_mul(10).and_then(|val| val.checked_add(digit)) {
-                                Some(res_) => { res = res_; }
-                                None => {
-                                    return self.parse_float(
-                                        pos,
-                                        (res as f64) * 10.0 + (digit as f64),
-                                        visitor);
-                                }
+                            if overflow!(res * 10 + digit, u64::MAX) {
+                                return self.parse_long_integer(
+                                    pos,
+                                    res, 1, // res * 10^1
+                                    visitor);
                             }
+
+                            res = res * 10 + digit;
                         }
                         _ => {
                             return self.parse_number(pos, res, visitor);
@@ -284,36 +278,29 @@ impl<R: Read> DeserializerImpl<R> {
         }
     }
 
-    fn parse_float<V>(&mut self,
-                      pos: bool,
-                      mut res: f64,
-                      mut visitor: V) -> Result<V::Value>
+    fn parse_long_integer<V>(&mut self,
+                             pos: bool,
+                             significand: u64,
+                             mut exponent: i32,
+                             visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         loop {
-            match try!(self.next_char_or_null()) {
-                c @ b'0' ... b'9' => {
-                    let digit = (c as u64) - ('0' as u64);
-
-                    res *= 10.0;
-                    res += digit as f64;
+            match try!(self.peek_or_null()) {
+                b'0' ... b'9' => {
+                    self.eat_char();
+                    // This could overflow... if your integer is gigabytes long.
+                    // Ignore that possibility.
+                    exponent += 1;
+                }
+                b'.' => {
+                    return self.parse_decimal(pos, significand, exponent, visitor);
+                }
+                b'e' | b'E' => {
+                    return self.parse_exponent(pos, significand, exponent, visitor);
                 }
                 _ => {
-                    match try!(self.peek_or_null()) {
-                        b'.' => {
-                            return self.parse_decimal(pos, res, visitor);
-                        }
-                        b'e' | b'E' => {
-                            return self.parse_exponent(pos, res, visitor);
-                        }
-                        _ => {
-                            if !pos {
-                                res = -res;
-                            }
-
-                            return visitor.visit_f64(res);
-                        }
-                    }
+                    return self.visit_f64_from_parts(pos, significand, exponent, visitor);
                 }
             }
         }
@@ -321,28 +308,28 @@ impl<R: Read> DeserializerImpl<R> {
 
     fn parse_number<V>(&mut self,
                        pos: bool,
-                       res: u64,
+                       significand: u64,
                        mut visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         match try!(self.peek_or_null()) {
             b'.' => {
-                self.parse_decimal(pos, res as f64, visitor)
+                self.parse_decimal(pos, significand, 0, visitor)
             }
             b'e' | b'E' => {
-                self.parse_exponent(pos, res as f64, visitor)
+                self.parse_exponent(pos, significand, 0, visitor)
             }
             _ => {
                 if pos {
-                    visitor.visit_u64(res)
+                    visitor.visit_u64(significand)
                 } else {
-                    let res_i64 = (res as i64).wrapping_neg();
+                    let neg = (significand as i64).wrapping_neg();
 
                     // Convert into a float if we underflow.
-                    if res_i64 > 0 {
-                        visitor.visit_f64(-(res as f64))
+                    if neg > 0 {
+                        visitor.visit_f64(-(significand as f64))
                     } else {
-                        visitor.visit_i64(res_i64)
+                        visitor.visit_i64(neg)
                     }
                 }
             }
@@ -351,48 +338,51 @@ impl<R: Read> DeserializerImpl<R> {
 
     fn parse_decimal<V>(&mut self,
                         pos: bool,
-                        mut res: f64,
-                        mut visitor: V) -> Result<V::Value>
+                        mut significand: u64,
+                        mut exponent: i32,
+                        visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         self.eat_char();
 
-        let mut dec = 0.1;
-
-        // Make sure a digit follows the decimal place.
-        match try!(self.next_char_or_null()) {
-            c @ b'0' ... b'9' => {
-                res += (((c as u64) - (b'0' as u64)) as f64) * dec;
-            }
-            _ => { return Err(self.error(ErrorCode::InvalidNumber)); }
-        }
-
+        let mut at_least_one_digit = false;
         while let c @ b'0' ... b'9' = try!(self.peek_or_null()) {
             self.eat_char();
+            let digit = (c - b'0') as u64;
+            at_least_one_digit = true;
 
-            dec /= 10.0;
-            res += (((c as u64) - (b'0' as u64)) as f64) * dec;
+            if overflow!(significand * 10 + digit, u64::MAX) {
+                // The next multiply/add would overflow, so just ignore all
+                // further digits.
+                while let b'0' ... b'9' = try!(self.peek_or_null()) {
+                    self.eat_char();
+                }
+                break;
+            }
+
+            significand = significand * 10 + digit;
+            exponent -= 1;
+        }
+
+        if !at_least_one_digit {
+            return Err(self.peek_error(ErrorCode::InvalidNumber));
         }
 
         match try!(self.peek_or_null()) {
             b'e' | b'E' => {
-                self.parse_exponent(pos, res, visitor)
+                self.parse_exponent(pos, significand, exponent, visitor)
             }
             _ => {
-                if pos {
-                    visitor.visit_f64(res)
-                } else {
-                    visitor.visit_f64(-res)
-                }
+                self.visit_f64_from_parts(pos, significand, exponent, visitor)
             }
         }
-
     }
 
     fn parse_exponent<V>(&mut self,
                          pos: bool,
-                         mut res: f64,
-                         mut visitor: V) -> Result<V::Value>
+                         significand: u64,
+                         starting_exp: i32,
+                         visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         self.eat_char();
@@ -404,35 +394,60 @@ impl<R: Read> DeserializerImpl<R> {
         };
 
         // Make sure a digit follows the exponent place.
-        let mut expi = match try!(self.next_char_or_null()) {
-            c @ b'0' ... b'9' => { (c as u64) - (b'0' as u64) }
+        let mut exp = match try!(self.next_char_or_null()) {
+            c @ b'0' ... b'9' => { (c - b'0') as i32 }
             _ => { return Err(self.error(ErrorCode::InvalidNumber)); }
         };
 
         while let c @ b'0' ... b'9' = try!(self.peek_or_null()) {
             self.eat_char();
+            let digit = (c - b'0') as i32;
 
-            expi = try_or_invalid!(self, expi.checked_mul(10));
-            expi = try_or_invalid!(self, expi.checked_add((c as u64) - (b'0' as u64)));
+            if overflow!(exp * 10 + digit, i32::MAX) {
+                // Really big exponent, just ignore the rest.
+                while let b'0' ... b'9' = try!(self.peek_or_null()) {
+                    self.eat_char();
+                }
+                exp = i32::MAX;
+                break;
+            }
+
+            exp = exp * 10 + digit;
         }
 
-        let expf = if expi <= i32::MAX as u64 {
-            10_f64.powi(expi as i32)
+        let final_exp = if pos_exp {
+            starting_exp.saturating_add(exp)
         } else {
-            return Err(self.peek_error(ErrorCode::InvalidNumber));
+            starting_exp.saturating_sub(exp)
         };
 
-        if pos_exp {
-            res *= expf;
-        } else {
-            res /= expf;
-        }
+        self.visit_f64_from_parts(pos, significand, final_exp, visitor)
+    }
 
-        if pos {
-            visitor.visit_f64(res)
-        } else {
-            visitor.visit_f64(-res)
-        }
+    fn visit_f64_from_parts<V>(&mut self,
+                               pos: bool,
+                               significand: u64,
+                               exponent: i32,
+                               mut visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        let f = match POW10.get(exponent.abs() as usize) {
+            Some(pow) => {
+                if exponent >= 0 {
+                    significand as f64 * pow
+                } else {
+                    significand as f64 / pow
+                }
+            }
+            None => {
+                if exponent >= 0 && significand != 0 {
+                    f64::INFINITY
+                } else {
+                    0.0
+                }
+            }
+        };
+        visitor.visit_f64(if pos { f } else { -f })
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
@@ -448,6 +463,40 @@ impl<R: Read> DeserializerImpl<R> {
         }
     }
 }
+
+static POW10: [f64; 309] = [
+    1e000, 1e001, 1e002, 1e003, 1e004, 1e005, 1e006, 1e007, 1e008, 1e009,
+    1e010, 1e011, 1e012, 1e013, 1e014, 1e015, 1e016, 1e017, 1e018, 1e019,
+    1e020, 1e021, 1e022, 1e023, 1e024, 1e025, 1e026, 1e027, 1e028, 1e029,
+    1e030, 1e031, 1e032, 1e033, 1e034, 1e035, 1e036, 1e037, 1e038, 1e039,
+    1e040, 1e041, 1e042, 1e043, 1e044, 1e045, 1e046, 1e047, 1e048, 1e049,
+    1e050, 1e051, 1e052, 1e053, 1e054, 1e055, 1e056, 1e057, 1e058, 1e059,
+    1e060, 1e061, 1e062, 1e063, 1e064, 1e065, 1e066, 1e067, 1e068, 1e069,
+    1e070, 1e071, 1e072, 1e073, 1e074, 1e075, 1e076, 1e077, 1e078, 1e079,
+    1e080, 1e081, 1e082, 1e083, 1e084, 1e085, 1e086, 1e087, 1e088, 1e089,
+    1e090, 1e091, 1e092, 1e093, 1e094, 1e095, 1e096, 1e097, 1e098, 1e099,
+    1e100, 1e101, 1e102, 1e103, 1e104, 1e105, 1e106, 1e107, 1e108, 1e109,
+    1e110, 1e111, 1e112, 1e113, 1e114, 1e115, 1e116, 1e117, 1e118, 1e119,
+    1e120, 1e121, 1e122, 1e123, 1e124, 1e125, 1e126, 1e127, 1e128, 1e129,
+    1e130, 1e131, 1e132, 1e133, 1e134, 1e135, 1e136, 1e137, 1e138, 1e139,
+    1e140, 1e141, 1e142, 1e143, 1e144, 1e145, 1e146, 1e147, 1e148, 1e149,
+    1e150, 1e151, 1e152, 1e153, 1e154, 1e155, 1e156, 1e157, 1e158, 1e159,
+    1e160, 1e161, 1e162, 1e163, 1e164, 1e165, 1e166, 1e167, 1e168, 1e169,
+    1e170, 1e171, 1e172, 1e173, 1e174, 1e175, 1e176, 1e177, 1e178, 1e179,
+    1e180, 1e181, 1e182, 1e183, 1e184, 1e185, 1e186, 1e187, 1e188, 1e189,
+    1e190, 1e191, 1e192, 1e193, 1e194, 1e195, 1e196, 1e197, 1e198, 1e199,
+    1e200, 1e201, 1e202, 1e203, 1e204, 1e205, 1e206, 1e207, 1e208, 1e209,
+    1e210, 1e211, 1e212, 1e213, 1e214, 1e215, 1e216, 1e217, 1e218, 1e219,
+    1e220, 1e221, 1e222, 1e223, 1e224, 1e225, 1e226, 1e227, 1e228, 1e229,
+    1e230, 1e231, 1e232, 1e233, 1e234, 1e235, 1e236, 1e237, 1e238, 1e239,
+    1e240, 1e241, 1e242, 1e243, 1e244, 1e245, 1e246, 1e247, 1e248, 1e249,
+    1e250, 1e251, 1e252, 1e253, 1e254, 1e255, 1e256, 1e257, 1e258, 1e259,
+    1e260, 1e261, 1e262, 1e263, 1e264, 1e265, 1e266, 1e267, 1e268, 1e269,
+    1e270, 1e271, 1e272, 1e273, 1e274, 1e275, 1e276, 1e277, 1e278, 1e279,
+    1e280, 1e281, 1e282, 1e283, 1e284, 1e285, 1e286, 1e287, 1e288, 1e289,
+    1e290, 1e291, 1e292, 1e293, 1e294, 1e295, 1e296, 1e297, 1e298, 1e299,
+    1e300, 1e301, 1e302, 1e303, 1e304, 1e305, 1e306, 1e307, 1e308,
+];
 
 impl<R: Read> de::Deserializer for DeserializerImpl<R> {
     type Error = Error;

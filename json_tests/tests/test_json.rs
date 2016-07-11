@@ -763,11 +763,14 @@ fn test_parse_number_errors() {
         (".", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
         ("-", Error::Syntax(ErrorCode::InvalidNumber, 1, 1)),
         ("00", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
+        ("0x80", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
+        ("\\0", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
         ("1.", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
+        ("1.a", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
+        ("1.e1", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
         ("1e", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
         ("1e+", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
         ("1a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
-        ("1e777777777777777777777777777", Error::Syntax(ErrorCode::InvalidNumber, 1, 22)),
     ]);
 }
 
@@ -794,10 +797,16 @@ fn test_parse_u64() {
 
 #[test]
 fn test_parse_negative_zero() {
-    assert_eq!(0, from_str::<u32>("-0").unwrap());
-    assert_eq!(0, from_str::<u32>("-0.0").unwrap());
-    assert_eq!(0, from_str::<u32>("-0e2").unwrap());
-    assert_eq!(0, from_str::<u32>("-0.0e2").unwrap());
+    for negative_zero in &[
+        "-0.0",
+        "-0e2",
+        "-0.0e2",
+        "-1e-400",
+    ] {
+        assert_eq!(0, from_str::<u32>(negative_zero).unwrap());
+        assert!(from_str::<f64>(negative_zero).unwrap().is_sign_negative(),
+            "should have been negative: {:?}", negative_zero);
+    }
 }
 
 #[test]
@@ -823,6 +832,12 @@ fn test_parse_f64() {
         (&format!("{:?}", (i64::MIN as f64) - 1.0), (i64::MIN as f64) - 1.0),
         (&format!("{:?}", (u64::MAX as f64) + 1.0), (u64::MAX as f64) + 1.0),
         (&format!("{:?}", f64::EPSILON), f64::EPSILON),
+        ("0.0000000000000000000000000000000000000000000000000123e50", 1.23),
+        ("100e777777777777777777777777777", f64::INFINITY),
+        ("-100e777777777777777777777777777", f64::NEG_INFINITY),
+        ("100e-777777777777777777777777777", 0.0),
+        ("1010101010101010101010101010101010101010", 10101010101010101010e20),
+        ("0.1010101010101010101010101010101010101010", 0.1010101010101010101),
     ]);
 }
 
