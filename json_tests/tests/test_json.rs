@@ -14,6 +14,7 @@ use serde_json::{
     Value,
     Map,
     from_iter,
+    from_slice,
     from_str,
     from_value,
     to_value,
@@ -643,11 +644,14 @@ fn test_write_option() {
     ]);
 }
 
-fn test_parse_ok<T>(errors: Vec<(&str, T)>)
+fn test_parse_ok<T>(tests: Vec<(&str, T)>)
     where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
 {
-    for (s, value) in errors {
+    for (s, value) in tests {
         let v: T = from_str(s).unwrap();
+        assert_eq!(v, value.clone());
+
+        let v: T = from_slice(s.as_bytes()).unwrap();
         assert_eq!(v, value.clone());
 
         let v: T = from_iter(s.bytes().map(Ok)).unwrap();
@@ -669,11 +673,14 @@ fn test_parse_ok<T>(errors: Vec<(&str, T)>)
 
 // For testing representations that the deserializer accepts but the serializer
 // never generates. These do not survive a round-trip through Value.
-fn test_parse_unusual_ok<T>(errors: Vec<(&str, T)>)
+fn test_parse_unusual_ok<T>(tests: Vec<(&str, T)>)
     where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
 {
-    for (s, value) in errors {
+    for (s, value) in tests {
         let v: T = from_str(s).unwrap();
+        assert_eq!(v, value.clone());
+
+        let v: T = from_slice(s.as_bytes()).unwrap();
         assert_eq!(v, value.clone());
 
         let v: T = from_iter(s.bytes().map(Ok)).unwrap();
@@ -681,12 +688,9 @@ fn test_parse_unusual_ok<T>(errors: Vec<(&str, T)>)
     }
 }
 
-// FIXME (#5527): these could be merged once UFCS is finished.
-fn test_parse_err<T>(errors: Vec<(&'static str, Error)>)
-    where T: Debug + PartialEq + de::Deserialize,
-{
-    for &(s, ref err) in &errors {
-        match (err, &from_str::<T>(s).unwrap_err()) {
+macro_rules! test_parse_err {
+    ($name:ident::<$($ty:ty),*>($arg:expr) => $err:expr) => {
+        match ($err, &$name::<$($ty),*>($arg).unwrap_err()) {
             (
                 &Error::Syntax(ref expected_code, expected_line, expected_col),
                 &Error::Syntax(ref actual_code, actual_line, actual_col),
@@ -694,20 +698,29 @@ fn test_parse_err<T>(errors: Vec<(&'static str, Error)>)
                 && expected_line == actual_line
                 && expected_col == actual_col => { /* pass */ }
             (expected_err, actual_err) => {
-                panic!("unexpected from_str error: {}, expected: {}", actual_err, expected_err)
+                panic!("unexpected {} error: {}, expected: {}", stringify!($name), actual_err, expected_err)
             }
         }
-        match (err, &from_iter::<_, T>(s.bytes().map(Ok)).unwrap_err()) {
-            (
-                &Error::Syntax(ref expected_code, expected_line, expected_col),
-                &Error::Syntax(ref actual_code, actual_line, actual_col),
-            ) if expected_code == actual_code
-              && expected_line == actual_line
-              && expected_col == actual_col => { /* pass */ }
-            (expected_err, actual_err) => {
-                panic!("unexpected from_iter error: {}, expected: {}", actual_err, expected_err)
-            }
-        }
+    };
+}
+
+// FIXME (#5527): these could be merged once UFCS is finished.
+fn test_parse_err<T>(errors: Vec<(&'static str, Error)>)
+    where T: Debug + PartialEq + de::Deserialize,
+{
+    for &(s, ref err) in &errors {
+        test_parse_err!(from_str::<T>(s) => err);
+        test_parse_err!(from_slice::<T>(s.as_bytes()) => err);
+        test_parse_err!(from_iter::<_, T>(s.bytes().map(Ok)) => err);
+    }
+}
+
+fn test_parse_slice_err<T>(errors: Vec<(&[u8], Error)>)
+    where T: Debug + PartialEq + de::Deserialize,
+{
+    for &(s, ref err) in &errors {
+        test_parse_err!(from_slice::<T>(s) => err);
+        test_parse_err!(from_iter::<_, T>(s.iter().cloned().map(Ok)) => err);
     }
 }
 
@@ -819,6 +832,14 @@ fn test_parse_string() {
         ("\"", Error::Syntax(ErrorCode::EOFWhileParsingString, 1, 1)),
         ("\"lol", Error::Syntax(ErrorCode::EOFWhileParsingString, 1, 4)),
         ("\"lol\"a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 6)),
+        ("\"\\uD83C\\uFFFF\"", Error::Syntax(ErrorCode::LoneLeadingSurrogateInHexEscape, 1, 13)),
+    ]);
+
+    test_parse_slice_err::<String>(vec![
+        (&[b'"', 159, 146, 150, b'"'],
+            Error::Syntax(ErrorCode::InvalidUnicodeCodePoint, 1, 5)),
+        (&[b'"', b'\\', b'n', 159, 146, 150, b'"'],
+            Error::Syntax(ErrorCode::InvalidUnicodeCodePoint, 1, 7)),
     ]);
 
     test_parse_ok(vec![
@@ -832,6 +853,7 @@ fn test_parse_string() {
         ("\"\\t\"", "\t".to_string()),
         ("\"\\u12ab\"", "\u{12ab}".to_string()),
         ("\"\\uAB12\"", "\u{AB12}".to_string()),
+        ("\"\\uD83C\\uDF95\"", "\u{1F395}".to_string()),
     ]);
 }
 

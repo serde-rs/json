@@ -846,18 +846,25 @@ impl <T, Iter> Iterator for StreamDeserializer<T, Iter>
 
 //////////////////////////////////////////////////////////////////////////////
 
+fn from_trait<R, T>(read: R) -> Result<T>
+    where R: Read,
+          T: de::Deserialize,
+{
+    let mut de = DeserializerImpl::new(read);
+    let value = try!(de::Deserialize::deserialize(&mut de));
+
+    // Make sure the whole stream has been consumed.
+    try!(de.end());
+    Ok(value)
+}
+
 /// Decodes a json value from an iterator over an iterator
 /// `Iterator<Item=io::Result<u8>>`.
 pub fn from_iter<I, T>(iter: I) -> Result<T>
     where I: Iterator<Item=io::Result<u8>>,
           T: de::Deserialize,
 {
-    let mut de = DeserializerImpl::new(read::IteratorRead::new(iter));
-    let value = try!(de::Deserialize::deserialize(&mut de));
-
-    // Make sure the whole stream has been consumed.
-    try!(de.end());
-    Ok(value)
+    from_trait(read::IteratorRead::new(iter))
 }
 
 /// Decodes a json value from a `std::io::Read`.
@@ -872,17 +879,12 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
 pub fn from_slice<T>(v: &[u8]) -> Result<T>
     where T: de::Deserialize
 {
-    let mut de = DeserializerImpl::new(read::SliceRead::new(v));
-    let value = try!(de::Deserialize::deserialize(&mut de));
-
-    // Make sure the whole stream has been consumed.
-    try!(de.end());
-    Ok(value)
+    from_trait(read::SliceRead::new(v))
 }
 
 /// Decodes a json value from a `&str`.
 pub fn from_str<T>(s: &str) -> Result<T>
     where T: de::Deserialize
 {
-    from_slice(s.as_bytes())
+    from_trait(read::StrRead::new(s))
 }
