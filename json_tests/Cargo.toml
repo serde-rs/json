@@ -7,7 +7,7 @@ build = "build.rs"
 [features]
 default = ["serde_macros"]
 with-syntex = ["syntex", "serde_codegen", "indoc/with-syntex"]
-nightly-testing = ["clippy", "serde_json/clippy"]
+unstable-testing = ["clippy", "serde_json/clippy"]
 
 [build-dependencies]
 indoc = "*"

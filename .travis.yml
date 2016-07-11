@@ -32,7 +32,7 @@ script:
         (cd json && travis-cargo build) &&
         (cd json && travis-cargo --only nightly test) &&
         (cd json_tests && travis-cargo --skip nightly test -- --features with-syntex --no-default-features) &&
-        (cd json_tests && travis-cargo --only nightly test -- --features nightly-testing) &&
+        (cd json_tests && travis-cargo --only nightly test -- --features unstable-testing) &&
         (cd json && travis-cargo --only stable doc)
     else
         (cd json_tests && travis-cargo bench)
