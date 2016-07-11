@@ -420,6 +420,8 @@ impl<R: Read> DeserializerImpl<R> {
     }
 
     #[inline(never)]
+    // https://github.com/Manishearth/rust-clippy/issues/1086
+    #[cfg_attr(feature = "clippy", allow(if_same_then_else))]
     fn parse_exponent_overflow<V>(&mut self,
                                   pos: bool,
                                   significand: u64,
