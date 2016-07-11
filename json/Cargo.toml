@@ -10,7 +10,7 @@ readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 
 [features]
-nightly-testing = ["clippy"]
+unstable-testing = ["clippy"]
 preserve_order = ["linked-hash-map", "linked-hash-map/serde_impl"]
 
 [dependencies]
