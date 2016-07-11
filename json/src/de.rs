@@ -404,12 +404,7 @@ impl<R: Read> DeserializerImpl<R> {
             let digit = (c - b'0') as i32;
 
             if overflow!(exp * 10 + digit, i32::MAX) {
-                // Really big exponent, just ignore the rest.
-                while let b'0' ... b'9' = try!(self.peek_or_null()) {
-                    self.eat_char();
-                }
-                exp = i32::MAX;
-                break;
+                return self.parse_exponent_overflow(pos, significand, pos_exp, visitor);
             }
 
             exp = exp * 10 + digit;
@@ -424,29 +419,58 @@ impl<R: Read> DeserializerImpl<R> {
         self.visit_f64_from_parts(pos, significand, final_exp, visitor)
     }
 
+    #[inline(never)]
+    fn parse_exponent_overflow<V>(&mut self,
+                                  pos: bool,
+                                  significand: u64,
+                                  pos_exp: bool,
+                                  mut visitor: V) -> Result<V::Value>
+        where V: de::Visitor,
+    {
+        // Error instead of +/- infinity.
+        if significand != 0 && pos_exp {
+            return Err(self.error(ErrorCode::NumberOutOfRange));
+        }
+
+        while let b'0' ... b'9' = try!(self.peek_or_null()) {
+            self.eat_char();
+        }
+        visitor.visit_f64(if pos { 0.0 } else { -0.0 })
+    }
+
     fn visit_f64_from_parts<V>(&mut self,
                                pos: bool,
                                significand: u64,
-                               exponent: i32,
+                               mut exponent: i32,
                                mut visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        let f = match POW10.get(exponent.abs() as usize) {
-            Some(pow) => {
-                if exponent >= 0 {
-                    significand as f64 * pow
-                } else {
-                    significand as f64 / pow
+        let mut f = significand as f64;
+        loop {
+            match POW10.get(exponent.abs() as usize) {
+                Some(&pow) => {
+                    if exponent >= 0 {
+                        f *= pow;
+                        if f.is_infinite() {
+                            return Err(self.error(ErrorCode::NumberOutOfRange));
+                        }
+                    } else {
+                        f /= pow;
+                    }
+                    break;
+                }
+                None => {
+                    if f == 0.0 {
+                        break;
+                    }
+                    if exponent >= 0 {
+                        return Err(self.error(ErrorCode::NumberOutOfRange));
+                    }
+                    f /= 1e308;
+                    exponent += 308;
                 }
             }
-            None => {
-                if exponent >= 0 && significand != 0 {
-                    f64::INFINITY
-                } else {
-                    0.0
-                }
-            }
-        };
+        }
         visitor.visit_f64(if pos { f } else { -f })
     }
 
