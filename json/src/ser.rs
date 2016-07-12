@@ -63,11 +63,63 @@ impl<W, F> Serializer<W, F>
     }
 }
 
+#[doc(hidden)]
+pub enum MapSerializer {
+    Map,
+    Enum,
+    Empty,
+}
+
+impl ser::MapSerializer for MapSerializer {
+    type Error = Error;
+
+    fn serialize_elt<S: ?Sized, K, V>(&mut self, serializer: &mut S, key: K, value: V) -> Result<()>
+        where K: ser::Serialize,
+              V: ser::Serialize,
+              S: ser::Serializer<Error = Error> {
+        serializer.serialize_map_elt(key, value)
+    }
+
+    fn drop<S: ?Sized>(self, serializer: &mut S) -> Result<()> where S: ser::Serializer<Error = Error> {
+        match self {
+            MapSerializer::Map => serializer.serialize_map_end(),
+            MapSerializer::Empty => Ok(()),
+            MapSerializer::Enum => serializer.serialize_struct_variant_end(),
+        }
+    }
+}
+
+#[doc(hidden)]
+pub enum SeqSerializer {
+    Seq,
+    Enum,
+    Empty,
+}
+
+impl ser::SeqSerializer for SeqSerializer {
+    type Error = Error;
+
+    fn serialize_elt<S: ?Sized, T>(&mut self, serializer: &mut S, value: T) -> Result<()>
+        where T: ser::Serialize, S: ser::Serializer<Error = Error> {
+        serializer.serialize_seq_elt(value)
+    }
+
+    fn drop<S: ?Sized>(self, serializer: &mut S) -> Result<()> where S: ser::Serializer<Error = Error> {
+        match self {
+            SeqSerializer::Seq => serializer.serialize_seq_end(),
+            SeqSerializer::Empty => Ok(()),
+            SeqSerializer::Enum => serializer.serialize_tuple_variant_end(),
+        }
+    }
+}
+
 impl<W, F> ser::Serializer for Serializer<W, F>
     where W: io::Write,
           F: Formatter,
 {
     type Error = Error;
+    type SeqSerializer = SeqSerializer;
+    type MapSerializer = MapSerializer;
 
     #[inline]
     fn serialize_bool(&mut self, value: bool) -> Result<()> {
@@ -200,39 +252,51 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_seq<V>(&mut self, mut visitor: V) -> Result<()>
-        where V: ser::SeqVisitor,
+    fn serialize_seq<'a>(&'a mut self, len: Option<usize>) -> Result<ser::SeqHelper<'a, Self>>
     {
-        match visitor.len() {
-            Some(len) if len == 0 => {
-                self.writer.write_all(b"[]").map_err(From::from)
-            }
-            _ => {
-                try!(self.formatter.open(&mut self.writer, b'['));
+        if let Some(0) = len {
+            try!(self.writer.write_all(b"[]"));
+            Ok(ser::SeqHelper::new(self, SeqSerializer::Empty))
+        } else {
+            try!(self.formatter.open(&mut self.writer, b'['));
 
-                self.first = true;
+            self.first = true;
 
-                while let Some(()) = try!(visitor.visit(self)) { }
-
-                self.formatter.close(&mut self.writer, b']').map_err(From::from)
-            }
+            Ok(ser::SeqHelper::new(self, SeqSerializer::Seq))
         }
-
     }
 
     #[inline]
-    fn serialize_tuple_variant<V>(&mut self,
+    fn serialize_seq_end(&mut self) -> Result<()> {
+        self.formatter.close(&mut self.writer, b']')
+    }
+
+    #[inline]
+    fn serialize_tuple_variant<'a>(&'a mut self,
                               _name: &str,
                               _variant_index: usize,
                               variant: &str,
-                              visitor: V) -> Result<()>
-        where V: ser::SeqVisitor,
+                              len: usize) -> Result<ser::SeqHelper<'a, Self>>
     {
         try!(self.formatter.open(&mut self.writer, b'{'));
         try!(self.formatter.comma(&mut self.writer, true));
         try!(self.serialize_str(variant));
         try!(self.formatter.colon(&mut self.writer));
-        try!(self.serialize_seq(visitor));
+        if len == 0 {
+            try!(self.writer.write_all(b"[]"));
+            Ok(ser::SeqHelper::new(self, SeqSerializer::Empty))
+        } else {
+            try!(self.formatter.open(&mut self.writer, b'['));
+
+            self.first = true;
+
+            Ok(ser::SeqHelper::new(self, SeqSerializer::Enum))
+        }
+    }
+
+    #[inline]
+    fn serialize_tuple_variant_end(&mut self) -> Result<()> {
+        try!(self.formatter.close(&mut self.writer, b']'));
         self.formatter.close(&mut self.writer, b'}')
     }
 
@@ -249,39 +313,49 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_map<V>(&mut self, mut visitor: V) -> Result<()>
-        where V: ser::MapVisitor,
+    fn serialize_map<'a>(&'a mut self, len: Option<usize>) -> Result<ser::MapHelper<'a, Self>>
     {
-        match visitor.len() {
-            Some(len) if len == 0 => {
-                self.writer.write_all(b"{}").map_err(From::from)
-            }
-            _ => {
-                try!(self.formatter.open(&mut self.writer, b'{'));
+        if let Some(0) = len {
+            try!(self.writer.write_all(b"{}"));
+            Ok(ser::MapHelper::new(self, MapSerializer::Empty))
+        } else {
+            try!(self.formatter.open(&mut self.writer, b'{'));
 
-                self.first = true;
+            self.first = true;
 
-                while let Some(()) = try!(visitor.visit(self)) { }
-
-                self.formatter.close(&mut self.writer, b'}')
-            }
+            Ok(ser::MapHelper::new(self, MapSerializer::Map))
         }
     }
 
     #[inline]
-    fn serialize_struct_variant<V>(&mut self,
+    fn serialize_struct_variant<'a>(&'a mut self,
                                _name: &str,
                                _variant_index: usize,
                                variant: &str,
-                               visitor: V) -> Result<()>
-        where V: ser::MapVisitor,
+                               len: usize) -> Result<ser::MapHelper<'a, Self>>
     {
         try!(self.formatter.open(&mut self.writer, b'{'));
         try!(self.formatter.comma(&mut self.writer, true));
         try!(self.serialize_str(variant));
         try!(self.formatter.colon(&mut self.writer));
-        try!(self.serialize_map(visitor));
+        if len == 0 {
+            try!(self.writer.write_all(b"{}"));
+            Ok(ser::MapHelper::new(self, MapSerializer::Empty))
+        } else {
+            try!(self.formatter.open(&mut self.writer, b'{'));
 
+            self.first = true;
+
+            Ok(ser::MapHelper::new(self, MapSerializer::Enum))
+        }
+    }
+
+    fn serialize_struct_variant_end(&mut self) -> Result<()> {
+        try!(self.formatter.close(&mut self.writer, b'}'));
+        self.formatter.close(&mut self.writer, b'}')
+    }
+
+    fn serialize_map_end(&mut self) -> Result<()> {
         self.formatter.close(&mut self.writer, b'}')
     }
 
@@ -311,6 +385,8 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
           F: Formatter,
 {
     type Error = Error;
+    type SeqSerializer = SeqSerializer;
+    type MapSerializer = MapSerializer;
 
     #[inline]
     fn serialize_str(&mut self, value: &str) -> Result<()> {
@@ -347,8 +423,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_seq<V>(&mut self, _visitor: V) -> Result<()>
-        where V: ser::SeqVisitor,
+    fn serialize_seq<'b>(&'b mut self, _len: Option<usize>) -> Result<ser::SeqHelper<'b, Self>>
     {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
@@ -359,8 +434,12 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_map<V>(&mut self, _visitor: V) -> Result<()>
-        where V: ser::MapVisitor,
+    fn serialize_seq_end(&mut self) -> Result<()>
+    {
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    }
+
+    fn serialize_map<'b>(&'b mut self, _len: Option<usize>) -> Result<ser::MapHelper<'b, Self>>
     {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
@@ -368,6 +447,11 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     fn serialize_map_elt<K, V>(&mut self, _key: K, _value: V) -> Result<()>
         where K: ser::Serialize,
               V: ser::Serialize,
+    {
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    }
+
+    fn serialize_map_end(&mut self) -> Result<()>
     {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }

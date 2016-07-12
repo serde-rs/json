@@ -1285,7 +1285,11 @@ fn test_serialize_seq_with_no_len() {
         fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
             where S: ser::Serializer,
         {
-            serializer.serialize_seq(ser::impls::SeqIteratorVisitor::new(self.0.iter(), None))
+            let mut ser = try!(serializer.serialize_seq(None));
+            for item in self.0.iter() {
+                try!(ser.serialize_elt(item));
+            }
+            ser.drop()
         }
     }
 
@@ -1367,7 +1371,11 @@ fn test_serialize_map_with_no_len() {
         fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
             where S: ser::Serializer,
         {
-            serializer.serialize_map(ser::impls::MapIteratorVisitor::new(self.0.iter(), None))
+            let mut ser = try!(serializer.serialize_map(None));
+            for (k, v) in self.0.iter() {
+                try!(ser.serialize_elt(k, v));
+            }
+            ser.drop()
         }
     }
 

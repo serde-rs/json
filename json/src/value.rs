@@ -541,8 +541,56 @@ impl Default for Serializer {
     }
 }
 
+#[doc(hidden)]
+pub enum MapSerializer {
+    Map,
+    Enum,
+}
+
+impl ser::MapSerializer for MapSerializer {
+    type Error = Error;
+
+    fn serialize_elt<S: ?Sized, K, V>(&mut self, serializer: &mut S, key: K, value: V) -> Result<(), Self::Error>
+        where K: ser::Serialize,
+              V: ser::Serialize,
+              S: ser::Serializer<Error = Error> {
+        serializer.serialize_map_elt(key, value)
+    }
+
+    fn drop<S: ?Sized>(self, serializer: &mut S) -> Result<(), Self::Error> where S: ser::Serializer<Error = Error> {
+        match self {
+            MapSerializer::Map => serializer.serialize_map_end(),
+            MapSerializer::Enum => serializer.serialize_struct_variant_end(),
+        }
+    }
+}
+
+#[doc(hidden)]
+pub enum SeqSerializer {
+    Seq,
+    Enum,
+}
+
+impl ser::SeqSerializer for SeqSerializer {
+    type Error = Error;
+
+    fn serialize_elt<S: ?Sized, T>(&mut self, serializer: &mut S, value: T) -> Result<(), Self::Error>
+        where T: ser::Serialize, S: ser::Serializer<Error = Error> {
+        serializer.serialize_seq_elt(value)
+    }
+
+    fn drop<S: ?Sized>(self, serializer: &mut S) -> Result<(), Self::Error> where S: ser::Serializer<Error = Error> {
+        match self {
+            SeqSerializer::Seq => serializer.serialize_seq_end(),
+            SeqSerializer::Enum => serializer.serialize_tuple_variant_end(),
+        }
+    }
+}
+
 impl ser::Serializer for Serializer {
     type Error = Error;
+    type SeqSerializer = SeqSerializer;
+    type MapSerializer = MapSerializer;
 
     #[inline]
     fn serialize_bool(&mut self, value: bool) -> Result<(), Error> {
@@ -637,48 +685,25 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn serialize_seq<V>(&mut self, mut visitor: V) -> Result<(), Error>
-        where V: ser::SeqVisitor,
-    {
-        let len = visitor.len().unwrap_or(0);
+    fn serialize_seq<'a>(&'a mut self, len: Option<usize>) -> Result<ser::SeqHelper<'a, Self>, Error> {
+        let len = len.unwrap_or(0);
         let values = Vec::with_capacity(len);
 
         self.state.push(State::Array(values));
 
-        while let Some(()) = try!(visitor.visit(self)) { }
-
-        let values = match self.state.pop().expect("state is empty") {
-            State::Array(values) => values,
-            state => panic!("Expected array, found {:?}", state),
-        };
-
-        self.state.push(State::Value(Value::Array(values)));
-
-        Ok(())
+        Ok(ser::SeqHelper::new(self, SeqSerializer::Seq))
     }
 
     #[inline]
-    fn serialize_tuple_variant<V>(&mut self,
+    fn serialize_tuple_variant<'a>(&'a mut self,
                               _name: &str,
                               _variant_index: usize,
                               variant: &str,
-                              visitor: V) -> Result<(), Error>
-        where V: ser::SeqVisitor,
+                              len: usize) -> Result<ser::SeqHelper<'a, Self>, Error>
     {
-        try!(self.serialize_seq(visitor));
-
-        let value = match self.state.pop().expect("state is empty") {
-            State::Value(value) => value,
-            state => panic!("expected value, found {:?}", state),
-        };
-
-        let mut object = Map::new();
-
-        object.insert(String::from(variant), value);
-
-        self.state.push(State::Value(Value::Object(object)));
-
-        Ok(())
+        self.state.push(State::Value(Value::String(String::from(variant))));
+        try!(self.serialize_seq(Some(len)));
+        Ok(ser::SeqHelper::new(self, SeqSerializer::Enum))
     }
 
     #[inline]
@@ -700,48 +725,56 @@ impl ser::Serializer for Serializer {
         Ok(())
     }
 
-    #[inline]
-    fn serialize_map<V>(&mut self, mut visitor: V) -> Result<(), Error>
-        where V: ser::MapVisitor,
+    fn serialize_seq_end(&mut self) -> Result<(), Error>
     {
-        let values = Map::new();
-
-        self.state.push(State::Object(values));
-
-        while let Some(()) = try!(visitor.visit(self)) { }
-
         let values = match self.state.pop().expect("state is empty") {
-            State::Object(values) => values,
-            state => panic!("expected object, found {:?}", state),
+            State::Array(values) => values,
+            state => panic!("Expected array, found {:?}", state),
         };
 
-        self.state.push(State::Value(Value::Object(values)));
-
+        self.state.push(State::Value(Value::Array(values)));
         Ok(())
     }
 
-    #[inline]
-    fn serialize_struct_variant<V>(&mut self,
-                               _name: &str,
-                               _variant_index: usize,
-                               variant: &str,
-                               visitor: V) -> Result<(), Error>
-        where V: ser::MapVisitor,
+    fn serialize_tuple_variant_end(&mut self) -> Result<(), Error>
     {
-        try!(self.serialize_map(visitor));
-
+        try!(self.serialize_seq_end());
         let value = match self.state.pop().expect("state is empty") {
             State::Value(value) => value,
             state => panic!("expected value, found {:?}", state),
         };
 
+        let variant = match self.state.pop().expect("state is empty") {
+            State::Value(Value::String(s)) => s,
+            state => panic!("expected tuple variant name, found {:?}", state),
+        };
+
         let mut object = Map::new();
 
-        object.insert(String::from(variant), value);
+        object.insert(variant, value);
 
         self.state.push(State::Value(Value::Object(object)));
-
         Ok(())
+    }
+
+    #[inline]
+    fn serialize_map<'a>(&'a mut self, _len: Option<usize>) -> Result<ser::MapHelper<'a, Self>, Error> {
+        self.state.push(State::Object(Map::new()));
+
+        Ok(ser::MapHelper::new(self, MapSerializer::Map))
+    }
+
+    #[inline]
+    fn serialize_struct_variant<'a>(&'a mut self,
+                               _name: &str,
+                               _variant_index: usize,
+                               variant: &str,
+                               _len: usize) -> Result<ser::MapHelper<'a, Self>, Error>
+    {
+        self.state.push(State::Value(Value::String(String::from(variant))));
+        self.state.push(State::Object(Map::new()));
+
+        Ok(ser::MapHelper::new(self, MapSerializer::Enum))
     }
 
     #[inline]
@@ -767,6 +800,39 @@ impl ser::Serializer for Serializer {
             State::Object(ref mut values) => { values.insert(key, value); }
             ref state => panic!("expected object, found {:?}", state),
         }
+
+        Ok(())
+    }
+
+    fn serialize_map_end(&mut self) -> Result<(), Error>
+    {
+        let values = match self.state.pop().expect("state is empty") {
+            State::Object(values) => values,
+            state => panic!("expected object, found {:?}", state),
+        };
+
+        self.state.push(State::Value(Value::Object(values)));
+
+        Ok(())
+    }
+
+    fn serialize_struct_variant_end(&mut self) -> Result<(), Error>
+    {
+        try!(self.serialize_map_end());
+        let value = match self.state.pop().expect("state is empty") {
+            State::Value(value) => value,
+            state => panic!("expected value, found {:?}", state),
+        };
+        let variant = match self.state.pop().expect("state is empty, expected variant name") {
+            State::Value(Value::String(s)) => s,
+            other => panic!("expected string value, found {:?}", other),
+        };
+
+        let mut object = Map::new();
+
+        object.insert(variant, value);
+
+        self.state.push(State::Value(Value::Object(object)));
 
         Ok(())
     }
