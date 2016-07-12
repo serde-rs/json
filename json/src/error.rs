@@ -68,6 +68,9 @@ pub enum ErrorCode {
     /// Invalid number.
     InvalidNumber,
 
+    /// Number is bigger than the maximum value of its type.
+    NumberOutOfRange,
+
     /// Invalid unicode code point.
     InvalidUnicodeCodePoint,
 
@@ -105,6 +108,7 @@ impl fmt::Display for ErrorCode {
             ErrorCode::ExpectedSomeValue => "expected value".fmt(f),
             ErrorCode::InvalidEscape => "invalid escape".fmt(f),
             ErrorCode::InvalidNumber => "invalid number".fmt(f),
+            ErrorCode::NumberOutOfRange => "number out of range".fmt(f),
             ErrorCode::InvalidUnicodeCodePoint => "invalid unicode code point".fmt(f),
             ErrorCode::KeyMustBeAString => "key must be a string".fmt(f),
             ErrorCode::LoneLeadingSurrogateInHexEscape => "lone leading surrogate in hex escape".fmt(f),
