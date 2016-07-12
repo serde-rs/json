@@ -419,6 +419,9 @@ impl<R: Read> DeserializerImpl<R> {
         self.visit_f64_from_parts(pos, significand, final_exp, visitor)
     }
 
+    // This cold code should not be inlined into the middle of the hot
+    // exponent-parsing loop above.
+    #[cold]
     #[inline(never)]
     // https://github.com/Manishearth/rust-clippy/issues/1086
     #[cfg_attr(feature = "clippy", allow(if_same_then_else))]
