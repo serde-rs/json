@@ -644,6 +644,23 @@ fn test_write_option() {
     ]);
 }
 
+#[test]
+fn test_write_newtype_struct() {
+    #[derive(Serialize, PartialEq, Debug)]
+    struct Newtype(Map<String, i32>);
+
+    let inner = Newtype(treemap!(String::from("inner") => 123));
+    let outer = treemap!(String::from("outer") => to_value(&inner));
+
+    test_encode_ok(&[
+        (inner, r#"{"inner":123}"#),
+    ]);
+
+    test_encode_ok(&[
+        (outer, r#"{"outer":{"inner":123}}"#),
+    ]);
+}
+
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)
     where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
 {
