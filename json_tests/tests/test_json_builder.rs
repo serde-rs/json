@@ -1,5 +1,5 @@
 
-use serde_json::value::{Value, Map};
+use serde_json::value::{Map, Value};
 use serde_json::builder::{ArrayBuilder, ObjectBuilder};
 
 #[test]
@@ -12,24 +12,28 @@ fn test_array_builder() {
         .push(2)
         .push(3)
         .build();
-    assert_eq!(value, Value::Array(vec!(Value::U64(1), Value::U64(2), Value::U64(3))));
+    assert_eq!(value,
+               Value::Array(vec![Value::U64(1), Value::U64(2), Value::U64(3)]));
 
     let value = ArrayBuilder::new()
         .push_array(|bld| bld.push(1).push(2).push(3))
         .build();
-    assert_eq!(value, Value::Array(vec!(Value::Array(vec!(Value::U64(1), Value::U64(2), Value::U64(3))))));
+    assert_eq!(value,
+               Value::Array(vec![Value::Array(vec![Value::U64(1),
+                                                   Value::U64(2),
+                                                   Value::U64(3)])]));
 
     let value = ArrayBuilder::new()
-        .push_object(|bld|
-            bld
-                .insert("a".to_string(), 1)
-                .insert("b".to_string(), 2))
+        .push_object(|bld| {
+            bld.insert("a".to_string(), 1)
+                .insert("b".to_string(), 2)
+        })
         .build();
 
     let mut map = Map::new();
     map.insert("a".to_string(), Value::U64(1));
     map.insert("b".to_string(), Value::U64(2));
-    assert_eq!(value, Value::Array(vec!(Value::Object(map))));
+    assert_eq!(value, Value::Array(vec![Value::Object(map)]));
 }
 
 #[test]

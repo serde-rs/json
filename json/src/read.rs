@@ -35,7 +35,10 @@ pub trait Read {
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<&'s str>;
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>
+    ) -> Result<&'s str>;
 }
 
 pub struct Position {
@@ -43,7 +46,9 @@ pub struct Position {
     pub column: usize,
 }
 
-pub struct IteratorRead<Iter> where Iter: Iterator<Item=io::Result<u8>> {
+pub struct IteratorRead<Iter>
+    where Iter: Iterator<Item = io::Result<u8>>,
+{
     iter: LineColIterator<Iter>,
     /// Temporary storage of peeked byte.
     ch: Option<u8>,
@@ -66,7 +71,7 @@ pub struct StrRead<'a> {
 //////////////////////////////////////////////////////////////////////////////
 
 impl<Iter> IteratorRead<Iter>
-    where Iter: Iterator<Item=io::Result<u8>>,
+    where Iter: Iterator<Item = io::Result<u8>>,
 {
     pub fn new(iter: Iter) -> Self {
         IteratorRead {
@@ -77,7 +82,7 @@ impl<Iter> IteratorRead<Iter>
 }
 
 impl<Iter> Read for IteratorRead<Iter>
-    where Iter: Iterator<Item=io::Result<u8>>,
+    where Iter: Iterator<Item = io::Result<u8>>,
 {
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
@@ -128,11 +133,16 @@ impl<Iter> Read for IteratorRead<Iter>
         self.position()
     }
 
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<&'s str> {
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>
+    ) -> Result<&'s str> {
         loop {
             let ch = match try!(self.next().map_err(Error::Io)) {
                 Some(ch) => ch,
-                None => { return error(self, ErrorCode::EOFWhileParsingString); }
+                None => {
+                    return error(self, ErrorCode::EOFWhileParsingString);
+                }
             };
             if !ESCAPE[ch as usize] {
                 scratch.push(ch);
@@ -164,7 +174,10 @@ impl<'a> SliceRead<'a> {
     }
 
     fn position_of_index(&self, i: usize) -> Position {
-        let mut pos = Position { line: 1, column: 0 };
+        let mut pos = Position {
+            line: 1,
+            column: 0,
+        };
         for ch in &self.slice[..i] {
             match *ch {
                 b'\n' => {
@@ -182,7 +195,11 @@ impl<'a> SliceRead<'a> {
     /// The big optimization here over IteratorRead is that if the string
     /// contains no backslash escape sequences, the returned &str is a slice of
     /// the raw JSON data so we avoid copying into the scratch space.
-    fn parse_str_bytes<'s, T, F>(&'s mut self, scratch: &'s mut Vec<u8>, result: F) -> Result<T>
+    fn parse_str_bytes<'s, T, F>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        result: F
+    ) -> Result<T>
         where T: 's,
               F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
     {
@@ -190,7 +207,8 @@ impl<'a> SliceRead<'a> {
         let mut start = self.index;
 
         loop {
-            while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
+            while self.index < self.slice.len() &&
+                  !ESCAPE[self.slice[self.index] as usize] {
                 self.index += 1;
             }
             if self.index == self.slice.len() {
@@ -201,7 +219,7 @@ impl<'a> SliceRead<'a> {
                     let string = if scratch.is_empty() {
                         // Fast path: return a slice of the raw JSON without any
                         // copying.
-                        &self.slice[start .. self.index]
+                        &self.slice[start..self.index]
                     } else {
                         scratch.extend_from_slice(&self.slice[start .. self.index]);
                         // "as &[u8]" is required for rustc 1.8.0
@@ -211,7 +229,7 @@ impl<'a> SliceRead<'a> {
                     return result(self, string);
                 }
                 b'\\' => {
-                    scratch.extend_from_slice(&self.slice[start .. self.index]);
+                    scratch.extend_from_slice(&self.slice[start..self.index]);
                     self.index += 1;
                     try!(parse_escape(self, scratch));
                     start = self.index;
@@ -264,7 +282,10 @@ impl<'a> Read for SliceRead<'a> {
         self.position_of_index(cmp::min(self.slice.len(), self.index + 1))
     }
 
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<&'s str> {
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>
+    ) -> Result<&'s str> {
         self.parse_str_bytes(scratch, as_str)
     }
 }
@@ -303,7 +324,10 @@ impl<'a> Read for StrRead<'a> {
         self.delegate.peek_position()
     }
 
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<&'s str> {
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>
+    ) -> Result<&'s str> {
         self.delegate.parse_str_bytes(scratch, |_, bytes| {
             // The input is assumed to be valid UTF-8 and the \u-escapes are
             // checked along the way, so don't need to check here.
@@ -321,6 +345,7 @@ const O: bool = false; // allow unescaped
 
 // Lookup table of bytes that must be escaped. A value of true at index i means
 // that byte i requires an escape sequence in the input.
+#[cfg_attr(rustfmt, rustfmt_skip)]
 static ESCAPE: [bool; 256] = [
     //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
     CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, // 0
@@ -347,9 +372,8 @@ fn error<R: Read, T>(read: &R, reason: ErrorCode) -> Result<T> {
 }
 
 fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
-    str::from_utf8(slice).or_else(|_| {
-        error(read, ErrorCode::InvalidUnicodeCodePoint)
-    })
+    str::from_utf8(slice)
+        .or_else(|_| error(read, ErrorCode::InvalidUnicodeCodePoint))
 }
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
@@ -357,7 +381,9 @@ fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
 fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
     let ch = match try!(read.next().map_err(Error::Io)) {
         Some(ch) => ch,
-        None => { return error(read, ErrorCode::EOFWhileParsingString); }
+        None => {
+            return error(read, ErrorCode::EOFWhileParsingString);
+        }
     };
 
     match ch {
@@ -370,47 +396,50 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
         b'r' => scratch.push(b'\r'),
         b't' => scratch.push(b'\t'),
         b'u' => {
-            let c = match try!(decode_hex_escape(read)) {
-                0xDC00 ... 0xDFFF => {
-                    return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
-                }
-
-                // Non-BMP characters are encoded as a sequence of
-                // two hex escapes, representing UTF-16 surrogates.
-                n1 @ 0xD800 ... 0xDBFF => {
-                    match (try!(read.next().map_err(Error::Io)), try!(read.next().map_err(Error::Io))) {
-                        (Some(b'\\'), Some(b'u')) => (),
-                        _ => {
-                            return error(read, ErrorCode::UnexpectedEndOfHexEscape);
-                        }
-                    }
-
-                    let n2 = try!(decode_hex_escape(read));
-
-                    if n2 < 0xDC00 || n2 > 0xDFFF {
+            let c =
+                match try!(decode_hex_escape(read)) {
+                    0xDC00...0xDFFF => {
                         return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
                     }
 
-                    let n = (((n1 - 0xD800) as u32) << 10 |
-                              (n2 - 0xDC00) as u32) + 0x1_0000;
+                    // Non-BMP characters are encoded as a sequence of
+                    // two hex escapes, representing UTF-16 surrogates.
+                    n1 @ 0xD800...0xDBFF => {
+                        match (try!(read.next().map_err(Error::Io)),
+                               try!(read.next().map_err(Error::Io))) {
+                            (Some(b'\\'), Some(b'u')) => (),
+                            _ => {
+                                return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                            }
+                        }
 
-                    match char::from_u32(n as u32) {
-                        Some(c) => c,
-                        None => {
-                            return error(read, ErrorCode::InvalidUnicodeCodePoint);
+                        let n2 = try!(decode_hex_escape(read));
+
+                        if n2 < 0xDC00 || n2 > 0xDFFF {
+                            return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
+                        }
+
+                        let n = (((n1 - 0xD800) as u32) << 10 |
+                                 (n2 - 0xDC00) as u32) +
+                                0x1_0000;
+
+                        match char::from_u32(n as u32) {
+                            Some(c) => c,
+                            None => {
+                                return error(read, ErrorCode::InvalidUnicodeCodePoint);
+                            }
                         }
                     }
-                }
 
-                n => {
-                    match char::from_u32(n as u32) {
-                        Some(c) => c,
-                        None => {
-                            return error(read, ErrorCode::InvalidUnicodeCodePoint);
+                    n => {
+                        match char::from_u32(n as u32) {
+                            Some(c) => c,
+                            None => {
+                                return error(read, ErrorCode::InvalidUnicodeCodePoint);
+                            }
                         }
                     }
-                }
-            };
+                };
 
             // FIXME: this allocation is required in order to be compatible with stable
             // rust, which doesn't support encoding a `char` into a stack buffer.
@@ -431,14 +460,16 @@ fn decode_hex_escape<R: Read>(read: &mut R) -> Result<u16> {
     let mut n = 0u16;
     while i < 4 && try!(read.peek()).is_some() {
         n = match try!(read.next()).unwrap_or(b'\x00') {
-            c @ b'0' ... b'9' => n * 16_u16 + ((c as u16) - (b'0' as u16)),
+            c @ b'0'...b'9' => n * 16_u16 + ((c as u16) - (b'0' as u16)),
             b'a' | b'A' => n * 16_u16 + 10_u16,
             b'b' | b'B' => n * 16_u16 + 11_u16,
             b'c' | b'C' => n * 16_u16 + 12_u16,
             b'd' | b'D' => n * 16_u16 + 13_u16,
             b'e' | b'E' => n * 16_u16 + 14_u16,
             b'f' | b'F' => n * 16_u16 + 15_u16,
-            _ => { return error(read, ErrorCode::InvalidEscape); }
+            _ => {
+                return error(read, ErrorCode::InvalidEscape);
+            }
         };
 
         i += 1;

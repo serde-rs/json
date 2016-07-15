@@ -92,15 +92,31 @@ impl fmt::Display for ErrorCode {
         match *self {
             ErrorCode::Custom(ref msg) => write!(f, "{}", msg),
             ErrorCode::InvalidType(ref ty) => write!(f, "invalid type: {}", ty),
-            ErrorCode::InvalidValue(ref msg) => write!(f, "invalid value: {}", msg),
-            ErrorCode::InvalidLength(ref len) => write!(f, "invalid value length {}", len),
-            ErrorCode::UnknownVariant(ref variant) => write!(f, "unknown variant \"{}\"", variant),
-            ErrorCode::UnknownField(ref field) => write!(f, "unknown field \"{}\"", field),
-            ErrorCode::MissingField(ref field) => write!(f, "missing field \"{}\"", field),
+            ErrorCode::InvalidValue(ref msg) => {
+                write!(f, "invalid value: {}", msg)
+            }
+            ErrorCode::InvalidLength(ref len) => {
+                write!(f, "invalid value length {}", len)
+            }
+            ErrorCode::UnknownVariant(ref variant) => {
+                write!(f, "unknown variant \"{}\"", variant)
+            }
+            ErrorCode::UnknownField(ref field) => {
+                write!(f, "unknown field \"{}\"", field)
+            }
+            ErrorCode::MissingField(ref field) => {
+                write!(f, "missing field \"{}\"", field)
+            }
             ErrorCode::EOFWhileParsingList => "EOF while parsing a list".fmt(f),
-            ErrorCode::EOFWhileParsingObject => "EOF while parsing an object".fmt(f),
-            ErrorCode::EOFWhileParsingString => "EOF while parsing a string".fmt(f),
-            ErrorCode::EOFWhileParsingValue => "EOF while parsing a value".fmt(f),
+            ErrorCode::EOFWhileParsingObject => {
+                "EOF while parsing an object".fmt(f)
+            }
+            ErrorCode::EOFWhileParsingString => {
+                "EOF while parsing a string".fmt(f)
+            }
+            ErrorCode::EOFWhileParsingValue => {
+                "EOF while parsing a value".fmt(f)
+            }
             ErrorCode::ExpectedColon => "expected `:`".fmt(f),
             ErrorCode::ExpectedListCommaOrEnd => "expected `,` or `]`".fmt(f),
             ErrorCode::ExpectedObjectCommaOrEnd => "expected `,` or `}`".fmt(f),
@@ -109,11 +125,17 @@ impl fmt::Display for ErrorCode {
             ErrorCode::InvalidEscape => "invalid escape".fmt(f),
             ErrorCode::InvalidNumber => "invalid number".fmt(f),
             ErrorCode::NumberOutOfRange => "number out of range".fmt(f),
-            ErrorCode::InvalidUnicodeCodePoint => "invalid unicode code point".fmt(f),
+            ErrorCode::InvalidUnicodeCodePoint => {
+                "invalid unicode code point".fmt(f)
+            }
             ErrorCode::KeyMustBeAString => "key must be a string".fmt(f),
-            ErrorCode::LoneLeadingSurrogateInHexEscape => "lone leading surrogate in hex escape".fmt(f),
+            ErrorCode::LoneLeadingSurrogateInHexEscape => {
+                "lone leading surrogate in hex escape".fmt(f)
+            }
             ErrorCode::TrailingCharacters => "trailing characters".fmt(f),
-            ErrorCode::UnexpectedEndOfHexEscape => "unexpected end of hex escape".fmt(f),
+            ErrorCode::UnexpectedEndOfHexEscape => {
+                "unexpected end of hex escape".fmt(f)
+            }
         }
     }
 }
@@ -143,7 +165,6 @@ impl error::Error for Error {
             _ => None,
         }
     }
-
 }
 
 impl fmt::Display for Error {
@@ -169,9 +190,7 @@ impl From<de::value::Error> for Error {
             de::value::Error::Custom(e) => {
                 Error::Syntax(ErrorCode::Custom(e), 0, 0)
             }
-            de::value::Error::EndOfStream => {
-                de::Error::end_of_stream()
-            }
+            de::value::Error::EndOfStream => de::Error::end_of_stream(),
             de::value::Error::InvalidType(ty) => {
                 Error::Syntax(ErrorCode::InvalidType(ty), 0, 0)
             }

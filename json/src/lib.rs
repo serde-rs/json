@@ -122,14 +122,14 @@
 #![cfg_attr(feature = "clippy", allow(doc_markdown))]
 // Whitelisted clippy_pedantic lints
 #![cfg_attr(feature = "clippy", allow(
-    // integer and float ser/de requires these sorts of casts
+// integer and float ser/de requires these sorts of casts
     cast_possible_truncation,
     cast_possible_wrap,
     cast_precision_loss,
     cast_sign_loss,
-    // string ser/de uses indexing and slicing
+// string ser/de uses indexing and slicing
     indexing_slicing,
-    // things are often more readable this way
+// things are often more readable this way
     shadow_reuse,
     shadow_unrelated,
     single_match_else,
@@ -146,26 +146,12 @@ extern crate dtoa;
 #[cfg(feature = "preserve_order")]
 extern crate linked_hash_map;
 
-pub use self::de::{
-    Deserializer,
-    StreamDeserializer,
-    from_iter,
-    from_reader,
-    from_slice,
-    from_str,
-};
+pub use self::de::{Deserializer, StreamDeserializer, from_iter, from_reader,
+                   from_slice, from_str};
 pub use self::error::{Error, ErrorCode, Result};
-pub use self::ser::{
-    Serializer,
-    to_writer,
-    to_writer_pretty,
-    to_vec,
-    to_vec_pretty,
-    to_string,
-    to_string_pretty,
-    escape_str,
-};
-pub use self::value::{Value, Map, to_value, from_value};
+pub use self::ser::{Serializer, escape_str, to_string, to_string_pretty,
+                    to_vec, to_vec_pretty, to_writer, to_writer_pretty};
+pub use self::value::{Map, Value, from_value, to_value};
 
 pub mod builder;
 pub mod de;

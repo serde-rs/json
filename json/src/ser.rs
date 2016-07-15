@@ -12,7 +12,7 @@ use itoa;
 use dtoa;
 
 /// A structure for serializing Rust values into JSON.
-pub struct Serializer<W, F=CompactFormatter> {
+pub struct Serializer<W, F = CompactFormatter> {
     writer: W,
     formatter: F,
 
@@ -155,7 +155,7 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     #[inline]
     fn serialize_some<V>(&mut self, value: V) -> Result<()>
-        where V: ser::Serialize
+        where V: ser::Serialize,
     {
         value.serialize(self)
     }
@@ -167,28 +167,34 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     /// Override `visit_newtype_struct` to serialize newtypes without an object wrapper.
     #[inline]
-    fn serialize_newtype_struct<T>(&mut self,
-                               _name: &'static str,
-                               value: T) -> Result<()>
+    fn serialize_newtype_struct<T>(
+        &mut self,
+        _name: &'static str,
+        value: T
+    ) -> Result<()>
         where T: ser::Serialize,
     {
         value.serialize(self)
     }
 
     #[inline]
-    fn serialize_unit_variant(&mut self,
-                          _name: &str,
-                          _variant_index: usize,
-                          variant: &str) -> Result<()> {
+    fn serialize_unit_variant(
+        &mut self,
+        _name: &str,
+        _variant_index: usize,
+        variant: &str
+    ) -> Result<()> {
         self.serialize_str(variant)
     }
 
     #[inline]
-    fn serialize_newtype_variant<T>(&mut self,
-                                _name: &str,
-                                _variant_index: usize,
-                                variant: &str,
-                                value: T) -> Result<()>
+    fn serialize_newtype_variant<T>(
+        &mut self,
+        _name: &str,
+        _variant_index: usize,
+        variant: &str,
+        value: T
+    ) -> Result<()>
         where T: ser::Serialize,
     {
         try!(self.formatter.open(&mut self.writer, b'{'));
@@ -212,7 +218,8 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
                 self.first = true;
 
-                while let Some(()) = try!(visitor.visit(self)) { }
+                while let Some(()) = try!(visitor.visit(self)) {
+                }
 
                 self.formatter.close(&mut self.writer, b']').map_err(From::from)
             }
@@ -221,11 +228,13 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_tuple_variant<V>(&mut self,
-                              _name: &str,
-                              _variant_index: usize,
-                              variant: &str,
-                              visitor: V) -> Result<()>
+    fn serialize_tuple_variant<V>(
+        &mut self,
+        _name: &str,
+        _variant_index: usize,
+        variant: &str,
+        visitor: V
+    ) -> Result<()>
         where V: ser::SeqVisitor,
     {
         try!(self.formatter.open(&mut self.writer, b'{'));
@@ -261,7 +270,8 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
                 self.first = true;
 
-                while let Some(()) = try!(visitor.visit(self)) { }
+                while let Some(()) = try!(visitor.visit(self)) {
+                }
 
                 self.formatter.close(&mut self.writer, b'}')
             }
@@ -269,11 +279,13 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_struct_variant<V>(&mut self,
-                               _name: &str,
-                               _variant_index: usize,
-                               variant: &str,
-                               visitor: V) -> Result<()>
+    fn serialize_struct_variant<V>(
+        &mut self,
+        _name: &str,
+        _variant_index: usize,
+        variant: &str,
+        visitor: V
+    ) -> Result<()>
         where V: ser::MapVisitor,
     {
         try!(self.formatter.open(&mut self.writer, b'{'));
@@ -292,7 +304,9 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     {
         try!(self.formatter.comma(&mut self.writer, self.first));
 
-        try!(key.serialize(&mut MapKeySerializer { ser: self }));
+        try!(key.serialize(&mut MapKeySerializer {
+            ser: self,
+        }));
         try!(self.formatter.colon(&mut self.writer));
         try!(value.serialize(self));
 
@@ -342,7 +356,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_some<V>(&mut self, _value: V) -> Result<()>
-        where V: ser::Serialize
+        where V: ser::Serialize,
     {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
@@ -385,8 +399,7 @@ pub trait Formatter {
         where W: io::Write;
 
     /// Called when serializing a ':'.
-    fn colon<W>(&mut self, writer: &mut W) -> Result<()>
-        where W: io::Write;
+    fn colon<W>(&mut self, writer: &mut W) -> Result<()> where W: io::Write;
 
     /// Called when serializing a '}' or ']'.
     fn close<W>(&mut self, writer: &mut W, ch: u8) -> Result<()>
@@ -492,7 +505,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
 
 /// Serializes and escapes a `&str` into a JSON string.
 pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
-    where W: io::Write
+    where W: io::Write,
 {
     let bytes = value.as_bytes();
 
@@ -512,11 +525,12 @@ pub fn escape_str<W>(wr: &mut W, value: &str) -> Result<()>
 
         if escape == b'u' {
             static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
-            try!(wr.write_all(&[
-                b'\\', b'u', b'0', b'0',
-                HEX_DIGITS[(byte >> 4) as usize],
-                HEX_DIGITS[(byte & 0xF) as usize],
-            ]));
+            try!(wr.write_all(&[b'\\',
+                                b'u',
+                                b'0',
+                                b'0',
+                                HEX_DIGITS[(byte >> 4) as usize],
+                                HEX_DIGITS[(byte & 0xF) as usize]]));
         } else {
             try!(wr.write_all(&[b'\\', escape]));
         }
@@ -543,6 +557,7 @@ const U: u8 = b'u';   // \x00...\x1F except the ones above
 
 // Lookup table of escape sequences. A value of b'x' at index i means that byte
 // i is escaped as "\x" in JSON. A value of 0 means that byte i is not escaped.
+#[cfg_attr(rustfmt, rustfmt_skip)]
 static ESCAPE: [u8; 256] = [
     //  1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
     U,  U,  U,  U,  U,  U,  U,  U, BB, TT, NN,  U, FF, RR,  U,  U, // 0
@@ -565,7 +580,7 @@ static ESCAPE: [u8; 256] = [
 
 #[inline]
 fn escape_char<W>(wr: &mut W, value: char) -> Result<()>
-    where W: io::Write
+    where W: io::Write,
 {
     // FIXME: this allocation is required in order to be compatible with stable
     // rust, which doesn't support encoding a `char` into a stack buffer.
@@ -575,30 +590,22 @@ fn escape_char<W>(wr: &mut W, value: char) -> Result<()>
 }
 
 fn fmt_f32_or_null<W>(wr: &mut W, value: f32) -> Result<()>
-    where W: io::Write
+    where W: io::Write,
 {
     match value.classify() {
-        FpCategory::Nan | FpCategory::Infinite => {
-            try!(wr.write_all(b"null"))
-        }
-        _ => {
-            try!(dtoa::write(wr, value))
-        }
+        FpCategory::Nan | FpCategory::Infinite => try!(wr.write_all(b"null")),
+        _ => try!(dtoa::write(wr, value)),
     }
 
     Ok(())
 }
 
 fn fmt_f64_or_null<W>(wr: &mut W, value: f64) -> Result<()>
-    where W: io::Write
+    where W: io::Write,
 {
     match value.classify() {
-        FpCategory::Nan | FpCategory::Infinite => {
-            try!(wr.write_all(b"null"))
-        }
-        _ => {
-            try!(dtoa::write(wr, value))
-        }
+        FpCategory::Nan | FpCategory::Infinite => try!(wr.write_all(b"null")),
+        _ => try!(dtoa::write(wr, value)),
     }
 
     Ok(())
@@ -653,7 +660,7 @@ pub fn to_vec_pretty<T>(value: &T) -> Result<Vec<u8>>
 /// Encode the specified struct into a json `String` buffer.
 #[inline]
 pub fn to_string<T>(value: &T) -> Result<String>
-    where T: ser::Serialize
+    where T: ser::Serialize,
 {
     let vec = try!(to_vec(value));
     let string = unsafe {
@@ -666,7 +673,7 @@ pub fn to_string<T>(value: &T) -> Result<String>
 /// Encode the specified struct into a json `String` buffer.
 #[inline]
 pub fn to_string_pretty<T>(value: &T) -> Result<String>
-    where T: ser::Serialize
+    where T: ser::Serialize,
 {
     let vec = try!(to_vec_pretty(value));
     let string = unsafe {
@@ -679,7 +686,7 @@ pub fn to_string_pretty<T>(value: &T) -> Result<String>
 fn indent<W>(wr: &mut W, n: usize, s: &[u8]) -> Result<()>
     where W: io::Write,
 {
-    for _ in 0 .. n {
+    for _ in 0..n {
         try!(wr.write_all(s));
     }
 
