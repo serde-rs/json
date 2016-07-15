@@ -34,13 +34,18 @@ enum HttpProtocol {
 }
 
 impl rustc_serialize::Encodable for HttpProtocol {
-    fn encode<S: rustc_serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode<S: rustc_serialize::Encoder>(
+        &self,
+        s: &mut S
+    ) -> Result<(), S::Error> {
         (*self as usize).encode(s)
     }
 }
 
 impl rustc_serialize::Decodable for HttpProtocol {
-    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<HttpProtocol, D::Error> {
+    fn decode<D: rustc_serialize::Decoder>
+        (d: &mut D)
+         -> Result<HttpProtocol, D::Error> {
         match FromPrimitive::from_usize(try!(d.read_usize())) {
             Some(value) => Ok(value),
             None => Err(d.error("cannot convert from usize")),
@@ -50,7 +55,9 @@ impl rustc_serialize::Decodable for HttpProtocol {
 
 impl FromStr for HttpProtocol {
     type Err = ();
-    fn from_str(_s: &str) -> Result<HttpProtocol, ()> { unimplemented!() }
+    fn from_str(_s: &str) -> Result<HttpProtocol, ()> {
+        unimplemented!()
+    }
 }
 
 impl FromPrimitive for HttpProtocol {
@@ -80,7 +87,7 @@ impl ser::Serialize for HttpProtocol {
 impl de::Deserialize for HttpProtocol {
     #[inline]
     fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
-        where D: Deserializer
+        where D: Deserializer,
     {
         Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
@@ -104,7 +111,9 @@ enum HttpMethod {
 
 impl FromStr for HttpMethod {
     type Err = ();
-    fn from_str(_s: &str) -> Result<HttpMethod, ()> { unimplemented!() }
+    fn from_str(_s: &str) -> Result<HttpMethod, ()> {
+        unimplemented!()
+    }
 }
 
 impl FromPrimitive for HttpMethod {
@@ -131,13 +140,17 @@ impl FromPrimitive for HttpMethod {
 }
 
 impl rustc_serialize::Encodable for HttpMethod {
-    fn encode<S: rustc_serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode<S: rustc_serialize::Encoder>(
+        &self,
+        s: &mut S
+    ) -> Result<(), S::Error> {
         (*self as usize).encode(s)
     }
 }
 
 impl rustc_serialize::Decodable for HttpMethod {
-    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<HttpMethod, D::Error> {
+    fn decode<D: rustc_serialize::Decoder>(d: &mut D)
+        -> Result<HttpMethod, D::Error> {
         match FromPrimitive::from_usize(try!(d.read_usize())) {
             Some(value) => Ok(value),
             None => Err(d.error("cannot convert from usize")),
@@ -157,7 +170,7 @@ impl ser::Serialize for HttpMethod {
 impl de::Deserialize for HttpMethod {
     #[inline]
     fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
-        where D: Deserializer
+        where D: Deserializer,
     {
         Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
@@ -174,7 +187,9 @@ enum CacheStatus {
 
 impl FromStr for CacheStatus {
     type Err = ();
-    fn from_str(_s: &str) -> Result<CacheStatus, ()> { unimplemented!() }
+    fn from_str(_s: &str) -> Result<CacheStatus, ()> {
+        unimplemented!()
+    }
 }
 
 impl FromPrimitive for CacheStatus {
@@ -194,13 +209,17 @@ impl FromPrimitive for CacheStatus {
 }
 
 impl rustc_serialize::Encodable for CacheStatus {
-    fn encode<S: rustc_serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode<S: rustc_serialize::Encoder>(
+        &self,
+        s: &mut S
+    ) -> Result<(), S::Error> {
         (*self as u8).encode(s)
     }
 }
 
 impl rustc_serialize::Decodable for CacheStatus {
-    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<CacheStatus, D::Error> {
+    fn decode<D: rustc_serialize::Decoder>(d: &mut D)
+        -> Result<CacheStatus, D::Error> {
         match FromPrimitive::from_u8(try!(d.read_u8())) {
             Some(value) => Ok(value),
             None => Err(d.error("cannot convert from u8")),
@@ -220,7 +239,7 @@ impl ser::Serialize for CacheStatus {
 impl de::Deserialize for CacheStatus {
     #[inline]
     fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
-        where D: Deserializer
+        where D: Deserializer,
     {
         Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
@@ -244,7 +263,9 @@ enum OriginProtocol {
 
 impl FromStr for OriginProtocol {
     type Err = ();
-    fn from_str(_s: &str) -> Result<OriginProtocol, ()> { unimplemented!() }
+    fn from_str(_s: &str) -> Result<OriginProtocol, ()> {
+        unimplemented!()
+    }
 }
 
 impl FromPrimitive for OriginProtocol {
@@ -263,13 +284,18 @@ impl FromPrimitive for OriginProtocol {
 }
 
 impl rustc_serialize::Encodable for OriginProtocol {
-    fn encode<S: rustc_serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode<S: rustc_serialize::Encoder>(
+        &self,
+        s: &mut S
+    ) -> Result<(), S::Error> {
         (*self as u8).encode(s)
     }
 }
 
 impl rustc_serialize::Decodable for OriginProtocol {
-    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<OriginProtocol, D::Error> {
+    fn decode<D: rustc_serialize::Decoder>
+        (d: &mut D)
+         -> Result<OriginProtocol, D::Error> {
         match FromPrimitive::from_u8(try!(d.read_u8())) {
             Some(value) => Ok(value),
             None => Err(d.error("cannot convert from u8")),
@@ -289,7 +315,7 @@ impl ser::Serialize for OriginProtocol {
 impl de::Deserialize for OriginProtocol {
     #[inline]
     fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
-        where D: Deserializer
+        where D: Deserializer,
     {
         Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
@@ -307,7 +333,9 @@ enum ZonePlan {
 
 impl FromStr for ZonePlan {
     type Err = ();
-    fn from_str(_s: &str) -> Result<ZonePlan, ()> { unimplemented!() }
+    fn from_str(_s: &str) -> Result<ZonePlan, ()> {
+        unimplemented!()
+    }
 }
 
 impl FromPrimitive for ZonePlan {
@@ -328,13 +356,17 @@ impl FromPrimitive for ZonePlan {
 }
 
 impl rustc_serialize::Encodable for ZonePlan {
-    fn encode<S: rustc_serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode<S: rustc_serialize::Encoder>(
+        &self,
+        s: &mut S
+    ) -> Result<(), S::Error> {
         (*self as u8).encode(s)
     }
 }
 
 impl rustc_serialize::Decodable for ZonePlan {
-    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<ZonePlan, D::Error> {
+    fn decode<D: rustc_serialize::Decoder>(d: &mut D)
+        -> Result<ZonePlan, D::Error> {
         match FromPrimitive::from_u8(try!(d.read_u8())) {
             Some(value) => Ok(value),
             None => Err(d.error("cannot convert from u8")),
@@ -354,275 +386,37 @@ impl ser::Serialize for ZonePlan {
 impl de::Deserialize for ZonePlan {
     #[inline]
     fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
-        where D: Deserializer
+        where D: Deserializer,
     {
         Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[cfg_attr(rustfmt, rustfmt_skip)]
 enum Country {
-	UNKNOWN,
-	A1,
-	A2,
-	O1,
-	AD,
-	AE,
-	AF,
-	AG,
-	AI,
-	AL,
-	AM,
-	AO,
-	AP,
-	AQ,
-	AR,
-	AS,
-	AT,
-	AU,
-	AW,
-	AX,
-	AZ,
-	BA,
-	BB,
-	BD,
-	BE,
-	BF,
-	BG,
-	BH,
-	BI,
-	BJ,
-	BL,
-	BM,
-	BN,
-	BO,
-	BQ,
-	BR,
-	BS,
-	BT,
-	BV,
-	BW,
-	BY,
-	BZ,
-	CA,
-	CC,
-	CD,
-	CF,
-	CG,
-	CH,
-	CI,
-	CK,
-	CL,
-	CM,
-	CN,
-	CO,
-	CR,
-	CU,
-	CV,
-	CW,
-	CX,
-	CY,
-	CZ,
-	DE,
-	DJ,
-	DK,
-	DM,
-	DO,
-	DZ,
-	EC,
-	EE,
-	EG,
-	EH,
-	ER,
-	ES,
-	ET,
-	EU,
-	FI,
-	FJ,
-	FK,
-	FM,
-	FO,
-	FR,
-	GA,
-	GB,
-	GD,
-	GE,
-	GF,
-	GG,
-	GH,
-	GI,
-	GL,
-	GM,
-	GN,
-	GP,
-	GQ,
-	GR,
-	GS,
-	GT,
-	GU,
-	GW,
-	GY,
-	HK,
-	HM,
-	HN,
-	HR,
-	HT,
-	HU,
-	ID,
-	IE,
-	IL,
-	IM,
-	IN,
-	IO,
-	IQ,
-	IR,
-	IS,
-	IT,
-	JE,
-	JM,
-	JO,
-	JP,
-	KE,
-	KG,
-	KH,
-	KI,
-	KM,
-	KN,
-	KP,
-	KR,
-	KW,
-	KY,
-	KZ,
-	LA,
-	LB,
-	LC,
-	LI,
-	LK,
-	LR,
-	LS,
-	LT,
-	LU,
-	LV,
-	LY,
-	MA,
-	MC,
-	MD,
-	ME,
-	MF,
-	MG,
-	MH,
-	MK,
-	ML,
-	MM,
-	MN,
-	MO,
-	MP,
-	MQ,
-	MR,
-	MS,
-	MT,
-	MU,
-	MV,
-	MW,
-	MX,
-	MY,
-	MZ,
-	NA,
-	NC,
-	NE,
-	NF,
-	NG,
-	NI,
-	NL,
-	NO,
-	NP,
-	NR,
-	NU,
-	NZ,
-	OM,
-	PA,
-	PE,
-	PF,
-	PG,
-	PH,
-	PK,
-	PL,
-	PM,
-	PN,
-	PR,
-	PS,
-	PT,
-	PW,
-	PY,
-	QA,
-	RE,
-	RO,
-	RS,
-	RU,
-	RW,
-	SA,
-	SB,
-	SC,
-	SD,
-	SE,
-	SG,
-	SH,
-	SI,
-	SJ,
-	SK,
-	SL,
-	SM,
-	SN,
-	SO,
-	SR,
-	SS,
-	ST,
-	SV,
-	SX,
-	SY,
-	SZ,
-	TC,
-	TD,
-	TF,
-	TG,
-	TH,
-	TJ,
-	TK,
-	TL,
-	TM,
-	TN,
-	TO,
-	TR,
-	TT,
-	TV,
-	TW,
-	TZ,
-	UA,
-	UG,
-	UM,
-	US,
-	UY,
-	UZ,
-	VA,
-	VC,
-	VE,
-	VG,
-	VI,
-	VN,
-	VU,
-	WF,
-	WS,
-	XX,
-	YE,
-	YT,
-	ZA,
-	ZM,
-	ZW,
+    UNKNOWN,
+    A1, A2, O1, AD, AE, AF, AG, AI, AL, AM, AO, AP, AQ, AR, AS, AT, AU, AW, AX,
+    AZ, BA, BB, BD, BE, BF, BG, BH, BI, BJ, BL, BM, BN, BO, BQ, BR, BS, BT, BV,
+    BW, BY, BZ, CA, CC, CD, CF, CG, CH, CI, CK, CL, CM, CN, CO, CR, CU, CV, CW,
+    CX, CY, CZ, DE, DJ, DK, DM, DO, DZ, EC, EE, EG, EH, ER, ES, ET, EU, FI, FJ,
+    FK, FM, FO, FR, GA, GB, GD, GE, GF, GG, GH, GI, GL, GM, GN, GP, GQ, GR, GS,
+    GT, GU, GW, GY, HK, HM, HN, HR, HT, HU, ID, IE, IL, IM, IN, IO, IQ, IR, IS,
+    IT, JE, JM, JO, JP, KE, KG, KH, KI, KM, KN, KP, KR, KW, KY, KZ, LA, LB, LC,
+    LI, LK, LR, LS, LT, LU, LV, LY, MA, MC, MD, ME, MF, MG, MH, MK, ML, MM, MN,
+    MO, MP, MQ, MR, MS, MT, MU, MV, MW, MX, MY, MZ, NA, NC, NE, NF, NG, NI, NL,
+    NO, NP, NR, NU, NZ, OM, PA, PE, PF, PG, PH, PK, PL, PM, PN, PR, PS, PT, PW,
+    PY, QA, RE, RO, RS, RU, RW, SA, SB, SC, SD, SE, SG, SH, SI, SJ, SK, SL, SM,
+    SN, SO, SR, SS, ST, SV, SX, SY, SZ, TC, TD, TF, TG, TH, TJ, TK, TL, TM, TN,
+    TO, TR, TT, TV, TW, TZ, UA, UG, UM, US, UY, UZ, VA, VC, VE, VG, VI, VN, VU,
+    WF, WS, XX, YE, YT, ZA, ZM, ZW,
 }
 
 impl FromStr for Country {
     type Err = ();
-    fn from_str(_s: &str) -> Result<Country, ()> { unimplemented!() }
+    fn from_str(_s: &str) -> Result<Country, ()> {
+        unimplemented!()
+    }
 }
 
 impl FromPrimitive for Country {
@@ -894,13 +688,17 @@ impl FromPrimitive for Country {
 }
 
 impl rustc_serialize::Encodable for Country {
-    fn encode<S: rustc_serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode<S: rustc_serialize::Encoder>(
+        &self,
+        s: &mut S
+    ) -> Result<(), S::Error> {
         (*self as u8).encode(s)
     }
 }
 
 impl rustc_serialize::Decodable for Country {
-    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<Country, D::Error> {
+    fn decode<D: rustc_serialize::Decoder>(d: &mut D)
+        -> Result<Country, D::Error> {
         match FromPrimitive::from_u8(try!(d.read_u8())) {
             Some(value) => Ok(value),
             None => Err(d.error("cannot convert from u8")),
@@ -920,7 +718,7 @@ impl ser::Serialize for Country {
 impl de::Deserialize for Country {
     #[inline]
     fn deserialize<D>(de: &mut D) -> Result<Self, D::Error>
-        where D: Deserializer
+        where D: Deserializer,
     {
         Ok(FromPrimitive::from_u64(try!(u64::deserialize(de))).unwrap())
     }
@@ -955,7 +753,10 @@ impl Log {
                 up_status: 520,
                 method: HttpMethod::GET,
                 content_type: "text/html".to_string(),
-                user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.146 Safari/537.36".to_string(),
+                user_agent: "Mozilla/5.0 (X11; Linux x86_64) \
+                             AppleWebKit/537.36 (KHTML, like Gecko) \
+                             Chrome/33.0.1750.146 Safari/537.36"
+                    .to_string(),
                 referer: "https://www.cloudflare.com/".to_string(),
                 request_uri: "/cdn-cgi/trace".to_string(),
             },
@@ -1009,7 +810,7 @@ struct MyMemWriter0 {
 impl MyMemWriter0 {
     pub fn with_capacity(cap: usize) -> MyMemWriter0 {
         MyMemWriter0 {
-            buf: Vec::with_capacity(cap)
+            buf: Vec::with_capacity(cap),
         }
     }
 }
@@ -1043,7 +844,7 @@ struct MyMemWriter1 {
 impl MyMemWriter1 {
     pub fn with_capacity(cap: usize) -> MyMemWriter1 {
         MyMemWriter1 {
-            buf: Vec::with_capacity(cap)
+            buf: Vec::with_capacity(cap),
         }
     }
 }
@@ -1061,10 +862,10 @@ fn push_all_bytes(dst: &mut Vec<u8>, src: &[u8]) {
         // we would have failed if `reserve` overflowed.
         dst.set_len(dst_len + src_len);
 
-        ::std::ptr::copy_nonoverlapping(
-            src.as_ptr(),
-            dst.as_mut_ptr().offset(dst_len as isize),
-            src_len);
+        ::std::ptr::copy_nonoverlapping(src.as_ptr(),
+                                        dst.as_mut_ptr()
+                                            .offset(dst_len as isize),
+                                        src_len);
     }
 }
 
@@ -1133,9 +934,7 @@ fn bench_serializer(b: &mut Bencher) {
     let json = serde_json::to_vec(&log).unwrap();
     b.bytes = json.len() as u64;
 
-    b.iter(|| {
-        serde_json::to_vec(&log).unwrap()
-    });
+    b.iter(|| serde_json::to_vec(&log).unwrap());
 }
 
 #[test]
@@ -1176,7 +975,9 @@ fn bench_serializer_slice(b: &mut Bencher) {
     let mut buf = [0; 1024];
 
     b.iter(|| {
-        for item in buf.iter_mut(){ *item = 0; }
+        for item in buf.iter_mut() {
+            *item = 0;
+        }
         let mut wr = &mut buf[..];
 
         let mut serializer = serde_json::Serializer::new(wr.by_ref());
@@ -1259,9 +1060,7 @@ fn bench_copy(b: &mut Bencher) {
     let json = JSON_STR.as_bytes().to_vec();
     b.bytes = json.len() as u64;
 
-    b.iter(|| {
-        JSON_STR.as_bytes().to_vec()
-    });
+    b.iter(|| JSON_STR.as_bytes().to_vec());
 }
 
 fn manual_serialize_no_escape<W: Write>(wr: &mut W, log: &Log) {
@@ -1590,7 +1389,8 @@ fn bench_decoder(b: &mut Bencher) {
     b.iter(|| {
         let json = Json::from_str(JSON_STR).unwrap();
         let mut decoder = rustc_serialize::json::Decoder::new(json);
-        let log: Log = rustc_serialize::Decodable::decode(&mut decoder).unwrap();
+        let log: Log = rustc_serialize::Decodable::decode(&mut decoder)
+            .unwrap();
         log
     });
 }

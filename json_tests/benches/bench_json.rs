@@ -60,7 +60,7 @@ fn make_string(pattern: &str) -> String {
 
     s.push('"');
 
-    for _ in 0 .. times {
+    for _ in 0..times {
         s.push_str(pattern);
     }
 

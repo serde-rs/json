@@ -35,7 +35,7 @@
 
 use serde::ser;
 
-use value::{self, Value, Map};
+use value::{self, Map, Value};
 
 /// This structure provides a simple interface for constructing a JSON array.
 #[derive(Default)]
@@ -62,8 +62,8 @@ impl ArrayBuilder {
 
     /// Creates and passes an `ArrayBuilder` into a closure, then inserts the resulting array into
     /// this array.
-    pub fn push_array<F>(mut self, f: F) -> ArrayBuilder where
-        F: FnOnce(ArrayBuilder) -> ArrayBuilder
+    pub fn push_array<F>(mut self, f: F) -> ArrayBuilder
+        where F: FnOnce(ArrayBuilder) -> ArrayBuilder,
     {
         let builder = ArrayBuilder::new();
         self.array.push(f(builder).build());
@@ -72,8 +72,8 @@ impl ArrayBuilder {
 
     /// Creates and passes an `ArrayBuilder` into a closure, then inserts the resulting object into
     /// this array.
-    pub fn push_object<F>(mut self, f: F) -> ArrayBuilder where
-        F: FnOnce(ObjectBuilder) -> ObjectBuilder
+    pub fn push_object<F>(mut self, f: F) -> ArrayBuilder
+        where F: FnOnce(ObjectBuilder) -> ObjectBuilder,
     {
         let builder = ObjectBuilder::new();
         self.array.push(f(builder).build());
@@ -111,7 +111,7 @@ impl ObjectBuilder {
     /// this object.
     pub fn insert_array<S, F>(mut self, key: S, f: F) -> ObjectBuilder
         where S: Into<String>,
-              F: FnOnce(ArrayBuilder) -> ArrayBuilder
+              F: FnOnce(ArrayBuilder) -> ArrayBuilder,
     {
         let builder = ArrayBuilder::new();
         self.object.insert(key.into(), f(builder).build());
@@ -122,7 +122,7 @@ impl ObjectBuilder {
     /// this object.
     pub fn insert_object<S, F>(mut self, key: S, f: F) -> ObjectBuilder
         where S: Into<String>,
-              F: FnOnce(ObjectBuilder) -> ObjectBuilder
+              F: FnOnce(ObjectBuilder) -> ObjectBuilder,
     {
         let builder = ObjectBuilder::new();
         self.object.insert(key.into(), f(builder).build());
