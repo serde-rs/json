@@ -1033,6 +1033,36 @@ impl de::Deserializer for Deserializer {
     {
         visitor.visit_newtype_struct(self)
     }
+
+    forward_to_deserialize!{
+        deserialize_bool();
+        deserialize_usize();
+        deserialize_u8();
+        deserialize_u16();
+        deserialize_u32();
+        deserialize_u64();
+        deserialize_isize();
+        deserialize_i8();
+        deserialize_i16();
+        deserialize_i32();
+        deserialize_i64();
+        deserialize_f32();
+        deserialize_f64();
+        deserialize_char();
+        deserialize_str();
+        deserialize_string();
+        deserialize_unit();
+        deserialize_seq();
+        deserialize_seq_fixed_size(len: usize);
+        deserialize_bytes();
+        deserialize_map();
+        deserialize_unit_struct(name: &'static str);
+        deserialize_tuple_struct(name: &'static str, len: usize);
+        deserialize_struct(name: &'static str, fields: &'static [&'static str]);
+        deserialize_struct_field();
+        deserialize_tuple(len: usize);
+        deserialize_ignored_any();
+    }
 }
 
 struct VariantDeserializer<'a> {
@@ -1127,6 +1157,39 @@ impl<'a> de::Deserializer for SeqDeserializer<'a> {
         } else {
             visitor.visit_seq(self)
         }
+    }
+
+    forward_to_deserialize!{
+        deserialize_bool();
+        deserialize_usize();
+        deserialize_u8();
+        deserialize_u16();
+        deserialize_u32();
+        deserialize_u64();
+        deserialize_isize();
+        deserialize_i8();
+        deserialize_i16();
+        deserialize_i32();
+        deserialize_i64();
+        deserialize_f32();
+        deserialize_f64();
+        deserialize_char();
+        deserialize_str();
+        deserialize_string();
+        deserialize_unit();
+        deserialize_option();
+        deserialize_seq();
+        deserialize_seq_fixed_size(len: usize);
+        deserialize_bytes();
+        deserialize_map();
+        deserialize_unit_struct(name: &'static str);
+        deserialize_newtype_struct(name: &'static str);
+        deserialize_tuple_struct(name: &'static str, len: usize);
+        deserialize_struct(name: &'static str, fields: &'static [&'static str]);
+        deserialize_struct_field();
+        deserialize_tuple(len: usize);
+        deserialize_enum(name: &'static str, variants: &'static [&'static str]);
+        deserialize_ignored_any();
     }
 }
 
@@ -1225,6 +1288,38 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
             {
                 visitor.visit_none()
             }
+
+            forward_to_deserialize!{
+                deserialize_bool();
+                deserialize_usize();
+                deserialize_u8();
+                deserialize_u16();
+                deserialize_u32();
+                deserialize_u64();
+                deserialize_isize();
+                deserialize_i8();
+                deserialize_i16();
+                deserialize_i32();
+                deserialize_i64();
+                deserialize_f32();
+                deserialize_f64();
+                deserialize_char();
+                deserialize_str();
+                deserialize_string();
+                deserialize_unit();
+                deserialize_seq();
+                deserialize_seq_fixed_size(len: usize);
+                deserialize_bytes();
+                deserialize_map();
+                deserialize_unit_struct(name: &'static str);
+                deserialize_newtype_struct(name: &'static str);
+                deserialize_tuple_struct(name: &'static str, len: usize);
+                deserialize_struct(name: &'static str, fields: &'static [&'static str]);
+                deserialize_struct_field();
+                deserialize_tuple(len: usize);
+                deserialize_enum(name: &'static str, variants: &'static [&'static str]);
+                deserialize_ignored_any();
+            }
         }
 
         let mut de = MissingFieldDeserializer(field);
@@ -1244,6 +1339,39 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
         where V: de::Visitor,
     {
         visitor.visit_map(self)
+    }
+
+    forward_to_deserialize!{
+        deserialize_bool();
+        deserialize_usize();
+        deserialize_u8();
+        deserialize_u16();
+        deserialize_u32();
+        deserialize_u64();
+        deserialize_isize();
+        deserialize_i8();
+        deserialize_i16();
+        deserialize_i32();
+        deserialize_i64();
+        deserialize_f32();
+        deserialize_f64();
+        deserialize_char();
+        deserialize_str();
+        deserialize_string();
+        deserialize_unit();
+        deserialize_option();
+        deserialize_seq();
+        deserialize_seq_fixed_size(len: usize);
+        deserialize_bytes();
+        deserialize_map();
+        deserialize_unit_struct(name: &'static str);
+        deserialize_newtype_struct(name: &'static str);
+        deserialize_tuple_struct(name: &'static str, len: usize);
+        deserialize_struct(name: &'static str, fields: &'static [&'static str]);
+        deserialize_struct_field();
+        deserialize_tuple(len: usize);
+        deserialize_enum(name: &'static str, variants: &'static [&'static str]);
+        deserialize_ignored_any();
     }
 }
 
