@@ -20,8 +20,8 @@ This crate works with Cargo and can be found on
 
 ```toml
 [dependencies]
-serde = "*"
-serde_json = "*"
+serde = "0.8"
+serde_json = "0.8"
 ```
 
 Using Serde JSON
@@ -54,8 +54,8 @@ It also can be used with Serde's automatic serialization library,
 ```toml
 [dependencies]
 ...
-serde = "*"
-serde_macros = "*"
+serde = "0.8"
+serde_macros = "0.8"
 ...
 ```
 
