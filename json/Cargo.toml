@@ -20,3 +20,6 @@ clippy = { version = "^0.*", optional = true }
 linked-hash-map = { version = "0.1", optional = true }
 itoa = "0.1"
 dtoa = "0.2"
+
+[replace]
+"serde:0.8.0-rc3" = { git = "https://github.com/serde-rs/serde" }

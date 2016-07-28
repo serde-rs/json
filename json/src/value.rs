@@ -558,6 +558,12 @@ pub struct StructVariantState {
     map: Map<String, Value>,
 }
 
+#[doc(hidden)]
+pub struct MapState {
+    map: Map<String, Value>,
+    next_key: Option<String>,
+}
+
 impl ser::Serializer for Serializer {
     type Error = Error;
 
@@ -565,8 +571,8 @@ impl ser::Serializer for Serializer {
     type TupleState = Vec<Value>;
     type TupleStructState = Vec<Value>;
     type TupleVariantState = TupleVariantState;
-    type MapState = Map<String, Value>;
-    type StructState = Map<String, Value>;
+    type MapState = MapState;
+    type StructState = MapState;
     type StructVariantState = StructVariantState;
 
     #[inline]
@@ -829,28 +835,46 @@ impl ser::Serializer for Serializer {
     fn serialize_map(
         &mut self,
         _len: Option<usize>
-    ) -> Result<Map<String, Value>, Error> {
-        Ok(Map::new())
+    ) -> Result<MapState, Error> {
+        Ok(MapState {
+            map: Map::new(),
+            next_key: None,
+        })
     }
 
-    fn serialize_map_elt<K: ser::Serialize, V: ser::Serialize>(
+    fn serialize_map_key<T: ser::Serialize>(
         &mut self,
-        state: &mut Map<String, Value>,
-        key: K,
-        value: V
+        state: &mut MapState,
+        key: T,
     ) -> Result<(), Error> {
         match to_value(&key) {
-            Value::String(s) => state.insert(s, to_value(&value)),
+            Value::String(s) => state.next_key = Some(s),
             _ => return Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0)),
+        };
+        Ok(())
+    }
+
+    fn serialize_map_value<T: ser::Serialize>(
+        &mut self,
+        state: &mut MapState,
+        value: T,
+    ) -> Result<(), Error> {
+        match state.next_key.take() {
+            Some(key) => state.map.insert(key, to_value(&value)),
+            None => {
+                return Err(Error::Syntax(ErrorCode::Custom("serialize_map_value without \
+                                                            matching serialize_map_key".to_owned()),
+                                         0, 0));
+            }
         };
         Ok(())
     }
 
     fn serialize_map_end(
         &mut self,
-        state: Map<String, Value>
+        state: MapState,
     ) -> Result<(), Error> {
-        self.value = Value::Object(state);
+        self.value = Value::Object(state.map);
         Ok(())
     }
 
@@ -858,22 +882,23 @@ impl ser::Serializer for Serializer {
         &mut self,
         _name: &'static str,
         len: usize
-    ) -> Result<Map<String, Value>, Error> {
+    ) -> Result<MapState, Error> {
         self.serialize_map(Some(len))
     }
 
     fn serialize_struct_elt<V: ser::Serialize>(
         &mut self,
-        state: &mut Map<String, Value>,
+        state: &mut MapState,
         key: &'static str,
         value: V
     ) -> Result<(), Error> {
-        self.serialize_map_elt(state, key, value)
+        try!(self.serialize_map_key(state, key));
+        self.serialize_map_value(state, value)
     }
 
     fn serialize_struct_end(
         &mut self,
-        state: Map<String, Value>
+        state: MapState
     ) -> Result<(), Error> {
         self.serialize_map_end(state)
     }

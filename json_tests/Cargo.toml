@@ -32,3 +32,6 @@ path = "tests/test.rs"
 [[bench]]
 name = "bench"
 path = "benches/bench.rs"
+
+[replace]
+"serde:0.8.0-rc3" = { git = "https://github.com/serde-rs/serde" }

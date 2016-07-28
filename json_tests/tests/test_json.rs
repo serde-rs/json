@@ -1373,7 +1373,8 @@ fn test_serialize_map_with_no_len() {
         {
             let mut state = try!(serializer.serialize_map(None));
             for (k, v) in &self.0 {
-                try!(serializer.serialize_map_elt(&mut state, k, v));
+                try!(serializer.serialize_map_key(&mut state, k));
+                try!(serializer.serialize_map_value(&mut state, v));
             }
             serializer.serialize_map_end(state)
         }

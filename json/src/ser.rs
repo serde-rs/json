@@ -352,11 +352,10 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_map_elt<K: ser::Serialize, V: ser::Serialize>(
+    fn serialize_map_key<T: ser::Serialize>(
         &mut self,
         state: &mut State,
-        key: K,
-        value: V
+        key: T,
     ) -> Result<()> {
         try!(self.formatter.comma(&mut self.writer, *state == State::First));
         *state = State::Rest;
@@ -365,8 +364,15 @@ impl<W, F> ser::Serializer for Serializer<W, F>
             ser: self,
         }));
 
-        try!(self.formatter.colon(&mut self.writer));
+        self.formatter.colon(&mut self.writer)
+    }
 
+    #[inline]
+    fn serialize_map_value<T: ser::Serialize>(
+        &mut self,
+        _: &mut State,
+        value: T,
+    ) -> Result<()> {
         value.serialize(self)
     }
 
@@ -394,7 +400,8 @@ impl<W, F> ser::Serializer for Serializer<W, F>
         key: &'static str,
         value: V
     ) -> Result<()> {
-        self.serialize_map_elt(state, key, value)
+        try!(self.serialize_map_key(state, key));
+        self.serialize_map_value(state, value)
     }
 
     #[inline]
@@ -650,11 +657,18 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_map_elt<K: ser::Serialize, V: ser::Serialize>(
+    fn serialize_map_key<T: ser::Serialize>(
         &mut self,
         _state: &mut (),
-        _key: K,
-        _value: V
+        _key: T,
+    ) -> Result<()> {
+        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    }
+
+    fn serialize_map_value<T: ser::Serialize>(
+        &mut self,
+        _state: &mut (),
+        _value: T,
     ) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
