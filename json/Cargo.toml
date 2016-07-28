@@ -1,6 +1,6 @@
 [package]
 name = "serde_json"
-version = "0.8.0-rc1"
+version = "0.8.0"
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "A JSON serialization file format"
@@ -14,12 +14,9 @@ unstable-testing = ["clippy"]
 preserve_order = ["linked-hash-map", "linked-hash-map/serde_impl"]
 
 [dependencies]
-serde = "0.8.0-rc3"
+serde = "0.8.0"
 num-traits = "~0.1.32"
 clippy = { version = "^0.*", optional = true }
 linked-hash-map = { version = "0.1", optional = true }
 itoa = "0.1"
 dtoa = "0.2"
-
-[replace]
-"serde:0.8.0-rc3" = { git = "https://github.com/serde-rs/serde" }
