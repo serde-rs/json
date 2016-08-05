@@ -467,8 +467,6 @@ impl<R: Read> DeserializerImpl<R> {
     // exponent-parsing loop above.
     #[cold]
     #[inline(never)]
-    // https://github.com/Manishearth/rust-clippy/issues/1086
-    #[cfg_attr(feature = "clippy", allow(if_same_then_else))]
     fn parse_exponent_overflow<V>(
         &mut self,
         pos: bool,
