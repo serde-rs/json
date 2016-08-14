@@ -5,7 +5,7 @@ Serde JSON Serialization Library
 [![Coverage Status](https://coveralls.io/repos/serde-rs/json/badge.svg?branch=master&service=github)](https://coveralls.io/github/serde-rs/json?branch=master)
 [![Latest Version](https://img.shields.io/crates/v/serde_json.svg)](https://crates.io/crates/serde\_json)
 
-[Documentation](https://serde-rs.github.io/json/serde_json)
+[Documentation](http://docs.serde.rs/serde_json/)
 
 This crate is a Rust library for parsing and generating the
 [JSON](http://json.org) (JavaScript Object Notation) file format. It is built

@@ -5,7 +5,7 @@ authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "A JSON serialization file format"
 repository = "https://github.com/serde-rs/json"
-documentation = "https://serde-rs.github.io/json/serde_json/"
+documentation = "http://docs.serde.rs/serde_json/"
 readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 
