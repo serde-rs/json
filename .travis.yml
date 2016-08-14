@@ -40,13 +40,9 @@ script:
     fi
 
 after_success:
-- (cd json && travis-cargo --only stable doc-upload)
 - (cd json_tests && travis-cargo --only stable coveralls --no-sudo)
 
 env:
   global:
     # override the default `--features unstable` used for the nightly branch (optional)
     - TRAVIS_CARGO_NIGHTLY_FEATURE=""
-
-    # encrypted github token for doc upload (see `GH_TOKEN` link above)
-    - secure: gtlf44Ls2rxiroA1yWrWBPp/W8osiCglD4qvR9TOc3/sTwoF2FcWS02OSnTj+Vlq1xGMRY6xbgnR3iuhBEmDD482+xJb/2mUjDU/WnZXeNRvL98C1lW8GWpyqTnicWPxp7Ul2zfwICziU2KeegTBV6/B3QZZGzD2Cn6oE0TcerrlCgsh3sadwXETUhk4/M//03yfGdzLscSxwUIjaCKB/lLqBrQvXd0OQZSlesXgPtsFhzxgljQWRLD8baLmQ88OeoM0lujMopvr6119OT0nHNXpnInpKgmKW6fzrYxyCC96j8xM/qFgvwniNp4rFO7BKyJAIAZhTKD17Lpl/6k47LLJ2Xnw2gpBTu8+3agnmbXV1SmOO/lwcbCSjvk/krvQXWW7mz+2n5XafAmKZfvs45GApSlKdCBlFxZIyegPCPggrPt+ke7KVYJIMVGXohaFlLUowlJr+b5ykSG32IzsASdxtQk4CLN92lVfH2Sdh1vzN3Op2ROrfvBr1XS/dhoRmyZVA6NNa+ksS+ILNQi3MC1X2QarbZOtKueziC2gUE9ZVJInc1JLR81HUoX+OS6abRt3z79IVAqCoUUQfMfQF8lLRkNuxGQT4vlUi/b83zDEbl3iHTu6QHNQYeAw1YQvYNX6la1CbYj1gQ7pOTaNust0vdmoQisLTyldM3Nc7PM=
