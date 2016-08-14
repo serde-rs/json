@@ -30,7 +30,7 @@ script:
 - |
     if [ -z $BENCH ]; then
         (cd json && travis-cargo build) &&
-        (cd json && travis-cargo build -- --features preserve_order) &&
+        (cd json && travis-cargo --skip 1.8.0 build -- --features preserve_order) &&
         (cd json && travis-cargo --only nightly test) &&
         (cd json_tests && travis-cargo --skip nightly test -- --features with-syntex --no-default-features) &&
         (cd json_tests && travis-cargo --only nightly test -- --features unstable-testing) &&
