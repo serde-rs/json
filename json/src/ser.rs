@@ -742,6 +742,7 @@ pub trait Formatter {
 }
 
 /// This structure compacts a JSON value with no extra whitespace.
+#[derive(Clone, Debug)]
 pub struct CompactFormatter;
 
 impl Formatter for CompactFormatter {
@@ -775,6 +776,7 @@ impl Formatter for CompactFormatter {
 }
 
 /// This structure pretty prints a JSON value to make it human readable.
+#[derive(Clone, Debug)]
 pub struct PrettyFormatter<'a> {
     current_indent: usize,
     indent: &'a [u8],
