@@ -104,7 +104,7 @@ impl fmt::Display for ErrorCode {
             ErrorCode::UnknownField(ref field) => {
                 write!(f, "unknown field \"{}\"", field)
             }
-            ErrorCode::MissingField(ref field) => {
+            ErrorCode::MissingField(field) => {
                 write!(f, "missing field \"{}\"", field)
             }
             ErrorCode::EOFWhileParsingList => "EOF while parsing a list".fmt(f),

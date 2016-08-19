@@ -457,7 +457,7 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
 
 fn decode_hex_escape<R: Read>(read: &mut R) -> Result<u16> {
     let mut i = 0;
-    let mut n = 0u16;
+    let mut n = 0;
     while i < 4 && try!(read.peek()).is_some() {
         n = match try!(read.next()).unwrap_or(b'\x00') {
             c @ b'0'...b'9' => n * 16_u16 + ((c as u16) - (b'0' as u16)),
