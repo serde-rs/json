@@ -62,9 +62,7 @@ impl<W, F> Serializer<W, F>
     fn write_integer<V>(&mut self, value: V) -> Result<()>
         where V: itoa::Integer
     {
-        try!(self.formatter.begin_number(&mut self.writer));
         try!(self.formatter.write_integer(&mut self.writer, value));
-        try!(self.formatter.end_number(&mut self.writer));
         Ok(())
     }
 
@@ -74,15 +72,12 @@ impl<W, F> Serializer<W, F>
     {
         match value.classify() {
             FpCategory::Nan | FpCategory::Infinite => {
-                try!(self.formatter.write_null(&mut self.writer))
+                self.formatter.write_null(&mut self.writer)
             },
             _ => {
-                try!(self.formatter.begin_number(&mut self.writer));
-                try!(self.formatter.write_floating(&mut self.writer, value));
-                try!(self.formatter.end_number(&mut self.writer));
+                self.formatter.write_floating(&mut self.writer, value)
             },
         }
-        Ok(())
     }
 }
 
@@ -825,22 +820,6 @@ pub trait Formatter {
             b"false" as &[u8]
         };
         writer.write_all(s).map_err(From::from)
-    }
-
-    /// Called before every `write_integer` or `write_floating`.
-    #[inline]
-    fn begin_number<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called after every `write_integer` or `write_floating`.
-    #[inline]
-    fn end_number<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
     }
 
     /// Writes an integer value like `-123` to the specified writer.
