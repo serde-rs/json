@@ -808,18 +808,23 @@ impl CharEscape {
 pub trait Formatter {
     /// Writes a `null` value to the specified writer.
     #[inline]
-    fn write_null<W>(&mut self, _writer: &mut W) -> Result<()>
+    fn write_null<W>(&mut self, writer: &mut W) -> Result<()>
         where W: io::Write
     {
-        Ok(())
+        writer.write_all(b"null").map_err(From::from)
     }
 
     /// Writes a `true` or `false` value to the specified writer.
     #[inline]
-    fn write_bool<W>(&mut self, _writer: &mut W, _value: bool) -> Result<()>
+    fn write_bool<W>(&mut self, writer: &mut W, value: bool) -> Result<()>
         where W: io::Write
     {
-        Ok(())
+        let s = if value {
+            b"true" as &[u8]
+        } else {
+            b"false" as &[u8]
+        };
+        writer.write_all(s).map_err(From::from)
     }
 
     /// Called before every `write_integer` or `write_floating`.
@@ -840,173 +845,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
-    fn write_integer<W, I>(&mut self, _writer: &mut W, _value: I) -> Result<()>
-        where W: io::Write,
-              I: itoa::Integer
-    {
-        Ok(())
-    }
-
-    /// Writes a floating point value like `-31.26e+12` to the
-    /// specified writer.
-    #[inline]
-    fn write_floating<W, F>(&mut self, _writer: &mut W, _value: F) -> Result<()>
-        where W: io::Write,
-              F: dtoa::Floating
-    {
-        Ok(())
-    }
-
-    /// Called before each series of `write_string_fragment` and
-    /// `write_char_escape`.  Writes a `"` to the specified writer.
-    #[inline]
-    fn begin_string<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called after each series of `write_string_fragment` and
-    /// `write_char_escape`.  Writes a `"` to the specified writer.
-    #[inline]
-    fn end_string<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Writes a string fragment that doesn't need any escaping to the
-    /// specified writer.
-    #[inline]
-    fn write_string_fragment<W>(&mut self, _writer: &mut W, _fragment: &[u8]) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Writes a character escape code to the specified writer.
-    #[inline]
-    fn write_char_escape<W>(&mut self, _writer: &mut W, _char_escape: CharEscape) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called before every array.  Writes a `[` to the specified
-    /// writer.
-    #[inline]
-    fn begin_array<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called after every array.  Writes a `]` to the specified
-    /// writer.
-    #[inline]
-    fn end_array<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called before every array value.  Writes a `,` if needed to
-    /// the specified writer.
-    #[inline]
-    fn begin_array_value<W>(&mut self, _writer: &mut W, _first: bool) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called after every array value.
-    #[inline]
-    fn end_array_value<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called before every object.  Writes a `{` to the specified
-    /// writer.
-    #[inline]
-    fn begin_object<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called after every object.  Writes a `}` to the specified
-    /// writer.
-    #[inline]
-    fn end_object<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called before every object key.
-    #[inline]
-    fn begin_object_key<W>(&mut self, _writer: &mut W, _first: bool) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called after every object key.  A `:` should be written to the
-    /// specified writer by either this method or
-    /// `begin_object_value`.
-    #[inline]
-    fn end_object_key<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called before every object value.  A `:` should be written to
-    /// the specified writer by either this method or
-    /// `end_object_key`.
-    #[inline]
-    fn begin_object_value<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-
-    /// Called after every object value.
-    #[inline]
-    fn end_object_value<W>(&mut self, _writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        Ok(())
-    }
-}
-
-/// This structure compacts a JSON value with no extra whitespace.
-#[derive(Clone, Debug)]
-pub struct CompactFormatter;
-
-impl Formatter for CompactFormatter {
-    #[inline]
-    fn write_null<W>(&mut self, writer: &mut W) -> Result<()>
-        where W: io::Write
-    {
-        writer.write_all(b"null").map_err(From::from)
-    }
-
-    #[inline]
-    fn write_bool<W>(&mut self, writer: &mut W, value: bool) -> Result<()>
-        where W: io::Write
-    {
-        let s = if value {
-            b"true" as &[u8]
-        } else {
-            b"false" as &[u8]
-        };
-        writer.write_all(s).map_err(From::from)
-    }
-
-    #[inline]
     fn write_integer<W, I>(&mut self, writer: &mut W, value: I) -> Result<()>
         where W: io::Write,
               I: itoa::Integer
@@ -1014,6 +852,8 @@ impl Formatter for CompactFormatter {
         itoa::write(writer, value).map_err(From::from)
     }
 
+    /// Writes a floating point value like `-31.26e+12` to the
+    /// specified writer.
     #[inline]
     fn write_floating<W, F>(&mut self, writer: &mut W, value: F) -> Result<()>
         where W: io::Write,
@@ -1022,6 +862,8 @@ impl Formatter for CompactFormatter {
         dtoa::write(writer, value).map_err(From::from)
     }
 
+    /// Called before each series of `write_string_fragment` and
+    /// `write_char_escape`.  Writes a `"` to the specified writer.
     #[inline]
     fn begin_string<W>(&mut self, writer: &mut W) -> Result<()>
         where W: io::Write
@@ -1029,6 +871,8 @@ impl Formatter for CompactFormatter {
         writer.write_all(b"\"").map_err(From::from)
     }
 
+    /// Called after each series of `write_string_fragment` and
+    /// `write_char_escape`.  Writes a `"` to the specified writer.
     #[inline]
     fn end_string<W>(&mut self, writer: &mut W) -> Result<()>
         where W: io::Write
@@ -1036,6 +880,8 @@ impl Formatter for CompactFormatter {
         writer.write_all(b"\"").map_err(From::from)
     }
 
+    /// Writes a string fragment that doesn't need any escaping to the
+    /// specified writer.
     #[inline]
     fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &[u8]) -> Result<()>
         where W: io::Write
@@ -1043,6 +889,7 @@ impl Formatter for CompactFormatter {
         writer.write_all(fragment).map_err(From::from)
     }
 
+    /// Writes a character escape code to the specified writer.
     #[inline]
     fn write_char_escape<W>(&mut self, writer: &mut W, char_escape: CharEscape) -> Result<()>
         where W: io::Write
@@ -1070,6 +917,8 @@ impl Formatter for CompactFormatter {
         writer.write_all(s).map_err(From::from)
     }
 
+    /// Called before every array.  Writes a `[` to the specified
+    /// writer.
     #[inline]
     fn begin_array<W>(&mut self, writer: &mut W) -> Result<()>
         where W: io::Write
@@ -1077,6 +926,8 @@ impl Formatter for CompactFormatter {
         writer.write_all(b"[").map_err(From::from)
     }
 
+    /// Called after every array.  Writes a `]` to the specified
+    /// writer.
     #[inline]
     fn end_array<W>(&mut self, writer: &mut W) -> Result<()>
         where W: io::Write
@@ -1084,6 +935,8 @@ impl Formatter for CompactFormatter {
         writer.write_all(b"]").map_err(From::from)
     }
 
+    /// Called before every array value.  Writes a `,` if needed to
+    /// the specified writer.
     #[inline]
     fn begin_array_value<W>(&mut self, writer: &mut W, first: bool) -> Result<()>
         where W: io::Write
@@ -1095,6 +948,16 @@ impl Formatter for CompactFormatter {
         }
     }
 
+    /// Called after every array value.
+    #[inline]
+    fn end_array_value<W>(&mut self, _writer: &mut W) -> Result<()>
+        where W: io::Write
+    {
+        Ok(())
+    }
+
+    /// Called before every object.  Writes a `{` to the specified
+    /// writer.
     #[inline]
     fn begin_object<W>(&mut self, writer: &mut W) -> Result<()>
         where W: io::Write
@@ -1102,6 +965,8 @@ impl Formatter for CompactFormatter {
         writer.write_all(b"{").map_err(From::from)
     }
 
+    /// Called after every object.  Writes a `}` to the specified
+    /// writer.
     #[inline]
     fn end_object<W>(&mut self, writer: &mut W) -> Result<()>
         where W: io::Write
@@ -1109,6 +974,7 @@ impl Formatter for CompactFormatter {
         writer.write_all(b"}").map_err(From::from)
     }
 
+    /// Called before every object key.
     #[inline]
     fn begin_object_key<W>(&mut self, writer: &mut W, first: bool) -> Result<()>
         where W: io::Write
@@ -1120,13 +986,40 @@ impl Formatter for CompactFormatter {
         }
     }
 
+    /// Called after every object key.  A `:` should be written to the
+    /// specified writer by either this method or
+    /// `begin_object_value`.
+    #[inline]
+    fn end_object_key<W>(&mut self, _writer: &mut W) -> Result<()>
+        where W: io::Write
+    {
+        Ok(())
+    }
+
+    /// Called before every object value.  A `:` should be written to
+    /// the specified writer by either this method or
+    /// `end_object_key`.
     #[inline]
     fn begin_object_value<W>(&mut self, writer: &mut W) -> Result<()>
         where W: io::Write
     {
         writer.write_all(b":").map_err(From::from)
     }
+
+    /// Called after every object value.
+    #[inline]
+    fn end_object_value<W>(&mut self, _writer: &mut W) -> Result<()>
+        where W: io::Write
+    {
+        Ok(())
+    }
 }
+
+/// This structure compacts a JSON value with no extra whitespace.
+#[derive(Clone, Debug)]
+pub struct CompactFormatter;
+
+impl Formatter for CompactFormatter {}
 
 /// This structure pretty prints a JSON value to make it human readable.
 #[derive(Clone, Debug)]
