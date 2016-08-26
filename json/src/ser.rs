@@ -74,7 +74,7 @@ impl<W, F> Serializer<W, F>
     {
         match value.classify() {
             FpCategory::Nan | FpCategory::Infinite => {
-                try!(self.writer.write_all(b"null"))
+                try!(self.formatter.write_null(&mut self.writer))
             },
             _ => {
                 try!(self.formatter.begin_number(&mut self.writer));
