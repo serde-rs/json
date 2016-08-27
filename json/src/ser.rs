@@ -170,12 +170,12 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     #[inline]
     fn serialize_char(&mut self, value: char) -> Result<()> {
-        escape_char(&mut self.writer, value).map_err(From::from)
+        format_escaped_char(&mut self.writer, &mut self.formatter, value).map_err(From::from)
     }
 
     #[inline]
     fn serialize_str(&mut self, value: &str) -> Result<()> {
-        escape_str(&mut self.writer, value).map_err(From::from)
+        format_escaped_str(&mut self.writer, &mut self.formatter, value).map_err(From::from)
     }
 
     #[inline]
@@ -1200,14 +1200,15 @@ static ESCAPE: [u8; 256] = [
 ];
 
 #[inline]
-fn escape_char<W>(wr: &mut W, value: char) -> Result<()>
+fn format_escaped_char<W, F>(wr: &mut W, formatter: &mut F, value: char) -> Result<()>
     where W: io::Write,
+          F: Formatter,
 {
     // FIXME: this allocation is required in order to be compatible with stable
     // rust, which doesn't support encoding a `char` into a stack buffer.
     let mut s = String::new();
     s.push(value);
-    escape_str(wr, &s)
+    format_escaped_str(wr, formatter, &s)
 }
 
 /// Encode the specified struct into a json `[u8]` writer.
