@@ -134,6 +134,8 @@
     shadow_unrelated,
     single_match_else,
     stutter,
+// not practical
+    missing_docs_in_private_items,
 ))]
 
 #![deny(missing_docs)]
