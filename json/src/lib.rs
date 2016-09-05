@@ -142,6 +142,7 @@
 
 extern crate num_traits;
 extern crate core;
+#[macro_use]
 extern crate serde;
 extern crate itoa;
 extern crate dtoa;
@@ -154,9 +155,6 @@ pub use self::error::{Error, ErrorCode, Result};
 pub use self::ser::{Serializer, escape_str, to_string, to_string_pretty,
                     to_vec, to_vec_pretty, to_writer, to_writer_pretty};
 pub use self::value::{Map, Value, from_value, to_value};
-
-#[macro_use]
-mod forward;
 
 pub mod builder;
 pub mod de;
