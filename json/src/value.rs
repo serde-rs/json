@@ -1304,7 +1304,7 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
 /// let val = to_value("foo");
 /// assert_eq!(val.as_str(), Some("foo"))
 /// ```
-pub fn to_value<T: ?Sized>(value: &T) -> Value
+pub fn to_value<T>(value: T) -> Value
     where T: ser::Serialize,
 {
     let mut ser = Serializer::new();
