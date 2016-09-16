@@ -11,6 +11,8 @@ use std::result;
 use serde::de;
 use serde::ser;
 
+use value::ValueType;
+
 /// The errors that can arise while parsing a JSON stream.
 #[derive(Clone, PartialEq, Debug)]
 pub enum ErrorCode {
@@ -256,3 +258,25 @@ impl ser::Error for Error {
 
 /// Helper alias for `Result` objects that return a JSON `Error`.
 pub type Result<T> = result::Result<T, Error>;
+
+/// Represents type mismatch
+#[derive(Debug)]
+pub struct TypeError {
+    /// Type which was required
+    pub expected: ValueType,
+
+    /// Type which was found in Json
+    pub provided: ValueType,
+}
+
+impl error::Error for TypeError {
+    fn description(&self) -> &str {
+        "type mismatch"
+    }
+}
+
+impl fmt::Display for TypeError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "expected type: {} found type: {}", self.expected, self.provided)
+    }
+}
