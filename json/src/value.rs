@@ -48,7 +48,7 @@ use num_traits::NumCast;
 use serde::de;
 use serde::ser;
 
-use error::{Error, ErrorCode};
+use error::{Error, ErrorCode, TypeError};
 
 /// Represents a key/value type.
 #[cfg(not(feature = "preserve_order"))]
@@ -213,6 +213,92 @@ impl Value {
             }
             _ => None,
         }
+    }
+
+    /// If the `Value` is of type `T`, returns borrow of internal value.
+    /// Returns Err otherwise.
+    ///
+    /// Useful for generics with larger/allocated types to speed things up.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// extern crate serde_json;
+    ///
+    /// use serde_json::{to_value,Value};
+    /// use serde_json::value::ValueType;
+    /// use std::collections::BTreeMap;
+    ///
+    /// fn main() {
+    ///     let null = to_value(());
+    ///     let boolean = to_value(true);
+    ///     let int64 = to_value(-42i64);
+    ///     let uint64 = to_value(18446744073709551337u64);
+    ///     let float = to_value(3.1415926535f64);
+    ///     let string = to_value("Hello world!");
+    ///     let array = to_value(&[1, 2, 3, 4, 5]);
+    ///     let mut map = BTreeMap::new();
+    ///     map.insert("foo", to_value("bar"));
+    ///     let map = to_value(&map);
+    ///
+    ///     let _: &() = null.as_borrow().unwrap();
+    ///     let _: &bool = boolean.as_borrow().unwrap();
+    ///     let _: &i64 = int64.as_borrow().unwrap();
+    ///     let _: &u64 = uint64.as_borrow().unwrap();
+    ///     let _: &f64 = float.as_borrow().unwrap();
+    ///     let _: &str = string.as_borrow().unwrap();
+    ///     let _: &String = string.as_borrow().unwrap();
+    ///     let _: &[Value] = array.as_borrow().unwrap();
+    ///     let _: &Vec<Value> = array.as_borrow().unwrap();
+    ///     let _: &BTreeMap<String, Value> = map.as_borrow().unwrap();
+    /// }
+    pub fn as_borrow<'a, T: TryBorrow<'a>>(&'a self) -> Result<T, TypeError> {
+        T::try_borrow(self)
+    }
+
+    /// If the `Value` is of type `T`, returns mutable borrow of internal value.
+    /// Returns Err otherwise.
+    ///
+    /// Useful for generics with larger/allocated types to speed things up.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// extern crate serde_json;
+    ///
+    /// use serde_json::{to_value,Value};
+    /// use serde_json::value::ValueType;
+    /// use std::collections::BTreeMap;
+    ///
+    /// fn main() {
+    ///     let mut null = to_value(());
+    ///     let mut boolean = to_value(true);
+    ///     let mut int64 = to_value(-42i64);
+    ///     let mut uint64 = to_value(18446744073709551337u64);
+    ///     let mut float = to_value(3.1415926535f64);
+    ///     let mut string = to_value("Hello world!");
+    ///     let mut array = to_value(&[1, 2, 3, 4, 5]);
+    ///     let mut map = BTreeMap::new();
+    ///     map.insert("foo", to_value("bar"));
+    ///     let mut map = to_value(&map);
+    ///
+    ///     let _: &mut () = null.as_borrow_mut().unwrap();
+    ///     let _: &mut bool = boolean.as_borrow_mut().unwrap();
+    ///     let _: &mut i64 = int64.as_borrow_mut().unwrap();
+    ///     let _: &mut u64 = uint64.as_borrow_mut().unwrap();
+    ///     let _: &mut f64 = float.as_borrow_mut().unwrap();
+    ///     {
+    ///         let _: &mut str = string.as_borrow_mut().unwrap();
+    ///     }
+    ///     let _: &mut String = string.as_borrow_mut().unwrap();
+    ///     {
+    ///         let _: &mut [Value] = array.as_borrow_mut().unwrap();
+    ///     }
+    ///     let _: &mut Vec<Value> = array.as_borrow_mut().unwrap();
+    ///     let _: &mut BTreeMap<String, Value> = map.as_borrow_mut().unwrap();
+    /// }
+    pub fn as_borrow_mut<'a, T: TryBorrowMut<'a>>(&'a mut self) -> Result<T, TypeError> {
+        T::try_borrow_mut(self)
     }
 
     /// Returns true if the `Value` is an Object. Returns false otherwise.
@@ -1426,3 +1512,139 @@ impl<T: ?Sized> ToJson for T
         to_value(&self)
     }
 }
+
+/// Just like `std::borrow::Borrow<Value>` but borrowing may fail.
+pub trait TryBorrow<'a>: 'a + ::std::marker::Sized {
+    /// Returns reference to internal data if type matches.
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError>;
+}
+
+impl<'a> TryBorrow<'a> for &'a () {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        static EMPTY: () = ();
+        if value.is_null() { Ok(&EMPTY) } else { Err(TypeError { expected: ValueType::Null, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrow<'a> for &'a bool {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        if let &Value::Bool(ref val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::Bool, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrow<'a> for &'a u64 {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        if let &Value::U64(ref val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::U64, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrow<'a> for &'a i64 {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        if let &Value::I64(ref val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::I64, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrow<'a> for &'a f64 {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        if let &Value::F64(ref val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::F64, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrow<'a> for &'a str {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        if let &Value::String(ref val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::String, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrow<'a> for &'a String {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        if let &Value::String(ref val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::String, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrow<'a> for &'a [Value] {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        if let &Value::Array(ref val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::Array, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrow<'a> for &'a Vec<Value> {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        if let &Value::Array(ref val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::Array, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrow<'a> for &'a Map<String, Value> {
+    fn try_borrow(value: &'a Value) -> Result<Self, TypeError> {
+        if let &Value::Object(ref val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::Object, provided: ValueType::of(value) }) }
+    }
+}
+
+/// Just like `std::borrow::BorrowMut` but borrowing may fail.
+pub trait TryBorrowMut<'a>: 'a + ::std::marker::Sized {
+    /// Returns mutable reference to internal data if type matches.
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError>;
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut () {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        static mut EMPTY: () = ();
+        // Use of static &mut () is always safe, because it's value actually can't be changed
+        if value.is_null() { unsafe { Ok(&mut EMPTY) } } else { Err(TypeError { expected: ValueType::Null, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut bool {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        if let &mut Value::Bool(ref mut val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::Bool, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut u64 {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        if let &mut Value::U64(ref mut val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::U64, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut i64 {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        if let &mut Value::I64(ref mut val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::I64, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut f64 {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        if let &mut Value::F64(ref mut val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::F64, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut str {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        if let &mut Value::String(ref mut val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::String, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut String {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        if let &mut Value::String(ref mut val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::String, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut [Value] {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        if let &mut Value::Array(ref mut val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::Array, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut Vec<Value> {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        if let &mut Value::Array(ref mut val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::Array, provided: ValueType::of(value) }) }
+    }
+}
+
+impl<'a> TryBorrowMut<'a> for &'a mut Map<String, Value> {
+    fn try_borrow_mut(value: &'a mut Value) -> Result<Self, TypeError> {
+        if let &mut Value::Object(ref mut val) = value { Ok(val) } else { Err(TypeError { expected: ValueType::Object, provided: ValueType::of(value) }) }
+    }
+}
+
