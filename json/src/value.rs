@@ -473,6 +473,99 @@ impl de::Deserialize for Value {
     }
 }
 
+/// Represents type of a JSON value
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+pub enum ValueType {
+    /// Represents a JSON null value type
+    Null,
+
+    /// Represents a JSON Boolean type
+    Bool,
+
+    /// Represents a JSON signed integer type
+    I64,
+
+    /// Represents a JSON unsigned integer type
+    U64,
+
+    /// Represents a JSON floating point number type
+    F64,
+
+    /// Represents a JSON string type
+    String,
+
+    /// Represents a JSON array type
+    Array,
+
+    /// Represents a JSON object type
+    Object,
+}
+
+impl ValueType {
+
+    /// Returns type of a value
+    /// 
+    /// # Example
+    ///
+    /// ```rust
+    /// extern crate serde_json;
+    ///
+    /// use serde_json::to_value;
+    /// use serde_json::value::ValueType;
+    /// use std::collections::BTreeMap;
+    ///
+    /// fn main() {
+    ///     let null = to_value(());
+    ///     let boolean = to_value(true);
+    ///     let int64 = to_value(-42i64);
+    ///     let uint64 = to_value(18446744073709551337u64);
+    ///     let float = to_value(3.1415926535f64);
+    ///     let string = to_value("Hello world!");
+    ///     let array = to_value(&[1, 2, 3, 4, 5]);
+    ///     let mut map = BTreeMap::new();
+    ///     map.insert("foo", to_value("bar"));
+    ///     let map = to_value(&map);
+    ///
+    ///     assert_eq!(ValueType::of(&null), ValueType::Null);
+    ///     assert_eq!(ValueType::of(&boolean), ValueType::Bool);
+    ///     assert_eq!(ValueType::of(&int64), ValueType::I64);
+    ///     assert_eq!(ValueType::of(&uint64), ValueType::U64);
+    ///     assert_eq!(ValueType::of(&float), ValueType::F64);
+    ///     assert_eq!(ValueType::of(&string), ValueType::String);
+    ///     assert_eq!(ValueType::of(&array), ValueType::Array);
+    ///     assert_eq!(ValueType::of(&map), ValueType::Object);
+    /// }
+    pub fn of(val: &Value) -> Self {
+        match *val {
+            Value::Null => ValueType::Null,
+            Value::Bool(_) => ValueType::Bool,
+            Value::I64(_) => ValueType::I64,
+            Value::U64(_) => ValueType::U64,
+            Value::F64(_) => ValueType::F64,
+            Value::String(_) => ValueType::String,
+            Value::Array(_) => ValueType::Array,
+            Value::Object(_) => ValueType::Object,
+        }
+    }
+}
+
+impl fmt::Display for ValueType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        use self::ValueType::*;
+
+        write!(f, "{}", match *self {
+            Null => "Null",
+            Bool => "Bool",
+            I64 => "I64",
+            U64 => "U64",
+            F64 => "F64",
+            String => "String",
+            Array => "Array",
+            Object => "Object",
+        })
+    }
+}
+
 struct WriterFormatter<'a, 'b: 'a> {
     inner: &'a mut fmt::Formatter<'b>,
 }
