@@ -133,6 +133,21 @@ fn test_write_f64() {
 }
 
 #[test]
+fn test_encode_nonfinite_float_yields_null() {
+    let v = to_value(::std::f64::NAN);
+    assert!(v.is_null());
+
+    let v = to_value(::std::f64::INFINITY);
+    assert!(v.is_null());
+
+    let v = to_value(::std::f32::NAN);
+    assert!(v.is_null());
+
+    let v = to_value(::std::f32::INFINITY);
+    assert!(v.is_null());
+}
+
+#[test]
 fn test_write_str() {
     let tests = &[
         ("", "\"\""),
