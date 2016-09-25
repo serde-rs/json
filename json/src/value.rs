@@ -643,7 +643,11 @@ impl ser::Serializer for Serializer {
 
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<(), Error> {
-        self.value = Value::F64(value);
+        self.value = if value.is_finite() {
+            Value::F64(value)
+        } else {
+            Value::Null
+        };
         Ok(())
     }
 
