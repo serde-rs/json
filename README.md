@@ -49,21 +49,21 @@ fn main() {
 ```
 
 It also can be used with Serde's automatic serialization library,
-`serde_macros`. First add this to `Cargo.toml`:
+`serde_derive`. First add this to `Cargo.toml`:
 
 ```toml
 [dependencies]
 ...
 serde = "0.8"
-serde_macros = "0.8"
+serde_derive = "0.8"
 ...
 ```
 
 Then run:
 
 ```rust
-#![feature(custom_derive, plugin)]
-#![plugin(serde_macros)]
+#![feature(rustc_macro)]
+#[macro_use]
 
 extern crate serde;
 extern crate serde_json;
