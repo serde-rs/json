@@ -81,8 +81,8 @@
 //! ## Parsing a `str` to `Value` and reading the result
 //!
 //! ```rust
-//! //#![feature(custom_derive, plugin)]
-//! //#![plugin(serde_macros)]
+//! //#![feature(rustc_macro)]
+//! //#[macro_use]
 //!
 //! extern crate serde_json;
 //!
