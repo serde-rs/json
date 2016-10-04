@@ -2,7 +2,7 @@
 //!
 //! This module provides for JSON deserialization with the type `Deserializer`.
 
-use std::{f64, i32, i64, u64};
+use std::{i32, u64};
 use std::io;
 use std::marker::PhantomData;
 
