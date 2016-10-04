@@ -7,6 +7,8 @@
 extern crate serde;
 extern crate serde_json;
 extern crate skeptic;
+#[macro_use]
+extern crate quickcheck;
 
 #[cfg(feature = "with-syntex")]
 include!(concat!(env!("OUT_DIR"), "/test.rs"));

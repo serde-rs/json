@@ -21,9 +21,10 @@ indoc = "*"
 num-traits = "*"
 rustc-serialize = "*"
 serde = "0.8.0"
-serde_json = { path = "../json" }
+serde_json = { path = "../json", features = ["quickcheck"] }
 serde_macros = { version = "0.8.0", optional = true }
 skeptic = "^0.4.0"
+quickcheck = "0.3.1"
 
 [[test]]
 name = "test"

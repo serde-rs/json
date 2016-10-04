@@ -1632,3 +1632,11 @@ fn test_json_pointer() {
     assert!(data.pointer("/foo/00").is_none());
     assert!(data.pointer("/foo/01").is_none());
 }
+
+quickcheck! {
+    fn ident(val: Value) -> bool {
+        let val2 = serde_json::from_str(&serde_json::to_string(&val).unwrap()).unwrap();
+        println!("{:?} == {:?}", val, val2);
+        val == val2
+    }
+}

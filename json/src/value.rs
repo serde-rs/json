@@ -1337,3 +1337,49 @@ impl<T: ?Sized> ToJson for T
         to_value(&self)
     }
 }
+
+#[cfg(feature="quickcheck")]
+mod qc {
+    extern crate quickcheck;
+    use super::Value;
+    impl quickcheck::Arbitrary for Value {
+        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+            gen_value(g, 10)
+        }
+
+        fn shrink(&self) -> Box<Iterator<Item=Self>> {
+            match *self {
+                Value::Null => quickcheck::empty_shrinker(),
+                Value::Bool(b) => Box::new(b.shrink().map(Value::Bool)),
+                Value::I64(i) => Box::new(i.shrink().map(Value::I64)),
+                Value::U64(u) => Box::new(u.shrink().map(Value::U64)),
+                Value::F64(f) => Box::new(f.shrink().map(Value::F64)),
+                Value::String(ref s) => Box::new(s.shrink().map(Value::String)),
+                Value::Array(ref v) => Box::new(v.shrink().map(Value::Array).chain(v.clone().into_iter())),
+                Value::Object(ref m) => Box::new(m.shrink().map(Value::Object).chain(m.clone().into_iter().map(|(_, v)| v))),
+            }
+        }
+    }
+
+    fn gen_value<G: quickcheck::Gen>(g: &mut G, n: usize) -> Value {
+        match g.gen_range(0, if n != 0 { 8 } else { 6 }) {
+            0 => Value::Null,
+            1 => Value::Bool(g.gen()),
+            2 => Value::I64(g.gen()),
+            3 => Value::U64(g.gen()),
+            4 => Value::F64(g.gen()),
+            5 => Value::String(<String as quickcheck::Arbitrary>::arbitrary(g)),
+            6 => Value::Array(gen_array(g, n - 1)),
+            7 => Value::Object(gen_map(g, n - 1)),
+            _ => unreachable!(),
+        }
+    }
+
+    fn gen_array<G: quickcheck::Gen>(g: &mut G, n: usize) -> Vec<Value> {
+        (0..g.gen_range(2, 20)).map(|_| gen_value(g, n)).collect()
+    }
+
+    fn gen_map<G: quickcheck::Gen>(g: &mut G, n: usize) -> ::std::collections::BTreeMap<String, Value> {
+        (0..g.gen_range(2, 20)).map(|_| (<String as quickcheck::Arbitrary>::arbitrary(g), gen_value(g, n))).collect()
+    }
+}
