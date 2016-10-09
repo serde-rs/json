@@ -62,7 +62,7 @@ serde_derive = "0.8"
 Then run:
 
 ```rust
-#![feature(rustc_macro)]
+#![feature(proc_macro)]
 
 #[macro_use]
 extern crate serde_derive;

@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "nightly-testing", feature(plugin))]
 #![cfg_attr(feature = "nightly-testing", plugin(clippy))]
 
-#![cfg_attr(not(feature = "with-syntex"), feature(rustc_macro, plugin))]
+#![cfg_attr(not(feature = "with-syntex"), feature(proc_macro, plugin))]
 #![cfg_attr(not(feature = "with-syntex"), plugin(indoc))]
 
 #[cfg(not(feature = "with-syntex"))]
