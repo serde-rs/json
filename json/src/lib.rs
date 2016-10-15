@@ -9,7 +9,7 @@
 //! Data types that can be encoded are JavaScript types (see the `serde_json:Value` enum for more
 //! details):
 //!
-//! * `Boolean`: equivalent to rust's `bool`
+//! * `Bool`: equivalent to rust's `bool`
 //! * `I64`: equivalent to rust's `i64`
 //! * `U64`: equivalent to rust's `u64`
 //! * `F64`: equivalent to rust's `f64`
