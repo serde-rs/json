@@ -1,6 +1,6 @@
 [package]
 name = "serde_json_tests"
-version = "0.8.2"
+version = "0.8.3"
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 build = "build.rs"
 
@@ -11,8 +11,8 @@ unstable-testing = ["clippy", "serde_json/clippy"]
 
 [build-dependencies]
 indoc = "*"
-serde_codegen = { version = "0.8.0", optional = true }
-skeptic = "^0.4.0"
+serde_codegen = { version = "0.8", optional = true }
+skeptic = "0.6"
 syntex = { version = "*", optional = true }
 
 [dependencies]
@@ -20,10 +20,10 @@ clippy = { version = "^0.*", optional = true }
 indoc = "*"
 num-traits = "*"
 rustc-serialize = "*"
-serde = "0.8.0"
+serde = "0.8"
 serde_json = { path = "../json" }
-serde_derive = { version = "0.8.0", optional = true }
-skeptic = "^0.4.0"
+serde_derive = { version = "0.8", optional = true }
+skeptic = "0.6"
 
 [[test]]
 name = "test"
