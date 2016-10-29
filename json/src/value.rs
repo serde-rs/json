@@ -701,9 +701,9 @@ impl ser::Serializer for Serializer {
         _name: &'static str,
         value: T
     ) -> Result<(), Error>
-        where T: ser::Serialize,
+        where T: ser::SerializeTo<Self>,
     {
-        value.serialize(self)
+        value.serialize_to(self)
     }
 
     fn serialize_newtype_variant<T>(
@@ -713,7 +713,7 @@ impl ser::Serializer for Serializer {
         variant: &'static str,
         value: T
     ) -> Result<(), Error>
-        where T: ser::Serialize,
+        where T: ser::SerializeTo<Self>,
     {
         let mut values = Map::new();
         values.insert(String::from(variant), to_value(&value));
@@ -728,9 +728,9 @@ impl ser::Serializer for Serializer {
 
     #[inline]
     fn serialize_some<V>(&mut self, value: V) -> Result<(), Error>
-        where V: ser::Serialize,
+        where V: ser::SerializeTo<Self>,
     {
-        value.serialize(self)
+        value.serialize_to(self)
     }
 
     fn serialize_seq(
@@ -740,12 +740,12 @@ impl ser::Serializer for Serializer {
         Ok(Vec::with_capacity(len.unwrap_or(0)))
     }
 
-    fn serialize_seq_elt<T: ser::Serialize>(
+    fn serialize_seq_elt<T>(
         &mut self,
         state: &mut Vec<Value>,
         value: T
     ) -> Result<(), Error>
-        where T: ser::Serialize,
+        where T: ser::SerializeTo<Self>,
     {
         state.push(to_value(&value));
         Ok(())
@@ -767,11 +767,13 @@ impl ser::Serializer for Serializer {
         self.serialize_seq(Some(len))
     }
 
-    fn serialize_tuple_elt<T: ser::Serialize>(
+    fn serialize_tuple_elt<T>(
         &mut self,
         state: &mut Vec<Value>,
         value: T
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+        where T: ser::SerializeTo<Self>,
+    {
         self.serialize_seq_elt(state, value)
     }
 
@@ -787,11 +789,13 @@ impl ser::Serializer for Serializer {
         self.serialize_seq(Some(len))
     }
 
-    fn serialize_tuple_struct_elt<T: ser::Serialize>(
+    fn serialize_tuple_struct_elt<T>(
         &mut self,
         state: &mut Vec<Value>,
         value: T
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+        where T: ser::SerializeTo<Self>,
+    {
         self.serialize_seq_elt(state, value)
     }
 
@@ -815,11 +819,13 @@ impl ser::Serializer for Serializer {
         })
     }
 
-    fn serialize_tuple_variant_elt<T: ser::Serialize>(
+    fn serialize_tuple_variant_elt<T>(
         &mut self,
         state: &mut TupleVariantState,
         value: T
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+        where T: ser::SerializeTo<Self>,
+    {
         state.vec.push(to_value(&value));
         Ok(())
     }
@@ -846,11 +852,13 @@ impl ser::Serializer for Serializer {
         })
     }
 
-    fn serialize_map_key<T: ser::Serialize>(
+    fn serialize_map_key<T>(
         &mut self,
         state: &mut MapState,
         key: T,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+        where T: ser::SerializeTo<Self>,
+    {
         match to_value(&key) {
             Value::String(s) => state.next_key = Some(s),
             _ => return Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0)),
@@ -858,11 +866,13 @@ impl ser::Serializer for Serializer {
         Ok(())
     }
 
-    fn serialize_map_value<T: ser::Serialize>(
+    fn serialize_map_value<T>(
         &mut self,
         state: &mut MapState,
         value: T,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+        where T: ser::SerializeTo<Self>,
+    {
         match state.next_key.take() {
             Some(key) => state.map.insert(key, to_value(&value)),
             None => {
@@ -890,12 +900,14 @@ impl ser::Serializer for Serializer {
         self.serialize_map(Some(len))
     }
 
-    fn serialize_struct_elt<V: ser::Serialize>(
+    fn serialize_struct_elt<V>(
         &mut self,
         state: &mut MapState,
         key: &'static str,
         value: V
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+        where V: ser::SerializeTo<Self>,
+    {
         try!(self.serialize_map_key(state, key));
         self.serialize_map_value(state, value)
     }
@@ -920,12 +932,14 @@ impl ser::Serializer for Serializer {
         })
     }
 
-    fn serialize_struct_variant_elt<V: ser::Serialize>(
+    fn serialize_struct_variant_elt<V>(
         &mut self,
         state: &mut StructVariantState,
         key: &'static str,
         value: V
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+        where V: ser::SerializeTo<Self>,
+    {
         state.map.insert(String::from(key), to_value(&value));
         Ok(())
     }
@@ -1308,11 +1322,11 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
 /// let val = to_value("foo");
 /// assert_eq!(val.as_str(), Some("foo"))
 /// ```
-pub fn to_value<T>(value: T) -> Value
-    where T: ser::Serialize,
+pub fn to_value<T: ?Sized>(value: &T) -> Value
+    where T: ser::SerializeTo<Serializer>,
 {
     let mut ser = Serializer::new();
-    value.serialize(&mut ser).expect("failed to serialize");
+    value.serialize_to(&mut ser).expect("failed to serialize");
     ser.unwrap()
 }
 
@@ -1331,9 +1345,9 @@ pub trait ToJson {
 }
 
 impl<T: ?Sized> ToJson for T
-    where T: ser::Serialize,
+    where T: ser::SerializeTo<Serializer>,
 {
     fn to_json(&self) -> Value {
-        to_value(&self)
+        to_value(self)
     }
 }
