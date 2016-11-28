@@ -643,7 +643,11 @@ impl ser::Serializer for Serializer {
 
     #[inline]
     fn serialize_f64(&mut self, value: f64) -> Result<(), Error> {
-        self.value = Value::F64(value);
+        self.value = if value.is_finite() {
+            Value::F64(value)
+        } else {
+            Value::Null
+        };
         Ok(())
     }
 
@@ -1059,34 +1063,10 @@ impl de::Deserializer for Deserializer {
         visitor.visit_newtype_struct(self)
     }
 
-    forward_to_deserialize!{
-        deserialize_bool();
-        deserialize_usize();
-        deserialize_u8();
-        deserialize_u16();
-        deserialize_u32();
-        deserialize_u64();
-        deserialize_isize();
-        deserialize_i8();
-        deserialize_i16();
-        deserialize_i32();
-        deserialize_i64();
-        deserialize_f32();
-        deserialize_f64();
-        deserialize_char();
-        deserialize_str();
-        deserialize_string();
-        deserialize_unit();
-        deserialize_seq();
-        deserialize_seq_fixed_size(len: usize);
-        deserialize_bytes();
-        deserialize_map();
-        deserialize_unit_struct(name: &'static str);
-        deserialize_tuple_struct(name: &'static str, len: usize);
-        deserialize_struct(name: &'static str, fields: &'static [&'static str]);
-        deserialize_struct_field();
-        deserialize_tuple(len: usize);
-        deserialize_ignored_any();
+    forward_to_deserialize! {
+        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
+        unit seq seq_fixed_size bytes map unit_struct tuple_struct struct
+        struct_field tuple ignored_any
     }
 }
 
@@ -1184,37 +1164,10 @@ impl<'a> de::Deserializer for SeqDeserializer<'a> {
         }
     }
 
-    forward_to_deserialize!{
-        deserialize_bool();
-        deserialize_usize();
-        deserialize_u8();
-        deserialize_u16();
-        deserialize_u32();
-        deserialize_u64();
-        deserialize_isize();
-        deserialize_i8();
-        deserialize_i16();
-        deserialize_i32();
-        deserialize_i64();
-        deserialize_f32();
-        deserialize_f64();
-        deserialize_char();
-        deserialize_str();
-        deserialize_string();
-        deserialize_unit();
-        deserialize_option();
-        deserialize_seq();
-        deserialize_seq_fixed_size(len: usize);
-        deserialize_bytes();
-        deserialize_map();
-        deserialize_unit_struct(name: &'static str);
-        deserialize_newtype_struct(name: &'static str);
-        deserialize_tuple_struct(name: &'static str, len: usize);
-        deserialize_struct(name: &'static str, fields: &'static [&'static str]);
-        deserialize_struct_field();
-        deserialize_tuple(len: usize);
-        deserialize_enum(name: &'static str, variants: &'static [&'static str]);
-        deserialize_ignored_any();
+    forward_to_deserialize! {
+        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
+        unit option seq seq_fixed_size bytes map unit_struct newtype_struct
+        tuple_struct struct struct_field tuple enum ignored_any
     }
 }
 
@@ -1314,36 +1267,11 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
                 visitor.visit_none()
             }
 
-            forward_to_deserialize!{
-                deserialize_bool();
-                deserialize_usize();
-                deserialize_u8();
-                deserialize_u16();
-                deserialize_u32();
-                deserialize_u64();
-                deserialize_isize();
-                deserialize_i8();
-                deserialize_i16();
-                deserialize_i32();
-                deserialize_i64();
-                deserialize_f32();
-                deserialize_f64();
-                deserialize_char();
-                deserialize_str();
-                deserialize_string();
-                deserialize_unit();
-                deserialize_seq();
-                deserialize_seq_fixed_size(len: usize);
-                deserialize_bytes();
-                deserialize_map();
-                deserialize_unit_struct(name: &'static str);
-                deserialize_newtype_struct(name: &'static str);
-                deserialize_tuple_struct(name: &'static str, len: usize);
-                deserialize_struct(name: &'static str, fields: &'static [&'static str]);
-                deserialize_struct_field();
-                deserialize_tuple(len: usize);
-                deserialize_enum(name: &'static str, variants: &'static [&'static str]);
-                deserialize_ignored_any();
+            forward_to_deserialize! {
+                bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str
+                string unit seq seq_fixed_size bytes map unit_struct
+                newtype_struct tuple_struct struct struct_field tuple enum
+                ignored_any
             }
         }
 
@@ -1366,37 +1294,10 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
         visitor.visit_map(self)
     }
 
-    forward_to_deserialize!{
-        deserialize_bool();
-        deserialize_usize();
-        deserialize_u8();
-        deserialize_u16();
-        deserialize_u32();
-        deserialize_u64();
-        deserialize_isize();
-        deserialize_i8();
-        deserialize_i16();
-        deserialize_i32();
-        deserialize_i64();
-        deserialize_f32();
-        deserialize_f64();
-        deserialize_char();
-        deserialize_str();
-        deserialize_string();
-        deserialize_unit();
-        deserialize_option();
-        deserialize_seq();
-        deserialize_seq_fixed_size(len: usize);
-        deserialize_bytes();
-        deserialize_map();
-        deserialize_unit_struct(name: &'static str);
-        deserialize_newtype_struct(name: &'static str);
-        deserialize_tuple_struct(name: &'static str, len: usize);
-        deserialize_struct(name: &'static str, fields: &'static [&'static str]);
-        deserialize_struct_field();
-        deserialize_tuple(len: usize);
-        deserialize_enum(name: &'static str, variants: &'static [&'static str]);
-        deserialize_ignored_any();
+    forward_to_deserialize! {
+        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
+        unit option seq seq_fixed_size bytes map unit_struct newtype_struct
+        tuple_struct struct struct_field tuple enum ignored_any
     }
 }
 
@@ -1407,7 +1308,7 @@ impl<'a> de::Deserializer for MapDeserializer<'a> {
 /// let val = to_value("foo");
 /// assert_eq!(val.as_str(), Some("foo"))
 /// ```
-pub fn to_value<T: ?Sized>(value: &T) -> Value
+pub fn to_value<T>(value: T) -> Value
     where T: ser::Serialize,
 {
     let mut ser = Serializer::new();

@@ -1,8 +1,12 @@
 #![cfg_attr(feature = "nightly-testing", feature(plugin))]
 #![cfg_attr(feature = "nightly-testing", plugin(clippy))]
 
-#![cfg_attr(not(feature = "with-syntex"), feature(custom_attribute, custom_derive, plugin))]
-#![cfg_attr(not(feature = "with-syntex"), plugin(serde_macros, indoc))]
+#![cfg_attr(not(feature = "with-syntex"), feature(proc_macro, plugin))]
+#![cfg_attr(not(feature = "with-syntex"), plugin(indoc))]
+
+#[cfg(not(feature = "with-syntex"))]
+#[macro_use]
+extern crate serde_derive;
 
 extern crate serde;
 extern crate serde_json;

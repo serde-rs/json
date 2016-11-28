@@ -2,7 +2,7 @@
 //!
 //! This module provides for JSON deserialization with the type `Deserializer`.
 
-use std::{f64, i32, i64, u64};
+use std::{i32, u64};
 use std::io;
 use std::marker::PhantomData;
 
@@ -82,34 +82,10 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
         self.0.deserialize_enum(name, variants, visitor)
     }
 
-    forward_to_deserialize!{
-        deserialize_bool();
-        deserialize_usize();
-        deserialize_u8();
-        deserialize_u16();
-        deserialize_u32();
-        deserialize_u64();
-        deserialize_isize();
-        deserialize_i8();
-        deserialize_i16();
-        deserialize_i32();
-        deserialize_i64();
-        deserialize_f32();
-        deserialize_f64();
-        deserialize_char();
-        deserialize_str();
-        deserialize_string();
-        deserialize_unit();
-        deserialize_seq();
-        deserialize_seq_fixed_size(len: usize);
-        deserialize_bytes();
-        deserialize_map();
-        deserialize_unit_struct(name: &'static str);
-        deserialize_tuple_struct(name: &'static str, len: usize);
-        deserialize_struct(name: &'static str, fields: &'static [&'static str]);
-        deserialize_struct_field();
-        deserialize_tuple(len: usize);
-        deserialize_ignored_any();
+    forward_to_deserialize! {
+        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
+        unit seq seq_fixed_size bytes map unit_struct tuple_struct struct
+        struct_field tuple ignored_any
     }
 }
 
@@ -653,34 +629,10 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
         }
     }
 
-    forward_to_deserialize!{
-        deserialize_bool();
-        deserialize_usize();
-        deserialize_u8();
-        deserialize_u16();
-        deserialize_u32();
-        deserialize_u64();
-        deserialize_isize();
-        deserialize_i8();
-        deserialize_i16();
-        deserialize_i32();
-        deserialize_i64();
-        deserialize_f32();
-        deserialize_f64();
-        deserialize_char();
-        deserialize_str();
-        deserialize_string();
-        deserialize_unit();
-        deserialize_seq();
-        deserialize_seq_fixed_size(len: usize);
-        deserialize_bytes();
-        deserialize_map();
-        deserialize_unit_struct(name: &'static str);
-        deserialize_tuple_struct(name: &'static str, len: usize);
-        deserialize_struct(name: &'static str, fields: &'static [&'static str]);
-        deserialize_struct_field();
-        deserialize_tuple(len: usize);
-        deserialize_ignored_any();
+    forward_to_deserialize! {
+        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
+        unit seq seq_fixed_size bytes map unit_struct tuple_struct struct
+        struct_field tuple ignored_any
     }
 }
 
@@ -839,36 +791,11 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
                 visitor.visit_none()
             }
 
-            forward_to_deserialize!{
-                deserialize_bool();
-                deserialize_usize();
-                deserialize_u8();
-                deserialize_u16();
-                deserialize_u32();
-                deserialize_u64();
-                deserialize_isize();
-                deserialize_i8();
-                deserialize_i16();
-                deserialize_i32();
-                deserialize_i64();
-                deserialize_f32();
-                deserialize_f64();
-                deserialize_char();
-                deserialize_str();
-                deserialize_string();
-                deserialize_unit();
-                deserialize_seq();
-                deserialize_seq_fixed_size(len: usize);
-                deserialize_bytes();
-                deserialize_map();
-                deserialize_unit_struct(name: &'static str);
-                deserialize_newtype_struct(name: &'static str);
-                deserialize_tuple_struct(name: &'static str, len: usize);
-                deserialize_struct(name: &'static str, fields: &'static [&'static str]);
-                deserialize_struct_field();
-                deserialize_tuple(len: usize);
-                deserialize_enum(name: &'static str, variants: &'static [&'static str]);
-                deserialize_ignored_any();
+            forward_to_deserialize! {
+                bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str
+                string unit seq seq_fixed_size bytes map unit_struct
+                newtype_struct tuple_struct struct struct_field tuple enum
+                ignored_any
             }
         }
 

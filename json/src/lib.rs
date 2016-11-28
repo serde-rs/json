@@ -9,7 +9,7 @@
 //! Data types that can be encoded are JavaScript types (see the `serde_json:Value` enum for more
 //! details):
 //!
-//! * `Boolean`: equivalent to rust's `bool`
+//! * `Bool`: equivalent to rust's `bool`
 //! * `I64`: equivalent to rust's `i64`
 //! * `U64`: equivalent to rust's `u64`
 //! * `F64`: equivalent to rust's `f64`
@@ -81,9 +81,6 @@
 //! ## Parsing a `str` to `Value` and reading the result
 //!
 //! ```rust
-//! //#![feature(custom_derive, plugin)]
-//! //#![plugin(serde_macros)]
-//!
 //! extern crate serde_json;
 //!
 //! use serde_json::Value;
@@ -134,12 +131,15 @@
     shadow_unrelated,
     single_match_else,
     stutter,
+// not practical
+    missing_docs_in_private_items,
 ))]
 
 #![deny(missing_docs)]
 
 extern crate num_traits;
 extern crate core;
+#[macro_use]
 extern crate serde;
 extern crate itoa;
 extern crate dtoa;
@@ -152,9 +152,6 @@ pub use self::error::{Error, ErrorCode, Result};
 pub use self::ser::{Serializer, escape_str, to_string, to_string_pretty,
                     to_vec, to_vec_pretty, to_writer, to_writer_pretty};
 pub use self::value::{Map, Value, from_value, to_value};
-
-#[macro_use]
-mod forward;
 
 pub mod builder;
 pub mod de;

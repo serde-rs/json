@@ -1213,7 +1213,7 @@ fn format_escaped_char<W, F>(wr: &mut W, formatter: &mut F, value: char) -> Resu
 
 /// Encode the specified struct into a json `[u8]` writer.
 #[inline]
-pub fn to_writer<W, T>(writer: &mut W, value: &T) -> Result<()>
+pub fn to_writer<W: ?Sized, T>(writer: &mut W, value: &T) -> Result<()>
     where W: io::Write,
           T: ser::Serialize,
 {
@@ -1224,7 +1224,7 @@ pub fn to_writer<W, T>(writer: &mut W, value: &T) -> Result<()>
 
 /// Encode the specified struct into a json `[u8]` writer.
 #[inline]
-pub fn to_writer_pretty<W, T>(writer: &mut W, value: &T) -> Result<()>
+pub fn to_writer_pretty<W: ?Sized, T>(writer: &mut W, value: &T) -> Result<()>
     where W: io::Write,
           T: ser::Serialize,
 {
