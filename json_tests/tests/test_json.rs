@@ -1,6 +1,7 @@
 use std::f64;
 use std::fmt::Debug;
 use std::i64;
+use std::iter;
 use std::marker::PhantomData;
 use std::u64;
 
@@ -737,7 +738,7 @@ macro_rules! test_parse_err {
 }
 
 // FIXME (#5527): these could be merged once UFCS is finished.
-fn test_parse_err<T>(errors: Vec<(&'static str, Error)>)
+fn test_parse_err<T>(errors: Vec<(&str, Error)>)
     where T: Debug + PartialEq + de::Deserialize,
 {
     for &(s, ref err) in &errors {
@@ -1631,4 +1632,15 @@ fn test_json_pointer() {
     assert!(data.pointer("/e^f/ertz").is_none());
     assert!(data.pointer("/foo/00").is_none());
     assert!(data.pointer("/foo/01").is_none());
+}
+
+#[test]
+fn test_stack_overflow() {
+    let brackets: String = iter::repeat('[').take(127).chain(iter::repeat(']').take(127)).collect();
+    let _: Value = serde_json::from_str(&brackets).unwrap();
+
+    let brackets: String = iter::repeat('[').take(128).collect();
+    test_parse_err::<Value>(vec![
+        (&brackets, Error::Syntax(ErrorCode::Custom("recursion limit exceeded".into()), 1, 128)),
+    ]);
 }
