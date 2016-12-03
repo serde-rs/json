@@ -98,3 +98,27 @@ fn bench_deserializer_unicode(b: &mut Bencher) {
         let _s: String = serde_json::from_str(&s).unwrap();
     });
 }
+
+#[bench]
+fn bench_pointer(b: &mut Bencher) {
+    use serde_json::{self, Value};
+
+    let data: Value = serde_json::from_str(r#"{
+        "foo": ["bar", "baz"],
+        "": 0,
+        "a/b": 1,
+        "c%d": 2,
+        "e^f": 3,
+        "g|h": 4,
+        "i\\j": 5,
+        "k\"l": 6,
+        " ": 7,
+        "m~n": 8
+    }"#).unwrap();
+
+    b.iter(|| {
+        let _ = data.pointer("").unwrap();
+        let _ = data.pointer("/foo/0").unwrap();
+        let _ = data.pointer("/unknown");
+    });
+}
