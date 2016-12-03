@@ -5,7 +5,7 @@
 use std::io;
 use std::num::FpCategory;
 
-use serde::ser;
+use serde::ser::{self, SerializeTo};
 use super::error::{Error, ErrorCode, Result};
 
 use itoa;
@@ -195,9 +195,9 @@ impl<W, F> ser::Serializer for Serializer<W, F>
         _name: &'static str,
         value: T
     ) -> Result<()>
-        where T: ser::Serialize,
+        where T: ser::SerializeTo<Self>,
     {
-        value.serialize(self)
+        value.serialize_to(self)
     }
 
     #[inline]
@@ -208,13 +208,13 @@ impl<W, F> ser::Serializer for Serializer<W, F>
         variant: &'static str,
         value: T
     ) -> Result<()>
-        where T: ser::Serialize,
+        where T: ser::SerializeTo<Self>,
     {
         try!(self.formatter.open(&mut self.writer, b'{'));
         try!(self.formatter.comma(&mut self.writer, true));
         try!(self.serialize_str(variant));
         try!(self.formatter.colon(&mut self.writer));
-        try!(value.serialize(self));
+        try!(value.serialize_to(self));
         self.formatter.close(&mut self.writer, b'}')
     }
 
@@ -225,9 +225,9 @@ impl<W, F> ser::Serializer for Serializer<W, F>
 
     #[inline]
     fn serialize_some<T>(&mut self, value: T) -> Result<()>
-        where T: ser::Serialize,
+        where T: ser::SerializeTo<Self>,
     {
-        value.serialize(self)
+        value.serialize_to(self)
     }
 
     #[inline]
@@ -242,17 +242,17 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_seq_elt<T: ser::Serialize>(
+    fn serialize_seq_elt<T>(
         &mut self,
         state: &mut State,
         value: T
     ) -> Result<()>
-        where T: ser::Serialize,
+        where T: ser::SerializeTo<Self>,
     {
         try!(self.formatter.comma(&mut self.writer, *state == State::First));
         *state = State::Rest;
 
-        value.serialize(self)
+        value.serialize_to(self)
     }
 
     #[inline]
@@ -274,11 +274,13 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_tuple_elt<T: ser::Serialize>(
+    fn serialize_tuple_elt<T>(
         &mut self,
         state: &mut State,
         value: T
-    ) -> Result<()> {
+    ) -> Result<()>
+        where T: ser::SerializeTo<Self>,
+    {
         self.serialize_seq_elt(state, value)
     }
 
@@ -297,11 +299,13 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_tuple_struct_elt<T: ser::Serialize>(
+    fn serialize_tuple_struct_elt<T>(
         &mut self,
         state: &mut State,
         value: T
-    ) -> Result<()> {
+    ) -> Result<()>
+        where T: ser::SerializeTo<Self>,
+    {
         self.serialize_seq_elt(state, value)
     }
 
@@ -326,11 +330,13 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_tuple_variant_elt<T: ser::Serialize>(
+    fn serialize_tuple_variant_elt<T>(
         &mut self,
         state: &mut State,
         value: T
-    ) -> Result<()> {
+    ) -> Result<()>
+        where T: ser::SerializeTo<Self>,
+    {
         self.serialize_seq_elt(state, value)
     }
 
@@ -352,28 +358,30 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_map_key<T: ser::Serialize>(
+    fn serialize_map_key<T>(
         &mut self,
         state: &mut State,
         key: T,
-    ) -> Result<()> {
+    ) -> Result<()>
+        where T: ser::SerializeTo<Self>,
+    {
         try!(self.formatter.comma(&mut self.writer, *state == State::First));
         *state = State::Rest;
 
-        try!(key.serialize(&mut MapKeySerializer {
-            ser: self,
-        }));
+        try!(key.serialize_as_key(self));
 
         self.formatter.colon(&mut self.writer)
     }
 
     #[inline]
-    fn serialize_map_value<T: ser::Serialize>(
+    fn serialize_map_value<T>(
         &mut self,
         _: &mut State,
         value: T,
-    ) -> Result<()> {
-        value.serialize(self)
+    ) -> Result<()>
+        where T: ser::SerializeTo<Self>,
+    {
+        value.serialize_to(self)
     }
 
     #[inline]
@@ -394,12 +402,14 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_struct_elt<V: ser::Serialize>(
+    fn serialize_struct_elt<V>(
         &mut self,
         state: &mut State,
         key: &'static str,
         value: V
-    ) -> Result<()> {
+    ) -> Result<()>
+        where V: ser::SerializeTo<Self>,
+    {
         try!(self.serialize_map_key(state, key));
         self.serialize_map_value(state, value)
     }
@@ -425,12 +435,14 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_struct_variant_elt<V: ser::Serialize>(
+    fn serialize_struct_variant_elt<V>(
         &mut self,
         state: &mut State,
         key: &'static str,
         value: V
-    ) -> Result<()> {
+    ) -> Result<()>
+        where V: ser::SerializeTo<Self>,
+    {
         self.serialize_struct_elt(state, key, value)
     }
 
@@ -441,284 +453,26 @@ impl<W, F> ser::Serializer for Serializer<W, F>
     }
 }
 
-struct MapKeySerializer<'a, W: 'a, F: 'a> {
-    ser: &'a mut Serializer<W, F>,
+trait MapKeySerialize {
+    fn serialize_as_key<W: io::Write, F: Formatter>(&self, serializer: &mut Serializer<W, F>) -> Result<()>;
 }
 
-impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
-    where W: io::Write,
-          F: Formatter,
-{
-    type Error = Error;
-
-    #[inline]
-    fn serialize_str(&mut self, value: &str) -> Result<()> {
-        self.ser.serialize_str(value)
-    }
-
-    type SeqState = ();
-    type TupleState = ();
-    type TupleStructState = ();
-    type TupleVariantState = ();
-    type MapState = ();
-    type StructState = ();
-    type StructVariantState = ();
-
-    fn serialize_bool(&mut self, _value: bool) -> Result<()> {
+impl<T> MapKeySerialize for T {
+    default fn serialize_as_key<W: io::Write, F: Formatter>(&self, _serializer: &mut Serializer<W, F>) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
+    
+}
 
-    fn serialize_isize(&mut self, _value: isize) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+impl<T> MapKeySerialize for T where T: ToString {
+    default fn serialize_as_key<W: io::Write, F: Formatter>(&self, serializer: &mut Serializer<W, F>) -> Result<()> {
+        self.to_string().serialize_to(serializer)
     }
+}
 
-    fn serialize_i8(&mut self, _value: i8) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_i16(&mut self, _value: i16) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_i32(&mut self, _value: i32) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_i64(&mut self, _value: i64) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_usize(&mut self, _value: usize) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_u8(&mut self, _value: u8) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_u16(&mut self, _value: u16) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_u32(&mut self, _value: u32) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_u64(&mut self, _value: u64) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_f32(&mut self, _value: f32) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_f64(&mut self, _value: f64) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_char(&mut self, _value: char) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_bytes(&mut self, _value: &[u8]) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_unit(&mut self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_unit_struct(&mut self, _name: &'static str) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_unit_variant(
-        &mut self,
-        _name: &'static str,
-        _variant_index: usize,
-        _variant: &'static str
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_newtype_struct<T>(
-        &mut self,
-        _name: &'static str,
-        _value: T
-    ) -> Result<()>
-        where T: ser::Serialize,
-    {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_newtype_variant<T>(
-        &mut self,
-        _name: &'static str,
-        _variant_index: usize,
-        _variant: &'static str,
-        _value: T
-    ) -> Result<()>
-        where T: ser::Serialize,
-    {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_none(&mut self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_some<T>(&mut self, _value: T) -> Result<()>
-        where T: ser::Serialize,
-    {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_seq(&mut self, _len: Option<usize>) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_seq_elt<T: ser::Serialize>(
-        &mut self,
-        _state: &mut (),
-        _value: T
-    ) -> Result<()>
-        where T: ser::Serialize,
-    {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_seq_end(&mut self, _state: ()) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_seq_fixed_size(&mut self, _size: usize) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_tuple(&mut self, _len: usize) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_tuple_elt<T: ser::Serialize>(
-        &mut self,
-        _state: &mut (),
-        _value: T
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_tuple_end(&mut self, _state: ()) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_tuple_struct(
-        &mut self,
-        _name: &'static str,
-        _len: usize
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_tuple_struct_elt<T: ser::Serialize>(
-        &mut self,
-        _state: &mut (),
-        _value: T
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_tuple_struct_end(&mut self, _state: ()) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_tuple_variant(
-        &mut self,
-        _name: &'static str,
-        _variant_index: usize,
-        _variant: &'static str,
-        _len: usize
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_tuple_variant_elt<T: ser::Serialize>(
-        &mut self,
-        _state: &mut (),
-        _value: T
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_tuple_variant_end(&mut self, _state: ()) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_map(&mut self, _len: Option<usize>) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_map_key<T: ser::Serialize>(
-        &mut self,
-        _state: &mut (),
-        _key: T,
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_map_value<T: ser::Serialize>(
-        &mut self,
-        _state: &mut (),
-        _value: T,
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_map_end(&mut self, _state: ()) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_struct(
-        &mut self,
-        _name: &'static str,
-        _len: usize
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_struct_elt<V: ser::Serialize>(
-        &mut self,
-        _state: &mut (),
-        _key: &'static str,
-        _value: V
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_struct_end(&mut self, _state: ()) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_struct_variant(
-        &mut self,
-        _name: &'static str,
-        _variant_index: usize,
-        _variant: &'static str,
-        _len: usize
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_struct_variant_elt<V: ser::Serialize>(
-        &mut self,
-        _state: &mut (),
-        _key: &'static str,
-        _value: V
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_struct_variant_end(&mut self, _state: ()) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+impl<T> MapKeySerialize for T where T: ToString + AsRef<str> {
+    default fn serialize_as_key<W: io::Write, F: Formatter>(&self, serializer: &mut Serializer<W, F>) -> Result<()> {
+        self.as_ref().serialize_to(serializer)
     }
 }
 
