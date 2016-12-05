@@ -1515,7 +1515,7 @@ fn test_serialize_rejects_non_string_keys() {
 
 #[test]
 fn test_effectively_string_keys() {
-    #[derive(Eq, PartialEq, Ord, PartialOrd, Serialize)]
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
     enum Enum { Zero, One }
     let map = treemap! {
         Enum::Zero => 0,
@@ -1523,15 +1523,17 @@ fn test_effectively_string_keys() {
     };
     let expected = r#"{"Zero":0,"One":1}"#;
     assert_eq!(serde_json::to_string(&map).unwrap(), expected);
+    assert_eq!(map, serde_json::from_str(expected).unwrap());
 
-    #[derive(Eq, PartialEq, Ord, PartialOrd, Serialize)]
-    struct Wrapper<'a>(&'a str);
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+    struct Wrapper(String);
     let map = treemap! {
-        Wrapper("zero") => 0,
-        Wrapper("one") => 1
+        Wrapper("zero".to_owned()) => 0,
+        Wrapper("one".to_owned()) => 1
     };
     let expected = r#"{"one":1,"zero":0}"#;
     assert_eq!(serde_json::to_string(&map).unwrap(), expected);
+    assert_eq!(map, serde_json::from_str(expected).unwrap());
 }
 
 #[test]
