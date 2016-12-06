@@ -1501,7 +1501,7 @@ fn test_deserialize_from_stream() {
 }
 
 #[test]
-fn test_serialize_rejects_non_key_maps() {
+fn test_serialize_rejects_non_string_keys() {
     let map = treemap!(
         1 => 2,
         3 => 4
@@ -1511,6 +1511,29 @@ fn test_serialize_rejects_non_key_maps() {
         serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
         _ => panic!("integers used as keys"),
     }
+}
+
+#[test]
+fn test_effectively_string_keys() {
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+    enum Enum { Zero, One }
+    let map = treemap! {
+        Enum::Zero => 0,
+        Enum::One => 1
+    };
+    let expected = r#"{"Zero":0,"One":1}"#;
+    assert_eq!(serde_json::to_string(&map).unwrap(), expected);
+    assert_eq!(map, serde_json::from_str(expected).unwrap());
+
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+    struct Wrapper(String);
+    let map = treemap! {
+        Wrapper("zero".to_owned()) => 0,
+        Wrapper("one".to_owned()) => 1
+    };
+    let expected = r#"{"one":1,"zero":0}"#;
+    assert_eq!(serde_json::to_string(&map).unwrap(), expected);
+    assert_eq!(map, serde_json::from_str(expected).unwrap());
 }
 
 #[test]
