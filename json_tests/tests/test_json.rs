@@ -1658,6 +1658,62 @@ fn test_json_pointer() {
 }
 
 #[test]
+fn test_json_pointer_mut() {
+    use std::mem;
+
+    // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
+    let mut data: Value = serde_json::from_str(r#"{
+        "foo": ["bar", "baz"],
+        "": 0,
+        "a/b": 1,
+        "c%d": 2,
+        "e^f": 3,
+        "g|h": 4,
+        "i\\j": 5,
+        "k\"l": 6,
+        " ": 7,
+        "m~n": 8
+    }"#).unwrap();
+
+    // Basic pointer checks
+    assert_eq!(data.pointer_mut("/foo").unwrap(),
+        &Value::Array(vec![Value::String("bar".to_owned()),
+                           Value::String("baz".to_owned())]));
+    assert_eq!(data.pointer_mut("/foo/0").unwrap(),
+        &Value::String("bar".to_owned()));
+    assert_eq!(data.pointer_mut("/").unwrap(), &Value::U64(0));
+    assert_eq!(data.pointer_mut("/a~1b").unwrap(), &Value::U64(1));
+    assert_eq!(data.pointer_mut("/c%d").unwrap(), &Value::U64(2));
+    assert_eq!(data.pointer_mut("/e^f").unwrap(), &Value::U64(3));
+    assert_eq!(data.pointer_mut("/g|h").unwrap(), &Value::U64(4));
+    assert_eq!(data.pointer_mut("/i\\j").unwrap(), &Value::U64(5));
+    assert_eq!(data.pointer_mut("/k\"l").unwrap(), &Value::U64(6));
+    assert_eq!(data.pointer_mut("/ ").unwrap(), &Value::U64(7));
+    assert_eq!(data.pointer_mut("/m~0n").unwrap(), &Value::U64(8));
+
+    // Invalid pointers
+    assert!(data.pointer_mut("/unknown").is_none());
+    assert!(data.pointer_mut("/e^f/ertz").is_none());
+    assert!(data.pointer_mut("/foo/00").is_none());
+    assert!(data.pointer_mut("/foo/01").is_none());
+
+    // Mutable pointer checks
+    *data.pointer_mut("/").unwrap() = Value::U64(100);
+    assert_eq!(data.pointer("/").unwrap(), &Value::U64(100));
+    *data.pointer_mut("/foo/0").unwrap() = Value::String("buzz".to_owned());
+    assert_eq!(data.pointer("/foo/0").unwrap(), &Value::String("buzz".to_owned()));
+
+    // Example of ownership stealing
+    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, Value::Null)).unwrap(), Value::U64(1));
+    assert_eq!(data.pointer("/a~1b").unwrap(), &Value::Null);
+
+    // Need to compare against a clone so we don't anger the borrow checker
+    // by taking out two references to a mutable value
+    let mut d2 = data.clone();
+    assert_eq!(data.pointer_mut("").unwrap(), &mut d2);
+}
+
+#[test]
 fn test_stack_overflow() {
     let brackets: String = iter::repeat('[').take(127).chain(iter::repeat(']').take(127)).collect();
     let _: Value = serde_json::from_str(&brackets).unwrap();
