@@ -492,6 +492,27 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         self.ser.serialize_str(value)
     }
 
+    #[inline]
+    fn serialize_unit_variant(
+        &mut self,
+        _name: &'static str,
+        _variant_index: usize,
+        variant: &'static str
+    ) -> Result<()> {
+        self.ser.serialize_str(variant)
+    }
+
+    #[inline]
+    fn serialize_newtype_struct<T>(
+        &mut self,
+        _name: &'static str,
+        value: T
+    ) -> Result<()>
+        where T: ser::Serialize,
+    {
+        value.serialize(self)
+    }
+
     type SeqState = ();
     type TupleState = ();
     type TupleStructState = ();
@@ -565,25 +586,6 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_unit_struct(&mut self, _name: &'static str) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_unit_variant(
-        &mut self,
-        _name: &'static str,
-        _variant_index: usize,
-        _variant: &'static str
-    ) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
-    }
-
-    fn serialize_newtype_struct<T>(
-        &mut self,
-        _name: &'static str,
-        _value: T
-    ) -> Result<()>
-        where T: ser::Serialize,
-    {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 

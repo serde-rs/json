@@ -94,6 +94,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
 struct DeserializerImpl<R: Read> {
     read: R,
     str_buf: Vec<u8>,
+    remaining_depth: u8,
 }
 
 macro_rules! overflow {
@@ -107,6 +108,7 @@ impl<R: Read> DeserializerImpl<R> {
         DeserializerImpl {
             read: read,
             str_buf: Vec::with_capacity(128),
+            remaining_depth: 128,
         }
     }
 
@@ -205,12 +207,30 @@ impl<R: Read> DeserializerImpl<R> {
                 visitor.visit_str(s)
             }
             b'[' => {
+                self.remaining_depth -= 1;
+                if self.remaining_depth == 0 {
+                    return Err(self.peek_error(stack_overflow()));
+                }
+
                 self.eat_char();
-                visitor.visit_seq(SeqVisitor::new(self))
+                let ret = visitor.visit_seq(SeqVisitor::new(self));
+
+                self.remaining_depth += 1;
+
+                ret
             }
             b'{' => {
+                self.remaining_depth -= 1;
+                if self.remaining_depth == 0 {
+                    return Err(self.peek_error(stack_overflow()));
+                }
+
                 self.eat_char();
-                visitor.visit_map(MapVisitor::new(self))
+                let ret = visitor.visit_map(MapVisitor::new(self));
+
+                self.remaining_depth += 1;
+
+                ret
             }
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
         };
@@ -523,6 +543,10 @@ impl<R: Read> DeserializerImpl<R> {
     }
 }
 
+fn stack_overflow() -> ErrorCode {
+    ErrorCode::Custom("recursion limit exceeded".into())
+}
+
 static POW10: [f64; 309] =
     [1e000, 1e001, 1e002, 1e003, 1e004, 1e005, 1e006, 1e007, 1e008, 1e009,
      1e010, 1e011, 1e012, 1e013, 1e014, 1e015, 1e016, 1e017, 1e018, 1e019,
@@ -610,12 +634,15 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
 
         match try!(self.peek_or_null()) {
             b'{' => {
-                self.eat_char();
-                try!(self.parse_whitespace());
+                self.remaining_depth -= 1;
+                if self.remaining_depth == 0 {
+                    return Err(self.peek_error(stack_overflow()));
+                }
 
-                let value = {
-                    try!(visitor.visit(VariantVisitor::new(self)))
-                };
+                self.eat_char();
+                let value = try!(visitor.visit(VariantVisitor::new(self)));
+
+                self.remaining_depth += 1;
 
                 try!(self.parse_whitespace());
 

@@ -1,6 +1,7 @@
 use std::f64;
 use std::fmt::Debug;
 use std::i64;
+use std::iter;
 use std::marker::PhantomData;
 use std::u64;
 
@@ -737,7 +738,7 @@ macro_rules! test_parse_err {
 }
 
 // FIXME (#5527): these could be merged once UFCS is finished.
-fn test_parse_err<T>(errors: Vec<(&'static str, Error)>)
+fn test_parse_err<T>(errors: Vec<(&str, Error)>)
     where T: Debug + PartialEq + de::Deserialize,
 {
     for &(s, ref err) in &errors {
@@ -1496,7 +1497,7 @@ fn test_deserialize_from_stream() {
 }
 
 #[test]
-fn test_serialize_rejects_non_key_maps() {
+fn test_serialize_rejects_non_string_keys() {
     let map = treemap!(
         1 => 2,
         3 => 4
@@ -1506,6 +1507,29 @@ fn test_serialize_rejects_non_key_maps() {
         serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
         _ => panic!("integers used as keys"),
     }
+}
+
+#[test]
+fn test_effectively_string_keys() {
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+    enum Enum { Zero, One }
+    let map = treemap! {
+        Enum::Zero => 0,
+        Enum::One => 1
+    };
+    let expected = r#"{"Zero":0,"One":1}"#;
+    assert_eq!(serde_json::to_string(&map).unwrap(), expected);
+    assert_eq!(map, serde_json::from_str(expected).unwrap());
+
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
+    struct Wrapper(String);
+    let map = treemap! {
+        Wrapper("zero".to_owned()) => 0,
+        Wrapper("one".to_owned()) => 1
+    };
+    let expected = r#"{"one":1,"zero":0}"#;
+    assert_eq!(serde_json::to_string(&map).unwrap(), expected);
+    assert_eq!(map, serde_json::from_str(expected).unwrap());
 }
 
 #[test]
@@ -1627,4 +1651,71 @@ fn test_json_pointer() {
     assert!(data.pointer("/e^f/ertz").is_none());
     assert!(data.pointer("/foo/00").is_none());
     assert!(data.pointer("/foo/01").is_none());
+}
+
+#[test]
+fn test_json_pointer_mut() {
+    use std::mem;
+
+    // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
+    let mut data: Value = serde_json::from_str(r#"{
+        "foo": ["bar", "baz"],
+        "": 0,
+        "a/b": 1,
+        "c%d": 2,
+        "e^f": 3,
+        "g|h": 4,
+        "i\\j": 5,
+        "k\"l": 6,
+        " ": 7,
+        "m~n": 8
+    }"#).unwrap();
+
+    // Basic pointer checks
+    assert_eq!(data.pointer_mut("/foo").unwrap(),
+        &Value::Array(vec![Value::String("bar".to_owned()),
+                           Value::String("baz".to_owned())]));
+    assert_eq!(data.pointer_mut("/foo/0").unwrap(),
+        &Value::String("bar".to_owned()));
+    assert_eq!(data.pointer_mut("/").unwrap(), &Value::U64(0));
+    assert_eq!(data.pointer_mut("/a~1b").unwrap(), &Value::U64(1));
+    assert_eq!(data.pointer_mut("/c%d").unwrap(), &Value::U64(2));
+    assert_eq!(data.pointer_mut("/e^f").unwrap(), &Value::U64(3));
+    assert_eq!(data.pointer_mut("/g|h").unwrap(), &Value::U64(4));
+    assert_eq!(data.pointer_mut("/i\\j").unwrap(), &Value::U64(5));
+    assert_eq!(data.pointer_mut("/k\"l").unwrap(), &Value::U64(6));
+    assert_eq!(data.pointer_mut("/ ").unwrap(), &Value::U64(7));
+    assert_eq!(data.pointer_mut("/m~0n").unwrap(), &Value::U64(8));
+
+    // Invalid pointers
+    assert!(data.pointer_mut("/unknown").is_none());
+    assert!(data.pointer_mut("/e^f/ertz").is_none());
+    assert!(data.pointer_mut("/foo/00").is_none());
+    assert!(data.pointer_mut("/foo/01").is_none());
+
+    // Mutable pointer checks
+    *data.pointer_mut("/").unwrap() = Value::U64(100);
+    assert_eq!(data.pointer("/").unwrap(), &Value::U64(100));
+    *data.pointer_mut("/foo/0").unwrap() = Value::String("buzz".to_owned());
+    assert_eq!(data.pointer("/foo/0").unwrap(), &Value::String("buzz".to_owned()));
+
+    // Example of ownership stealing
+    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, Value::Null)).unwrap(), Value::U64(1));
+    assert_eq!(data.pointer("/a~1b").unwrap(), &Value::Null);
+
+    // Need to compare against a clone so we don't anger the borrow checker
+    // by taking out two references to a mutable value
+    let mut d2 = data.clone();
+    assert_eq!(data.pointer_mut("").unwrap(), &mut d2);
+}
+
+#[test]
+fn test_stack_overflow() {
+    let brackets: String = iter::repeat('[').take(127).chain(iter::repeat(']').take(127)).collect();
+    let _: Value = serde_json::from_str(&brackets).unwrap();
+
+    let brackets: String = iter::repeat('[').take(128).collect();
+    test_parse_err::<Value>(vec![
+        (&brackets, Error::Syntax(ErrorCode::Custom("recursion limit exceeded".into()), 1, 128)),
+    ]);
 }
