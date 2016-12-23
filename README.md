@@ -10,6 +10,7 @@ You may be looking for:
 - [Serde API documentation](https://docs.serde.rs/serde/)
 - [Detailed documentation about Serde](https://serde.rs/)
 - [Setting up `#[derive(Serialize, Deserialize)]`](https://serde.rs/codegen.html)
+- [Release notes](https://github.com/serde-rs/json/releases)
 
 ## Serde JSON in action
 
