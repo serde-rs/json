@@ -13,6 +13,11 @@ You may be looking for:
 
 ## Serde JSON in action
 
+```toml
+[dependencies]
+serde_json = "0.8"
+```
+
 Out of the box, Serde JSON is able to serialize and deserialize most Rust
 standard library types as JSON (primitives, `String`, `HashMap`, tuples, `Vec`,
 `Option`, etc). This works equally well on stable and nightly compilers and does
