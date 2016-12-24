@@ -490,43 +490,47 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_isize(&mut self, value: isize) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.serialize_i64(value as i64)
     }
 
     fn serialize_i8(&mut self, value: i8) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.serialize_i64(value as i64)
     }
 
     fn serialize_i16(&mut self, value: i16) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.serialize_i64(value as i64)
     }
 
     fn serialize_i32(&mut self, value: i32) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.serialize_i64(value as i64)
     }
 
     fn serialize_i64(&mut self, value: i64) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.ser.serialize_str("\"")?;
+        self.ser.serialize_i64(value)?;
+        self.ser.serialize_str("\"")
     }
 
     fn serialize_usize(&mut self, value: usize) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.serialize_u64(value as u64)
     }
 
     fn serialize_u8(&mut self, value: u8) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.serialize_u64(value as u64)
     }
 
     fn serialize_u16(&mut self, value: u16) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.serialize_u64(value as u64)
     }
 
     fn serialize_u32(&mut self, value: u32) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.serialize_u64(value as u64)
     }
 
     fn serialize_u64(&mut self, value: u64) -> Result<()> {
-        self.ser.serialize_str(&value.to_string())
+        self.ser.serialize_str("\"")?;
+        self.ser.serialize_u64(value)?;
+        self.ser.serialize_str("\"")
     }
 
     fn serialize_f32(&mut self, _value: f32) -> Result<()> {
