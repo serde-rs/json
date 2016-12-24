@@ -835,7 +835,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
         where W: io::Write,
     {
         self.current_indent -= 1;
-        try!(writer.write(b"\n"));
+        try!(writer.write_all(b"\n"));
         try!(indent(writer, self.current_indent, self.indent));
 
         writer.write_all(&[ch]).map_err(From::from)
