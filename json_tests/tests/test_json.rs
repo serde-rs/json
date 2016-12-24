@@ -1501,10 +1501,24 @@ fn test_deserialize_from_stream() {
 }
 
 #[test]
-fn test_serialize_rejects_non_string_keys() {
+fn test_serialize_rejects_bool_keys() {
     let map = treemap!(
-        1 => 2,
-        3 => 4
+        true => 2,
+        false => 4
+    );
+
+    match serde_json::to_vec(&map).unwrap_err() {
+        serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
+        _ => panic!("integers used as keys"),
+    }
+}
+
+#[test]
+fn test_serialize_rejects_adt_keys() {
+    let map = treemap!(
+        Some("a") => 2,
+        Some("b") => 4,
+        None => 6
     );
 
     match serde_json::to_vec(&map).unwrap_err() {
