@@ -506,8 +506,8 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_i64(&mut self, value: i64) -> Result<()> {
-        self.ser.serialize_str("\"")?;
-        self.ser.serialize_i64(value)?;
+        try!(self.ser.serialize_str("\""));
+        try!(self.ser.serialize_i64(value));
         self.ser.serialize_str("\"")
     }
 
@@ -528,8 +528,8 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_u64(&mut self, value: u64) -> Result<()> {
-        self.ser.serialize_str("\"")?;
-        self.ser.serialize_u64(value)?;
+        try!(self.ser.serialize_str("\""));
+        try!(self.ser.serialize_u64(value));
         self.ser.serialize_str("\"")
     }
 
