@@ -530,7 +530,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
 
     fn serialize_u64(&mut self, value: u64) -> Result<()> {
         try!(self.ser.writer.write_all(b"\""));
-        try!(self.ser.serialize_i64(value));
+        try!(self.ser.serialize_u64(value));
         try!(self.ser.writer.write_all(b"\""));
         Ok(())
     }
