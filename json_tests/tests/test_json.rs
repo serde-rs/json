@@ -1509,7 +1509,7 @@ fn test_serialize_rejects_bool_keys() {
 
     match serde_json::to_vec(&map).unwrap_err() {
         serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
-        _ => panic!("integers used as keys"),
+        _ => panic!("bools used as keys"),
     }
 }
 
@@ -1523,7 +1523,7 @@ fn test_serialize_rejects_adt_keys() {
 
     match serde_json::to_vec(&map).unwrap_err() {
         serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
-        _ => panic!("integers used as keys"),
+        _ => panic!("adts used as keys"),
     }
 }
 
