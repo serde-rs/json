@@ -1501,15 +1501,29 @@ fn test_deserialize_from_stream() {
 }
 
 #[test]
-fn test_serialize_rejects_non_string_keys() {
+fn test_serialize_rejects_bool_keys() {
     let map = treemap!(
-        1 => 2,
-        3 => 4
+        true => 2,
+        false => 4
     );
 
     match serde_json::to_vec(&map).unwrap_err() {
         serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
-        _ => panic!("integers used as keys"),
+        _ => panic!("bools used as keys"),
+    }
+}
+
+#[test]
+fn test_serialize_rejects_adt_keys() {
+    let map = treemap!(
+        Some("a") => 2,
+        Some("b") => 4,
+        None => 6
+    );
+
+    match serde_json::to_vec(&map).unwrap_err() {
+        serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
+        _ => panic!("adts used as keys"),
     }
 }
 
@@ -1723,3 +1737,26 @@ fn test_stack_overflow() {
         (&brackets, Error::Syntax(ErrorCode::Custom("recursion limit exceeded".into()), 1, 128)),
     ]);
 }
+
+#[test]
+fn test_allow_ser_integers_as_map_keys(){
+    let map = treemap!(
+        1 => 2,
+        2 => 4,
+        -1 => 6,
+        -2 => 8
+    );
+    
+    assert_eq!(serde_json::to_string(&map).unwrap(), r#"{"-2":8,"-1":6,"1":2,"2":4}"#);
+}
+
+/*#[test]
+fn test_allow_de_integers_as_map_keys(){
+    let json = r#"{
+        "1": 2,
+        "2": 4,
+        "-1": 6,
+        "-2": 8
+    }"#;
+    serde_json::from_str::<HashMap<i8, u8>>(&json);
+}*/ // Not implemented

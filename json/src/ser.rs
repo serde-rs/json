@@ -489,44 +489,50 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_isize(&mut self, _value: isize) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_isize(&mut self, value: isize) -> Result<()> {
+        self.serialize_i64(value as i64)
     }
 
-    fn serialize_i8(&mut self, _value: i8) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_i8(&mut self, value: i8) -> Result<()> {
+        self.serialize_i64(value as i64)
     }
 
-    fn serialize_i16(&mut self, _value: i16) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_i16(&mut self, value: i16) -> Result<()> {
+        self.serialize_i64(value as i64)
     }
 
-    fn serialize_i32(&mut self, _value: i32) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_i32(&mut self, value: i32) -> Result<()> {
+        self.serialize_i64(value as i64)
     }
 
-    fn serialize_i64(&mut self, _value: i64) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_i64(&mut self, value: i64) -> Result<()> {
+        try!(self.ser.writer.write_all(b"\""));
+        try!(self.ser.serialize_i64(value));
+        try!(self.ser.writer.write_all(b"\""));
+        Ok(())
     }
 
-    fn serialize_usize(&mut self, _value: usize) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_usize(&mut self, value: usize) -> Result<()> {
+        self.serialize_u64(value as u64)
     }
 
-    fn serialize_u8(&mut self, _value: u8) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_u8(&mut self, value: u8) -> Result<()> {
+        self.serialize_u64(value as u64)
     }
 
-    fn serialize_u16(&mut self, _value: u16) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_u16(&mut self, value: u16) -> Result<()> {
+        self.serialize_u64(value as u64)
     }
 
-    fn serialize_u32(&mut self, _value: u32) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_u32(&mut self, value: u32) -> Result<()> {
+        self.serialize_u64(value as u64)
     }
 
-    fn serialize_u64(&mut self, _value: u64) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+    fn serialize_u64(&mut self, value: u64) -> Result<()> {
+        try!(self.ser.writer.write_all(b"\""));
+        try!(self.ser.serialize_u64(value));
+        try!(self.ser.writer.write_all(b"\""));
+        Ok(())
     }
 
     fn serialize_f32(&mut self, _value: f32) -> Result<()> {
