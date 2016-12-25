@@ -1747,7 +1747,7 @@ fn test_allow_ser_integers_as_map_keys(){
         -2 => 8
     );
     
-    serde_json::to_vec(&map).unwrap();
+    assert_eq!(serde_json::to_string(&map).unwrap(), r#"{"-2":8,"-1":6,"1":2,"2":4}"#);
 }
 
 /*#[test]
