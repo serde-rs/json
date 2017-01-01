@@ -52,14 +52,14 @@
 //!     LastName: String,
 //!     Age: u32,
 //!     Address: Address,
-//!     PhoneNumbers: Vec<String>
+//!     PhoneNumbers: Vec<String>,
 //! }
 //!
 //! #[derive(Serialize, Deserialize)]
 //! struct Address {
 //!     Street: String,
 //!     City: String,
-//!     Country: String
+//!     Country: String,
 //! }
 //! ```
 //!
