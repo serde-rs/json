@@ -77,7 +77,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
         variants: &'static [&'static str],
         visitor: V
     ) -> Result<V::Value>
-        where V: de::EnumVisitor,
+        where V: de::Visitor,
     {
         self.0.deserialize_enum(name, variants, visitor)
     }
@@ -217,7 +217,10 @@ impl<R: Read> DeserializerImpl<R> {
 
                 self.remaining_depth += 1;
 
-                ret
+                match (ret, self.end_seq()) {
+                    (Ok(ret), Ok(())) => Ok(ret),
+                    (Err(err), _) | (_, Err(err)) => Err(err),
+                }
             }
             b'{' => {
                 self.remaining_depth -= 1;
@@ -230,7 +233,10 @@ impl<R: Read> DeserializerImpl<R> {
 
                 self.remaining_depth += 1;
 
-                ret
+                match (ret, self.end_map()) {
+                    (Ok(ret), Ok(())) => Ok(ret),
+                    (Err(err), _) | (_, Err(err)) => Err(err),
+                }
             }
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
         };
@@ -541,6 +547,26 @@ impl<R: Read> DeserializerImpl<R> {
             None => Err(self.peek_error(ErrorCode::EOFWhileParsingObject)),
         }
     }
+
+    fn end_seq(&mut self) -> Result<()> {
+        try!(self.parse_whitespace());
+
+        match try!(self.next_char()) {
+            Some(b']') => Ok(()),
+            Some(_) => Err(self.error(ErrorCode::TrailingCharacters)),
+            None => Err(self.error(ErrorCode::EOFWhileParsingList)),
+        }
+    }
+
+    fn end_map(&mut self) -> Result<()> {
+        try!(self.parse_whitespace());
+
+        match try!(self.next_char()) {
+            Some(b'}') => Ok(()),
+            Some(_) => Err(self.error(ErrorCode::TrailingCharacters)),
+            None => Err(self.error(ErrorCode::EOFWhileParsingObject)),
+        }
+    }
 }
 
 fn stack_overflow() -> ErrorCode {
@@ -628,7 +654,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
         _variants: &'static [&'static str],
         mut visitor: V
     ) -> Result<V::Value>
-        where V: de::EnumVisitor,
+        where V: de::Visitor,
     {
         try!(self.parse_whitespace());
 
@@ -640,7 +666,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
                 }
 
                 self.eat_char();
-                let value = try!(visitor.visit(VariantVisitor::new(self)));
+                let value = try!(visitor.visit_enum(VariantVisitor::new(self)));
 
                 self.remaining_depth += 1;
 
@@ -651,7 +677,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
                     _ => Err(self.error(ErrorCode::ExpectedSomeValue)),
                 }
             }
-            b'"' => visitor.visit(KeyOnlyVariantVisitor::new(self)),
+            b'"' => visitor.visit_enum(KeyOnlyVariantVisitor::new(self)),
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
         }
     }
@@ -707,16 +733,6 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
 
         let value = try!(de::Deserialize::deserialize(self.de));
         Ok(Some(value))
-    }
-
-    fn end(&mut self) -> Result<()> {
-        try!(self.de.parse_whitespace());
-
-        match try!(self.de.next_char()) {
-            Some(b']') => Ok(()),
-            Some(_) => Err(self.de.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.de.error(ErrorCode::EOFWhileParsingList)),
-        }
     }
 }
 
@@ -777,16 +793,6 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
         try!(self.de.parse_object_colon());
 
         Ok(try!(de::Deserialize::deserialize(self.de)))
-    }
-
-    fn end(&mut self) -> Result<()> {
-        try!(self.de.parse_whitespace());
-
-        match try!(self.de.next_char()) {
-            Some(b'}') => Ok(()),
-            Some(_) => Err(self.de.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.de.error(ErrorCode::EOFWhileParsingObject)),
-        }
     }
 
     fn missing_field<V>(&mut self, field: &'static str) -> Result<V>

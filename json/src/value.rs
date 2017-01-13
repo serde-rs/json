@@ -1046,20 +1046,32 @@ impl de::Deserializer for Deserializer {
             Value::String(v) => visitor.visit_string(v),
             Value::Array(v) => {
                 let len = v.len();
-                visitor.visit_seq(SeqDeserializer {
+                let mut deserializer = SeqDeserializer {
                     de: self,
                     iter: v.into_iter(),
                     len: len,
-                })
+                };
+                let seq = try!(visitor.visit_seq(&mut deserializer));
+                if deserializer.len == 0 {
+                    Ok(seq)
+                } else {
+                    Err(de::Error::invalid_length(deserializer.len))
+                }
             }
             Value::Object(v) => {
                 let len = v.len();
-                visitor.visit_map(MapDeserializer {
+                let mut deserializer = MapDeserializer {
                     de: self,
                     iter: v.into_iter(),
                     value: None,
                     len: len,
-                })
+                };
+                let map = try!(visitor.visit_map(&mut deserializer));
+                if deserializer.len == 0 {
+                    Ok(map)
+                } else {
+                    Err(de::Error::invalid_length(deserializer.len))
+                }
             }
         }
     }
@@ -1085,7 +1097,7 @@ impl de::Deserializer for Deserializer {
         _variants: &'static [&'static str],
         mut visitor: V
     ) -> Result<V::Value, Error>
-        where V: de::EnumVisitor,
+        where V: de::Visitor,
     {
         let (variant, value) = match self.value.take() {
             Some(Value::Object(value)) => {
@@ -1111,7 +1123,7 @@ impl de::Deserializer for Deserializer {
             }
         };
 
-        visitor.visit(VariantDeserializer {
+        visitor.visit_enum(VariantDeserializer {
             de: self,
             val: value,
             variant: Some(Value::String(variant)),
@@ -1226,7 +1238,12 @@ impl<'a> de::Deserializer for SeqDeserializer<'a> {
         if self.len == 0 {
             visitor.visit_unit()
         } else {
-            visitor.visit_seq(self)
+            let ret = try!(visitor.visit_seq(&mut *self));
+            if self.len == 0 {
+                Ok(ret)
+            } else {
+                Err(de::Error::invalid_length(self.len))
+            }
         }
     }
 
@@ -1250,14 +1267,6 @@ impl<'a> de::SeqVisitor for SeqDeserializer<'a> {
                 Ok(Some(try!(de::Deserialize::deserialize(self.de))))
             }
             None => Ok(None),
-        }
-    }
-
-    fn end(&mut self) -> Result<(), Error> {
-        if self.len == 0 {
-            Ok(())
-        } else {
-            Err(de::Error::invalid_length(self.len))
         }
     }
 
@@ -1296,14 +1305,6 @@ impl<'a> de::MapVisitor for MapDeserializer<'a> {
         let value = self.value.take().expect("value is missing");
         self.de.value = Some(value);
         Ok(try!(de::Deserialize::deserialize(self.de)))
-    }
-
-    fn end(&mut self) -> Result<(), Error> {
-        if self.len == 0 {
-            Ok(())
-        } else {
-            Err(de::Error::invalid_length(self.len))
-        }
     }
 
     fn missing_field<V>(&mut self, field: &'static str) -> Result<V, Error>
