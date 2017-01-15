@@ -982,28 +982,14 @@ impl ser::SerializeStructVariant for SerializeStructVariant {
     }
 }
 
-/// Creates a `serde::Deserializer` from a `json::Value` object.
-pub struct Deserializer {
-    value: Value,
-}
-
-impl Deserializer {
-    /// Creates a new deserializer instance for deserializing the specified JSON value.
-    pub fn new(value: Value) -> Deserializer {
-        Deserializer {
-            value: value,
-        }
-    }
-}
-
-impl de::Deserializer for Deserializer {
+impl de::Deserializer for Value {
     type Error = Error;
 
     #[inline]
     fn deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
-        match self.value {
+        match self {
             Value::Null => visitor.visit_unit(),
             Value::Bool(v) => visitor.visit_bool(v),
             Value::I64(v) => visitor.visit_i64(v),
@@ -1040,7 +1026,7 @@ impl de::Deserializer for Deserializer {
     ) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
-        match self.value {
+        match self {
             Value::Null => visitor.visit_none(),
             _ => visitor.visit_some(self),
         }
@@ -1055,7 +1041,7 @@ impl de::Deserializer for Deserializer {
     ) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
-        let (variant, value) = match self.value {
+        let (variant, value) = match self {
             Value::Object(value) => {
                 let mut iter = value.into_iter();
                 let (variant, value) = match iter.next() {
@@ -1127,9 +1113,7 @@ impl de::VariantVisitor for VariantDeserializer {
 
     fn visit_unit(self) -> Result<(), Error> {
         match self.value {
-            Some(value) => {
-                de::Deserialize::deserialize(Deserializer::new(value))
-            }
+            Some(value) => de::Deserialize::deserialize(value),
             None => Ok(()),
         }
     }
@@ -1138,9 +1122,7 @@ impl de::VariantVisitor for VariantDeserializer {
         where T: de::Deserialize,
     {
         match self.value {
-            Some(value) => {
-                de::Deserialize::deserialize(Deserializer::new(value))
-            }
+            Some(value) => de::Deserialize::deserialize(value),
             None => Err(de::Error::invalid_type(de::Type::NewtypeVariant)),
         }
     }
@@ -1229,9 +1211,7 @@ impl de::SeqVisitor for SeqDeserializer {
         where T: de::Deserialize,
     {
         match self.iter.next() {
-            Some(value) => {
-                de::Deserialize::deserialize(Deserializer::new(value)).map(Some)
-            }
+            Some(value) => de::Deserialize::deserialize(value).map(Some),
             None => Ok(None),
         }
     }
@@ -1264,8 +1244,7 @@ impl de::MapVisitor for MapDeserializer {
         match self.iter.next() {
             Some((key, value)) => {
                 self.value = Some(value);
-                let de = Deserializer::new(Value::String(key));
-                de::Deserialize::deserialize(de).map(Some)
+                de::Deserialize::deserialize(Value::String(key)).map(Some)
             }
             None => Ok(None),
         }
@@ -1275,9 +1254,7 @@ impl de::MapVisitor for MapDeserializer {
         where T: de::Deserialize,
     {
         match self.value.take() {
-            Some(value) => {
-                de::Deserialize::deserialize(Deserializer::new(value))
-            }
+            Some(value) => de::Deserialize::deserialize(value),
             None => Err(de::Error::custom("value is missing")),
         }
     }
@@ -1359,7 +1336,7 @@ pub fn to_value<T>(value: T) -> Value
 pub fn from_value<T>(value: Value) -> Result<T, Error>
     where T: de::Deserialize,
 {
-    de::Deserialize::deserialize(Deserializer::new(value))
+    de::Deserialize::deserialize(value)
 }
 
 /// A trait for converting values to JSON
