@@ -6,8 +6,8 @@ sudo: false
 rust:
 - stable
 - nightly
-- 1.11.0
 - 1.12.0
+- 1.13.0
 - beta
 
 addons:
