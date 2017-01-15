@@ -1135,10 +1135,10 @@ fn test_parse_enum_errors() {
         ("{\"unknown\":[]}", Error::Syntax(ErrorCode::UnknownVariant("unknown".to_string()), 1, 10)),
         ("{\"Dog\":", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 7)),
         ("{\"Dog\":}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 8)),
-        ("{\"Dog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 8)),
+        ("{\"Dog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 9)),
         ("{\"Dog\":[0]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 9)),
         ("\"Frog\"", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 6)),
-        ("{\"Frog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 9)),
+        ("{\"Frog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 10)),
         ("{\"Cat\":[]}", Error::Syntax(ErrorCode::InvalidLength(0), 1, 9)),
         ("{\"Cat\":[0]}", Error::Syntax(ErrorCode::InvalidLength(1), 1, 10)),
         ("{\"Cat\":[0, \"\", 2]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 14)),
@@ -1298,14 +1298,15 @@ fn test_serialize_seq_with_no_len() {
         where T: ser::Serialize,
     {
         #[inline]
-        fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where S: ser::Serializer,
         {
-            let mut state = try!(serializer.serialize_seq(None));
+            use serde::ser::SerializeSeq;
+            let mut seq = try!(serializer.serialize_seq(None));
             for elem in &self.0 {
-                try!(serializer.serialize_seq_elt(&mut state, elem));
+                try!(seq.serialize_element(elem));
             }
-            serializer.serialize_seq_end(state)
+            seq.end()
         }
     }
 
@@ -1319,14 +1320,14 @@ fn test_serialize_seq_with_no_len() {
         type Value = MyVec<T>;
 
         #[inline]
-        fn visit_unit<E>(&mut self) -> Result<MyVec<T>, E>
+        fn visit_unit<E>(self) -> Result<MyVec<T>, E>
             where E: de::Error,
         {
             Ok(MyVec(Vec::new()))
         }
 
         #[inline]
-        fn visit_seq<V>(&mut self, mut visitor: V) -> Result<MyVec<T>, V::Error>
+        fn visit_seq<V>(self, mut visitor: V) -> Result<MyVec<T>, V::Error>
             where V: de::SeqVisitor,
         {
             let mut values = Vec::new();
@@ -1335,8 +1336,6 @@ fn test_serialize_seq_with_no_len() {
                 values.push(value);
             }
 
-            try!(visitor.end());
-
             Ok(MyVec(values))
         }
     }
@@ -1344,7 +1343,7 @@ fn test_serialize_seq_with_no_len() {
     impl<T> de::Deserialize for MyVec<T>
         where T: de::Deserialize,
     {
-        fn deserialize<D>(deserializer: &mut D) -> Result<MyVec<T>, D::Error>
+        fn deserialize<D>(deserializer: D) -> Result<MyVec<T>, D::Error>
             where D: de::Deserializer,
         {
             deserializer.deserialize_map(Visitor { marker: PhantomData })
@@ -1384,15 +1383,16 @@ fn test_serialize_map_with_no_len() {
               V: ser::Serialize,
     {
         #[inline]
-        fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where S: ser::Serializer,
         {
-            let mut state = try!(serializer.serialize_map(None));
+            use serde::ser::SerializeMap;
+            let mut map = try!(serializer.serialize_map(None));
             for (k, v) in &self.0 {
-                try!(serializer.serialize_map_key(&mut state, k));
-                try!(serializer.serialize_map_value(&mut state, v));
+                try!(map.serialize_key(k));
+                try!(map.serialize_value(v));
             }
-            serializer.serialize_map_end(state)
+            map.end()
         }
     }
 
@@ -1407,14 +1407,14 @@ fn test_serialize_map_with_no_len() {
         type Value = MyMap<K, V>;
 
         #[inline]
-        fn visit_unit<E>(&mut self) -> Result<MyMap<K, V>, E>
+        fn visit_unit<E>(self) -> Result<MyMap<K, V>, E>
             where E: de::Error,
         {
             Ok(MyMap(Map::new()))
         }
 
         #[inline]
-        fn visit_map<Visitor>(&mut self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
+        fn visit_map<Visitor>(self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
             where Visitor: de::MapVisitor,
         {
             let mut values = Map::new();
@@ -1422,8 +1422,6 @@ fn test_serialize_map_with_no_len() {
             while let Some((key, value)) = try!(visitor.visit()) {
                 values.insert(key, value);
             }
-
-            try!(visitor.end());
 
             Ok(MyMap(values))
         }
@@ -1433,7 +1431,7 @@ fn test_serialize_map_with_no_len() {
         where K: de::Deserialize + Eq + Ord,
               V: de::Deserialize,
     {
-        fn deserialize<D>(deserializer: &mut D) -> Result<MyMap<K, V>, D::Error>
+        fn deserialize<D>(deserializer: D) -> Result<MyMap<K, V>, D::Error>
             where D: de::Deserializer,
         {
             deserializer.deserialize_map(Visitor { marker: PhantomData })

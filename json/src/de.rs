@@ -36,13 +36,13 @@ impl<Iter> Deserializer<Iter>
     }
 }
 
-impl<Iter> de::Deserializer for Deserializer<Iter>
+impl<'a, Iter> de::Deserializer for &'a mut Deserializer<Iter>
     where Iter: Iterator<Item = io::Result<u8>>,
 {
     type Error = Error;
 
     #[inline]
-    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value>
+    fn deserialize<V>(self, visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         self.0.deserialize(visitor)
@@ -50,7 +50,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
 
     /// Parses a `null` as a None, and any other values as a `Some(...)`.
     #[inline]
-    fn deserialize_option<V>(&mut self, visitor: V) -> Result<V::Value>
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         self.0.deserialize_option(visitor)
@@ -59,7 +59,7 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
     /// Parses a newtype struct as the underlying value.
     #[inline]
     fn deserialize_newtype_struct<V>(
-        &mut self,
+        self,
         name: &'static str,
         visitor: V
     ) -> Result<V::Value>
@@ -72,12 +72,12 @@ impl<Iter> de::Deserializer for Deserializer<Iter>
     /// value, a `[..]`, or a `{..}`.
     #[inline]
     fn deserialize_enum<V>(
-        &mut self,
+        self,
         name: &'static str,
         variants: &'static [&'static str],
         visitor: V
     ) -> Result<V::Value>
-        where V: de::EnumVisitor,
+        where V: de::Visitor,
     {
         self.0.deserialize_enum(name, variants, visitor)
     }
@@ -170,7 +170,7 @@ impl<R: Read> DeserializerImpl<R> {
         }
     }
 
-    fn parse_value<V>(&mut self, mut visitor: V) -> Result<V::Value>
+    fn parse_value<V>(&mut self, visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         try!(self.parse_whitespace());
@@ -217,7 +217,10 @@ impl<R: Read> DeserializerImpl<R> {
 
                 self.remaining_depth += 1;
 
-                ret
+                match (ret, self.end_seq()) {
+                    (Ok(ret), Ok(())) => Ok(ret),
+                    (Err(err), _) | (_, Err(err)) => Err(err),
+                }
             }
             b'{' => {
                 self.remaining_depth -= 1;
@@ -230,7 +233,10 @@ impl<R: Read> DeserializerImpl<R> {
 
                 self.remaining_depth += 1;
 
-                ret
+                match (ret, self.end_map()) {
+                    (Ok(ret), Ok(())) => Ok(ret),
+                    (Err(err), _) | (_, Err(err)) => Err(err),
+                }
             }
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
         };
@@ -339,7 +345,7 @@ impl<R: Read> DeserializerImpl<R> {
         &mut self,
         pos: bool,
         significand: u64,
-        mut visitor: V
+        visitor: V
     ) -> Result<V::Value>
         where V: de::Visitor,
     {
@@ -468,7 +474,7 @@ impl<R: Read> DeserializerImpl<R> {
         pos: bool,
         significand: u64,
         pos_exp: bool,
-        mut visitor: V
+        visitor: V
     ) -> Result<V::Value>
         where V: de::Visitor,
     {
@@ -492,7 +498,7 @@ impl<R: Read> DeserializerImpl<R> {
         pos: bool,
         significand: u64,
         mut exponent: i32,
-        mut visitor: V
+        visitor: V
     ) -> Result<V::Value>
         where V: de::Visitor,
     {
@@ -541,6 +547,26 @@ impl<R: Read> DeserializerImpl<R> {
             None => Err(self.peek_error(ErrorCode::EOFWhileParsingObject)),
         }
     }
+
+    fn end_seq(&mut self) -> Result<()> {
+        try!(self.parse_whitespace());
+
+        match try!(self.next_char()) {
+            Some(b']') => Ok(()),
+            Some(_) => Err(self.error(ErrorCode::TrailingCharacters)),
+            None => Err(self.error(ErrorCode::EOFWhileParsingList)),
+        }
+    }
+
+    fn end_map(&mut self) -> Result<()> {
+        try!(self.parse_whitespace());
+
+        match try!(self.next_char()) {
+            Some(b'}') => Ok(()),
+            Some(_) => Err(self.error(ErrorCode::TrailingCharacters)),
+            None => Err(self.error(ErrorCode::EOFWhileParsingObject)),
+        }
+    }
 }
 
 fn stack_overflow() -> ErrorCode {
@@ -580,11 +606,11 @@ static POW10: [f64; 309] =
      1e290, 1e291, 1e292, 1e293, 1e294, 1e295, 1e296, 1e297, 1e298, 1e299,
      1e300, 1e301, 1e302, 1e303, 1e304, 1e305, 1e306, 1e307, 1e308];
 
-impl<R: Read> de::Deserializer for DeserializerImpl<R> {
+impl<'a, R: Read> de::Deserializer for &'a mut DeserializerImpl<R> {
     type Error = Error;
 
     #[inline]
-    fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value>
+    fn deserialize<V>(self, visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         self.parse_value(visitor)
@@ -592,7 +618,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
 
     /// Parses a `null` as a None, and any other values as a `Some(...)`.
     #[inline]
-    fn deserialize_option<V>(&mut self, mut visitor: V) -> Result<V::Value>
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         try!(self.parse_whitespace());
@@ -610,9 +636,9 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
     /// Parses a newtype struct as the underlying value.
     #[inline]
     fn deserialize_newtype_struct<V>(
-        &mut self,
+        self,
         _name: &str,
-        mut visitor: V
+        visitor: V
     ) -> Result<V::Value>
         where V: de::Visitor,
     {
@@ -623,12 +649,12 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
     /// value, a `[..]`, or a `{..}`.
     #[inline]
     fn deserialize_enum<V>(
-        &mut self,
+        self,
         _name: &str,
         _variants: &'static [&'static str],
-        mut visitor: V
+        visitor: V
     ) -> Result<V::Value>
-        where V: de::EnumVisitor,
+        where V: de::Visitor,
     {
         try!(self.parse_whitespace());
 
@@ -640,7 +666,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
                 }
 
                 self.eat_char();
-                let value = try!(visitor.visit(VariantVisitor::new(self)));
+                let value = try!(visitor.visit_enum(VariantVisitor::new(self)));
 
                 self.remaining_depth += 1;
 
@@ -651,7 +677,7 @@ impl<R: Read> de::Deserializer for DeserializerImpl<R> {
                     _ => Err(self.error(ErrorCode::ExpectedSomeValue)),
                 }
             }
-            b'"' => visitor.visit(KeyOnlyVariantVisitor::new(self)),
+            b'"' => visitor.visit_enum(KeyOnlyVariantVisitor::new(self)),
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
         }
     }
@@ -705,18 +731,8 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
             }
         }
 
-        let value = try!(de::Deserialize::deserialize(self.de));
+        let value = try!(de::Deserialize::deserialize(&mut *self.de));
         Ok(Some(value))
-    }
-
-    fn end(&mut self) -> Result<()> {
-        try!(self.de.parse_whitespace());
-
-        match try!(self.de.next_char()) {
-            Some(b']') => Ok(()),
-            Some(_) => Err(self.de.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.de.error(ErrorCode::EOFWhileParsingList)),
-        }
     }
 }
 
@@ -765,7 +781,7 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
         }
 
         match try!(self.de.peek()) {
-            Some(b'"') => Ok(Some(try!(de::Deserialize::deserialize(self.de)))),
+            Some(b'"') => Ok(Some(try!(de::Deserialize::deserialize(&mut *self.de)))),
             Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
             None => Err(self.de.peek_error(ErrorCode::EOFWhileParsingValue)),
         }
@@ -776,43 +792,31 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
     {
         try!(self.de.parse_object_colon());
 
-        Ok(try!(de::Deserialize::deserialize(self.de)))
-    }
-
-    fn end(&mut self) -> Result<()> {
-        try!(self.de.parse_whitespace());
-
-        match try!(self.de.next_char()) {
-            Some(b'}') => Ok(()),
-            Some(_) => Err(self.de.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.de.error(ErrorCode::EOFWhileParsingObject)),
-        }
+        de::Deserialize::deserialize(&mut *self.de)
     }
 
     fn missing_field<V>(&mut self, field: &'static str) -> Result<V>
         where V: de::Deserialize,
     {
-        use std;
-
         struct MissingFieldDeserializer(&'static str);
 
         impl de::Deserializer for MissingFieldDeserializer {
-            type Error = de::value::Error;
+            type Error = Error;
 
             fn deserialize<V>(
-                &mut self,
+                self,
                 _visitor: V
-            ) -> std::result::Result<V::Value, Self::Error>
+            ) -> Result<V::Value>
                 where V: de::Visitor,
             {
-                let &mut MissingFieldDeserializer(field) = self;
-                Err(de::value::Error::MissingField(field))
+                let MissingFieldDeserializer(field) = self;
+                Err(de::Error::missing_field(field))
             }
 
             fn deserialize_option<V>(
-                &mut self,
-                mut visitor: V
-            ) -> std::result::Result<V::Value, Self::Error>
+                self,
+                visitor: V
+            ) -> Result<V::Value>
                 where V: de::Visitor,
             {
                 visitor.visit_none()
@@ -826,8 +830,7 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
             }
         }
 
-        let mut de = MissingFieldDeserializer(field);
-        Ok(try!(de::Deserialize::deserialize(&mut de)))
+        de::Deserialize::deserialize(MissingFieldDeserializer(field))
     }
 }
 
@@ -843,35 +846,40 @@ impl<'a, R: Read + 'a> VariantVisitor<'a, R> {
     }
 }
 
+impl<'a, R: Read + 'a> de::EnumVisitor for VariantVisitor<'a, R> {
+    type Error = Error;
+    type Variant = Self;
+
+    fn visit_variant<V>(self) -> Result<(V, Self)>
+        where V: de::Deserialize,
+    {
+        let val = try!(de::Deserialize::deserialize(&mut *self.de));
+        try!(self.de.parse_object_colon());
+        Ok((val, self))
+    }
+}
+
 impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
     type Error = Error;
 
-    fn visit_variant<V>(&mut self) -> Result<V>
-        where V: de::Deserialize,
-    {
-        let val = try!(de::Deserialize::deserialize(self.de));
-        try!(self.de.parse_object_colon());
-        Ok(val)
-    }
-
-    fn visit_unit(&mut self) -> Result<()> {
+    fn visit_unit(self) -> Result<()> {
         de::Deserialize::deserialize(self.de)
     }
 
-    fn visit_newtype<T>(&mut self) -> Result<T>
+    fn visit_newtype<T>(self) -> Result<T>
         where T: de::Deserialize,
     {
         de::Deserialize::deserialize(self.de)
     }
 
-    fn visit_tuple<V>(&mut self, _len: usize, visitor: V) -> Result<V::Value>
+    fn visit_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         de::Deserializer::deserialize(self.de, visitor)
     }
 
     fn visit_struct<V>(
-        &mut self,
+        self,
         _fields: &'static [&'static str],
         visitor: V
     ) -> Result<V::Value>
@@ -893,33 +901,39 @@ impl<'a, R: Read + 'a> KeyOnlyVariantVisitor<'a, R> {
     }
 }
 
+impl<'a, R: Read + 'a> de::EnumVisitor for KeyOnlyVariantVisitor<'a, R> {
+    type Error = Error;
+    type Variant = Self;
+
+    fn visit_variant<V>(self) -> Result<(V, Self)>
+        where V: de::Deserialize,
+    {
+        let variant = try!(de::Deserialize::deserialize(&mut *self.de));
+        Ok((variant, self))
+    }
+}
+
 impl<'a, R: Read + 'a> de::VariantVisitor for KeyOnlyVariantVisitor<'a, R> {
     type Error = Error;
 
-    fn visit_variant<V>(&mut self) -> Result<V>
-        where V: de::Deserialize,
-    {
-        Ok(try!(de::Deserialize::deserialize(self.de)))
-    }
-
-    fn visit_unit(&mut self) -> Result<()> {
+    fn visit_unit(self) -> Result<()> {
         Ok(())
     }
 
-    fn visit_newtype<T>(&mut self) -> Result<T>
+    fn visit_newtype<T>(self) -> Result<T>
         where T: de::Deserialize,
     {
         de::Deserialize::deserialize(self.de)
     }
 
-    fn visit_tuple<V>(&mut self, _len: usize, visitor: V) -> Result<V::Value>
+    fn visit_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
         de::Deserializer::deserialize(self.de, visitor)
     }
 
     fn visit_struct<V>(
-        &mut self,
+        self,
         _fields: &'static [&'static str],
         visitor: V
     ) -> Result<V::Value>
