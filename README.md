@@ -29,8 +29,6 @@ program. See Serde's [codegen documentation](https://serde.rs/codegen.html) for
 how to set this up.
 
 ```rust
-#![feature(proc_macro)]
-
 #[macro_use]
 extern crate serde_derive;
 
