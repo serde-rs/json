@@ -54,9 +54,10 @@ impl ArrayBuilder {
         Value::Array(self.array)
     }
 
-    /// Insert a value into the array.
+    /// Insert a value into the array. Panics if the value cannot be represented
+    /// as JSON.
     pub fn push<T: ser::Serialize>(mut self, v: T) -> ArrayBuilder {
-        self.array.push(value::to_value(&v));
+        self.array.push(value::to_value(&v).expect("value cannot be represented as JSON"));
         self
     }
 
@@ -98,12 +99,13 @@ impl ObjectBuilder {
         Value::Object(self.object)
     }
 
-    /// Insert a key-value pair into the object.
+    /// Insert a key-value pair into the object. Panics if the value cannot be
+    /// represented as JSON.
     pub fn insert<S, V>(mut self, key: S, value: V) -> ObjectBuilder
         where S: Into<String>,
               V: ser::Serialize,
     {
-        self.object.insert(key.into(), value::to_value(&value));
+        self.object.insert(key.into(), value::to_value(&value).expect("value cannot be represented as JSON"));
         self
     }
 

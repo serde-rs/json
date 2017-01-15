@@ -755,7 +755,7 @@ impl ser::Serializer for Serializer {
         where T: ser::Serialize,
     {
         let mut values = Map::new();
-        values.insert(String::from(variant), to_value(&value));
+        values.insert(String::from(variant), try!(to_value(&value)));
         Ok(Value::Object(values))
     }
 
@@ -874,7 +874,7 @@ impl ser::SerializeSeq for SerializeVec {
     fn serialize_element<T>(&mut self, value: T) -> Result<(), Error>
         where T: ser::Serialize
     {
-        self.vec.push(to_value(&value));
+        self.vec.push(try!(to_value(&value)));
         Ok(())
     }
 
@@ -920,7 +920,7 @@ impl ser::SerializeTupleVariant for SerializeTupleVariant {
     fn serialize_field<T>(&mut self, value: T) -> Result<(), Error>
         where T: ser::Serialize
     {
-        self.vec.push(to_value(&value));
+        self.vec.push(try!(to_value(&value)));
         Ok(())
     }
 
@@ -940,7 +940,7 @@ impl ser::SerializeMap for SerializeMap {
     fn serialize_key<T>(&mut self, key: T) -> Result<(), Error>
         where T: ser::Serialize
     {
-        match to_value(&key) {
+        match try!(to_value(&key)) {
             Value::String(s) => self.next_key = Some(s),
             _ => return Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0)),
         };
@@ -951,7 +951,7 @@ impl ser::SerializeMap for SerializeMap {
         where T: ser::Serialize
     {
         match self.next_key.take() {
-            Some(key) => self.map.insert(key, to_value(&value)),
+            Some(key) => self.map.insert(key, try!(to_value(&value))),
             None => {
                 return Err(Error::Syntax(ErrorCode::Custom("serialize_map_value without \
                                                             matching serialize_map_key".to_owned()),
@@ -989,7 +989,7 @@ impl ser::SerializeStructVariant for SerializeStructVariant {
     fn serialize_field<V>(&mut self, key: &'static str, value: V) -> Result<(), Error>
         where V: ser::Serialize
     {
-        self.map.insert(String::from(key), to_value(&value));
+        self.map.insert(String::from(key), try!(to_value(&value)));
         Ok(())
     }
 
@@ -1343,13 +1343,13 @@ impl de::Deserializer for MapDeserializer {
 ///
 /// ```rust
 /// use serde_json::to_value;
-/// let val = to_value("foo");
+/// let val = to_value("foo").unwrap();
 /// assert_eq!(val.as_str(), Some("foo"))
 /// ```
-pub fn to_value<T>(value: T) -> Value
+pub fn to_value<T>(value: T) -> Result<Value, Error>
     where T: ser::Serialize,
 {
-    value.serialize(Serializer).expect("failed to serialize")
+    value.serialize(Serializer)
 }
 
 /// Shortcut function to decode a JSON `Value` into a `T`
@@ -1362,13 +1362,13 @@ pub fn from_value<T>(value: Value) -> Result<T, Error>
 /// A trait for converting values to JSON
 pub trait ToJson {
     /// Converts the value of `self` to an instance of JSON
-    fn to_json(&self) -> Value;
+    fn to_json(&self) -> Result<Value, Error>;
 }
 
 impl<T: ?Sized> ToJson for T
     where T: ser::Serialize,
 {
-    fn to_json(&self) -> Value {
+    fn to_json(&self) -> Result<Value, Error> {
         to_value(&self)
     }
 }

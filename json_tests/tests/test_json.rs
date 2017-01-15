@@ -66,7 +66,7 @@ fn test_encode_ok<T>(errors: &[(T, &str)])
         let s = serde_json::to_string(value).unwrap();
         assert_eq!(s, out);
 
-        let v = to_value(&value);
+        let v = to_value(&value).unwrap();
         let s = serde_json::to_string(&v).unwrap();
         assert_eq!(s, out);
     }
@@ -81,7 +81,7 @@ fn test_pretty_encode_ok<T>(errors: &[(T, &str)])
         let s = serde_json::to_string_pretty(value).unwrap();
         assert_eq!(s, out);
 
-        let v = to_value(&value);
+        let v = to_value(&value).unwrap();
         let s = serde_json::to_string_pretty(&v).unwrap();
         assert_eq!(s, out);
     }
@@ -135,16 +135,16 @@ fn test_write_f64() {
 
 #[test]
 fn test_encode_nonfinite_float_yields_null() {
-    let v = to_value(::std::f64::NAN);
+    let v = to_value(::std::f64::NAN).unwrap();
     assert!(v.is_null());
 
-    let v = to_value(::std::f64::INFINITY);
+    let v = to_value(::std::f64::INFINITY).unwrap();
     assert!(v.is_null());
 
-    let v = to_value(::std::f32::NAN);
+    let v = to_value(::std::f32::NAN).unwrap();
     assert!(v.is_null());
 
-    let v = to_value(::std::f32::INFINITY);
+    let v = to_value(::std::f32::INFINITY).unwrap();
     assert!(v.is_null());
 }
 
@@ -666,7 +666,7 @@ fn test_write_newtype_struct() {
     struct Newtype(Map<String, i32>);
 
     let inner = Newtype(treemap!(String::from("inner") => 123));
-    let outer = treemap!(String::from("outer") => to_value(&inner));
+    let outer = treemap!(String::from("outer") => to_value(&inner).unwrap());
 
     test_encode_ok(&[
         (inner, r#"{"inner":123}"#),
@@ -692,7 +692,7 @@ fn test_parse_ok<T>(tests: Vec<(&str, T)>)
 
         // Make sure we can deserialize into a `Value`.
         let json_value: Value = from_str(s).unwrap();
-        assert_eq!(json_value, to_value(&value));
+        assert_eq!(json_value, to_value(&value).unwrap());
 
         // Make sure we can deserialize from a `Value`.
         let v: T = from_value(json_value.clone()).unwrap();
