@@ -159,4 +159,5 @@ pub mod error;
 pub mod ser;
 pub mod value;
 
+mod map;
 mod read;

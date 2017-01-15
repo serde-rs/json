@@ -28,15 +28,9 @@
 //!     map.insert(String::from("y"), Value::F64(2.0));
 //!     let value = Value::Object(map);
 //!
-//!     let map: Map<String, f64> = serde_json::from_value(value).unwrap();
+//!     let map: Map<String, Value> = serde_json::from_value(value).unwrap();
 //! }
 //! ```
-
-#[cfg(not(feature = "preserve_order"))]
-use std::collections::{BTreeMap, btree_map};
-
-#[cfg(feature = "preserve_order")]
-use linked_hash_map::{self, LinkedHashMap};
 
 use std::fmt;
 use std::io;
@@ -51,19 +45,7 @@ use serde::de::value::ValueDeserializer;
 
 use error::{Error, ErrorCode};
 
-/// Represents a key/value type.
-#[cfg(not(feature = "preserve_order"))]
-pub type Map<K, V> = BTreeMap<K, V>;
-/// Represents a key/value type.
-#[cfg(feature = "preserve_order")]
-pub type Map<K, V> = LinkedHashMap<K, V>;
-
-/// Represents the `IntoIter` type.
-#[cfg(not(feature = "preserve_order"))]
-pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
-/// Represents the IntoIter type.
-#[cfg(feature = "preserve_order")]
-pub type MapIntoIter<K, V> = linked_hash_map::IntoIter<K, V>;
+pub use map::Map;
 
 /// Represents a JSON value
 #[derive(Clone, PartialEq)]
@@ -533,20 +515,7 @@ impl de::Deserialize for Value {
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
                 where V: de::MapVisitor,
             {
-                // Work around not having attributes on statements in Rust 1.12.0
-                #[cfg(not(feature = "preserve_order"))]
-                macro_rules! init {
-                    () => {
-                        BTreeMap::new()
-                    };
-                }
-                #[cfg(feature = "preserve_order")]
-                macro_rules! init {
-                    () => {
-                        LinkedHashMap::with_capacity(visitor.size_hint().0)
-                    };
-                }
-                let mut values = init!();
+                let mut values = Map::with_capacity(visitor.size_hint().0);
 
                 while let Some((key, value)) = try!(visitor.visit()) {
                     values.insert(key, value);
@@ -1235,7 +1204,7 @@ impl de::SeqVisitor for SeqDeserializer {
 }
 
 struct MapDeserializer {
-    iter: MapIntoIter<String, Value>,
+    iter: <Map<String, Value> as IntoIterator>::IntoIter,
     value: Option<Value>,
 }
 

@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::f64;
 use std::fmt::Debug;
 use std::i64;
@@ -25,12 +26,29 @@ use serde_json::error::{Error, ErrorCode};
 
 macro_rules! treemap {
     () => {
+        BTreeMap::new()
+    };
+    ($($k:expr => $v:expr),+) => {
+        {
+            let mut m = BTreeMap::new();
+            $(
+                m.insert($k, $v);
+            )+
+            m
+        }
+    };
+}
+
+macro_rules! jsonmap {
+    () => {
         Map::new()
     };
     ($($k:expr => $v:expr),+) => {
         {
             let mut m = Map::new();
-            $(m.insert($k, $v);)+
+            $(
+                m.insert($k, to_value(&$v));
+            )+
             m
         }
     };
@@ -473,11 +491,11 @@ fn test_write_object() {
         ),
     ]);
 
-    let complex_obj = Value::Object(treemap!(
-        "b".to_string() => Value::Array(vec![
-            Value::Object(treemap!("c".to_string() => Value::String("\x0c\x1f\r".to_string()))),
-            Value::Object(treemap!("d".to_string() => Value::String("".to_string())))
-        ])
+    let complex_obj = Value::Object(jsonmap!(
+        "b".to_string() => vec![
+            Value::Object(jsonmap!("c".to_string() => "\x0c\x1f\r".to_string())),
+            Value::Object(jsonmap!("d".to_string() => "".to_string()))
+        ]
     ));
 
     test_encode_ok(&[
@@ -663,7 +681,7 @@ fn test_write_option() {
 #[test]
 fn test_write_newtype_struct() {
     #[derive(Serialize, PartialEq, Debug)]
-    struct Newtype(Map<String, i32>);
+    struct Newtype(BTreeMap<String, i32>);
 
     let inner = Newtype(treemap!(String::from("inner") => 123));
     let outer = treemap!(String::from("outer") => to_value(&inner));
@@ -1006,7 +1024,7 @@ fn test_parse_list() {
 
 #[test]
 fn test_parse_object() {
-    test_parse_err::<Map<String, u32>>(vec![
+    test_parse_err::<BTreeMap<String, u32>>(vec![
         ("{", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 1)),
         ("{ ", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 2)),
         ("{1", Error::Syntax(ErrorCode::KeyMustBeAString, 1, 2)),
@@ -1209,7 +1227,7 @@ fn test_parse_trailing_whitespace() {
 
 #[test]
 fn test_multiline_errors() {
-    test_parse_err::<Map<String, String>>(vec![
+    test_parse_err::<BTreeMap<String, String>>(vec![
         ("{\n  \"foo\":\n \"bar\"", Error::Syntax(ErrorCode::EOFWhileParsingObject, 3, 6)),
     ]);
 }
@@ -1227,11 +1245,11 @@ fn test_missing_option_field() {
     let value: Foo = from_str("{\"x\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(Value::Object(treemap!())).unwrap();
+    let value: Foo = from_value(Value::Object(jsonmap!())).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(Value::Object(treemap!(
-        "x".to_string() => Value::I64(5)
+    let value: Foo = from_value(Value::Object(jsonmap!(
+        "x".to_string() => 5
     ))).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
@@ -1262,11 +1280,11 @@ fn test_missing_renamed_field() {
     let value: Foo = from_str("{\"y\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(Value::Object(treemap!())).unwrap();
+    let value: Foo = from_value(Value::Object(jsonmap!())).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(Value::Object(treemap!(
-        "y".to_string() => Value::I64(5)
+    let value: Foo = from_value(Value::Object(jsonmap!(
+        "y".to_string() => 5
     ))).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
@@ -1376,7 +1394,7 @@ fn test_serialize_seq_with_no_len() {
 #[test]
 fn test_serialize_map_with_no_len() {
     #[derive(Clone, Debug, PartialEq)]
-    struct MyMap<K, V>(Map<K, V>);
+    struct MyMap<K, V>(BTreeMap<K, V>);
 
     impl<K, V> ser::Serialize for MyMap<K, V>
         where K: ser::Serialize + Ord,
@@ -1410,14 +1428,14 @@ fn test_serialize_map_with_no_len() {
         fn visit_unit<E>(self) -> Result<MyMap<K, V>, E>
             where E: de::Error,
         {
-            Ok(MyMap(Map::new()))
+            Ok(MyMap(BTreeMap::new()))
         }
 
         #[inline]
         fn visit_map<Visitor>(self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
             where Visitor: de::MapVisitor,
         {
-            let mut values = Map::new();
+            let mut values = BTreeMap::new();
 
             while let Some((key, value)) = try!(visitor.visit()) {
                 values.insert(key, value);
@@ -1438,9 +1456,9 @@ fn test_serialize_map_with_no_len() {
         }
     }
 
-    let mut map = Map::new();
-    map.insert("a", MyMap(Map::new()));
-    map.insert("b", MyMap(Map::new()));
+    let mut map = BTreeMap::new();
+    map.insert("a", MyMap(BTreeMap::new()));
+    map.insert("b", MyMap(BTreeMap::new()));
     let map: MyMap<_, MyMap<u32, u32>> = MyMap(map);
 
     test_encode_ok(&[
