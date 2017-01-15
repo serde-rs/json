@@ -1155,11 +1155,8 @@ impl de::VariantVisitor for VariantDeserializer {
         where V: de::Visitor,
     {
         match self.value {
-            Some(Value::Array(fields)) => {
-                de::Deserializer::deserialize(SeqDeserializer {
-                                                  iter: fields.into_iter(),
-                                              },
-                                              visitor)
+            Some(Value::Array(v)) => {
+                de::Deserializer::deserialize(SeqDeserializer::new(v), visitor)
             }
             _ => Err(de::Error::invalid_type(de::Type::TupleVariant))
         }
@@ -1173,12 +1170,8 @@ impl de::VariantVisitor for VariantDeserializer {
         where V: de::Visitor,
     {
         match self.value {
-            Some(Value::Object(fields)) => {
-                de::Deserializer::deserialize(MapDeserializer {
-                                                  iter: fields.into_iter(),
-                                                  value: None,
-                                              },
-                                              visitor)
+            Some(Value::Object(v)) => {
+                de::Deserializer::deserialize(MapDeserializer::new(v), visitor)
             }
             _ => Err(de::Error::invalid_type(de::Type::StructVariant))
         }
