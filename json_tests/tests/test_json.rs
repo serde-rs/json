@@ -1320,14 +1320,14 @@ fn test_serialize_seq_with_no_len() {
         type Value = MyVec<T>;
 
         #[inline]
-        fn visit_unit<E>(&mut self) -> Result<MyVec<T>, E>
+        fn visit_unit<E>(self) -> Result<MyVec<T>, E>
             where E: de::Error,
         {
             Ok(MyVec(Vec::new()))
         }
 
         #[inline]
-        fn visit_seq<V>(&mut self, mut visitor: V) -> Result<MyVec<T>, V::Error>
+        fn visit_seq<V>(self, mut visitor: V) -> Result<MyVec<T>, V::Error>
             where V: de::SeqVisitor,
         {
             let mut values = Vec::new();
@@ -1343,7 +1343,7 @@ fn test_serialize_seq_with_no_len() {
     impl<T> de::Deserialize for MyVec<T>
         where T: de::Deserialize,
     {
-        fn deserialize<D>(deserializer: &mut D) -> Result<MyVec<T>, D::Error>
+        fn deserialize<D>(deserializer: D) -> Result<MyVec<T>, D::Error>
             where D: de::Deserializer,
         {
             deserializer.deserialize_map(Visitor { marker: PhantomData })
@@ -1407,14 +1407,14 @@ fn test_serialize_map_with_no_len() {
         type Value = MyMap<K, V>;
 
         #[inline]
-        fn visit_unit<E>(&mut self) -> Result<MyMap<K, V>, E>
+        fn visit_unit<E>(self) -> Result<MyMap<K, V>, E>
             where E: de::Error,
         {
             Ok(MyMap(Map::new()))
         }
 
         #[inline]
-        fn visit_map<Visitor>(&mut self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
+        fn visit_map<Visitor>(self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
             where Visitor: de::MapVisitor,
         {
             let mut values = Map::new();
@@ -1431,7 +1431,7 @@ fn test_serialize_map_with_no_len() {
         where K: de::Deserialize + Eq + Ord,
               V: de::Deserialize,
     {
-        fn deserialize<D>(deserializer: &mut D) -> Result<MyMap<K, V>, D::Error>
+        fn deserialize<D>(deserializer: D) -> Result<MyMap<K, V>, D::Error>
             where D: de::Deserializer,
         {
             deserializer.deserialize_map(Visitor { marker: PhantomData })
