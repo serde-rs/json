@@ -533,10 +533,20 @@ impl de::Deserialize for Value {
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
                 where V: de::MapVisitor,
             {
+                // Work around not having attributes on statements in Rust 1.12.0
                 #[cfg(not(feature = "preserve_order"))]
-                let mut values = BTreeMap::new();
+                macro_rules! init {
+                    () => {
+                        BTreeMap::new()
+                    };
+                }
                 #[cfg(feature = "preserve_order")]
-                let mut values = LinkedHashMap::with_capacity(visitor.size_hint().0);
+                macro_rules! init {
+                    () => {
+                        LinkedHashMap::with_capacity(visitor.size_hint().0)
+                    };
+                }
+                let mut values = init!();
 
                 while let Some((key, value)) = try!(visitor.visit()) {
                     values.insert(key, value);
