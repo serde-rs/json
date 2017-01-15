@@ -11,16 +11,11 @@ mod with_syntex {
     pub fn main() {
         let out_dir = env::var_os("OUT_DIR").unwrap();
 
-        for &(src, dst) in &[
-            ("tests/test.rs.in", "test.rs"),
-            ("benches/bench.rs.in", "bench.rs"),
-        ] {
-            let src = Path::new(src);
-            let dst = Path::new(&out_dir).join(dst);
+        let src = Path::new("tests/test.rs.in");
+        let dst = Path::new(&out_dir).join("test.rs");
 
-            serde_codegen::expand(&src, &dst).unwrap();
-            indoc::expand(&dst, &dst).unwrap();
-        }
+        serde_codegen::expand(&src, &dst).unwrap();
+        indoc::expand(&dst, &dst).unwrap();
     }
 }
 

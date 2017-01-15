@@ -28,7 +28,3 @@ skeptic = "0.6"
 [[test]]
 name = "test"
 path = "tests/test.rs"
-
-[[bench]]
-name = "bench"
-path = "benches/bench.rs"
