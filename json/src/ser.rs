@@ -157,9 +157,9 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
         use serde::ser::SerializeSeq;
         let mut seq = try!(self.serialize_seq(Some(value.len())));
         for byte in value {
-            try!(seq.serialize_elem(byte));
+            try!(seq.serialize_element(byte));
         }
-        seq.serialize_end()
+        seq.end()
     }
 
     #[inline]
@@ -327,7 +327,7 @@ impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
     type Error = Error;
 
     #[inline]
-    fn serialize_elem<T: ser::Serialize>(
+    fn serialize_element<T: ser::Serialize>(
         &mut self,
         value: T
     ) -> Result<()>
@@ -340,7 +340,7 @@ impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
     }
 
     #[inline]
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         match self.state {
             State::Empty => Ok(()),
             _ => self.ser.formatter.close(&mut self.ser.writer, b']'),
@@ -356,16 +356,16 @@ impl<'a, W, F> ser::SerializeTuple for Compound<'a, W, F>
     type Error = Error;
 
     #[inline]
-    fn serialize_elem<T: ser::Serialize>(
+    fn serialize_element<T: ser::Serialize>(
         &mut self,
         value: T
     ) -> Result<()> {
-        ser::SerializeSeq::serialize_elem(self, value)
+        ser::SerializeSeq::serialize_element(self, value)
     }
 
     #[inline]
-    fn serialize_end(self) -> Result<()> {
-        ser::SerializeSeq::serialize_end(self)
+    fn end(self) -> Result<()> {
+        ser::SerializeSeq::end(self)
     }
 }
 
@@ -377,16 +377,16 @@ impl<'a, W, F> ser::SerializeTupleStruct for Compound<'a, W, F>
     type Error = Error;
 
     #[inline]
-    fn serialize_elem<T: ser::Serialize>(
+    fn serialize_field<T: ser::Serialize>(
         &mut self,
         value: T
     ) -> Result<()> {
-        ser::SerializeSeq::serialize_elem(self, value)
+        ser::SerializeSeq::serialize_element(self, value)
     }
 
     #[inline]
-    fn serialize_end(self) -> Result<()> {
-        ser::SerializeSeq::serialize_end(self)
+    fn end(self) -> Result<()> {
+        ser::SerializeSeq::end(self)
     }
 }
 
@@ -398,15 +398,15 @@ impl<'a, W, F> ser::SerializeTupleVariant for Compound<'a, W, F>
     type Error = Error;
 
     #[inline]
-    fn serialize_elem<T: ser::Serialize>(
+    fn serialize_field<T: ser::Serialize>(
         &mut self,
         value: T
     ) -> Result<()> {
-        ser::SerializeSeq::serialize_elem(self, value)
+        ser::SerializeSeq::serialize_element(self, value)
     }
 
     #[inline]
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         match self.state {
             State::Empty => {}
             _ => try!(self.ser.formatter.close(&mut self.ser.writer, b']')),
@@ -446,7 +446,7 @@ impl<'a, W, F> ser::SerializeMap for Compound<'a, W, F>
     }
 
     #[inline]
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         match self.state {
             State::Empty => Ok(()),
             _ => self.ser.formatter.close(&mut self.ser.writer, b'}'),
@@ -472,8 +472,8 @@ impl<'a, W, F> ser::SerializeStruct for Compound<'a, W, F>
     }
 
     #[inline]
-    fn serialize_end(self) -> Result<()> {
-        ser::SerializeMap::serialize_end(self)
+    fn end(self) -> Result<()> {
+        ser::SerializeMap::end(self)
     }
 }
 
@@ -494,7 +494,7 @@ impl<'a, W, F> ser::SerializeStructVariant for Compound<'a, W, F>
     }
 
     #[inline]
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         match self.state {
             State::Empty => {}
             _ => try!(self.ser.formatter.close(&mut self.ser.writer, b'}')),
@@ -704,13 +704,13 @@ impl ser::SerializeSeq for Impossible {
     type Ok = ();
     type Error = Error;
 
-    fn serialize_elem<T>(&mut self, _: T) -> Result<()>
+    fn serialize_element<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 }
@@ -719,13 +719,13 @@ impl ser::SerializeTuple for Impossible {
     type Ok = ();
     type Error = Error;
 
-    fn serialize_elem<T>(&mut self, _: T) -> Result<()>
+    fn serialize_element<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 }
@@ -734,13 +734,13 @@ impl ser::SerializeTupleStruct for Impossible {
     type Ok = ();
     type Error = Error;
 
-    fn serialize_elem<T>(&mut self, _: T) -> Result<()>
+    fn serialize_field<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 }
@@ -749,13 +749,13 @@ impl ser::SerializeTupleVariant for Impossible {
     type Ok = ();
     type Error = Error;
 
-    fn serialize_elem<T>(&mut self, _: T) -> Result<()>
+    fn serialize_field<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 }
@@ -776,7 +776,7 @@ impl ser::SerializeMap for Impossible {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 }
@@ -791,7 +791,7 @@ impl ser::SerializeStruct for Impossible {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 }
@@ -806,7 +806,7 @@ impl ser::SerializeStructVariant for Impossible {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 
-    fn serialize_end(self) -> Result<()> {
+    fn end(self) -> Result<()> {
         Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
     }
 }

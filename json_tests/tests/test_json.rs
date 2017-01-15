@@ -1304,9 +1304,9 @@ fn test_serialize_seq_with_no_len() {
             use serde::ser::SerializeSeq;
             let mut seq = try!(serializer.serialize_seq(None));
             for elem in &self.0 {
-                try!(seq.serialize_elem(elem));
+                try!(seq.serialize_element(elem));
             }
-            seq.serialize_end()
+            seq.end()
         }
     }
 
@@ -1392,7 +1392,7 @@ fn test_serialize_map_with_no_len() {
                 try!(map.serialize_key(k));
                 try!(map.serialize_value(v));
             }
-            map.serialize_end()
+            map.end()
         }
     }
 

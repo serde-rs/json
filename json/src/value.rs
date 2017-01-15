@@ -851,14 +851,14 @@ impl ser::SerializeSeq for SerializeVec {
     type Ok = Value;
     type Error = Error;
 
-    fn serialize_elem<T>(&mut self, value: T) -> Result<(), Error>
+    fn serialize_element<T>(&mut self, value: T) -> Result<(), Error>
         where T: ser::Serialize
     {
         self.vec.push(to_value(&value));
         Ok(())
     }
 
-    fn serialize_end(self) -> Result<Value, Error> {
+    fn end(self) -> Result<Value, Error> {
         Ok(Value::Array(self.vec))
     }
 }
@@ -867,14 +867,14 @@ impl ser::SerializeTuple for SerializeVec {
     type Ok = Value;
     type Error = Error;
 
-    fn serialize_elem<T>(&mut self, value: T) -> Result<(), Error>
+    fn serialize_element<T>(&mut self, value: T) -> Result<(), Error>
         where T: ser::Serialize
     {
-        ser::SerializeSeq::serialize_elem(self, value)
+        ser::SerializeSeq::serialize_element(self, value)
     }
 
-    fn serialize_end(self) -> Result<Value, Error> {
-        ser::SerializeSeq::serialize_end(self)
+    fn end(self) -> Result<Value, Error> {
+        ser::SerializeSeq::end(self)
     }
 }
 
@@ -882,14 +882,14 @@ impl ser::SerializeTupleStruct for SerializeVec {
     type Ok = Value;
     type Error = Error;
 
-    fn serialize_elem<T>(&mut self, value: T) -> Result<(), Error>
+    fn serialize_field<T>(&mut self, value: T) -> Result<(), Error>
         where T: ser::Serialize
     {
-        ser::SerializeSeq::serialize_elem(self, value)
+        ser::SerializeSeq::serialize_element(self, value)
     }
 
-    fn serialize_end(self) -> Result<Value, Error> {
-        ser::SerializeSeq::serialize_end(self)
+    fn end(self) -> Result<Value, Error> {
+        ser::SerializeSeq::end(self)
     }
 }
 
@@ -897,14 +897,14 @@ impl ser::SerializeTupleVariant for SerializeTupleVariant {
     type Ok = Value;
     type Error = Error;
 
-    fn serialize_elem<T>(&mut self, value: T) -> Result<(), Error>
+    fn serialize_field<T>(&mut self, value: T) -> Result<(), Error>
         where T: ser::Serialize
     {
         self.vec.push(to_value(&value));
         Ok(())
     }
 
-    fn serialize_end(self) -> Result<Value, Error> {
+    fn end(self) -> Result<Value, Error> {
         let mut object = Map::new();
 
         object.insert(self.name, Value::Array(self.vec));
@@ -941,7 +941,7 @@ impl ser::SerializeMap for SerializeMap {
         Ok(())
     }
 
-    fn serialize_end(self) -> Result<Value, Error> {
+    fn end(self) -> Result<Value, Error> {
         Ok(Value::Object(self.map))
     }
 }
@@ -957,8 +957,8 @@ impl ser::SerializeStruct for SerializeMap {
         ser::SerializeMap::serialize_value(self, value)
     }
 
-    fn serialize_end(self) -> Result<Value, Error> {
-        ser::SerializeMap::serialize_end(self)
+    fn end(self) -> Result<Value, Error> {
+        ser::SerializeMap::end(self)
     }
 }
 
@@ -973,7 +973,7 @@ impl ser::SerializeStructVariant for SerializeStructVariant {
         Ok(())
     }
 
-    fn serialize_end(self) -> Result<Value, Error> {
+    fn end(self) -> Result<Value, Error> {
         let mut object = Map::new();
 
         object.insert(self.name, Value::Object(self.map));
