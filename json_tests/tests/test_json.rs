@@ -1298,14 +1298,15 @@ fn test_serialize_seq_with_no_len() {
         where T: ser::Serialize,
     {
         #[inline]
-        fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where S: ser::Serializer,
         {
-            let mut state = try!(serializer.serialize_seq(None));
+            use serde::ser::SerializeSeq;
+            let mut seq = try!(serializer.serialize_seq(None));
             for elem in &self.0 {
-                try!(serializer.serialize_seq_elt(&mut state, elem));
+                try!(seq.serialize_elem(elem));
             }
-            serializer.serialize_seq_end(state)
+            seq.serialize_end()
         }
     }
 
@@ -1382,15 +1383,16 @@ fn test_serialize_map_with_no_len() {
               V: ser::Serialize,
     {
         #[inline]
-        fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where S: ser::Serializer,
         {
-            let mut state = try!(serializer.serialize_map(None));
+            use serde::ser::SerializeMap;
+            let mut map = try!(serializer.serialize_map(None));
             for (k, v) in &self.0 {
-                try!(serializer.serialize_map_key(&mut state, k));
-                try!(serializer.serialize_map_value(&mut state, v));
+                try!(map.serialize_key(k));
+                try!(map.serialize_value(v));
             }
-            serializer.serialize_map_end(state)
+            map.serialize_end()
         }
     }
 
