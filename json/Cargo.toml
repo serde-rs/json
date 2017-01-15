@@ -13,7 +13,7 @@ publish = false # this branch contains breaking changes for 0.9
 
 [features]
 unstable-testing = ["clippy"]
-preserve_order = ["linked-hash-map", "linked-hash-map/serde_impl"]
+preserve_order = ["linked-hash-map"]
 
 [dependencies]
 serde = "0.9.0-rc1"

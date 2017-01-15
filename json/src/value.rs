@@ -65,11 +65,6 @@ pub type MapIntoIter<K, V> = btree_map::IntoIter<K, V>;
 #[cfg(feature = "preserve_order")]
 pub type MapIntoIter<K, V> = linked_hash_map::IntoIter<K, V>;
 
-#[cfg(not(feature = "preserve_order"))]
-type MapVisitor<K, T> = de::impls::BTreeMapVisitor<K, T>;
-#[cfg(feature = "preserve_order")]
-type MapVisitor<K, T> = linked_hash_map::serde::LinkedHashMapVisitor<K, T>;
-
 /// Represents a JSON value
 #[derive(Clone, PartialEq)]
 pub enum Value {
@@ -441,13 +436,21 @@ impl ser::Serialize for Value {
     {
         match *self {
             Value::Null => serializer.serialize_unit(),
-            Value::Bool(v) => serializer.serialize_bool(v),
-            Value::I64(v) => serializer.serialize_i64(v),
-            Value::U64(v) => serializer.serialize_u64(v),
-            Value::F64(v) => serializer.serialize_f64(v),
-            Value::String(ref v) => serializer.serialize_str(v),
+            Value::Bool(b) => serializer.serialize_bool(b),
+            Value::I64(i) => serializer.serialize_i64(i),
+            Value::U64(u) => serializer.serialize_u64(u),
+            Value::F64(f) => serializer.serialize_f64(f),
+            Value::String(ref s) => serializer.serialize_str(s),
             Value::Array(ref v) => v.serialize(serializer),
-            Value::Object(ref v) => v.serialize(serializer),
+            Value::Object(ref m) => {
+                use serde::ser::SerializeMap;
+                let mut map = try!(serializer.serialize_map(Some(m.len())));
+                for (k, v) in m {
+                    try!(map.serialize_key(k));
+                    try!(map.serialize_value(v));
+                }
+                map.end()
+            }
         }
     }
 }
@@ -527,11 +530,18 @@ impl de::Deserialize for Value {
                 Ok(Value::Array(values))
             }
 
-            #[inline]
-            fn visit_map<V>(self, visitor: V) -> Result<Value, V::Error>
+            fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
                 where V: de::MapVisitor,
             {
-                let values = try!(MapVisitor::new().visit_map(visitor));
+                #[cfg(not(feature = "preserve_order"))]
+                let mut values = BTreeMap::new();
+                #[cfg(feature = "preserve_order")]
+                let mut values = LinkedHashMap::with_capacity(visitor.size_hint().0);
+
+                while let Some((key, value)) = try!(visitor.visit()) {
+                    values.insert(key, value);
+                }
+
                 Ok(Value::Object(values))
             }
         }
