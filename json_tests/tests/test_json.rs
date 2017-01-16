@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::f64;
 use std::fmt::Debug;
 use std::i64;
@@ -25,12 +26,29 @@ use serde_json::error::{Error, ErrorCode};
 
 macro_rules! treemap {
     () => {
+        BTreeMap::new()
+    };
+    ($($k:expr => $v:expr),+) => {
+        {
+            let mut m = BTreeMap::new();
+            $(
+                m.insert($k, $v);
+            )+
+            m
+        }
+    };
+}
+
+macro_rules! jsonmap {
+    () => {
         Map::new()
     };
     ($($k:expr => $v:expr),+) => {
         {
             let mut m = Map::new();
-            $(m.insert($k, $v);)+
+            $(
+                m.insert($k, to_value(&$v).unwrap());
+            )+
             m
         }
     };
@@ -262,7 +280,7 @@ fn test_write_list() {
     let long_test_list = Value::Array(vec![
         Value::Bool(false),
         Value::Null,
-        Value::Array(vec![Value::String("foo\nbar".to_string()), Value::F64(3.5)])]);
+        Value::Array(vec![Value::String("foo\nbar".to_string()), 3.5.into()])]);
 
     test_encode_ok(&[
         (
@@ -473,11 +491,11 @@ fn test_write_object() {
         ),
     ]);
 
-    let complex_obj = Value::Object(treemap!(
-        "b".to_string() => Value::Array(vec![
-            Value::Object(treemap!("c".to_string() => Value::String("\x0c\x1f\r".to_string()))),
-            Value::Object(treemap!("d".to_string() => Value::String("".to_string())))
-        ])
+    let complex_obj = Value::Object(jsonmap!(
+        "b".to_string() => vec![
+            Value::Object(jsonmap!("c".to_string() => "\x0c\x1f\r".to_string())),
+            Value::Object(jsonmap!("d".to_string() => "".to_string()))
+        ]
     ));
 
     test_encode_ok(&[
@@ -663,7 +681,7 @@ fn test_write_option() {
 #[test]
 fn test_write_newtype_struct() {
     #[derive(Serialize, PartialEq, Debug)]
-    struct Newtype(Map<String, i32>);
+    struct Newtype(BTreeMap<String, i32>);
 
     let inner = Newtype(treemap!(String::from("inner") => 123));
     let outer = treemap!(String::from("outer") => to_value(&inner).unwrap());
@@ -1006,7 +1024,7 @@ fn test_parse_list() {
 
 #[test]
 fn test_parse_object() {
-    test_parse_err::<Map<String, u32>>(vec![
+    test_parse_err::<BTreeMap<String, u32>>(vec![
         ("{", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 1)),
         ("{ ", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 2)),
         ("{1", Error::Syntax(ErrorCode::KeyMustBeAString, 1, 2)),
@@ -1209,7 +1227,7 @@ fn test_parse_trailing_whitespace() {
 
 #[test]
 fn test_multiline_errors() {
-    test_parse_err::<Map<String, String>>(vec![
+    test_parse_err::<BTreeMap<String, String>>(vec![
         ("{\n  \"foo\":\n \"bar\"", Error::Syntax(ErrorCode::EOFWhileParsingObject, 3, 6)),
     ]);
 }
@@ -1227,11 +1245,11 @@ fn test_missing_option_field() {
     let value: Foo = from_str("{\"x\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(Value::Object(treemap!())).unwrap();
+    let value: Foo = from_value(Value::Object(jsonmap!())).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(Value::Object(treemap!(
-        "x".to_string() => Value::I64(5)
+    let value: Foo = from_value(Value::Object(jsonmap!(
+        "x".to_string() => 5
     ))).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
@@ -1262,11 +1280,11 @@ fn test_missing_renamed_field() {
     let value: Foo = from_str("{\"y\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(Value::Object(treemap!())).unwrap();
+    let value: Foo = from_value(Value::Object(jsonmap!())).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(Value::Object(treemap!(
-        "y".to_string() => Value::I64(5)
+    let value: Foo = from_value(Value::Object(jsonmap!(
+        "y".to_string() => 5
     ))).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
@@ -1275,8 +1293,8 @@ fn test_missing_renamed_field() {
 fn test_find_path() {
     let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 
-    assert!(obj.find_path(&["x", "a"]).unwrap() == &Value::U64(1));
-    assert!(obj.find_path(&["y"]).unwrap() == &Value::U64(2));
+    assert!(obj.find_path(&["x", "a"]).unwrap() == &1.into());
+    assert!(obj.find_path(&["y"]).unwrap() == &2.into());
     assert!(obj.find_path(&["z"]).is_none());
 }
 
@@ -1367,7 +1385,7 @@ fn test_serialize_seq_with_no_len() {
 #[test]
 fn test_serialize_map_with_no_len() {
     #[derive(Clone, Debug, PartialEq)]
-    struct MyMap<K, V>(Map<K, V>);
+    struct MyMap<K, V>(BTreeMap<K, V>);
 
     impl<K, V> ser::Serialize for MyMap<K, V>
         where K: ser::Serialize + Ord,
@@ -1401,14 +1419,14 @@ fn test_serialize_map_with_no_len() {
         fn visit_unit<E>(self) -> Result<MyMap<K, V>, E>
             where E: de::Error,
         {
-            Ok(MyMap(Map::new()))
+            Ok(MyMap(BTreeMap::new()))
         }
 
         #[inline]
         fn visit_map<Visitor>(self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
             where Visitor: de::MapVisitor,
         {
-            let mut values = Map::new();
+            let mut values = BTreeMap::new();
 
             while let Some((key, value)) = try!(visitor.visit()) {
                 values.insert(key, value);
@@ -1429,9 +1447,9 @@ fn test_serialize_map_with_no_len() {
         }
     }
 
-    let mut map = Map::new();
-    map.insert("a", MyMap(Map::new()));
-    map.insert("b", MyMap(Map::new()));
+    let mut map = BTreeMap::new();
+    map.insert("a", MyMap(BTreeMap::new()));
+    map.insert("b", MyMap(BTreeMap::new()));
     let map: MyMap<_, MyMap<u32, u32>> = MyMap(map);
 
     test_encode_ok(&[
@@ -1578,13 +1596,13 @@ fn test_json_stream_newlines() {
     );
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &Value::U64(39));
+               &39.into());
     assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &Value::U64(40));
+               &40.into());
     assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &Value::U64(41));
+               &41.into());
     assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &Value::U64(42));
+               &42.into());
     assert!(parsed.next().is_none());
 }
 
@@ -1596,7 +1614,7 @@ fn test_json_stream_trailing_whitespaces() {
     );
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &Value::U64(42));
+               &42.into());
     assert!(parsed.next().is_none());
 }
 
@@ -1608,7 +1626,7 @@ fn test_json_stream_truncated() {
     );
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &Value::U64(40));
+               &40.into());
     assert!(parsed.next().unwrap().is_err());
     assert!(parsed.next().is_none());
 }
@@ -1644,15 +1662,15 @@ fn test_json_pointer() {
                            Value::String("baz".to_owned())]));
     assert_eq!(data.pointer("/foo/0").unwrap(),
         &Value::String("bar".to_owned()));
-    assert_eq!(data.pointer("/").unwrap(), &Value::U64(0));
-    assert_eq!(data.pointer("/a~1b").unwrap(), &Value::U64(1));
-    assert_eq!(data.pointer("/c%d").unwrap(), &Value::U64(2));
-    assert_eq!(data.pointer("/e^f").unwrap(), &Value::U64(3));
-    assert_eq!(data.pointer("/g|h").unwrap(), &Value::U64(4));
-    assert_eq!(data.pointer("/i\\j").unwrap(), &Value::U64(5));
-    assert_eq!(data.pointer("/k\"l").unwrap(), &Value::U64(6));
-    assert_eq!(data.pointer("/ ").unwrap(), &Value::U64(7));
-    assert_eq!(data.pointer("/m~0n").unwrap(), &Value::U64(8));
+    assert_eq!(data.pointer("/").unwrap(), &0.into());
+    assert_eq!(data.pointer("/a~1b").unwrap(), &1.into());
+    assert_eq!(data.pointer("/c%d").unwrap(), &2.into());
+    assert_eq!(data.pointer("/e^f").unwrap(), &3.into());
+    assert_eq!(data.pointer("/g|h").unwrap(), &4.into());
+    assert_eq!(data.pointer("/i\\j").unwrap(), &5.into());
+    assert_eq!(data.pointer("/k\"l").unwrap(), &6.into());
+    assert_eq!(data.pointer("/ ").unwrap(), &7.into());
+    assert_eq!(data.pointer("/m~0n").unwrap(), &8.into());
     // Invalid pointers
     assert!(data.pointer("/unknown").is_none());
     assert!(data.pointer("/e^f/ertz").is_none());
@@ -1684,15 +1702,15 @@ fn test_json_pointer_mut() {
                            Value::String("baz".to_owned())]));
     assert_eq!(data.pointer_mut("/foo/0").unwrap(),
         &Value::String("bar".to_owned()));
-    assert_eq!(data.pointer_mut("/").unwrap(), &Value::U64(0));
-    assert_eq!(data.pointer_mut("/a~1b").unwrap(), &Value::U64(1));
-    assert_eq!(data.pointer_mut("/c%d").unwrap(), &Value::U64(2));
-    assert_eq!(data.pointer_mut("/e^f").unwrap(), &Value::U64(3));
-    assert_eq!(data.pointer_mut("/g|h").unwrap(), &Value::U64(4));
-    assert_eq!(data.pointer_mut("/i\\j").unwrap(), &Value::U64(5));
-    assert_eq!(data.pointer_mut("/k\"l").unwrap(), &Value::U64(6));
-    assert_eq!(data.pointer_mut("/ ").unwrap(), &Value::U64(7));
-    assert_eq!(data.pointer_mut("/m~0n").unwrap(), &Value::U64(8));
+    assert_eq!(data.pointer_mut("/").unwrap(), &0.into());
+    assert_eq!(data.pointer_mut("/a~1b").unwrap(), &1.into());
+    assert_eq!(data.pointer_mut("/c%d").unwrap(), &2.into());
+    assert_eq!(data.pointer_mut("/e^f").unwrap(), &3.into());
+    assert_eq!(data.pointer_mut("/g|h").unwrap(), &4.into());
+    assert_eq!(data.pointer_mut("/i\\j").unwrap(), &5.into());
+    assert_eq!(data.pointer_mut("/k\"l").unwrap(), &6.into());
+    assert_eq!(data.pointer_mut("/ ").unwrap(), &7.into());
+    assert_eq!(data.pointer_mut("/m~0n").unwrap(), &8.into());
 
     // Invalid pointers
     assert!(data.pointer_mut("/unknown").is_none());
@@ -1701,13 +1719,13 @@ fn test_json_pointer_mut() {
     assert!(data.pointer_mut("/foo/01").is_none());
 
     // Mutable pointer checks
-    *data.pointer_mut("/").unwrap() = Value::U64(100);
-    assert_eq!(data.pointer("/").unwrap(), &Value::U64(100));
+    *data.pointer_mut("/").unwrap() = 100.into();
+    assert_eq!(data.pointer("/").unwrap(), &100.into());
     *data.pointer_mut("/foo/0").unwrap() = Value::String("buzz".to_owned());
     assert_eq!(data.pointer("/foo/0").unwrap(), &Value::String("buzz".to_owned()));
 
     // Example of ownership stealing
-    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, Value::Null)).unwrap(), Value::U64(1));
+    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, Value::Null)).unwrap(), 1.into());
     assert_eq!(data.pointer("/a~1b").unwrap(), &Value::Null);
 
     // Need to compare against a clone so we don't anger the borrow checker

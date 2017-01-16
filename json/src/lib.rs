@@ -102,7 +102,7 @@
 //!
 //!     for (key, value) in obj.iter() {
 //!         println!("{}: {}", key, match *value {
-//!             Value::U64(v) => format!("{} (u64)", v),
+//!             Value::Number(ref v) => format!("{} (number)", v),
 //!             Value::String(ref v) => format!("{} (string)", v),
 //!             _ => format!("other")
 //!         });
@@ -151,7 +151,7 @@ pub use self::de::{Deserializer, StreamDeserializer, from_iter, from_reader,
 pub use self::error::{Error, ErrorCode, Result};
 pub use self::ser::{Serializer, escape_str, to_string, to_string_pretty,
                     to_vec, to_vec_pretty, to_writer, to_writer_pretty};
-pub use self::value::{Map, Value, from_value, to_value};
+pub use self::value::{Map, Number, Value, from_value, to_value};
 
 pub mod builder;
 pub mod de;
@@ -159,4 +159,6 @@ pub mod error;
 pub mod ser;
 pub mod value;
 
+mod map;
+mod number;
 mod read;
