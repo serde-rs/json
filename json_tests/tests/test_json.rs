@@ -1281,15 +1281,6 @@ fn test_find_path() {
 }
 
 #[test]
-fn test_lookup() {
-    let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
-
-    assert!(obj.lookup("x.a").unwrap() == &Value::U64(1));
-    assert!(obj.lookup("y").unwrap() == &Value::U64(2));
-    assert!(obj.lookup("z").is_none());
-}
-
-#[test]
 fn test_serialize_seq_with_no_len() {
     #[derive(Clone, Debug, PartialEq)]
     struct MyVec<T>(Vec<T>);
@@ -1586,13 +1577,13 @@ fn test_json_stream_newlines() {
         stream.as_bytes().iter().map(|byte| Ok(*byte))
     );
 
-    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
                &Value::U64(39));
-    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
                &Value::U64(40));
-    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
                &Value::U64(41));
-    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
                &Value::U64(42));
     assert!(parsed.next().is_none());
 }
@@ -1604,7 +1595,7 @@ fn test_json_stream_trailing_whitespaces() {
         stream.as_bytes().iter().map(|byte| Ok(*byte))
     );
 
-    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
                &Value::U64(42));
     assert!(parsed.next().is_none());
 }
@@ -1616,7 +1607,7 @@ fn test_json_stream_truncated() {
         stream.as_bytes().iter().map(|byte| Ok(*byte))
     );
 
-    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
                &Value::U64(40));
     assert!(parsed.next().unwrap().is_err());
     assert!(parsed.next().is_none());
