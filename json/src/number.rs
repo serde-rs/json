@@ -12,7 +12,7 @@ pub struct Number(N);
 // https://github.com/Manishearth/rust-clippy/issues/1241
 #[cfg_attr(feature = "clippy", allow(pub_enum_variant_names))]
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum N {
+enum N {
     PosInt(u64),
     /// Always less than zero.
     NegInt(i64),
