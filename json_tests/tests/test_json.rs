@@ -84,7 +84,7 @@ fn test_encode_ok<T>(errors: &[(T, &str)])
         let s = serde_json::to_string(value).unwrap();
         assert_eq!(s, out);
 
-        let v = to_value(&value);
+        let v = to_value(&value).unwrap();
         let s = serde_json::to_string(&v).unwrap();
         assert_eq!(s, out);
     }
@@ -99,7 +99,7 @@ fn test_pretty_encode_ok<T>(errors: &[(T, &str)])
         let s = serde_json::to_string_pretty(value).unwrap();
         assert_eq!(s, out);
 
-        let v = to_value(&value);
+        let v = to_value(&value).unwrap();
         let s = serde_json::to_string_pretty(&v).unwrap();
         assert_eq!(s, out);
     }
@@ -153,16 +153,16 @@ fn test_write_f64() {
 
 #[test]
 fn test_encode_nonfinite_float_yields_null() {
-    let v = to_value(::std::f64::NAN);
+    let v = to_value(::std::f64::NAN).unwrap();
     assert!(v.is_null());
 
-    let v = to_value(::std::f64::INFINITY);
+    let v = to_value(::std::f64::INFINITY).unwrap();
     assert!(v.is_null());
 
-    let v = to_value(::std::f32::NAN);
+    let v = to_value(::std::f32::NAN).unwrap();
     assert!(v.is_null());
 
-    let v = to_value(::std::f32::INFINITY);
+    let v = to_value(::std::f32::INFINITY).unwrap();
     assert!(v.is_null());
 }
 
@@ -684,7 +684,7 @@ fn test_write_newtype_struct() {
     struct Newtype(BTreeMap<String, i32>);
 
     let inner = Newtype(treemap!(String::from("inner") => 123));
-    let outer = treemap!(String::from("outer") => to_value(&inner));
+    let outer = treemap!(String::from("outer") => to_value(&inner).unwrap());
 
     test_encode_ok(&[
         (inner, r#"{"inner":123}"#),
@@ -710,7 +710,7 @@ fn test_parse_ok<T>(tests: Vec<(&str, T)>)
 
         // Make sure we can deserialize into a `Value`.
         let json_value: Value = from_str(s).unwrap();
-        assert_eq!(json_value, to_value(&value));
+        assert_eq!(json_value, to_value(&value).unwrap());
 
         // Make sure we can deserialize from a `Value`.
         let v: T = from_value(json_value.clone()).unwrap();
@@ -1299,6 +1299,7 @@ fn test_find_path() {
 }
 
 #[test]
+<<<<<<< HEAD
 fn test_lookup() {
     let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 
@@ -1308,6 +1309,18 @@ fn test_lookup() {
 }
 
 #[test]
+||||||| merged common ancestors
+fn test_lookup() {
+    let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
+
+    assert!(obj.lookup("x.a").unwrap() == &Value::U64(1));
+    assert!(obj.lookup("y").unwrap() == &Value::U64(2));
+    assert!(obj.lookup("z").is_none());
+}
+
+#[test]
+=======
+>>>>>>> origin/master
 fn test_serialize_seq_with_no_len() {
     #[derive(Clone, Debug, PartialEq)]
     struct MyVec<T>(Vec<T>);
@@ -1604,6 +1617,7 @@ fn test_json_stream_newlines() {
         stream.as_bytes().iter().map(|byte| Ok(*byte))
     );
 
+<<<<<<< HEAD
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
                &39.into());
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
@@ -1612,6 +1626,25 @@ fn test_json_stream_newlines() {
                &41.into());
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
                &42.into());
+||||||| merged common ancestors
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(39));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(40));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(41));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(42));
+=======
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
+               &Value::U64(39));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
+               &Value::U64(40));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
+               &Value::U64(41));
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
+               &Value::U64(42));
+>>>>>>> origin/master
     assert!(parsed.next().is_none());
 }
 
@@ -1622,8 +1655,16 @@ fn test_json_stream_trailing_whitespaces() {
         stream.as_bytes().iter().map(|byte| Ok(*byte))
     );
 
+<<<<<<< HEAD
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
                &42.into());
+||||||| merged common ancestors
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(42));
+=======
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
+               &Value::U64(42));
+>>>>>>> origin/master
     assert!(parsed.next().is_none());
 }
 
@@ -1634,8 +1675,16 @@ fn test_json_stream_truncated() {
         stream.as_bytes().iter().map(|byte| Ok(*byte))
     );
 
+<<<<<<< HEAD
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
                &40.into());
+||||||| merged common ancestors
+    assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
+               &Value::U64(40));
+=======
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
+               &Value::U64(40));
+>>>>>>> origin/master
     assert!(parsed.next().unwrap().is_err());
     assert!(parsed.next().is_none());
 }
