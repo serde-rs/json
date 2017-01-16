@@ -19,6 +19,7 @@ pub enum N {
 
 impl Number {
     /// Returns true if the number can be represented by i64.
+    #[inline]
     pub fn is_i64(&self) -> bool {
         match self.0 {
             N::PosInt(v) => v <= i64::MAX as u64,
@@ -28,6 +29,7 @@ impl Number {
     }
 
     /// Returns true if the number can be represented as u64.
+    #[inline]
     pub fn is_u64(&self) -> bool {
         match self.0 {
             N::PosInt(_) => true,
@@ -36,6 +38,7 @@ impl Number {
     }
 
     /// Returns true if the number can be represented as f64.
+    #[inline]
     pub fn is_f64(&self) -> bool {
         match self.0 {
             N::Float(_) => true,
@@ -44,6 +47,7 @@ impl Number {
     }
 
     /// Returns the number represented as i64 if possible, or else None.
+    #[inline]
     pub fn as_i64(&self) -> Option<i64> {
         match self.0 {
             N::PosInt(n) => NumCast::from(n),
@@ -53,6 +57,7 @@ impl Number {
     }
 
     /// Returns the number represented as u64 if possible, or else None.
+    #[inline]
     pub fn as_u64(&self) -> Option<u64> {
         match self.0 {
             N::PosInt(n) => Some(n),
@@ -62,6 +67,7 @@ impl Number {
     }
 
     /// Returns the number represented as f64 if possible, or else None.
+    #[inline]
     pub fn as_f64(&self) -> Option<f64> {
         match self.0 {
             N::PosInt(n) => NumCast::from(n),
@@ -72,6 +78,7 @@ impl Number {
 
     /// Converts a finite f64 to a Number. Infinite or NaN values are not JSON
     /// numbers.
+    #[inline]
     pub fn from_f64(f: f64) -> Option<Number> {
         if f.is_finite() {
             Some(Number(N::Float(f)))
@@ -92,6 +99,7 @@ impl fmt::Display for Number {
 }
 
 impl Serialize for Number {
+    #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer
     {
@@ -104,6 +112,7 @@ impl Serialize for Number {
 }
 
 impl Deserialize for Number {
+    #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Number, D::Error>
         where D: Deserializer
     {
@@ -112,14 +121,17 @@ impl Deserialize for Number {
         impl Visitor for NumberVisitor {
             type Value = Number;
 
+            #[inline]
             fn visit_i64<E>(self, value: i64) -> Result<Number, E> {
                 Ok(value.into())
             }
 
+            #[inline]
             fn visit_u64<E>(self, value: u64) -> Result<Number, E> {
                 Ok(value.into())
             }
 
+            #[inline]
             fn visit_f64<E>(self, value: f64) -> Result<Number, E>
                 where E: de::Error
             {
@@ -134,6 +146,7 @@ impl Deserialize for Number {
 impl Deserializer for Number {
     type Error = Error;
 
+    #[inline]
     fn deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
         where V: Visitor
     {
@@ -155,6 +168,7 @@ macro_rules! from_signed {
     ($($signed_ty:ident)*) => {
         $(
             impl From<$signed_ty> for Number {
+                #[inline]
                 fn from(i: $signed_ty) -> Self {
                     if i < 0 {
                         Number(N::NegInt(i as i64))
@@ -171,6 +185,7 @@ macro_rules! from_unsigned {
     ($($unsigned_ty:ident)*) => {
         $(
             impl From<$unsigned_ty> for Number {
+                #[inline]
                 fn from(u: $unsigned_ty) -> Self {
                     Number(N::PosInt(u as u64))
                 }

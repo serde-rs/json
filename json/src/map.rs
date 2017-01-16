@@ -20,12 +20,14 @@ type MapImpl<K, V> = LinkedHashMap<K, V>;
 
 impl Map<String, Value> {
     /// Makes a new empty Map.
+    #[inline]
     pub fn new() -> Self {
         Map(MapImpl::new())
     }
 
     #[cfg(not(feature = "preserve_order"))]
     /// Makes a new empty Map with the given initial capacity.
+    #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         let _ = capacity;
         Map(BTreeMap::new()) // does not support with_capacity
@@ -33,11 +35,13 @@ impl Map<String, Value> {
 
     #[cfg(feature = "preserve_order")]
     /// Makes a new empty Map with the given initial capacity.
+    #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         Map(LinkedHashMap::with_capacity(capacity))
     }
 
     /// Clears the map, removing all values.
+    #[inline]
     pub fn clear(&mut self) {
         self.0.clear()
     }
@@ -46,6 +50,7 @@ impl Map<String, Value> {
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
+    #[inline]
     pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&Value>
         where String: Borrow<Q>,
               Q: Ord + Eq + Hash
@@ -57,6 +62,7 @@ impl Map<String, Value> {
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
+    #[inline]
     pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
         where String: Borrow<Q>,
               Q: Ord + Eq + Hash
@@ -68,6 +74,7 @@ impl Map<String, Value> {
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
+    #[inline]
     pub fn get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut Value>
         where String: Borrow<Q>,
               Q: Ord + Eq + Hash
@@ -82,6 +89,7 @@ impl Map<String, Value> {
     /// If the map did have this key present, the value is updated, and the old
     /// value is returned. The key is not updated, though; this matters for
     /// types that can be `==` without being identical.
+    #[inline]
     pub fn insert(&mut self, k: String, v: Value) -> Option<Value> {
         self.0.insert(k, v)
     }
@@ -91,6 +99,7 @@ impl Map<String, Value> {
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
+    #[inline]
     pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<Value>
         where String: Borrow<Q>,
               Q: Ord + Eq + Hash
@@ -99,61 +108,72 @@ impl Map<String, Value> {
     }
 
     /// Returns the number of elements in the map.
+    #[inline]
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
     /// Returns true if the map contains no elements.
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
     /// Gets an iterator over the entries of the map.
+    #[inline]
     pub fn iter(&self) -> MapIter {
         MapIter(self.0.iter())
     }
 
     /// Gets a mutable iterator over the entries of the map.
+    #[inline]
     pub fn iter_mut(&mut self) -> MapIterMut {
         MapIterMut(self.0.iter_mut())
     }
 
     /// Gets an iterator over the keys of the map.
+    #[inline]
     pub fn keys(&self) -> MapKeys {
         MapKeys(self.0.keys())
     }
 
     /// Gets an iterator over the values of the map.
+    #[inline]
     pub fn values(&self) -> MapValues {
         MapValues(self.0.values())
     }
 }
 
 impl Default for Map<String, Value> {
+    #[inline]
     fn default() -> Self {
         Map(MapImpl::new())
     }
 }
 
 impl Clone for Map<String, Value> {
+    #[inline]
     fn clone(&self) -> Self {
         Map(self.0.clone())
     }
 }
 
 impl PartialEq for Map<String, Value> {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
     }
 }
 
 impl Debug for Map<String, Value> {
+    #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.0.fmt(formatter)
     }
 }
 
 impl ser::Serialize for Map<String, Value> {
+    #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: ser::Serializer
     {
@@ -168,6 +188,7 @@ impl ser::Serialize for Map<String, Value> {
 }
 
 impl de::Deserialize for Map<String, Value> {
+    #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where D: de::Deserializer
     {
@@ -176,12 +197,14 @@ impl de::Deserialize for Map<String, Value> {
         impl de::Visitor for Visitor {
             type Value = Map<String, Value>;
 
+            #[inline]
             fn visit_unit<E>(self) -> Result<Self::Value, E>
                 where E: de::Error
             {
                 Ok(Map::new())
             }
 
+            #[inline]
             fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
                 where V: de::MapVisitor
             {
@@ -203,21 +226,25 @@ macro_rules! delegate_iterator {
     (($name:ident $($generics:tt)*) => $item:ty) => {
         impl $($generics)* Iterator for $name $($generics)* {
             type Item = $item;
+            #[inline]
             fn next(&mut self) -> Option<Self::Item> {
                 self.0.next()
             }
+            #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
                 self.0.size_hint()
             }
         }
 
         impl $($generics)* DoubleEndedIterator for $name $($generics)* {
+            #[inline]
             fn next_back(&mut self) -> Option<Self::Item> {
                 self.0.next_back()
             }
         }
 
         impl $($generics)* ExactSizeIterator for $name $($generics)* {
+            #[inline]
             fn len(&self) -> usize {
                 self.0.len()
             }
@@ -230,6 +257,7 @@ macro_rules! delegate_iterator {
 impl<'a> IntoIterator for &'a Map<String, Value> {
     type Item = (&'a String, &'a Value);
     type IntoIter = MapIter<'a>;
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         MapIter(self.0.iter())
     }
@@ -249,6 +277,7 @@ delegate_iterator!((MapIter<'a>) => (&'a String, &'a Value));
 impl<'a> IntoIterator for &'a mut Map<String, Value> {
     type Item = (&'a String, &'a mut Value);
     type IntoIter = MapIterMut<'a>;
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         MapIterMut(self.0.iter_mut())
     }
@@ -268,6 +297,7 @@ delegate_iterator!((MapIterMut<'a>) => (&'a String, &'a mut Value));
 impl IntoIterator for Map<String, Value> {
     type Item = (String, Value);
     type IntoIter = MapIntoIter;
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         MapIntoIter(self.0.into_iter())
     }
