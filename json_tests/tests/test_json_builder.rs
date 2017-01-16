@@ -13,15 +13,17 @@ fn test_array_builder() {
         .push(3)
         .build();
     assert_eq!(value,
-               Value::Array(vec![Value::U64(1), Value::U64(2), Value::U64(3)]));
+               Value::Array(vec![Value::Number(1.into()),
+                                 Value::Number(2.into()),
+                                 Value::Number(3.into())]));
 
     let value = ArrayBuilder::new()
         .push_array(|bld| bld.push(1).push(2).push(3))
         .build();
     assert_eq!(value,
-               Value::Array(vec![Value::Array(vec![Value::U64(1),
-                                                   Value::U64(2),
-                                                   Value::U64(3)])]));
+               Value::Array(vec![Value::Array(vec![Value::Number(1.into()),
+                                                   Value::Number(2.into()),
+                                                   Value::Number(3.into())])]));
 
     let value = ArrayBuilder::new()
         .push_object(|bld| {
@@ -31,8 +33,8 @@ fn test_array_builder() {
         .build();
 
     let mut map = Map::new();
-    map.insert("a".to_string(), Value::U64(1));
-    map.insert("b".to_string(), Value::U64(2));
+    map.insert("a".to_string(), Value::Number(1.into()));
+    map.insert("b".to_string(), Value::Number(2.into()));
     assert_eq!(value, Value::Array(vec![Value::Object(map)]));
 }
 
@@ -47,7 +49,7 @@ fn test_object_builder() {
         .build();
 
     let mut map = Map::new();
-    map.insert("a".to_string(), Value::U64(1));
-    map.insert("b".to_string(), Value::U64(2));
+    map.insert("a".to_string(), Value::Number(1.into()));
+    map.insert("b".to_string(), Value::Number(2.into()));
     assert_eq!(value, Value::Object(map));
 }

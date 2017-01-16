@@ -24,8 +24,8 @@
 //!
 //! fn main() {
 //!     let mut map = Map::new();
-//!     map.insert(String::from("x"), Value::F64(1.0));
-//!     map.insert(String::from("y"), Value::F64(2.0));
+//!     map.insert(String::from("x"), 1.0.into());
+//!     map.insert(String::from("y"), 2.0.into());
 //!     let value = Value::Object(map);
 //!
 //!     let map: Map<String, Value> = serde_json::from_value(value).unwrap();
@@ -33,11 +33,10 @@
 //! ```
 
 use std::fmt;
+use std::i64;
 use std::io;
 use std::str;
 use std::vec;
-
-use num_traits::NumCast;
 
 use serde::de;
 use serde::ser;
@@ -46,32 +45,27 @@ use serde::de::value::ValueDeserializer;
 use error::{Error, ErrorCode};
 
 pub use map::Map;
+pub use number::Number;
 
-/// Represents a JSON value
+/// Represents any valid JSON value.
 #[derive(Clone, PartialEq)]
 pub enum Value {
-    /// Represents a JSON null value
+    /// Represents a JSON null value.
     Null,
 
-    /// Represents a JSON Boolean
+    /// Represents a JSON boolean.
     Bool(bool),
 
-    /// Represents a JSON signed integer
-    I64(i64),
+    /// Represents a JSON number, whether integer or floating point.
+    Number(Number),
 
-    /// Represents a JSON unsigned integer
-    U64(u64),
-
-    /// Represents a JSON floating point number
-    F64(f64),
-
-    /// Represents a JSON string
+    /// Represents a JSON string.
     String(String),
 
-    /// Represents a JSON array
+    /// Represents a JSON array.
     Array(Vec<Value>),
 
-    /// Represents a JSON object
+    /// Represents a JSON object.
     Object(Map<String, Value>),
 }
 
@@ -119,7 +113,7 @@ impl Value {
     /// ``` ignore
     /// let obj: Value = json::from_str(r#"{"x": {"a": 1}}"#).unwrap();
     ///
-    /// assert!(obj.lookup("x.a").unwrap() == &Value::U64(1));
+    /// assert!(obj.lookup("x.a").unwrap() == &1.into());
     /// ```
     pub fn lookup<'a>(&'a self, path: &str) -> Option<&'a Value> {
         let mut target = self;
@@ -196,15 +190,15 @@ impl Value {
     ///     let mut value: Value = serde_json::from_str(s).unwrap();
     ///
     ///     // Check value using read-only pointer
-    ///     assert_eq!(value.pointer("/x"), Some(&Value::F64(1.0)));
+    ///     assert_eq!(value.pointer("/x"), Some(&1.0.into()));
     ///     // Change value with direct assignment
-    ///     *value.pointer_mut("/x").unwrap() = Value::F64(1.5);
+    ///     *value.pointer_mut("/x").unwrap() = 1.5.into();
     ///     // Check that new value was written
-    ///     assert_eq!(value.pointer("/x"), Some(&Value::F64(1.5)));
+    ///     assert_eq!(value.pointer("/x"), Some(&1.5.into()));
     ///
     ///     // "Steal" ownership of a value. Can replace with any valid Value.
     ///     let old_x = value.pointer_mut("/x").map(|x| mem::replace(x, Value::Null)).unwrap();
-    ///     assert_eq!(old_x, Value::F64(1.5));
+    ///     assert_eq!(old_x, 1.5.into());
     ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Null);
     /// }
     /// ```
@@ -322,62 +316,58 @@ impl Value {
     /// Returns true if the `Value` is a Number. Returns false otherwise.
     pub fn is_number(&self) -> bool {
         match *self {
-            Value::I64(_) | Value::U64(_) | Value::F64(_) => true,
+            Value::Number(_) => true,
             _ => false,
         }
     }
 
-    /// Returns true if the `Value` is a i64. Returns false otherwise.
+    /// Returns true if the `Value` is a number that can be represented by i64.
     pub fn is_i64(&self) -> bool {
         match *self {
-            Value::I64(_) => true,
+            Value::Number(ref n) => n.is_i64(),
             _ => false,
         }
     }
 
-    /// Returns true if the `Value` is a u64. Returns false otherwise.
+    /// Returns true if the `Value` is a number that can be represented by u64.
     pub fn is_u64(&self) -> bool {
         match *self {
-            Value::U64(_) => true,
+            Value::Number(ref n) => n.is_u64(),
             _ => false,
         }
     }
 
-    /// Returns true if the `Value` is a f64. Returns false otherwise.
+    /// Returns true if the `Value` is a number that can be represented by f64.
     pub fn is_f64(&self) -> bool {
         match *self {
-            Value::F64(_) => true,
+            Value::Number(ref n) => n.is_f64(),
             _ => false,
         }
     }
 
-    /// If the `Value` is a number, return or cast it to a i64.
+    /// If the `Value` is a number, represent it as i64 if possible.
     /// Returns None otherwise.
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
-            Value::I64(n) => Some(n),
-            Value::U64(n) => NumCast::from(n),
+            Value::Number(ref n) => n.as_i64(),
             _ => None,
         }
     }
 
-    /// If the `Value` is a number, return or cast it to a u64.
+    /// If the `Value` is a number, represent it as u64 if possible.
     /// Returns None otherwise.
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
-            Value::I64(n) => NumCast::from(n),
-            Value::U64(n) => Some(n),
+            Value::Number(ref n) => n.as_u64(),
             _ => None,
         }
     }
 
-    /// If the `Value` is a number, return or cast it to a f64.
+    /// If the `Value` is a number, represent it as f64 if possible.
     /// Returns None otherwise.
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
-            Value::I64(n) => NumCast::from(n),
-            Value::U64(n) => NumCast::from(n),
-            Value::F64(n) => Some(n),
+            Value::Number(ref n) => n.as_f64(),
             _ => None,
         }
     }
@@ -411,6 +401,35 @@ impl Value {
     }
 }
 
+macro_rules! from_integer {
+    ($($ty:ident)*) => {
+        $(
+            impl From<$ty> for Value {
+                fn from(n: $ty) -> Self {
+                    Value::Number(n.into())
+                }
+            }
+        )*
+    };
+}
+
+from_integer! {
+    i8 i16 i32 i64 isize
+    u8 u16 u32 u64 usize
+}
+
+impl From<f32> for Value {
+    fn from(f: f32) -> Self {
+        From::from(f as f64)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(f: f64) -> Self {
+        Number::from_f64(f).map(Value::Number).unwrap_or(Value::Null)
+    }
+}
+
 impl ser::Serialize for Value {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -419,9 +438,7 @@ impl ser::Serialize for Value {
         match *self {
             Value::Null => serializer.serialize_unit(),
             Value::Bool(b) => serializer.serialize_bool(b),
-            Value::I64(i) => serializer.serialize_i64(i),
-            Value::U64(u) => serializer.serialize_u64(u),
-            Value::F64(f) => serializer.serialize_f64(f),
+            Value::Number(ref n) => n.serialize(serializer),
             Value::String(ref s) => serializer.serialize_str(s),
             Value::Array(ref v) => v.serialize(serializer),
             Value::Object(ref m) => {
@@ -454,21 +471,17 @@ impl de::Deserialize for Value {
 
             #[inline]
             fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
-                if value < 0 {
-                    Ok(Value::I64(value))
-                } else {
-                    Ok(Value::U64(value as u64))
-                }
+                Ok(Value::Number(value.into()))
             }
 
             #[inline]
             fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
-                Ok(Value::U64(value))
+                Ok(Value::Number(value.into()))
             }
 
             #[inline]
             fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
-                Ok(Value::F64(value))
+                Ok(Number::from_f64(value).map(Value::Number).unwrap_or(Value::Null))
             }
 
             #[inline]
@@ -617,11 +630,7 @@ impl ser::Serializer for Serializer {
     }
 
     fn serialize_i64(self, value: i64) -> Result<Value, Error> {
-        Ok(if value < 0 {
-            Value::I64(value)
-        } else {
-            Value::U64(value as u64)
-        })
+        Ok(Value::Number(value.into()))
     }
 
     #[inline]
@@ -646,7 +655,7 @@ impl ser::Serializer for Serializer {
 
     #[inline]
     fn serialize_u64(self, value: u64) -> Result<Value, Error> {
-        Ok(Value::U64(value))
+        Ok(Value::Number(value.into()))
     }
 
     #[inline]
@@ -656,11 +665,7 @@ impl ser::Serializer for Serializer {
 
     #[inline]
     fn serialize_f64(self, value: f64) -> Result<Value, Error> {
-        Ok(if value.is_finite() {
-            Value::F64(value)
-        } else {
-            Value::Null
-        })
+        Ok(Number::from_f64(value).map(Value::Number).unwrap_or(Value::Null))
     }
 
     #[inline]
@@ -676,7 +681,7 @@ impl ser::Serializer for Serializer {
     }
 
     fn serialize_bytes(self, value: &[u8]) -> Result<Value, Error> {
-        let vec = value.iter().map(|b| Value::U64(*b as u64)).collect();
+        let vec = value.iter().map(|&b: &u8| Value::Number(b.into())).collect();
         Ok(Value::Array(vec))
     }
 
@@ -981,9 +986,7 @@ impl de::Deserializer for Value {
         match self {
             Value::Null => visitor.visit_unit(),
             Value::Bool(v) => visitor.visit_bool(v),
-            Value::I64(v) => visitor.visit_i64(v),
-            Value::U64(v) => visitor.visit_u64(v),
-            Value::F64(v) => visitor.visit_f64(v),
+            Value::Number(n) => n.deserialize(visitor),
             Value::String(v) => visitor.visit_string(v),
             Value::Array(v) => {
                 let mut deserializer = SeqDeserializer::new(v);

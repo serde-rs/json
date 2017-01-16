@@ -280,7 +280,7 @@ fn test_write_list() {
     let long_test_list = Value::Array(vec![
         Value::Bool(false),
         Value::Null,
-        Value::Array(vec![Value::String("foo\nbar".to_string()), Value::F64(3.5)])]);
+        Value::Array(vec![Value::String("foo\nbar".to_string()), 3.5.into()])]);
 
     test_encode_ok(&[
         (
@@ -1293,8 +1293,8 @@ fn test_missing_renamed_field() {
 fn test_find_path() {
     let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 
-    assert!(obj.find_path(&["x", "a"]).unwrap() == &Value::U64(1));
-    assert!(obj.find_path(&["y"]).unwrap() == &Value::U64(2));
+    assert!(obj.find_path(&["x", "a"]).unwrap() == &1.into());
+    assert!(obj.find_path(&["y"]).unwrap() == &2.into());
     assert!(obj.find_path(&["z"]).is_none());
 }
 
@@ -1302,8 +1302,8 @@ fn test_find_path() {
 fn test_lookup() {
     let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 
-    assert!(obj.lookup("x.a").unwrap() == &Value::U64(1));
-    assert!(obj.lookup("y").unwrap() == &Value::U64(2));
+    assert!(obj.lookup("x.a").unwrap() == &1.into());
+    assert!(obj.lookup("y").unwrap() == &2.into());
     assert!(obj.lookup("z").is_none());
 }
 
@@ -1605,13 +1605,13 @@ fn test_json_stream_newlines() {
     );
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(39));
+               &39.into());
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(40));
+               &40.into());
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(41));
+               &41.into());
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(42));
+               &42.into());
     assert!(parsed.next().is_none());
 }
 
@@ -1623,7 +1623,7 @@ fn test_json_stream_trailing_whitespaces() {
     );
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(42));
+               &42.into());
     assert!(parsed.next().is_none());
 }
 
@@ -1635,7 +1635,7 @@ fn test_json_stream_truncated() {
     );
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().lookup("x").unwrap(),
-               &Value::U64(40));
+               &40.into());
     assert!(parsed.next().unwrap().is_err());
     assert!(parsed.next().is_none());
 }
@@ -1671,15 +1671,15 @@ fn test_json_pointer() {
                            Value::String("baz".to_owned())]));
     assert_eq!(data.pointer("/foo/0").unwrap(),
         &Value::String("bar".to_owned()));
-    assert_eq!(data.pointer("/").unwrap(), &Value::U64(0));
-    assert_eq!(data.pointer("/a~1b").unwrap(), &Value::U64(1));
-    assert_eq!(data.pointer("/c%d").unwrap(), &Value::U64(2));
-    assert_eq!(data.pointer("/e^f").unwrap(), &Value::U64(3));
-    assert_eq!(data.pointer("/g|h").unwrap(), &Value::U64(4));
-    assert_eq!(data.pointer("/i\\j").unwrap(), &Value::U64(5));
-    assert_eq!(data.pointer("/k\"l").unwrap(), &Value::U64(6));
-    assert_eq!(data.pointer("/ ").unwrap(), &Value::U64(7));
-    assert_eq!(data.pointer("/m~0n").unwrap(), &Value::U64(8));
+    assert_eq!(data.pointer("/").unwrap(), &0.into());
+    assert_eq!(data.pointer("/a~1b").unwrap(), &1.into());
+    assert_eq!(data.pointer("/c%d").unwrap(), &2.into());
+    assert_eq!(data.pointer("/e^f").unwrap(), &3.into());
+    assert_eq!(data.pointer("/g|h").unwrap(), &4.into());
+    assert_eq!(data.pointer("/i\\j").unwrap(), &5.into());
+    assert_eq!(data.pointer("/k\"l").unwrap(), &6.into());
+    assert_eq!(data.pointer("/ ").unwrap(), &7.into());
+    assert_eq!(data.pointer("/m~0n").unwrap(), &8.into());
     // Invalid pointers
     assert!(data.pointer("/unknown").is_none());
     assert!(data.pointer("/e^f/ertz").is_none());
@@ -1711,15 +1711,15 @@ fn test_json_pointer_mut() {
                            Value::String("baz".to_owned())]));
     assert_eq!(data.pointer_mut("/foo/0").unwrap(),
         &Value::String("bar".to_owned()));
-    assert_eq!(data.pointer_mut("/").unwrap(), &Value::U64(0));
-    assert_eq!(data.pointer_mut("/a~1b").unwrap(), &Value::U64(1));
-    assert_eq!(data.pointer_mut("/c%d").unwrap(), &Value::U64(2));
-    assert_eq!(data.pointer_mut("/e^f").unwrap(), &Value::U64(3));
-    assert_eq!(data.pointer_mut("/g|h").unwrap(), &Value::U64(4));
-    assert_eq!(data.pointer_mut("/i\\j").unwrap(), &Value::U64(5));
-    assert_eq!(data.pointer_mut("/k\"l").unwrap(), &Value::U64(6));
-    assert_eq!(data.pointer_mut("/ ").unwrap(), &Value::U64(7));
-    assert_eq!(data.pointer_mut("/m~0n").unwrap(), &Value::U64(8));
+    assert_eq!(data.pointer_mut("/").unwrap(), &0.into());
+    assert_eq!(data.pointer_mut("/a~1b").unwrap(), &1.into());
+    assert_eq!(data.pointer_mut("/c%d").unwrap(), &2.into());
+    assert_eq!(data.pointer_mut("/e^f").unwrap(), &3.into());
+    assert_eq!(data.pointer_mut("/g|h").unwrap(), &4.into());
+    assert_eq!(data.pointer_mut("/i\\j").unwrap(), &5.into());
+    assert_eq!(data.pointer_mut("/k\"l").unwrap(), &6.into());
+    assert_eq!(data.pointer_mut("/ ").unwrap(), &7.into());
+    assert_eq!(data.pointer_mut("/m~0n").unwrap(), &8.into());
 
     // Invalid pointers
     assert!(data.pointer_mut("/unknown").is_none());
@@ -1728,13 +1728,13 @@ fn test_json_pointer_mut() {
     assert!(data.pointer_mut("/foo/01").is_none());
 
     // Mutable pointer checks
-    *data.pointer_mut("/").unwrap() = Value::U64(100);
-    assert_eq!(data.pointer("/").unwrap(), &Value::U64(100));
+    *data.pointer_mut("/").unwrap() = 100.into();
+    assert_eq!(data.pointer("/").unwrap(), &100.into());
     *data.pointer_mut("/foo/0").unwrap() = Value::String("buzz".to_owned());
     assert_eq!(data.pointer("/foo/0").unwrap(), &Value::String("buzz".to_owned()));
 
     // Example of ownership stealing
-    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, Value::Null)).unwrap(), Value::U64(1));
+    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, Value::Null)).unwrap(), 1.into());
     assert_eq!(data.pointer("/a~1b").unwrap(), &Value::Null);
 
     // Need to compare against a clone so we don't anger the borrow checker
