@@ -1339,12 +1339,16 @@ impl de::Deserializer for MapDeserializer {
     }
 }
 
-/// Shortcut function to encode a `T` into a JSON `Value`
+/// Convert a `T` into `serde_json::Value` which is an enum that can represent
+/// any valid JSON data.
+///
+/// This conversion can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 ///
 /// ```rust
-/// use serde_json::to_value;
-/// let val = to_value("foo").unwrap();
-/// assert_eq!(val.as_str(), Some("foo"))
+/// # use serde_json::Value;
+/// let val = serde_json::to_value("s").unwrap();
+/// assert_eq!(val, Value::String("s".to_owned()));
 /// ```
 pub fn to_value<T>(value: T) -> Result<Value, Error>
     where T: ser::Serialize,
@@ -1352,16 +1356,28 @@ pub fn to_value<T>(value: T) -> Result<Value, Error>
     value.serialize(Serializer)
 }
 
-/// Shortcut function to decode a JSON `Value` into a `T`
+/// Interpret a `serde_json::Value` as an instance of type `T`.
+///
+/// This conversion can fail if the structure of the Value does not match the
+/// structure expected by `T`, for example if `T` is a struct type but the Value
+/// contains something other than a JSON map. It can also fail if the structure
+/// is correct but `T`'s implementation of `Deserialize` decides that something
+/// is wrong with the data, for example required struct fields are missing from
+/// the JSON map or some number is too big to fit in the expected primitive
+/// type.
 pub fn from_value<T>(value: Value) -> Result<T, Error>
     where T: de::Deserialize,
 {
     de::Deserialize::deserialize(value)
 }
 
-/// A trait for converting values to JSON
+/// Representation of any serializable data as a `serde_json::Value`.
 pub trait ToJson {
-    /// Converts the value of `self` to an instance of JSON
+    /// Represent `self` as a `serde_json::Value`. Note that `Value` is not a
+    /// JSON string. If you need a string, use `serde_json::to_string` instead.
+    ///
+    /// This conversion can fail if `T`'s implementation of `Serialize` decides
+    /// to fail, or if `T` contains a map with non-string keys.
     fn to_json(&self) -> Result<Value, Error>;
 }
 
@@ -1369,6 +1385,6 @@ impl<T: ?Sized> ToJson for T
     where T: ser::Serialize,
 {
     fn to_json(&self) -> Result<Value, Error> {
-        to_value(&self)
+        to_value(self)
     }
 }
