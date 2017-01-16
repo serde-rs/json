@@ -426,7 +426,7 @@ impl From<f32> for Value {
 
 impl From<f64> for Value {
     fn from(f: f64) -> Self {
-        Number::from_f64(f).map(Value::Number).unwrap_or(Value::Null)
+        Number::from_f64(f).map_or(Value::Null, Value::Number)
     }
 }
 
@@ -481,7 +481,7 @@ impl de::Deserialize for Value {
 
             #[inline]
             fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
-                Ok(Number::from_f64(value).map(Value::Number).unwrap_or(Value::Null))
+                Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
             }
 
             #[inline]
@@ -665,7 +665,7 @@ impl ser::Serializer for Serializer {
 
     #[inline]
     fn serialize_f64(self, value: f64) -> Result<Value, Error> {
-        Ok(Number::from_f64(value).map(Value::Number).unwrap_or(Value::Null))
+        Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
     }
 
     #[inline]
