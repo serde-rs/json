@@ -10,7 +10,7 @@ pub struct Number(N);
 
 // "N" is a prefix of "NegInt"... this is a false positive.
 // https://github.com/Manishearth/rust-clippy/issues/1241
-#[cfg_attr(feature = "clippy", allow(pub_enum_variant_names))]
+#[cfg_attr(feature = "clippy", allow(enum_variant_names))]
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum N {
     PosInt(u64),
