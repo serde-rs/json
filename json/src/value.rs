@@ -655,7 +655,7 @@ impl ser::Serializer for Serializer {
     }
 
     fn serialize_bytes(self, value: &[u8]) -> Result<Value, Error> {
-        let vec = value.iter().map(|&b: &u8| Value::Number(b.into())).collect();
+        let vec = value.iter().map(|&b| Value::Number(b.into())).collect();
         Ok(Value::Array(vec))
     }
 
