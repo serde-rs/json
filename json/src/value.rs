@@ -102,62 +102,6 @@ impl Value {
         Some(target)
     }
 
-<<<<<<< HEAD
-    /// **Deprecated**: Use `Value.pointer()` and pointer syntax instead.
-    ///
-    /// Looks up a value by path.
-    ///
-    /// This is a convenience method that splits the path by `'.'`
-    /// and then feeds the sequence of keys into the `find_path`
-    /// method.
-    ///
-    /// ``` ignore
-    /// let obj: Value = json::from_str(r#"{"x": {"a": 1}}"#).unwrap();
-    ///
-    /// assert!(obj.lookup("x.a").unwrap() == &1.into());
-    /// ```
-    pub fn lookup<'a>(&'a self, path: &str) -> Option<&'a Value> {
-        let mut target = self;
-        for key in path.split('.') {
-            match target.find(key) {
-                Some(t) => {
-                    target = t;
-                }
-                None => return None,
-            }
-        }
-        Some(target)
-    }
-
-||||||| merged common ancestors
-    /// **Deprecated**: Use `Value.pointer()` and pointer syntax instead.
-    ///
-    /// Looks up a value by path.
-    ///
-    /// This is a convenience method that splits the path by `'.'`
-    /// and then feeds the sequence of keys into the `find_path`
-    /// method.
-    ///
-    /// ``` ignore
-    /// let obj: Value = json::from_str(r#"{"x": {"a": 1}}"#).unwrap();
-    ///
-    /// assert!(obj.lookup("x.a").unwrap() == &Value::U64(1));
-    /// ```
-    pub fn lookup<'a>(&'a self, path: &str) -> Option<&'a Value> {
-        let mut target = self;
-        for key in path.split('.') {
-            match target.find(key) {
-                Some(t) => {
-                    target = t;
-                }
-                None => return None,
-            }
-        }
-        Some(target)
-    }
-
-=======
->>>>>>> origin/master
     /// Looks up a value by a JSON Pointer.
     ///
     /// JSON Pointer defines a string syntax for identifying a specific value
