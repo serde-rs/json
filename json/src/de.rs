@@ -113,7 +113,6 @@ impl<R: Read> DeserializerImpl<R> {
     }
 
     fn end(&mut self) -> Result<()> {
-        try!(self.parse_whitespace());
         if try!(self.eof()) {
             Ok(())
         } else {
@@ -122,7 +121,7 @@ impl<R: Read> DeserializerImpl<R> {
     }
 
     fn eof(&mut self) -> Result<bool> {
-        Ok(try!(self.peek()).is_none())
+        Ok(try!(self.parse_whitespace()) || try!(self.peek()).is_none())
     }
 
     fn peek(&mut self) -> Result<Option<u8>> {
@@ -157,15 +156,21 @@ impl<R: Read> DeserializerImpl<R> {
         Error::Syntax(reason, pos.line, pos.column)
     }
 
-    fn parse_whitespace(&mut self) -> Result<()> {
+    /// Consume whitespace until the next non-whitespace character.
+    ///
+    /// Return `Ok(true)` if EOF was encountered in the process and `Ok(false)` otherwise.
+    fn parse_whitespace(&mut self) -> Result<bool> {
         loop {
-            match try!(self.peek_or_null()) {
-                b' ' | b'\n' | b'\t' | b'\r' => {
-                    self.eat_char();
-                }
-                _ => {
-                    return Ok(());
-                }
+            match try!(self.peek()) {
+                Some(b) => match b {
+                    b' ' | b'\n' | b'\t' | b'\r' => {
+                        self.eat_char();
+                    }
+                    _ => {
+                        return Ok(false);
+                    }
+                },
+                None => return Ok(true),
             }
         }
     }
@@ -173,8 +178,6 @@ impl<R: Read> DeserializerImpl<R> {
     fn parse_value<V>(&mut self, mut visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        try!(self.parse_whitespace());
-
         if try!(self.eof()) {
             return Err(self.peek_error(ErrorCode::EOFWhileParsingValue));
         }
@@ -964,10 +967,6 @@ impl<T, Iter> Iterator for StreamDeserializer<T, Iter>
         // skip whitespaces, if any
         // this helps with trailing whitespaces, since whitespaces between
         // values are handled for us.
-        if let Err(e) = self.deser.parse_whitespace() {
-            return Some(Err(e));
-        };
-
         match self.deser.eof() {
             Ok(true) => None,
             Ok(false) => {

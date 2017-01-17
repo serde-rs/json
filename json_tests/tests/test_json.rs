@@ -1749,3 +1749,48 @@ fn test_allow_ser_integers_as_map_keys() {
 
     assert_eq!(serde_json::to_string(&map).unwrap(), r#"{"-2":8,"-1":6,"1":2,"2":4}"#);
 }
+
+#[test]
+fn test_from_iter_unfused() {
+    // Test that iterator isn't called after EOF.
+
+    use std;
+
+    struct Source<I: Iterator<Item = u8>> {
+        iter: I,
+        finished: bool,
+    }
+
+    impl<I: Iterator<Item = u8>> Iterator for Source<I> {
+        type Item = std::io::Result<u8>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            assert!(!self.finished, "next() called after iterator EOF");
+
+            match self.iter.next() {
+                Some(b) => Some(Ok(b)),
+                None => {
+                    self.finished = true;
+                    None
+                },
+            }
+        }
+    }
+
+    #[derive(Deserialize)]
+    struct Message {
+        key: u32,
+    }
+
+    let msg: Message = serde_json::from_iter(Source {
+        iter: b"{\"key\": 1337}".iter().cloned(),
+        finished: false,
+    }).unwrap();
+    assert_eq!(msg.key, 1337);
+
+    let msg: Message = serde_json::from_iter(Source {
+        iter: b"{\"key\": 1337}  \t\t ".iter().cloned(),
+        finished: false,
+    }).unwrap();
+    assert_eq!(msg.key, 1337);
+}
