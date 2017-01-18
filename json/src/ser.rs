@@ -1211,7 +1211,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
         self.current_indent -= 1;
 
         if self.has_value {
-            try!(writer.write(b"\n"));
+            try!(writer.write_all(b"\n"));
             try!(indent(writer, self.current_indent, self.indent));
         }
 
