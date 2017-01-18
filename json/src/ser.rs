@@ -62,8 +62,7 @@ impl<W, F> Serializer<W, F>
     fn write_integer<V>(&mut self, value: V) -> Result<()>
         where V: itoa::Integer
     {
-        try!(self.formatter.write_integer(&mut self.writer, value));
-        Ok(())
+        self.formatter.write_integer(&mut self.writer, value)
     }
 
     #[inline]
@@ -97,206 +96,78 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     type SerializeStructVariant = Compound<'a, W, F>;
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_bool(self, value: bool) -> Result<()> {
-        if value {
-            self.writer.write_all(b"true").map_err(From::from)
-        } else {
-            self.writer.write_all(b"false").map_err(From::from)
-        }
-||||||| merged common ancestors
-    fn serialize_bool(&mut self, value: bool) -> Result<()> {
-        if value {
-            self.writer.write_all(b"true").map_err(From::from)
-        } else {
-            self.writer.write_all(b"false").map_err(From::from)
-        }
-=======
-    fn serialize_bool(&mut self, value: bool) -> Result<()> {
         self.formatter.write_bool(&mut self.writer, value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_isize(self, value: isize) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_isize(&mut self, value: isize) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_isize(&mut self, value: isize) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_i8(self, value: i8) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_i8(&mut self, value: i8) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_i8(&mut self, value: i8) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_i16(self, value: i16) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_i16(&mut self, value: i16) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_i16(&mut self, value: i16) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_i32(self, value: i32) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_i32(&mut self, value: i32) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_i32(&mut self, value: i32) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_i64(self, value: i64) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_i64(&mut self, value: i64) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_i64(&mut self, value: i64) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_usize(self, value: usize) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_usize(&mut self, value: usize) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_usize(&mut self, value: usize) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_u8(self, value: u8) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_u8(&mut self, value: u8) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_u8(&mut self, value: u8) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_u16(self, value: u16) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_u16(&mut self, value: u16) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_u16(&mut self, value: u16) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_u32(self, value: u32) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_u32(&mut self, value: u32) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_u32(&mut self, value: u32) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_u64(self, value: u64) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_u64(&mut self, value: u64) -> Result<()> {
-        itoa::write(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_u64(&mut self, value: u64) -> Result<()> {
         self.write_integer(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_f32(self, value: f32) -> Result<()> {
-        fmt_f32_or_null(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_f32(&mut self, value: f32) -> Result<()> {
-        fmt_f32_or_null(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_f32(&mut self, value: f32) -> Result<()> {
         self.write_floating(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_f64(self, value: f64) -> Result<()> {
-        fmt_f64_or_null(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_f64(&mut self, value: f64) -> Result<()> {
-        fmt_f64_or_null(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_f64(&mut self, value: f64) -> Result<()> {
         self.write_floating(value)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_char(self, value: char) -> Result<()> {
-        escape_char(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_char(&mut self, value: char) -> Result<()> {
-        escape_char(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_char(&mut self, value: char) -> Result<()> {
         format_escaped_char(&mut self.writer, &mut self.formatter, value).map_err(From::from)
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_str(self, value: &str) -> Result<()> {
-        escape_str(&mut self.writer, value).map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_str(&mut self, value: &str) -> Result<()> {
-        escape_str(&mut self.writer, value).map_err(From::from)
-=======
-    fn serialize_str(&mut self, value: &str) -> Result<()> {
         format_escaped_str(&mut self.writer, &mut self.formatter, value).map_err(From::from)
->>>>>>> v0.9.0
     }
 
     #[inline]
@@ -310,16 +181,8 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_unit(self) -> Result<()> {
-        self.writer.write_all(b"null").map_err(From::from)
-||||||| merged common ancestors
-    fn serialize_unit(&mut self) -> Result<()> {
-        self.writer.write_all(b"null").map_err(From::from)
-=======
-    fn serialize_unit(&mut self) -> Result<()> {
         self.formatter.write_null(&mut self.writer)
->>>>>>> v0.9.0
     }
 
     #[inline]
@@ -362,22 +225,11 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
         try!(self.formatter.begin_object(&mut self.writer));
         try!(self.formatter.begin_object_key(&mut self.writer, true));
         try!(self.serialize_str(variant));
-<<<<<<< HEAD
-        try!(self.formatter.colon(&mut self.writer));
-        try!(value.serialize(&mut *self));
-        self.formatter.close(&mut self.writer, b'}')
-||||||| merged common ancestors
-        try!(self.formatter.colon(&mut self.writer));
-        try!(value.serialize(self));
-        self.formatter.close(&mut self.writer, b'}')
-=======
         try!(self.formatter.end_object_key(&mut self.writer));
         try!(self.formatter.begin_object_value(&mut self.writer));
-        try!(value.serialize(self));
+        try!(value.serialize(&mut *self));
         try!(self.formatter.end_object_value(&mut self.writer));
-        try!(self.formatter.end_object(&mut self.writer));
-        Ok(())
->>>>>>> v0.9.0
+        self.formatter.end_object(&mut self.writer)
     }
 
     #[inline]
@@ -395,81 +247,23 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     #[inline]
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         if len == Some(0) {
-<<<<<<< HEAD
-            try!(self.writer.write_all(b"[]"));
-            Ok(Compound { ser: self, state: State::Empty })
-||||||| merged common ancestors
-            try!(self.writer.write_all(b"[]"));
-            Ok(State::Empty)
-=======
             try!(self.formatter.begin_array(&mut self.writer));
             try!(self.formatter.end_array(&mut self.writer));
-            Ok(State::Empty)
->>>>>>> v0.9.0
+            Ok(Compound { ser: self, state: State::Empty })
         } else {
-<<<<<<< HEAD
-            try!(self.formatter.open(&mut self.writer, b'['));
-            Ok(Compound { ser: self, state: State::First })
-||||||| merged common ancestors
-            try!(self.formatter.open(&mut self.writer, b'['));
-            Ok(State::First)
-=======
             try!(self.formatter.begin_array(&mut self.writer));
-            Ok(State::First)
->>>>>>> v0.9.0
+            Ok(Compound { ser: self, state: State::First })
         }
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_seq_fixed_size(self, size: usize) -> Result<Self::SerializeSeq> {
         self.serialize_seq(Some(size))
-||||||| merged common ancestors
-    fn serialize_seq_elt<T: ser::Serialize>(
-        &mut self,
-        state: &mut State,
-        value: T
-    ) -> Result<()>
-        where T: ser::Serialize,
-    {
-        try!(self.formatter.comma(&mut self.writer, *state == State::First));
-        *state = State::Rest;
-
-        value.serialize(self)
-=======
-    fn serialize_seq_elt<T: ser::Serialize>(
-        &mut self,
-        state: &mut State,
-        value: T
-    ) -> Result<()>
-        where T: ser::Serialize,
-    {
-        try!(self.formatter.begin_array_value(&mut self.writer, *state == State::First));
-        *state = State::Rest;
-        try!(value.serialize(self));
-        try!(self.formatter.end_array_value(&mut self.writer));
-
-        Ok(())
->>>>>>> v0.9.0
     }
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
         self.serialize_seq(Some(len))
-||||||| merged common ancestors
-    fn serialize_seq_end(&mut self, state: State) -> Result<()> {
-        match state {
-            State::Empty => Ok(()),
-            _ => self.formatter.close(&mut self.writer, b']'),
-        }
-=======
-    fn serialize_seq_end(&mut self, state: State) -> Result<()> {
-        match state {
-            State::Empty => Ok(()),
-            _ => self.formatter.end_array(&mut self.writer),
-        }
->>>>>>> v0.9.0
     }
 
     #[inline]
@@ -489,20 +283,22 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
         variant: &'static str,
         len: usize
     ) -> Result<Self::SerializeTupleVariant> {
-        try!(self.formatter.open(&mut self.writer, b'{'));
-        try!(self.formatter.comma(&mut self.writer, true));
+        try!(self.formatter.begin_object(&mut self.writer));
+        try!(self.formatter.begin_object_key(&mut self.writer, true));
         try!(self.serialize_str(variant));
-        try!(self.formatter.colon(&mut self.writer));
+        try!(self.formatter.end_object_key(&mut self.writer));
+        try!(self.formatter.begin_object_value(&mut self.writer));
         self.serialize_seq(Some(len))
     }
 
     #[inline]
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
         if len == Some(0) {
-            try!(self.writer.write_all(b"{}"));
+            try!(self.formatter.begin_object(&mut self.writer));
+            try!(self.formatter.end_object(&mut self.writer));
             Ok(Compound { ser: self, state: State::Empty })
         } else {
-            try!(self.formatter.open(&mut self.writer, b'{'));
+            try!(self.formatter.begin_object(&mut self.writer));
             Ok(Compound { ser: self, state: State::First })
         }
     }
@@ -524,10 +320,11 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
         variant: &'static str,
         len: usize
     ) -> Result<Self::SerializeStructVariant> {
-        try!(self.formatter.open(&mut self.writer, b'{'));
-        try!(self.formatter.comma(&mut self.writer, true));
+        try!(self.formatter.begin_object(&mut self.writer));
+        try!(self.formatter.begin_object_key(&mut self.writer, true));
         try!(self.serialize_str(variant));
-        try!(self.formatter.colon(&mut self.writer));
+        try!(self.formatter.end_object_key(&mut self.writer));
+        try!(self.formatter.begin_object_value(&mut self.writer));
         self.serialize_map(Some(len))
     }
 }
@@ -560,17 +357,17 @@ impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
     ) -> Result<()>
         where T: ser::Serialize,
     {
-        try!(self.ser.formatter.comma(&mut self.ser.writer, self.state == State::First));
+        try!(self.ser.formatter.begin_array_value(&mut self.ser.writer, self.state == State::First));
         self.state = State::Rest;
-
-        value.serialize(&mut *self.ser)
+        try!(value.serialize(&mut *self.ser));
+        self.ser.formatter.end_array_value(&mut self.ser.writer)
     }
 
     #[inline]
     fn end(self) -> Result<()> {
         match self.state {
             State::Empty => Ok(()),
-            _ => self.ser.formatter.close(&mut self.ser.writer, b']'),
+            _ => self.ser.formatter.end_array(&mut self.ser.writer),
         }
     }
 }
@@ -585,7 +382,6 @@ impl<'a, W, F> ser::SerializeTuple for Compound<'a, W, F>
     #[inline]
     fn serialize_element<T: ser::Serialize>(
         &mut self,
-<<<<<<< HEAD
         value: T
     ) -> Result<()> {
         ser::SerializeSeq::serialize_element(self, value)
@@ -594,30 +390,6 @@ impl<'a, W, F> ser::SerializeTuple for Compound<'a, W, F>
     #[inline]
     fn end(self) -> Result<()> {
         ser::SerializeSeq::end(self)
-||||||| merged common ancestors
-        _name: &'static str,
-        _variant_index: usize,
-        variant: &'static str,
-        len: usize
-    ) -> Result<State> {
-        try!(self.formatter.open(&mut self.writer, b'{'));
-        try!(self.formatter.comma(&mut self.writer, true));
-        try!(self.serialize_str(variant));
-        try!(self.formatter.colon(&mut self.writer));
-        self.serialize_seq(Some(len))
-=======
-        _name: &'static str,
-        _variant_index: usize,
-        variant: &'static str,
-        len: usize
-    ) -> Result<State> {
-        try!(self.formatter.begin_object(&mut self.writer));
-        try!(self.formatter.begin_object_key(&mut self.writer, true));
-        try!(self.serialize_str(variant));
-        try!(self.formatter.end_object_key(&mut self.writer));
-        try!(self.formatter.begin_object_value(&mut self.writer));
-        self.serialize_seq(Some(len))
->>>>>>> v0.9.0
     }
 }
 
@@ -637,20 +409,8 @@ impl<'a, W, F> ser::SerializeTupleStruct for Compound<'a, W, F>
     }
 
     #[inline]
-<<<<<<< HEAD
     fn end(self) -> Result<()> {
         ser::SerializeSeq::end(self)
-||||||| merged common ancestors
-    fn serialize_tuple_variant_end(&mut self, state: State) -> Result<()> {
-        try!(self.serialize_seq_end(state));
-        self.formatter.close(&mut self.writer, b'}')
-=======
-    fn serialize_tuple_variant_end(&mut self, state: State) -> Result<()> {
-        try!(self.serialize_seq_end(state));
-        try!(self.formatter.end_object_value(&mut self.writer));
-        try!(self.formatter.end_object(&mut self.writer));
-        Ok(())
->>>>>>> v0.9.0
     }
 }
 
@@ -662,7 +422,6 @@ impl<'a, W, F> ser::SerializeTupleVariant for Compound<'a, W, F>
     type Error = Error;
 
     #[inline]
-<<<<<<< HEAD
     fn serialize_field<T: ser::Serialize>(
         &mut self,
         value: T
@@ -674,27 +433,10 @@ impl<'a, W, F> ser::SerializeTupleVariant for Compound<'a, W, F>
     fn end(self) -> Result<()> {
         match self.state {
             State::Empty => {}
-            _ => try!(self.ser.formatter.close(&mut self.ser.writer, b']')),
-||||||| merged common ancestors
-    fn serialize_map(&mut self, len: Option<usize>) -> Result<State> {
-        if len == Some(0) {
-            try!(self.writer.write_all(b"{}"));
-            Ok(State::Empty)
-        } else {
-            try!(self.formatter.open(&mut self.writer, b'{'));
-            Ok(State::First)
-=======
-    fn serialize_map(&mut self, len: Option<usize>) -> Result<State> {
-        if len == Some(0) {
-            try!(self.formatter.begin_object(&mut self.writer));
-            try!(self.formatter.end_object(&mut self.writer));
-            Ok(State::Empty)
-        } else {
-            try!(self.formatter.begin_object(&mut self.writer));
-            Ok(State::First)
->>>>>>> v0.9.0
+            _ => try!(self.ser.formatter.end_array(&mut self.ser.writer)),
         }
-        self.ser.formatter.close(&mut self.ser.writer, b'}')
+        try!(self.ser.formatter.end_object_value(&mut self.ser.writer));
+        self.ser.formatter.end_object(&mut self.ser.writer)
     }
 }
 
@@ -710,29 +452,14 @@ impl<'a, W, F> ser::SerializeMap for Compound<'a, W, F>
         &mut self,
         key: T,
     ) -> Result<()> {
-<<<<<<< HEAD
-        try!(self.ser.formatter.comma(&mut self.ser.writer, self.state == State::First));
+        try!(self.ser.formatter.begin_object_key(&mut self.ser.writer, self.state == State::First));
         self.state = State::Rest;
-||||||| merged common ancestors
-        try!(self.formatter.comma(&mut self.writer, *state == State::First));
-        *state = State::Rest;
-=======
-        try!(self.formatter.begin_object_key(&mut self.writer, *state == State::First));
-        *state = State::Rest;
->>>>>>> v0.9.0
 
         try!(key.serialize(MapKeySerializer {
             ser: self.ser,
         }));
 
-<<<<<<< HEAD
-        self.ser.formatter.colon(&mut self.ser.writer)
-||||||| merged common ancestors
-        self.formatter.colon(&mut self.writer)
-=======
-        try!(self.formatter.end_object_key(&mut self.writer));
-        Ok(())
->>>>>>> v0.9.0
+        self.ser.formatter.end_object_key(&mut self.ser.writer)
     }
 
     #[inline]
@@ -740,29 +467,16 @@ impl<'a, W, F> ser::SerializeMap for Compound<'a, W, F>
         &mut self,
         value: T,
     ) -> Result<()> {
-<<<<<<< HEAD
-        value.serialize(&mut *self.ser)
-||||||| merged common ancestors
-        value.serialize(self)
-=======
-        try!(self.formatter.begin_object_value(&mut self.writer));
-        try!(value.serialize(self));
-        try!(self.formatter.end_object_value(&mut self.writer));
-        Ok(())
->>>>>>> v0.9.0
+        try!(self.ser.formatter.begin_object_value(&mut self.ser.writer));
+        try!(value.serialize(&mut *self.ser));
+        self.ser.formatter.end_object_value(&mut self.ser.writer)
     }
 
     #[inline]
     fn end(self) -> Result<()> {
         match self.state {
             State::Empty => Ok(()),
-<<<<<<< HEAD
-            _ => self.ser.formatter.close(&mut self.ser.writer, b'}'),
-||||||| merged common ancestors
-            _ => self.formatter.close(&mut self.writer, b'}'),
-=======
-            _ => self.formatter.end_object(&mut self.writer),
->>>>>>> v0.9.0
+            _ => self.ser.formatter.end_object(&mut self.ser.writer),
         }
     }
 }
@@ -790,45 +504,12 @@ impl<'a, W, F> ser::SerializeStruct for Compound<'a, W, F>
     }
 }
 
-<<<<<<< HEAD
 impl<'a, W, F> ser::SerializeStructVariant for Compound<'a, W, F>
     where W: io::Write,
           F: Formatter
 {
     type Ok = ();
     type Error = Error;
-||||||| merged common ancestors
-    #[inline]
-    fn serialize_struct_variant(
-        &mut self,
-        _name: &'static str,
-        _variant_index: usize,
-        variant: &'static str,
-        len: usize
-    ) -> Result<State> {
-        try!(self.formatter.open(&mut self.writer, b'{'));
-        try!(self.formatter.comma(&mut self.writer, true));
-        try!(self.serialize_str(variant));
-        try!(self.formatter.colon(&mut self.writer));
-        self.serialize_map(Some(len))
-    }
-=======
-    #[inline]
-    fn serialize_struct_variant(
-        &mut self,
-        _name: &'static str,
-        _variant_index: usize,
-        variant: &'static str,
-        len: usize
-    ) -> Result<State> {
-        try!(self.formatter.begin_object(&mut self.writer));
-        try!(self.formatter.begin_object_key(&mut self.writer, true));
-        try!(self.serialize_str(variant));
-        try!(self.formatter.end_object_key(&mut self.writer));
-        try!(self.formatter.begin_object_value(&mut self.writer));
-        self.serialize_map(Some(len))
-    }
->>>>>>> v0.9.0
 
     #[inline]
     fn serialize_field<V: ser::Serialize>(
@@ -840,24 +521,13 @@ impl<'a, W, F> ser::SerializeStructVariant for Compound<'a, W, F>
     }
 
     #[inline]
-<<<<<<< HEAD
     fn end(self) -> Result<()> {
         match self.state {
             State::Empty => {}
-            _ => try!(self.ser.formatter.close(&mut self.ser.writer, b'}')),
+            _ => try!(self.ser.formatter.end_object(&mut self.ser.writer)),
         }
-        self.ser.formatter.close(&mut self.ser.writer, b'}')
-||||||| merged common ancestors
-    fn serialize_struct_variant_end(&mut self, state: State) -> Result<()> {
-        try!(self.serialize_struct_end(state));
-        self.formatter.close(&mut self.writer, b'}')
-=======
-    fn serialize_struct_variant_end(&mut self, state: State) -> Result<()> {
-        try!(self.serialize_struct_end(state));
-        try!(self.formatter.end_object_value(&mut self.writer));
-        try!(self.formatter.end_object(&mut self.writer));
-        Ok(())
->>>>>>> v0.9.0
+        try!(self.ser.formatter.end_object_value(&mut self.ser.writer));
+        self.ser.formatter.end_object(&mut self.ser.writer)
     }
 }
 
@@ -930,10 +600,9 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_i64(self, value: i64) -> Result<()> {
-        try!(self.ser.writer.write_all(b"\""));
-        try!(self.ser.serialize_i64(value));
-        try!(self.ser.writer.write_all(b"\""));
-        Ok(())
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.write_integer(value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_usize(self, value: usize) -> Result<()> {
@@ -953,10 +622,9 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_u64(self, value: u64) -> Result<()> {
-        try!(self.ser.writer.write_all(b"\""));
-        try!(self.ser.serialize_u64(value));
-        try!(self.ser.writer.write_all(b"\""));
-        Ok(())
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.write_integer(value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_f32(self, _value: f32) -> Result<()> {
@@ -1500,17 +1168,9 @@ impl<'a> Formatter for PrettyFormatter<'a> {
         where W: io::Write
     {
         self.current_indent -= 1;
-<<<<<<< HEAD
-        try!(writer.write_all(b"\n"));
-        try!(indent(writer, self.current_indent, self.indent));
-||||||| merged common ancestors
-        try!(writer.write(b"\n"));
-        try!(indent(writer, self.current_indent, self.indent));
-=======
->>>>>>> v0.9.0
 
         if self.has_value {
-            try!(writer.write(b"\n"));
+            try!(writer.write_all(b"\n"));
             try!(indent(writer, self.current_indent, self.indent));
         }
 
