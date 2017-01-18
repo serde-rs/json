@@ -10,7 +10,6 @@ use super::error::{Error, ErrorCode, Result};
 
 use itoa;
 use dtoa;
-use num_traits;
 
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F = CompactFormatter> {
@@ -57,27 +56,6 @@ impl<W, F> Serializer<W, F>
     pub fn into_inner(self) -> W {
         self.writer
     }
-
-    #[inline]
-    fn write_integer<V>(&mut self, value: V) -> Result<()>
-        where V: itoa::Integer
-    {
-        self.formatter.write_integer(&mut self.writer, value)
-    }
-
-    #[inline]
-    fn write_floating<V>(&mut self, value: V) -> Result<()>
-        where V: dtoa::Floating + num_traits::Float
-    {
-        match value.classify() {
-            FpCategory::Nan | FpCategory::Infinite => {
-                self.formatter.write_null(&mut self.writer)
-            },
-            _ => {
-                self.formatter.write_floating(&mut self.writer, value)
-            },
-        }
-    }
 }
 
 impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
@@ -102,62 +80,76 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
 
     #[inline]
     fn serialize_isize(self, value: isize) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_isize(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_i8(self, value: i8) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_i8(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_i16(self, value: i16) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_i16(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_i32(self, value: i32) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_i32(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_i64(self, value: i64) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_i64(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_usize(self, value: usize) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_usize(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_u8(self, value: u8) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_u8(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_u16(self, value: u16) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_u16(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_u32(self, value: u32) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_u32(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_u64(self, value: u64) -> Result<()> {
-        self.write_integer(value)
+        self.formatter.write_u64(&mut self.writer, value)
     }
 
     #[inline]
     fn serialize_f32(self, value: f32) -> Result<()> {
-        self.write_floating(value)
+        match value.classify() {
+            FpCategory::Nan | FpCategory::Infinite => {
+                self.formatter.write_null(&mut self.writer)
+            }
+            _ => {
+                self.formatter.write_f32(&mut self.writer, value)
+            }
+        }
     }
 
     #[inline]
     fn serialize_f64(self, value: f64) -> Result<()> {
-        self.write_floating(value)
+        match value.classify() {
+            FpCategory::Nan | FpCategory::Infinite => {
+                self.formatter.write_null(&mut self.writer)
+            }
+            _ => {
+                self.formatter.write_f64(&mut self.writer, value)
+            }
+        }
     }
 
     #[inline]
@@ -584,46 +576,62 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_isize(self, value: isize) -> Result<()> {
-        self.serialize_i64(value as i64)
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.formatter.write_isize(&mut self.ser.writer, value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_i8(self, value: i8) -> Result<()> {
-        self.serialize_i64(value as i64)
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.formatter.write_i8(&mut self.ser.writer, value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_i16(self, value: i16) -> Result<()> {
-        self.serialize_i64(value as i64)
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.formatter.write_i16(&mut self.ser.writer, value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_i32(self, value: i32) -> Result<()> {
-        self.serialize_i64(value as i64)
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.formatter.write_i32(&mut self.ser.writer, value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_i64(self, value: i64) -> Result<()> {
         try!(self.ser.formatter.begin_string(&mut self.ser.writer));
-        try!(self.ser.write_integer(value));
+        try!(self.ser.formatter.write_i64(&mut self.ser.writer, value));
         self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_usize(self, value: usize) -> Result<()> {
-        self.serialize_u64(value as u64)
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.formatter.write_usize(&mut self.ser.writer, value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_u8(self, value: u8) -> Result<()> {
-        self.serialize_u64(value as u64)
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.formatter.write_u8(&mut self.ser.writer, value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_u16(self, value: u16) -> Result<()> {
-        self.serialize_u64(value as u64)
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.formatter.write_u16(&mut self.ser.writer, value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_u32(self, value: u32) -> Result<()> {
-        self.serialize_u64(value as u64)
+        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
+        try!(self.ser.formatter.write_u32(&mut self.ser.writer, value));
+        self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
     fn serialize_u64(self, value: u64) -> Result<()> {
         try!(self.ser.formatter.begin_string(&mut self.ser.writer));
-        try!(self.ser.write_integer(value));
+        try!(self.ser.formatter.write_u64(&mut self.ser.writer, value));
         self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
@@ -903,19 +911,96 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
-    fn write_integer<W, I>(&mut self, writer: &mut W, value: I) -> Result<()>
-        where W: io::Write,
-              I: itoa::Integer
+    fn write_isize<W>(&mut self, writer: &mut W, value: isize) -> Result<()>
+        where W: io::Write
     {
         itoa::write(writer, value).map_err(From::from)
     }
 
-    /// Writes a floating point value like `-31.26e+12` to the
-    /// specified writer.
+    /// Writes an integer value like `-123` to the specified writer.
     #[inline]
-    fn write_floating<W, F>(&mut self, writer: &mut W, value: F) -> Result<()>
-        where W: io::Write,
-              F: dtoa::Floating
+    fn write_i8<W>(&mut self, writer: &mut W, value: i8) -> Result<()>
+        where W: io::Write
+    {
+        itoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    fn write_i16<W>(&mut self, writer: &mut W, value: i16) -> Result<()>
+        where W: io::Write
+    {
+        itoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    fn write_i32<W>(&mut self, writer: &mut W, value: i32) -> Result<()>
+        where W: io::Write
+    {
+        itoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    fn write_i64<W>(&mut self, writer: &mut W, value: i64) -> Result<()>
+        where W: io::Write
+    {
+        itoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_usize<W>(&mut self, writer: &mut W, value: usize) -> Result<()>
+        where W: io::Write
+    {
+        itoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_u8<W>(&mut self, writer: &mut W, value: u8) -> Result<()>
+        where W: io::Write
+    {
+        itoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_u16<W>(&mut self, writer: &mut W, value: u16) -> Result<()>
+        where W: io::Write
+    {
+        itoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_u32<W>(&mut self, writer: &mut W, value: u32) -> Result<()>
+        where W: io::Write
+    {
+        itoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_u64<W>(&mut self, writer: &mut W, value: u64) -> Result<()>
+        where W: io::Write
+    {
+        itoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes a floating point value like `-31.26e+12` to the specified writer.
+    #[inline]
+    fn write_f32<W>(&mut self, writer: &mut W, value: f32) -> Result<()>
+        where W: io::Write
+    {
+        dtoa::write(writer, value).map_err(From::from)
+    }
+
+    /// Writes a floating point value like `-31.26e+12` to the specified writer.
+    #[inline]
+    fn write_f64<W>(&mut self, writer: &mut W, value: f64) -> Result<()>
+        where W: io::Write
     {
         dtoa::write(writer, value).map_err(From::from)
     }
