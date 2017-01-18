@@ -113,15 +113,11 @@ impl<R: Read> DeserializerImpl<R> {
     }
 
     fn end(&mut self) -> Result<()> {
-        if try!(self.eof()) {
+        if try!(self.parse_whitespace()) { // true if eof
             Ok(())
         } else {
             Err(self.peek_error(ErrorCode::TrailingCharacters))
         }
-    }
-
-    fn eof(&mut self) -> Result<bool> {
-        Ok(try!(self.parse_whitespace()) || try!(self.peek()).is_none())
     }
 
     fn peek(&mut self) -> Result<Option<u8>> {
@@ -178,7 +174,7 @@ impl<R: Read> DeserializerImpl<R> {
     fn parse_value<V>(&mut self, mut visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        if try!(self.eof()) {
+        if try!(self.parse_whitespace()) { // true if eof
             return Err(self.peek_error(ErrorCode::EOFWhileParsingValue));
         }
 
@@ -967,8 +963,8 @@ impl<T, Iter> Iterator for StreamDeserializer<T, Iter>
         // skip whitespaces, if any
         // this helps with trailing whitespaces, since whitespaces between
         // values are handled for us.
-        match self.deser.eof() {
-            Ok(true) => None,
+        match self.deser.parse_whitespace() {
+            Ok(true) => None, // eof
             Ok(false) => {
                 match de::Deserialize::deserialize(&mut self.deser) {
                     Ok(v) => Some(Ok(v)),
