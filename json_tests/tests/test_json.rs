@@ -1374,10 +1374,8 @@ fn test_serialize_seq_with_no_len() {
     let s = serde_json::to_string_pretty(&vec).unwrap();
     let expected = indoc!("
         [
-          [
-          ],
-          [
-          ]
+          [],
+          []
         ]");
     assert_eq!(s, expected);
 }
@@ -1462,10 +1460,8 @@ fn test_serialize_map_with_no_len() {
     let s = serde_json::to_string_pretty(&map).unwrap();
     let expected = indoc!(r#"
         {
-          "a": {
-          },
-          "b": {
-          }
+          "a": {},
+          "b": {}
         }"#);
     assert_eq!(s, expected);
 }
