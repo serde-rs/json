@@ -1,6 +1,6 @@
 [package]
 name = "serde_json_tests"
-version = "0.8.4"
+version = "0.8.5"
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 build = "build.rs"
 
