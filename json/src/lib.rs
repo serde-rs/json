@@ -119,6 +119,8 @@
 #![cfg_attr(feature = "clippy", allow(doc_markdown))]
 // Whitelisted clippy_pedantic lints
 #![cfg_attr(feature = "clippy", allow(
+// Deserializer::from_str, from_iter, into_iter
+    should_implement_trait,
 // integer and float ser/de requires these sorts of casts
     cast_possible_truncation,
     cast_possible_wrap,
