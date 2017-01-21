@@ -15,86 +15,52 @@ use read::{self, Read};
 //////////////////////////////////////////////////////////////////////////////
 
 /// A structure that deserializes JSON into Rust values.
-pub struct Deserializer<Iter>(DeserializerImpl<read::IteratorRead<Iter>>)
-    where Iter: Iterator<Item = io::Result<u8>>;
-
-impl<Iter> Deserializer<Iter>
-    where Iter: Iterator<Item = io::Result<u8>>,
-{
-    /// Creates the JSON parser from an `std::iter::Iterator`.
-    #[inline]
-    pub fn new(rdr: Iter) -> Self {
-        Deserializer(DeserializerImpl::new(read::IteratorRead::new(rdr)))
-    }
-
-    /// The `Deserializer::end` method should be called after a value has been fully deserialized.
-    /// This allows the `Deserializer` to validate that the input stream is at the end or that it
-    /// only has trailing whitespace.
-    #[inline]
-    pub fn end(&mut self) -> Result<()> {
-        self.0.end()
-    }
-}
-
-impl<'a, Iter> de::Deserializer for &'a mut Deserializer<Iter>
-    where Iter: Iterator<Item = io::Result<u8>>,
-{
-    type Error = Error;
-
-    #[inline]
-    fn deserialize<V>(self, visitor: V) -> Result<V::Value>
-        where V: de::Visitor,
-    {
-        self.0.deserialize(visitor)
-    }
-
-    /// Parses a `null` as a None, and any other values as a `Some(...)`.
-    #[inline]
-    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
-        where V: de::Visitor,
-    {
-        self.0.deserialize_option(visitor)
-    }
-
-    /// Parses a newtype struct as the underlying value.
-    #[inline]
-    fn deserialize_newtype_struct<V>(
-        self,
-        name: &'static str,
-        visitor: V
-    ) -> Result<V::Value>
-        where V: de::Visitor,
-    {
-        self.0.deserialize_newtype_struct(name, visitor)
-    }
-
-    /// Parses an enum as an object like `{"$KEY":$VALUE}`, where $VALUE is either a straight
-    /// value, a `[..]`, or a `{..}`.
-    #[inline]
-    fn deserialize_enum<V>(
-        self,
-        name: &'static str,
-        variants: &'static [&'static str],
-        visitor: V
-    ) -> Result<V::Value>
-        where V: de::Visitor,
-    {
-        self.0.deserialize_enum(name, variants, visitor)
-    }
-
-    forward_to_deserialize! {
-        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
-        unit seq seq_fixed_size bytes map unit_struct tuple_struct struct
-        struct_field tuple ignored_any
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////////
-
-struct DeserializerImpl<R: Read> {
+pub struct Deserializer<R> {
     read: R,
     str_buf: Vec<u8>,
     remaining_depth: u8,
+}
+
+impl<R> Deserializer<R> {
+    fn new(read: R) -> Self {
+        Deserializer {
+            read: read,
+            str_buf: Vec::with_capacity(128),
+            remaining_depth: 128,
+        }
+    }
+}
+
+impl<I> Deserializer<read::IteratorRead<I>>
+    where I: Iterator<Item = io::Result<u8>>
+{
+    /// Creates a JSON parser from a `std::iter::Iterator`.
+    pub fn from_iter(iter: I) -> Self {
+        Deserializer::new(read::IteratorRead::new(iter))
+    }
+}
+
+impl<R> Deserializer<read::IteratorRead<io::Bytes<R>>>
+    where R: io::Read
+{
+    /// Creates a JSON parser from an `io::Read`.
+    pub fn from_reader(reader: R) -> Self {
+        Deserializer::new(read::IteratorRead::new(reader.bytes()))
+    }
+}
+
+impl<'a> Deserializer<read::SliceRead<'a>> {
+    /// Creates a JSON parser from a `&[u8]`.
+    pub fn from_slice(bytes: &'a [u8]) -> Self {
+        Deserializer::new(read::SliceRead::new(bytes))
+    }
+}
+
+impl<'a> Deserializer<read::StrRead<'a>> {
+    /// Creates a JSON parser from a `&str`.
+    pub fn from_str(s: &'a str) -> Self {
+        Deserializer::new(read::StrRead::new(s))
+    }
 }
 
 macro_rules! overflow {
@@ -103,20 +69,27 @@ macro_rules! overflow {
     }
 }
 
-impl<R: Read> DeserializerImpl<R> {
-    fn new(read: R) -> Self {
-        DeserializerImpl {
-            read: read,
-            str_buf: Vec::with_capacity(128),
-            remaining_depth: 128,
-        }
-    }
-
-    fn end(&mut self) -> Result<()> {
+impl<R: Read> Deserializer<R> {
+    /// The `Deserializer::end` method should be called after a value has been fully deserialized.
+    /// This allows the `Deserializer` to validate that the input stream is at the end or that it
+    /// only has trailing whitespace.
+    pub fn end(&mut self) -> Result<()> {
         if try!(self.parse_whitespace()) { // true if eof
             Ok(())
         } else {
             Err(self.peek_error(ErrorCode::TrailingCharacters))
+        }
+    }
+
+    /// Turn a JSON deserializer into an iterator over values of type T.
+    pub fn into_iter<T>(self) -> StreamDeserializer<R, T>
+        where T: de::Deserialize
+    {
+        // This cannot be an implementation of std::iter::IntoIterator because
+        // we need the caller to choose what T is.
+        StreamDeserializer {
+            de: self,
+            _marker: PhantomData,
         }
     }
 
@@ -605,7 +578,7 @@ static POW10: [f64; 309] =
      1e290, 1e291, 1e292, 1e293, 1e294, 1e295, 1e296, 1e297, 1e298, 1e299,
      1e300, 1e301, 1e302, 1e303, 1e304, 1e305, 1e306, 1e307, 1e308];
 
-impl<'a, R: Read> de::Deserializer for &'a mut DeserializerImpl<R> {
+impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
     type Error = Error;
 
     #[inline]
@@ -689,12 +662,12 @@ impl<'a, R: Read> de::Deserializer for &'a mut DeserializerImpl<R> {
 }
 
 struct SeqVisitor<'a, R: Read + 'a> {
-    de: &'a mut DeserializerImpl<R>,
+    de: &'a mut Deserializer<R>,
     first: bool,
 }
 
 impl<'a, R: Read + 'a> SeqVisitor<'a, R> {
-    fn new(de: &'a mut DeserializerImpl<R>) -> Self {
+    fn new(de: &'a mut Deserializer<R>) -> Self {
         SeqVisitor {
             de: de,
             first: true,
@@ -736,12 +709,12 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
 }
 
 struct MapVisitor<'a, R: Read + 'a> {
-    de: &'a mut DeserializerImpl<R>,
+    de: &'a mut Deserializer<R>,
     first: bool,
 }
 
 impl<'a, R: Read + 'a> MapVisitor<'a, R> {
-    fn new(de: &'a mut DeserializerImpl<R>) -> Self {
+    fn new(de: &'a mut Deserializer<R>) -> Self {
         MapVisitor {
             de: de,
             first: true,
@@ -834,11 +807,11 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
 }
 
 struct VariantVisitor<'a, R: Read + 'a> {
-    de: &'a mut DeserializerImpl<R>,
+    de: &'a mut Deserializer<R>,
 }
 
 impl<'a, R: Read + 'a> VariantVisitor<'a, R> {
-    fn new(de: &'a mut DeserializerImpl<R>) -> Self {
+    fn new(de: &'a mut Deserializer<R>) -> Self {
         VariantVisitor {
             de: de,
         }
@@ -889,11 +862,11 @@ impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
 }
 
 struct KeyOnlyVariantVisitor<'a, R: Read + 'a> {
-    de: &'a mut DeserializerImpl<R>,
+    de: &'a mut Deserializer<R>,
 }
 
 impl<'a, R: Read + 'a> KeyOnlyVariantVisitor<'a, R> {
-    fn new(de: &'a mut DeserializerImpl<R>) -> Self {
+    fn new(de: &'a mut Deserializer<R>) -> Self {
         KeyOnlyVariantVisitor {
             de: de,
         }
@@ -945,30 +918,16 @@ impl<'a, R: Read + 'a> de::VariantVisitor for KeyOnlyVariantVisitor<'a, R> {
 //////////////////////////////////////////////////////////////////////////////
 
 /// Iterator that deserializes a stream into multiple JSON values.
-pub struct StreamDeserializer<T, Iter>
-    where Iter: Iterator<Item = io::Result<u8>>,
+pub struct StreamDeserializer<R, T>
+    where R: Read,
           T: de::Deserialize,
 {
-    deser: DeserializerImpl<read::IteratorRead<Iter>>,
+    de: Deserializer<R>,
     _marker: PhantomData<T>,
 }
 
-impl<T, Iter> StreamDeserializer<T, Iter>
-    where Iter: Iterator<Item = io::Result<u8>>,
-          T: de::Deserialize,
-{
-    /// Returns an `Iterator` of decoded JSON values from an iterator over
-    /// `Iterator<Item=io::Result<u8>>`.
-    pub fn new(iter: Iter) -> StreamDeserializer<T, Iter> {
-        StreamDeserializer {
-            deser: DeserializerImpl::new(read::IteratorRead::new(iter)),
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<T, Iter> Iterator for StreamDeserializer<T, Iter>
-    where Iter: Iterator<Item = io::Result<u8>>,
+impl<R, T> Iterator for StreamDeserializer<R, T>
+    where R: Read,
           T: de::Deserialize,
 {
     type Item = Result<T>;
@@ -977,10 +936,10 @@ impl<T, Iter> Iterator for StreamDeserializer<T, Iter>
         // skip whitespaces, if any
         // this helps with trailing whitespaces, since whitespaces between
         // values are handled for us.
-        match self.deser.parse_whitespace() {
+        match self.de.parse_whitespace() {
             Ok(true) => None, // eof
             Ok(false) => {
-                match de::Deserialize::deserialize(&mut self.deser) {
+                match de::Deserialize::deserialize(&mut self.de) {
                     Ok(v) => Some(Ok(v)),
                     Err(e) => Some(Err(e)),
                 }
@@ -996,7 +955,7 @@ fn from_trait<R, T>(read: R) -> Result<T>
     where R: Read,
           T: de::Deserialize,
 {
-    let mut de = DeserializerImpl::new(read);
+    let mut de = Deserializer::new(read);
     let value = try!(de::Deserialize::deserialize(&mut de));
 
     // Make sure the whole stream has been consumed.

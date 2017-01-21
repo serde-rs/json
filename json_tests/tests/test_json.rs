@@ -12,7 +12,7 @@ use serde::bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     self,
-    StreamDeserializer,
+    Deserializer,
     Value,
     Map,
     from_iter,
@@ -1469,7 +1469,6 @@ fn test_serialize_map_with_no_len() {
 #[test]
 fn test_deserialize_from_stream() {
     use std::net;
-    use std::io::Read;
     use std::thread;
     use serde::Deserialize;
 
@@ -1486,7 +1485,7 @@ fn test_deserialize_from_stream() {
             let mut stream = stream.unwrap();
             let read_stream = stream.try_clone().unwrap();
 
-            let mut de = serde_json::Deserializer::new(read_stream.bytes());
+            let mut de = Deserializer::from_reader(read_stream);
             let request = Message::deserialize(&mut de).unwrap();
             let response = Message { message: request.message };
             serde_json::to_writer(&mut stream, &response).unwrap();
@@ -1497,7 +1496,7 @@ fn test_deserialize_from_stream() {
     let request = Message { message: "hi there".to_string() };
     serde_json::to_writer(&mut stream, &request).unwrap();
 
-    let mut de = serde_json::Deserializer::new(stream.bytes());
+    let mut de = Deserializer::from_reader(stream);
     let response = Message::deserialize(&mut de).unwrap();
 
     assert_eq!(request, response);
@@ -1586,10 +1585,8 @@ fn test_byte_buf_de() {
 
 #[test]
 fn test_json_stream_newlines() {
-    let stream = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}".to_string();
-    let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
-        stream.as_bytes().iter().map(|byte| Ok(*byte))
-    );
+    let data = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}";
+    let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
                &39.into());
@@ -1604,10 +1601,8 @@ fn test_json_stream_newlines() {
 
 #[test]
 fn test_json_stream_trailing_whitespaces() {
-    let stream = "{\"x\":42} \t\n".to_string();
-    let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
-        stream.as_bytes().iter().map(|byte| Ok(*byte))
-    );
+    let data = "{\"x\":42} \t\n";
+    let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
                &42.into());
@@ -1616,10 +1611,8 @@ fn test_json_stream_trailing_whitespaces() {
 
 #[test]
 fn test_json_stream_truncated() {
-    let stream = "{\"x\":40}\n{\"x\":".to_string();
-    let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
-        stream.as_bytes().iter().map(|byte| Ok(*byte))
-    );
+    let data = "{\"x\":40}\n{\"x\":";
+    let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
     assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
                &40.into());
@@ -1629,10 +1622,8 @@ fn test_json_stream_truncated() {
 
 #[test]
 fn test_json_stream_empty() {
-    let stream = "".to_string();
-    let mut parsed: StreamDeserializer<Value, _> = StreamDeserializer::new(
-        stream.as_bytes().iter().map(|byte| Ok(*byte))
-    );
+    let data = "";
+    let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
     assert!(parsed.next().is_none());
 }
