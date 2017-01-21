@@ -48,7 +48,7 @@ pub use map::Map;
 pub use number::Number;
 
 /// Represents any valid JSON value.
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// Represents a JSON null value.
     Null,
@@ -534,16 +534,6 @@ impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
-    }
-}
-
-impl fmt::Debug for Value {
-    /// Serializes a json value into a string
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut wr = WriterFormatter {
-            inner: f,
-        };
-        super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
     }
 }
 

@@ -5,7 +5,7 @@ use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use std::{fmt, i64};
 
 /// Represents a JSON number, whether integer or floating point.
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Number(N);
 
 // "N" is a prefix of "NegInt"... this is a false positive.
