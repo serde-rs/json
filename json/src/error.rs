@@ -4,7 +4,7 @@
 //! `serde_json` errors.
 
 use std::error;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::io;
 use std::result;
 
@@ -15,25 +15,7 @@ use serde::ser;
 #[derive(Clone, PartialEq, Debug)]
 pub enum ErrorCode {
     /// Catchall for syntax error messages
-    Custom(String),
-
-    /// Incorrect type from value
-    InvalidType(de::Type),
-
-    /// Incorrect value
-    InvalidValue(String),
-
-    /// Invalid length
-    InvalidLength(usize),
-
-    /// Unknown variant in an enum.
-    UnknownVariant(String),
-
-    /// Unknown field in struct.
-    UnknownField(String),
-
-    /// Struct is missing a field.
-    MissingField(&'static str),
+    Message(String),
 
     /// EOF while parsing a list.
     EOFWhileParsingList,
@@ -85,28 +67,15 @@ pub enum ErrorCode {
 
     /// Unexpected end of hex excape.
     UnexpectedEndOfHexEscape,
+
+    /// Encountered nesting of JSON maps and arrays more than 128 layers deep.
+    RecursionLimitExceeded,
 }
 
-impl fmt::Display for ErrorCode {
+impl Display for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ErrorCode::Custom(ref msg) => write!(f, "{}", msg),
-            ErrorCode::InvalidType(ref ty) => write!(f, "invalid type: {}", ty),
-            ErrorCode::InvalidValue(ref msg) => {
-                write!(f, "invalid value: {}", msg)
-            }
-            ErrorCode::InvalidLength(ref len) => {
-                write!(f, "invalid value length {}", len)
-            }
-            ErrorCode::UnknownVariant(ref variant) => {
-                write!(f, "unknown variant \"{}\"", variant)
-            }
-            ErrorCode::UnknownField(ref field) => {
-                write!(f, "unknown field \"{}\"", field)
-            }
-            ErrorCode::MissingField(field) => {
-                write!(f, "missing field \"{}\"", field)
-            }
+            ErrorCode::Message(ref msg) => write!(f, "{}", msg),
             ErrorCode::EOFWhileParsingList => "EOF while parsing a list".fmt(f),
             ErrorCode::EOFWhileParsingObject => {
                 "EOF while parsing an object".fmt(f)
@@ -135,6 +104,9 @@ impl fmt::Display for ErrorCode {
             ErrorCode::TrailingCharacters => "trailing characters".fmt(f),
             ErrorCode::UnexpectedEndOfHexEscape => {
                 "unexpected end of hex escape".fmt(f)
+            }
+            ErrorCode::RecursionLimitExceeded => {
+                "recursion limit exceeded".fmt(f)
             }
         }
     }
@@ -167,11 +139,15 @@ impl error::Error for Error {
     }
 }
 
-impl fmt::Display for Error {
+impl Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Error::Syntax(ref code, line, col) => {
-                write!(fmt, "{} at line {} column {}", code, line, col)
+                if line == 0 && col == 0 {
+                    write!(fmt, "{}", code)
+                } else {
+                    write!(fmt, "{} at line {} column {}", code, line, col)
+                }
             }
             Error::Io(ref error) => fmt::Display::fmt(error, fmt),
         }
@@ -186,71 +162,19 @@ impl From<io::Error> for Error {
 
 impl From<de::value::Error> for Error {
     fn from(error: de::value::Error) -> Error {
-        match error {
-            de::value::Error::Custom(e) => {
-                Error::Syntax(ErrorCode::Custom(e), 0, 0)
-            }
-            de::value::Error::EndOfStream => de::Error::end_of_stream(),
-            de::value::Error::InvalidType(ty) => {
-                Error::Syntax(ErrorCode::InvalidType(ty), 0, 0)
-            }
-            de::value::Error::InvalidValue(msg) => {
-                Error::Syntax(ErrorCode::InvalidValue(msg), 0, 0)
-            }
-            de::value::Error::InvalidLength(len) => {
-                Error::Syntax(ErrorCode::InvalidLength(len), 0, 0)
-            }
-            de::value::Error::UnknownVariant(variant) => {
-                Error::Syntax(ErrorCode::UnknownVariant(variant), 0, 0)
-            }
-            de::value::Error::UnknownField(field) => {
-                Error::Syntax(ErrorCode::UnknownField(field), 0, 0)
-            }
-            de::value::Error::MissingField(field) => {
-                Error::Syntax(ErrorCode::MissingField(field), 0, 0)
-            }
-        }
+        Error::Syntax(ErrorCode::Message(error.to_string()), 0, 0)
     }
 }
 
 impl de::Error for Error {
-    fn custom<T: Into<String>>(msg: T) -> Error {
-        Error::Syntax(ErrorCode::Custom(msg.into()), 0, 0)
-    }
-
-    fn end_of_stream() -> Error {
-        Error::Syntax(ErrorCode::EOFWhileParsingValue, 0, 0)
-    }
-
-    fn invalid_type(ty: de::Type) -> Error {
-        Error::Syntax(ErrorCode::InvalidType(ty), 0, 0)
-    }
-
-    fn invalid_value(msg: &str) -> Error {
-        Error::Syntax(ErrorCode::InvalidValue(msg.to_owned()), 0, 0)
-    }
-
-    fn invalid_length(len: usize) -> Error {
-        Error::Syntax(ErrorCode::InvalidLength(len), 0, 0)
-    }
-
-    fn unknown_variant(variant: &str) -> Error {
-        Error::Syntax(ErrorCode::UnknownVariant(String::from(variant)), 0, 0)
-    }
-
-    fn unknown_field(field: &str) -> Error {
-        Error::Syntax(ErrorCode::UnknownField(String::from(field)), 0, 0)
-    }
-
-    fn missing_field(field: &'static str) -> Error {
-        Error::Syntax(ErrorCode::MissingField(field), 0, 0)
+    fn custom<T: Display>(msg: T) -> Error {
+        Error::Syntax(ErrorCode::Message(msg.to_string()), 0, 0)
     }
 }
 
 impl ser::Error for Error {
-    /// Raised when there is general error when deserializing a type.
-    fn custom<T: Into<String>>(msg: T) -> Error {
-        Error::Syntax(ErrorCode::Custom(msg.into()), 0, 0)
+    fn custom<T: Display>(msg: T) -> Error {
+        Error::Syntax(ErrorCode::Message(msg.to_string()), 0, 0)
     }
 }
 

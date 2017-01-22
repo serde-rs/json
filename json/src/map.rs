@@ -197,6 +197,10 @@ impl de::Deserialize for Map<String, Value> {
         impl de::Visitor for Visitor {
             type Value = Map<String, Value>;
 
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a map")
+            }
+
             #[inline]
             fn visit_unit<E>(self) -> Result<Self::Value, E>
                 where E: de::Error

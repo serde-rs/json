@@ -124,6 +124,10 @@ impl Deserialize for Number {
         impl Visitor for NumberVisitor {
             type Value = Number;
 
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a number")
+            }
+
             #[inline]
             fn visit_i64<E>(self, value: i64) -> Result<Number, E> {
                 Ok(value.into())
@@ -162,8 +166,8 @@ impl Deserializer for Number {
 
     forward_to_deserialize! {
         bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
-        unit option seq seq_fixed_size bytes map unit_struct newtype_struct
-        tuple_struct struct struct_field tuple enum ignored_any
+        unit option seq seq_fixed_size bytes byte_buf map unit_struct
+        newtype_struct tuple_struct struct struct_field tuple enum ignored_any
     }
 }
 

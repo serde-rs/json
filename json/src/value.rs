@@ -38,7 +38,7 @@ use std::io;
 use std::str;
 use std::vec;
 
-use serde::de;
+use serde::de::{self, Unexpected};
 use serde::ser;
 use serde::de::value::ValueDeserializer;
 
@@ -437,6 +437,10 @@ impl de::Deserialize for Value {
 
         impl de::Visitor for ValueVisitor {
             type Value = Value;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("any valid JSON value")
+            }
 
             #[inline]
             fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
@@ -888,14 +892,11 @@ impl ser::SerializeMap for SerializeMap {
     fn serialize_value<T>(&mut self, value: T) -> Result<(), Error>
         where T: ser::Serialize
     {
-        match self.next_key.take() {
-            Some(key) => self.map.insert(key, try!(to_value(&value))),
-            None => {
-                return Err(Error::Syntax(ErrorCode::Custom("serialize_map_value without \
-                                                            matching serialize_map_key".to_owned()),
-                                         0, 0));
-            }
-        };
+        let key = self.next_key.take();
+        // Panic because this indicates a bug in the program rather than an
+        // expected failure.
+        let key = key.expect("serialize_value called before serialize_key");
+        self.map.insert(key, try!(to_value(&value)));
         Ok(())
     }
 
@@ -953,23 +954,25 @@ impl de::Deserializer for Value {
             Value::Number(n) => n.deserialize(visitor),
             Value::String(v) => visitor.visit_string(v),
             Value::Array(v) => {
+                let len = v.len();
                 let mut deserializer = SeqDeserializer::new(v);
                 let seq = try!(visitor.visit_seq(&mut deserializer));
                 let remaining = deserializer.iter.len();
                 if remaining == 0 {
                     Ok(seq)
                 } else {
-                    Err(de::Error::invalid_length(remaining))
+                    Err(de::Error::invalid_length(len, &"fewer elements in array"))
                 }
             }
             Value::Object(v) => {
+                let len = v.len();
                 let mut deserializer = MapDeserializer::new(v);
                 let map = try!(visitor.visit_map(&mut deserializer));
                 let remaining = deserializer.iter.len();
                 if remaining == 0 {
                     Ok(map)
                 } else {
-                    Err(de::Error::invalid_length(remaining))
+                    Err(de::Error::invalid_length(len, &"fewer elements in map"))
                 }
             }
         }
@@ -1003,18 +1006,18 @@ impl de::Deserializer for Value {
                 let (variant, value) = match iter.next() {
                     Some(v) => v,
                     None => {
-                        return Err(de::Error::invalid_type(de::Type::VariantName));
+                        return Err(de::Error::invalid_value(Unexpected::Map, &"map with a single key"));
                     }
                 };
                 // enums are encoded in json as maps with a single key:value pair
                 if iter.next().is_some() {
-                    return Err(de::Error::invalid_type(de::Type::Map));
+                    return Err(de::Error::invalid_value(Unexpected::Map, &"map with a single key"));
                 }
                 (variant, Some(value))
             }
             Value::String(variant) => (variant, None),
-            _ => {
-                return Err(de::Error::invalid_type(de::Type::Enum));
+            other => {
+                return Err(de::Error::invalid_type(other.unexpected(), &"string or map"));
             }
         };
 
@@ -1037,8 +1040,8 @@ impl de::Deserializer for Value {
 
     forward_to_deserialize! {
         bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
-        unit seq seq_fixed_size bytes map unit_struct tuple_struct struct
-        struct_field tuple ignored_any
+        unit seq seq_fixed_size bytes byte_buf map unit_struct tuple_struct
+        struct struct_field tuple ignored_any
     }
 }
 
@@ -1051,12 +1054,12 @@ impl de::EnumVisitor for EnumDeserializer {
     type Error = Error;
     type Variant = VariantDeserializer;
 
-    fn visit_variant<V>(self) -> Result<(V, VariantDeserializer), Error>
-        where V: de::Deserialize,
+    fn visit_variant_seed<V>(self, seed: V) -> Result<(V::Value, VariantDeserializer), Error>
+        where V: de::DeserializeSeed,
     {
         let variant = self.variant.into_deserializer();
         let visitor = VariantDeserializer { value: self.value };
-        de::Deserialize::deserialize(variant).map(|v| (v, visitor))
+        seed.deserialize(variant).map(|v| (v, visitor))
     }
 }
 
@@ -1074,12 +1077,12 @@ impl de::VariantVisitor for VariantDeserializer {
         }
     }
 
-    fn visit_newtype<T>(self) -> Result<T, Error>
-        where T: de::Deserialize,
+    fn visit_newtype_seed<T>(self, seed: T) -> Result<T::Value, Error>
+        where T: de::DeserializeSeed,
     {
         match self.value {
-            Some(value) => de::Deserialize::deserialize(value),
-            None => Err(de::Error::invalid_type(de::Type::NewtypeVariant)),
+            Some(value) => seed.deserialize(value),
+            None => Err(de::Error::invalid_type(Unexpected::UnitVariant, &"newtype variant")),
         }
     }
 
@@ -1094,7 +1097,8 @@ impl de::VariantVisitor for VariantDeserializer {
             Some(Value::Array(v)) => {
                 de::Deserializer::deserialize(SeqDeserializer::new(v), visitor)
             }
-            _ => Err(de::Error::invalid_type(de::Type::TupleVariant))
+            Some(other) => Err(de::Error::invalid_type(other.unexpected(), &"tuple variant")),
+            None => Err(de::Error::invalid_type(Unexpected::UnitVariant, &"tuple variant"))
         }
     }
 
@@ -1109,7 +1113,8 @@ impl de::VariantVisitor for VariantDeserializer {
             Some(Value::Object(v)) => {
                 de::Deserializer::deserialize(MapDeserializer::new(v), visitor)
             }
-            _ => Err(de::Error::invalid_type(de::Type::StructVariant))
+            Some(other) => Err(de::Error::invalid_type(other.unexpected(), &"struct variant")),
+            _ => Err(de::Error::invalid_type(Unexpected::UnitVariant, &"struct variant"))
         }
     }
 }
@@ -1133,7 +1138,8 @@ impl de::Deserializer for SeqDeserializer {
     fn deserialize<V>(mut self, visitor: V) -> Result<V::Value, Error>
         where V: de::Visitor,
     {
-        if self.iter.len() == 0 {
+        let len = self.iter.len();
+        if len == 0 {
             visitor.visit_unit()
         } else {
             let ret = try!(visitor.visit_seq(&mut self));
@@ -1141,26 +1147,26 @@ impl de::Deserializer for SeqDeserializer {
             if remaining == 0 {
                 Ok(ret)
             } else {
-                Err(de::Error::invalid_length(remaining))
+                Err(de::Error::invalid_length(len, &"fewer elements in array"))
             }
         }
     }
 
     forward_to_deserialize! {
         bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
-        unit option seq seq_fixed_size bytes map unit_struct newtype_struct
-        tuple_struct struct struct_field tuple enum ignored_any
+        unit option seq seq_fixed_size bytes byte_buf map unit_struct
+        newtype_struct tuple_struct struct struct_field tuple enum ignored_any
     }
 }
 
 impl de::SeqVisitor for SeqDeserializer {
     type Error = Error;
 
-    fn visit<T>(&mut self) -> Result<Option<T>, Error>
-        where T: de::Deserialize,
+    fn visit_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Error>
+        where T: de::DeserializeSeed,
     {
         match self.iter.next() {
-            Some(value) => de::Deserialize::deserialize(value).map(Some),
+            Some(value) => seed.deserialize(value).map(Some),
             None => Ok(None),
         }
     }
@@ -1187,63 +1193,25 @@ impl MapDeserializer {
 impl de::MapVisitor for MapDeserializer {
     type Error = Error;
 
-    fn visit_key<T>(&mut self) -> Result<Option<T>, Error>
-        where T: de::Deserialize,
+    fn visit_key_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Error>
+        where T: de::DeserializeSeed,
     {
         match self.iter.next() {
             Some((key, value)) => {
                 self.value = Some(value);
-                de::Deserialize::deserialize(Value::String(key)).map(Some)
+                seed.deserialize(Value::String(key)).map(Some)
             }
             None => Ok(None),
         }
     }
 
-    fn visit_value<T>(&mut self) -> Result<T, Error>
-        where T: de::Deserialize,
+    fn visit_value_seed<T>(&mut self, seed: T) -> Result<T::Value, Error>
+        where T: de::DeserializeSeed,
     {
         match self.value.take() {
-            Some(value) => de::Deserialize::deserialize(value),
+            Some(value) => seed.deserialize(value),
             None => Err(de::Error::custom("value is missing")),
         }
-    }
-
-    fn missing_field<V>(&mut self, field: &'static str) -> Result<V, Error>
-        where V: de::Deserialize,
-    {
-        struct MissingFieldDeserializer(&'static str);
-
-        impl de::Deserializer for MissingFieldDeserializer {
-            type Error = Error;
-
-            fn deserialize<V>(
-                self,
-                _visitor: V
-            ) -> Result<V::Value, Self::Error>
-                where V: de::Visitor,
-            {
-                let MissingFieldDeserializer(field) = self;
-                Err(de::Error::missing_field(field))
-            }
-
-            fn deserialize_option<V>(
-                self,
-                visitor: V
-            ) -> Result<V::Value, Self::Error>
-                where V: de::Visitor,
-            {
-                visitor.visit_none()
-            }
-
-            forward_to_deserialize! {
-                bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str
-                string unit seq seq_fixed_size bytes map unit_struct
-                newtype_struct tuple_struct struct struct_field tuple enum
-                ignored_any
-            }
-        }
-
-        de::Deserialize::deserialize(MissingFieldDeserializer(field))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1263,8 +1231,31 @@ impl de::Deserializer for MapDeserializer {
 
     forward_to_deserialize! {
         bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
-        unit option seq seq_fixed_size bytes map unit_struct newtype_struct
-        tuple_struct struct struct_field tuple enum ignored_any
+        unit option seq seq_fixed_size bytes byte_buf map unit_struct
+        newtype_struct tuple_struct struct struct_field tuple enum ignored_any
+    }
+}
+
+impl Value {
+    fn unexpected(&self) -> Unexpected {
+        match *self {
+            Value::Null => Unexpected::Unit,
+            Value::Bool(b) => Unexpected::Bool(b),
+            Value::Number(ref n) => {
+                if let Some(u) = n.as_u64() {
+                    Unexpected::Unsigned(u)
+                } else if let Some(i) = n.as_i64() {
+                    Unexpected::Signed(i)
+                } else if let Some(f) = n.as_f64() {
+                    Unexpected::Float(f)
+                } else {
+                    panic!("unexpected number")
+                }
+            }
+            Value::String(ref s) => Unexpected::Str(s),
+            Value::Array(_) => Unexpected::Seq,
+            Value::Object(_) => Unexpected::Map,
+        }
     }
 }
 
