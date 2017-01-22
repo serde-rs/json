@@ -1397,54 +1397,57 @@ pub fn to_writer_pretty<W: ?Sized, T>(writer: &mut W, value: &T) -> Result<()>
     Ok(())
 }
 
+const VEC_WRITE_ERROR : &'static str = 
+	"Error writing to a Vec, this should be impossible.";
+
 /// Encode the specified struct into a json `[u8]` buffer.
 #[inline]
-pub fn to_vec<T>(value: &T) -> Result<Vec<u8>>
+pub fn to_vec<T>(value: &T) -> Vec<u8>
     where T: ser::Serialize,
 {
     // We are writing to a Vec, which doesn't fail. So we can ignore
     // the error.
     let mut writer = Vec::with_capacity(128);
-    try!(to_writer(&mut writer, value));
-    Ok(writer)
+    to_writer(&mut writer, value).expect(VEC_WRITE_ERROR);
+    writer
 }
 
 /// Encode the specified struct into a json `[u8]` buffer.
 #[inline]
-pub fn to_vec_pretty<T>(value: &T) -> Result<Vec<u8>>
+pub fn to_vec_pretty<T>(value: &T) -> Vec<u8>
     where T: ser::Serialize,
 {
     // We are writing to a Vec, which doesn't fail. So we can ignore
     // the error.
     let mut writer = Vec::with_capacity(128);
-    try!(to_writer_pretty(&mut writer, value));
-    Ok(writer)
+    to_writer_pretty(&mut writer, value).expect(VEC_WRITE_ERROR);
+    writer
 }
 
 /// Encode the specified struct into a json `String` buffer.
 #[inline]
-pub fn to_string<T>(value: &T) -> Result<String>
+pub fn to_string<T>(value: &T) -> String
     where T: ser::Serialize,
 {
-    let vec = try!(to_vec(value));
+    let vec = to_vec(value);
     let string = unsafe {
         // We do not emit invalid UTF-8.
         String::from_utf8_unchecked(vec)
     };
-    Ok(string)
+    string
 }
 
 /// Encode the specified struct into a json `String` buffer.
 #[inline]
-pub fn to_string_pretty<T>(value: &T) -> Result<String>
+pub fn to_string_pretty<T>(value: &T) -> String
     where T: ser::Serialize,
 {
-    let vec = try!(to_vec_pretty(value));
+    let vec = to_vec_pretty(value);
     let string = unsafe {
         // We do not emit invalid UTF-8.
         String::from_utf8_unchecked(vec)
     };
-    Ok(string)
+    string
 }
 
 fn indent<W>(wr: &mut W, n: usize, s: &[u8]) -> Result<()>
