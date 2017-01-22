@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::f64;
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 use std::i64;
 use std::iter;
 use std::marker::PhantomData;
@@ -1076,11 +1076,11 @@ fn test_parse_object() {
 #[test]
 fn test_parse_struct() {
     test_parse_err::<Outer>(vec![
-        ("5", Error::Syntax(ErrorCode::InvalidType(de::Type::U64), 1, 1)),
-        ("\"hello\"", Error::Syntax(ErrorCode::InvalidType(de::Type::Str), 1, 7)),
-        ("{\"inner\": true}", Error::Syntax(ErrorCode::InvalidType(de::Type::Bool), 1, 14)),
-        ("{}", Error::Syntax(ErrorCode::MissingField("inner"), 1, 2)),
-        (r#"{"inner": [{"b": 42, "c": []}]}"#, Error::Syntax(ErrorCode::MissingField("a"), 1, 29)),
+        ("5", Error::Syntax(ErrorCode::Message("invalid type: integer `5`, expected struct Outer".into()), 1, 1)),
+        ("\"hello\"", Error::Syntax(ErrorCode::Message("invalid type: string \"hello\", expected struct Outer".into()), 1, 7)),
+        ("{\"inner\": true}", Error::Syntax(ErrorCode::Message("invalid type: boolean `true`, expected a sequence".into()), 1, 14)),
+        ("{}", Error::Syntax(ErrorCode::Message("missing field `inner`".into()), 1, 2)),
+        (r#"{"inner": [{"b": 42, "c": []}]}"#, Error::Syntax(ErrorCode::Message("missing field `a`".into()), 1, 29)),
     ]);
 
     test_parse_ok(vec![
@@ -1149,20 +1149,20 @@ fn test_parse_enum_errors() {
     test_parse_err::<Animal>(vec![
         ("{}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 2)),
         ("[]", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
-        ("\"unknown\"", Error::Syntax(ErrorCode::UnknownVariant("unknown".to_string()), 1, 9)),
-        ("{\"unknown\":[]}", Error::Syntax(ErrorCode::UnknownVariant("unknown".to_string()), 1, 10)),
+        ("\"unknown\"", Error::Syntax(ErrorCode::Message("unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive`".into()), 1, 9)),
+        ("{\"unknown\":[]}", Error::Syntax(ErrorCode::Message("unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive`".into()), 1, 10)),
         ("{\"Dog\":", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 7)),
         ("{\"Dog\":}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 8)),
-        ("{\"Dog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 9)),
+        ("{\"Dog\":{}}", Error::Syntax(ErrorCode::Message("invalid type: map, expected unit".into()), 1, 9)),
         ("{\"Dog\":[0]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 9)),
         ("\"Frog\"", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 6)),
-        ("{\"Frog\":{}}", Error::Syntax(ErrorCode::InvalidType(de::Type::Map), 1, 10)),
-        ("{\"Cat\":[]}", Error::Syntax(ErrorCode::InvalidLength(0), 1, 9)),
-        ("{\"Cat\":[0]}", Error::Syntax(ErrorCode::InvalidLength(1), 1, 10)),
+        ("{\"Frog\":{}}", Error::Syntax(ErrorCode::Message("invalid type: map, expected tuple variant Animal::Frog".into()), 1, 10)),
+        ("{\"Cat\":[]}", Error::Syntax(ErrorCode::Message("invalid length 0, expected tuple of 2 elements".into()), 1, 9)),
+        ("{\"Cat\":[0]}", Error::Syntax(ErrorCode::Message("invalid length 1, expected tuple of 2 elements".into()), 1, 10)),
         ("{\"Cat\":[0, \"\", 2]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 14)),
         (
             "{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",
-            Error::Syntax(ErrorCode::UnknownField("foo".to_string()), 1, 39)
+            Error::Syntax(ErrorCode::Message("unknown field `foo`, expected `age` or `name`".into()), 1, 39)
         ),
     ]);
 }
@@ -1262,7 +1262,7 @@ fn test_missing_nonoption_field() {
     }
 
     test_parse_err::<Foo>(vec![
-        ("{}", Error::Syntax(ErrorCode::MissingField("x"), 1, 2)),
+        ("{}", Error::Syntax(ErrorCode::Message("missing field `x`".into()), 1, 2)),
     ]);
 }
 
@@ -1327,6 +1327,10 @@ fn test_serialize_seq_with_no_len() {
         where T: de::Deserialize,
     {
         type Value = MyVec<T>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("array")
+        }
 
         #[inline]
         fn visit_unit<E>(self) -> Result<MyVec<T>, E>
@@ -1412,6 +1416,10 @@ fn test_serialize_map_with_no_len() {
               V: de::Deserialize,
     {
         type Value = MyMap<K, V>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("map")
+        }
 
         #[inline]
         fn visit_unit<E>(self) -> Result<MyMap<K, V>, E>
@@ -1737,7 +1745,7 @@ fn test_stack_overflow() {
 
     let brackets: String = iter::repeat('[').take(128).collect();
     test_parse_err::<Value>(vec![
-        (&brackets, Error::Syntax(ErrorCode::Custom("recursion limit exceeded".into()), 1, 128)),
+        (&brackets, Error::Syntax(ErrorCode::RecursionLimitExceeded, 1, 128)),
     ]);
 }
 
