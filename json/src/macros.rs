@@ -79,7 +79,7 @@ macro_rules! json_internal {
     };
 
     ([ $($tt:tt)+ ]) => {
-        $crate::Value::Array(json_within_array!([] () $($tt)+))
+        $crate::Value::Array(json_within_array!([] $($tt)+))
     };
 
     ({}) => {
@@ -103,35 +103,58 @@ macro_rules! json_internal {
 // TT muncher for parsing the inside of an array [...]. Produces a vec![...] of
 // the elements.
 //
-// Must be invoked as: json_within_array!([] () $($tt)*)
+// Must be invoked as: json_within_array!([] $($tt)*)
 #[macro_export]
 #[doc(hidden)]
 macro_rules! json_within_array {
-    // Done.
-    ([$($elems:tt)*] ()) => {
-        vec![$($elems)*]
+    // Done with trailing comma.
+    ([$($elems:expr,)*]) => {
+        vec![$($elems,)*]
     };
 
-    // Push a single element. The element must be more than zero tokens.
-    ([$($elems:tt)*] ($($cur:tt)+)) => {
-        json_within_array!([$($elems)* json!($($cur)+),] ())
+    // Done without trailing comma.
+    ([$($elems:expr),*]) => {
+        vec![$($elems),*]
     };
 
-    // Misplaced comma. Trigger a reasonable error message by failing to match
-    // the comma in the recursive call.
-    ([$($elems:tt)*] () , $($rest:tt)*) => {
-        json_within_array!(,);
+    // Next element is `null`.
+    ([$($elems:expr,)*] null $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!(null)] $($rest)*)
     };
 
-    // Found a comma separator. Push whatever we have so far and move on to
-    // remaining elements. Trailing comma is allowed.
-    ([$($elems:tt)*] ($($cur:tt)+) , $($rest:tt)*) => {
-        json_within_array!([$($elems)* json!($($cur)+) ,] () $($rest)*)
+    // Next element is `true`.
+    ([$($elems:expr,)*] true $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!(true)] $($rest)*)
     };
 
-    // Munch a token into the current element.
-    ([$($elems:tt)*] ($($elem:tt)*) $tt:tt $($rest:tt)*) => {
-        json_within_array!([$($elems)*] ($($elem)* $tt) $($rest)*)
+    // Next element is `false`.
+    ([$($elems:expr,)*] false $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!(false)] $($rest)*)
+    };
+
+    // Next element is an array.
+    ([$($elems:expr,)*] [$($array:tt)*] $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!([$($array)*])] $($rest)*)
+    };
+
+    // Next element is a map.
+    ([$($elems:expr,)*] {$($map:tt)*} $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!({$($map)*})] $($rest)*)
+    };
+
+    // Next element is an expression followed by comma.
+    ([$($elems:expr,)*] $next:expr, $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!($next),] $($rest)*)
+    };
+
+    // Last element is an expression with no trailing comma.
+    ([$($elems:expr,)*] $last:expr) => {
+        json_within_array!([$($elems,)* json!($last)])
+    };
+
+    // Comma after the most recent element.
+    ([$($elems:expr),*] , $($rest:tt)*) => {
+        json_within_array!([$($elems,)*] $($rest)*)
     };
 }
 
