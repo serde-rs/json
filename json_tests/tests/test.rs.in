@@ -1788,4 +1788,10 @@ fn test_json_macro() {
         "ok": <Result<(), ()> as Clone>::clone(&Ok(())),
         "err": <Result<(), ()> as Clone>::clone(&Err(()))
     });
+
+    // It works in map keys but only if they are parenthesized.
+    let _ = json!({
+        (<Result<&str, ()> as Clone>::clone(&Ok("")).unwrap()): "ok",
+        (<Result<(), &str> as Clone>::clone(&Err("")).unwrap_err()): "err"
+    });
 }

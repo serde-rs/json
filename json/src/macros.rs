@@ -216,14 +216,14 @@ macro_rules! json_within_object {
 
     // Misplaced colon. Trigger a reasonable error message by failing to match
     // the colon in the recursive call.
-    ($object:ident ($($key:tt)*) : $($rest:tt)*) => {
-        json_within_object!(:);
+    ($object:ident () : $($rest:tt)*) => {
+        json_within_object!($object [:] (:));
     };
 
     // Found a comma inside a key. Trigger a reasonable error message by failing
     // to match the comma in the recursive call.
     ($object:ident ($($key:tt)*) , $($rest:tt)*) => {
-        json_within_object!(,);
+        json_within_object!($object [,] (,));
     };
 
     // Munch a token into the current key.
