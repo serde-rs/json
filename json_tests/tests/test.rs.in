@@ -1778,5 +1778,14 @@ fn test_from_iter_unfused() {
 fn test_json_macro() {
     // This is tricky because the <...> is not a single TT and the comma inside
     // looks like an array element separator.
-    let _ = json!([ <Result<(), ()> as Clone>::clone(&Ok(())) ]);
+    let _ = json!([
+        <Result<(), ()> as Clone>::clone(&Ok(())),
+        <Result<(), ()> as Clone>::clone(&Err(()))
+    ]);
+
+    // Same thing but in the map values.
+    let _ = json!({
+        "ok": <Result<(), ()> as Clone>::clone(&Ok(())),
+        "err": <Result<(), ()> as Clone>::clone(&Err(()))
+    });
 }
