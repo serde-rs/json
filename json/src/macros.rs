@@ -100,7 +100,7 @@ macro_rules! json_internal {
 
     // Any Serialize type: numbers, strings, struct literals, variables etc.
     ($other:expr) => {
-        $crate::to_value($other).unwrap()
+        $crate::to_value(&$other).unwrap()
     };
 }
 
