@@ -1773,3 +1773,10 @@ fn test_from_iter_unfused() {
     }).unwrap();
     assert_eq!(msg.key, 1337);
 }
+
+#[test]
+fn test_json_macro() {
+    // This is tricky because the <...> is not a single TT and the comma inside
+    // looks like an array element separator.
+    let _ = json!([ <Result<(), ()> as Clone>::clone(&Ok(())) ]);
+}
