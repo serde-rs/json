@@ -156,7 +156,6 @@ pub use self::value::{Map, Number, Value, from_value, to_value};
 #[macro_use]
 mod macros;
 
-pub mod builder;
 pub mod de;
 pub mod error;
 pub mod ser;
