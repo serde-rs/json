@@ -75,15 +75,11 @@ macro_rules! json_internal {
     };
 
     ([]) => {
-        $crate::Value::Array(Vec::new())
+        $crate::Value::Array(vec![])
     };
 
     ([ $($tt:tt)+ ]) => {
-        $crate::Value::Array({
-            let mut array = Vec::new();
-            json_within_array!(array () $($tt)+);
-            array
-        })
+        $crate::Value::Array(json_within_array!([] $($tt)+))
     };
 
     ({}) => {
@@ -93,7 +89,7 @@ macro_rules! json_internal {
     ({ $($tt:tt)+ }) => {
         $crate::Value::Object({
             let mut object = $crate::Map::new();
-            json_within_object!(object () () $($tt)+);
+            json_within_object!(object () $($tt)+);
             object
         })
     };
@@ -104,93 +100,134 @@ macro_rules! json_internal {
     };
 }
 
-// TT muncher for parsing the inside of an array [...]. Each element is pushed
-// into the given array variable.
+// TT muncher for parsing the inside of an array [...]. Produces a vec![...] of
+// the elements.
 //
-// Must be invoked as: json_within_array!(var () $($tt)*)
+// Must be invoked as: json_within_array!([] $($tt)*)
 #[macro_export]
 #[doc(hidden)]
 macro_rules! json_within_array {
-    // Done.
-    ($array:ident ()) => {};
-
-    // Push a single element. The element must be more than zero tokens.
-    ($array:ident ($($elem:tt)+)) => {
-        $array.push(json!($($elem)+));
+    // Done with trailing comma.
+    ([$($elems:expr,)*]) => {
+        vec![$($elems,)*]
     };
 
-    // Misplaced comma. Trigger a reasonable error message by failing to match
-    // the comma in the recursive call.
-    ($array:ident () , $($rest:tt)*) => {
-        json_within_array!($array ,);
+    // Done without trailing comma.
+    ([$($elems:expr),*]) => {
+        vec![$($elems),*]
     };
 
-    // Found a comma separator. Push whatever we have so far and move on to
-    // remaining elements. Trailing comma is allowed.
-    ($array:ident ($($elem:tt)+) , $($rest:tt)*) => {
-        json_within_array!($array ($($elem)+));
-        json_within_array!($array () $($rest)*);
+    // Next element is `null`.
+    ([$($elems:expr,)*] null $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!(null)] $($rest)*)
     };
 
-    // Munch a token into the current element.
-    ($array:ident ($($elem:tt)*) $tt:tt $($rest:tt)*) => {
-        json_within_array!($array ($($elem)* $tt) $($rest)*);
+    // Next element is `true`.
+    ([$($elems:expr,)*] true $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!(true)] $($rest)*)
+    };
+
+    // Next element is `false`.
+    ([$($elems:expr,)*] false $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!(false)] $($rest)*)
+    };
+
+    // Next element is an array.
+    ([$($elems:expr,)*] [$($array:tt)*] $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!([$($array)*])] $($rest)*)
+    };
+
+    // Next element is a map.
+    ([$($elems:expr,)*] {$($map:tt)*} $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!({$($map)*})] $($rest)*)
+    };
+
+    // Next element is an expression followed by comma.
+    ([$($elems:expr,)*] $next:expr, $($rest:tt)*) => {
+        json_within_array!([$($elems,)* json!($next),] $($rest)*)
+    };
+
+    // Last element is an expression with no trailing comma.
+    ([$($elems:expr,)*] $last:expr) => {
+        json_within_array!([$($elems,)* json!($last)])
+    };
+
+    // Comma after the most recent element.
+    ([$($elems:expr),*] , $($rest:tt)*) => {
+        json_within_array!([$($elems,)*] $($rest)*)
     };
 }
 
 // TT muncher for parsing the inside of an object {...}. Each entry is inserted
 // into the given map variable.
 //
-// Must be invoked as: json_within_object!(var () () $($tt)*)
+// Must be invoked as: json_within_object!(var () $($tt)*)
 #[macro_export]
 #[doc(hidden)]
 macro_rules! json_within_object {
     // Done.
-    ($object:ident () ()) => {};
+    ($object:ident ()) => {};
 
-    // Insert a single entry. The key and value must both be more than zero
-    // tokens. The key must be Into-convertible to String.
-    ($object:ident ($($key:tt)+) : ($($value:tt)+)) => {
-        $object.insert(($($key)+).into(), json!($($value)+));
+    // Insert the current entry followed by trailing comma.
+    ($object:ident [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
+        $object.insert(($($key)+).into(), $value);
+        json_within_object!($object () $($rest)*);
+    };
+
+    // Insert the last entry without trailing comma.
+    ($object:ident [$($key:tt)+] ($value:expr)) => {
+        $object.insert(($($key)+).into(), $value);
+    };
+
+    // Next value is `null`.
+    ($object:ident ($($key:tt)+) : null $($rest:tt)*) => {
+        json_within_object!($object [$($key)+] (json!(null)) $($rest)*);
+    };
+
+    // Next value is `true`.
+    ($object:ident ($($key:tt)+) : true $($rest:tt)*) => {
+        json_within_object!($object [$($key)+] (json!(true)) $($rest)*);
+    };
+
+    // Next value is `false`.
+    ($object:ident ($($key:tt)+) : false $($rest:tt)*) => {
+        json_within_object!($object [$($key)+] (json!(false)) $($rest)*);
+    };
+
+    // Next value is an array.
+    ($object:ident ($($key:tt)+) : [$($array:tt)*] $($rest:tt)*) => {
+        json_within_object!($object [$($key)+] (json!([$($array)*])) $($rest)*);
+    };
+
+    // Next value is a map.
+    ($object:ident ($($key:tt)+) : {$($map:tt)*} $($rest:tt)*) => {
+        json_within_object!($object [$($key)+] (json!({$($map)*})) $($rest)*);
+    };
+
+    // Next value is an expression followed by comma.
+    ($object:ident ($($key:tt)+) : $value:expr , $($rest:tt)*) => {
+        json_within_object!($object [$($key)+] (json!($value)) , $($rest)*);
+    };
+
+    // Last value is an expression with no trailing comma.
+    ($object:ident ($($key:tt)+) : $value:expr) => {
+        json_within_object!($object [$($key)+] (json!($value)));
     };
 
     // Misplaced colon. Trigger a reasonable error message by failing to match
     // the colon in the recursive call.
-    ($object:ident () () : $($rest:tt)*) => {
-        json_within_object!($object :);
+    ($object:ident () : $($rest:tt)*) => {
+        json_within_object!($object [:] (:));
     };
 
     // Found a comma inside a key. Trigger a reasonable error message by failing
     // to match the comma in the recursive call.
-    ($object:ident ($($key:tt)*) () , $($rest:tt)*) => {
-        json_within_object!($object ,);
-    };
-
-    // Found a colon after a key. Move on to the value.
-    ($object:ident ($($key:tt)+) () : $($rest:tt)*) => {
-        json_within_object!($object ($($key)+) : () $($rest)*);
-    };
-
-    // Misplaced comma. Trigger a reasonable error message by failing to match
-    // the comma in the recursive call.
-    ($object:ident ($($key:tt)+) : () , $($rest:tt)*) => {
-        json_within_object!($object ,);
-    };
-
-    // Found a comma after a value. Insert whatever we have so far and move on
-    // to remaining elements. Trailing comma is allowed.
-    ($object:ident ($($key:tt)+) : ($($value:tt)+) , $($rest:tt)*) => {
-        json_within_object!($object ($($key)+) : ($($value)+));
-        json_within_object!($object () () $($rest)*);
+    ($object:ident ($($key:tt)*) , $($rest:tt)*) => {
+        json_within_object!($object [,] (,));
     };
 
     // Munch a token into the current key.
-    ($object:ident ($($key:tt)*) () $tt:tt $($rest:tt)*) => {
-        json_within_object!($object ($($key)* $tt) () $($rest)*)
-    };
-
-    // Munch a token into the current value.
-    ($object:ident ($($key:tt)+) : ($($value:tt)*) $tt:tt $($rest:tt)*) => {
-        json_within_object!($object ($($key)+) : ($($value)* $tt) $($rest)*)
+    ($object:ident ($($key:tt)*) $tt:tt $($rest:tt)*) => {
+        json_within_object!($object ($($key)* $tt) $($rest)*);
     };
 }

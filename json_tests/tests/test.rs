@@ -4,6 +4,10 @@
 #![cfg_attr(not(feature = "with-syntex"), feature(plugin))]
 #![cfg_attr(not(feature = "with-syntex"), plugin(indoc))]
 
+#![cfg_attr(feature = "trace-macros", feature(trace_macros))]
+#[cfg(feature = "trace-macros")]
+trace_macros!(true);
+
 #[cfg(not(feature = "with-syntex"))]
 #[macro_use]
 extern crate serde_derive;

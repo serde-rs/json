@@ -9,6 +9,7 @@ publish = false
 default = ["serde_derive"]
 with-syntex = ["syntex", "serde_codegen", "indoc/with-syntex"]
 unstable-testing = ["clippy", "serde_json/clippy"]
+trace-macros = []
 
 [build-dependencies]
 indoc = "*"
