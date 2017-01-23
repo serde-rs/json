@@ -78,21 +78,25 @@ macro_rules! json_internal {
         $crate::Value::Array(Vec::new())
     };
 
-    ([ $($tt:tt)+ ]) => {{
-        let mut array = Vec::new();
-        json_within_array!(array () $($tt)+);
-        $crate::Value::Array(array)
-    }};
+    ([ $($tt:tt)+ ]) => {
+        $crate::Value::Array({
+            let mut array = Vec::new();
+            json_within_array!(array () $($tt)+);
+            array
+        })
+    };
 
     ({}) => {
         $crate::Value::Object($crate::Map::new())
     };
 
-    ({ $($tt:tt)+ }) => {{
-        let mut object = $crate::Map::new();
-        json_within_object!(object () () $($tt)+);
-        $crate::Value::Object(object)
-    }};
+    ({ $($tt:tt)+ }) => {
+        $crate::Value::Object({
+            let mut object = $crate::Map::new();
+            json_within_object!(object () () $($tt)+);
+            object
+        })
+    };
 
     // Any Serialize type: numbers, strings, struct literals, variables etc.
     ($other:expr) => {
