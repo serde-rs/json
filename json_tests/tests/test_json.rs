@@ -14,7 +14,6 @@ use serde_json::{
     self,
     StreamDeserializer,
     Value,
-    Map,
     from_iter,
     from_slice,
     from_str,
@@ -33,21 +32,6 @@ macro_rules! treemap {
             let mut m = BTreeMap::new();
             $(
                 m.insert($k, $v);
-            )+
-            m
-        }
-    };
-}
-
-macro_rules! jsonmap {
-    () => {
-        Map::new()
-    };
-    ($($k:expr => $v:expr),+) => {
-        {
-            let mut m = Map::new();
-            $(
-                m.insert($k, to_value(&$v).unwrap());
             )+
             m
         }
@@ -277,10 +261,7 @@ fn test_write_list() {
         ),
     ]);
 
-    let long_test_list = Value::Array(vec![
-        Value::Bool(false),
-        Value::Null,
-        Value::Array(vec![Value::String("foo\nbar".to_string()), 3.5.into()])]);
+    let long_test_list = json!([false, null, ["foo\nbar", 3.5]]);
 
     test_encode_ok(&[
         (
@@ -491,12 +472,12 @@ fn test_write_object() {
         ),
     ]);
 
-    let complex_obj = Value::Object(jsonmap!(
-        "b".to_string() => vec![
-            Value::Object(jsonmap!("c".to_string() => "\x0c\x1f\r".to_string())),
-            Value::Object(jsonmap!("d".to_string() => "".to_string()))
+    let complex_obj = json!({
+        "b": [
+            {"c": "\x0c\x1f\r"},
+            {"d": ""}
         ]
-    ));
+    });
 
     test_encode_ok(&[
         (
@@ -1245,12 +1226,10 @@ fn test_missing_option_field() {
     let value: Foo = from_str("{\"x\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(Value::Object(jsonmap!())).unwrap();
+    let value: Foo = from_value(json!({})).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(Value::Object(jsonmap!(
-        "x".to_string() => 5
-    ))).unwrap();
+    let value: Foo = from_value(json!({"x": 5})).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
 
@@ -1280,12 +1259,10 @@ fn test_missing_renamed_field() {
     let value: Foo = from_str("{\"y\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(Value::Object(jsonmap!())).unwrap();
+    let value: Foo = from_value(json!({})).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(Value::Object(jsonmap!(
-        "y".to_string() => 5
-    ))).unwrap();
+    let value: Foo = from_value(json!({"y": 5})).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
 
@@ -1661,20 +1638,17 @@ fn test_json_pointer() {
         "m~n": 8
     }"#).unwrap();
     assert_eq!(data.pointer("").unwrap(), &data);
-    assert_eq!(data.pointer("/foo").unwrap(),
-        &Value::Array(vec![Value::String("bar".to_owned()),
-                           Value::String("baz".to_owned())]));
-    assert_eq!(data.pointer("/foo/0").unwrap(),
-        &Value::String("bar".to_owned()));
-    assert_eq!(data.pointer("/").unwrap(), &0.into());
-    assert_eq!(data.pointer("/a~1b").unwrap(), &1.into());
-    assert_eq!(data.pointer("/c%d").unwrap(), &2.into());
-    assert_eq!(data.pointer("/e^f").unwrap(), &3.into());
-    assert_eq!(data.pointer("/g|h").unwrap(), &4.into());
-    assert_eq!(data.pointer("/i\\j").unwrap(), &5.into());
-    assert_eq!(data.pointer("/k\"l").unwrap(), &6.into());
-    assert_eq!(data.pointer("/ ").unwrap(), &7.into());
-    assert_eq!(data.pointer("/m~0n").unwrap(), &8.into());
+    assert_eq!(data.pointer("/foo").unwrap(), &json!(["bar", "baz"]));
+    assert_eq!(data.pointer("/foo/0").unwrap(), &json!("bar"));
+    assert_eq!(data.pointer("/").unwrap(), &json!(0));
+    assert_eq!(data.pointer("/a~1b").unwrap(), &json!(1));
+    assert_eq!(data.pointer("/c%d").unwrap(), &json!(2));
+    assert_eq!(data.pointer("/e^f").unwrap(), &json!(3));
+    assert_eq!(data.pointer("/g|h").unwrap(), &json!(4));
+    assert_eq!(data.pointer("/i\\j").unwrap(), &json!(5));
+    assert_eq!(data.pointer("/k\"l").unwrap(), &json!(6));
+    assert_eq!(data.pointer("/ ").unwrap(), &json!(7));
+    assert_eq!(data.pointer("/m~0n").unwrap(), &json!(8));
     // Invalid pointers
     assert!(data.pointer("/unknown").is_none());
     assert!(data.pointer("/e^f/ertz").is_none());
@@ -1701,11 +1675,8 @@ fn test_json_pointer_mut() {
     }"#).unwrap();
 
     // Basic pointer checks
-    assert_eq!(data.pointer_mut("/foo").unwrap(),
-        &Value::Array(vec![Value::String("bar".to_owned()),
-                           Value::String("baz".to_owned())]));
-    assert_eq!(data.pointer_mut("/foo/0").unwrap(),
-        &Value::String("bar".to_owned()));
+    assert_eq!(data.pointer_mut("/foo").unwrap(), &json!(["bar", "baz"]));
+    assert_eq!(data.pointer_mut("/foo/0").unwrap(), &json!("bar"));
     assert_eq!(data.pointer_mut("/").unwrap(), &0.into());
     assert_eq!(data.pointer_mut("/a~1b").unwrap(), &1.into());
     assert_eq!(data.pointer_mut("/c%d").unwrap(), &2.into());
@@ -1725,12 +1696,12 @@ fn test_json_pointer_mut() {
     // Mutable pointer checks
     *data.pointer_mut("/").unwrap() = 100.into();
     assert_eq!(data.pointer("/").unwrap(), &100.into());
-    *data.pointer_mut("/foo/0").unwrap() = Value::String("buzz".to_owned());
-    assert_eq!(data.pointer("/foo/0").unwrap(), &Value::String("buzz".to_owned()));
+    *data.pointer_mut("/foo/0").unwrap() = json!("buzz");
+    assert_eq!(data.pointer("/foo/0").unwrap(), &json!("buzz"));
 
     // Example of ownership stealing
-    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, Value::Null)).unwrap(), 1.into());
-    assert_eq!(data.pointer("/a~1b").unwrap(), &Value::Null);
+    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, json!(null))).unwrap(), 1.into());
+    assert_eq!(data.pointer("/a~1b").unwrap(), &json!(null));
 
     // Need to compare against a clone so we don't anger the borrow checker
     // by taking out two references to a mutable value
