@@ -75,15 +75,11 @@ macro_rules! json_internal {
     };
 
     ([]) => {
-        $crate::Value::Array(Vec::new())
+        $crate::Value::Array(vec![])
     };
 
     ([ $($tt:tt)+ ]) => {
-        $crate::Value::Array({
-            let mut array = Vec::new();
-            json_within_array!(array () $($tt)+);
-            array
-        })
+        $crate::Value::Array(json_within_array!([] () $($tt)+))
     };
 
     ({}) => {
@@ -104,37 +100,38 @@ macro_rules! json_internal {
     };
 }
 
-// TT muncher for parsing the inside of an array [...]. Each element is pushed
-// into the given array variable.
+// TT muncher for parsing the inside of an array [...]. Produces a vec![...] of
+// the elements.
 //
-// Must be invoked as: json_within_array!(var () $($tt)*)
+// Must be invoked as: json_within_array!([] () $($tt)*)
 #[macro_export]
 #[doc(hidden)]
 macro_rules! json_within_array {
     // Done.
-    ($array:ident ()) => {};
+    ([$($elems:tt)*] ()) => {
+        vec![$($elems)*]
+    };
 
     // Push a single element. The element must be more than zero tokens.
-    ($array:ident ($($elem:tt)+)) => {
-        $array.push(json!($($elem)+));
+    ([$($elems:tt)*] ($($cur:tt)+)) => {
+        json_within_array!([$($elems)* json!($($cur)+),] ())
     };
 
     // Misplaced comma. Trigger a reasonable error message by failing to match
     // the comma in the recursive call.
-    ($array:ident () , $($rest:tt)*) => {
-        json_within_array!($array ,);
+    ([$($elems:tt)*] () , $($rest:tt)*) => {
+        json_within_array!(,);
     };
 
     // Found a comma separator. Push whatever we have so far and move on to
     // remaining elements. Trailing comma is allowed.
-    ($array:ident ($($elem:tt)+) , $($rest:tt)*) => {
-        json_within_array!($array ($($elem)+));
-        json_within_array!($array () $($rest)*);
+    ([$($elems:tt)*] ($($cur:tt)+) , $($rest:tt)*) => {
+        json_within_array!([$($elems)* json!($($cur)+) ,] () $($rest)*)
     };
 
     // Munch a token into the current element.
-    ($array:ident ($($elem:tt)*) $tt:tt $($rest:tt)*) => {
-        json_within_array!($array ($($elem)* $tt) $($rest)*);
+    ([$($elems:tt)*] ($($elem:tt)*) $tt:tt $($rest:tt)*) => {
+        json_within_array!([$($elems)*] ($($elem)* $tt) $($rest)*)
     };
 }
 
