@@ -527,6 +527,10 @@ struct MapKeySerializer<'a, W: 'a, F: 'a> {
     ser: &'a mut Serializer<W, F>,
 }
 
+fn key_must_be_a_string() -> Error {
+    Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
+}
+
 #[doc(hidden)]
 pub enum Impossible {}
 
@@ -572,7 +576,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     type SerializeStructVariant = Impossible;
 
     fn serialize_bool(self, _value: bool) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_isize(self, value: isize) -> Result<()> {
@@ -636,27 +640,27 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_f32(self, _value: f32) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_f64(self, _value: f64) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_char(self, _value: char) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_bytes(self, _value: &[u8]) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_unit(self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_unit_struct(self, _name: &'static str) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_newtype_variant<T>(
@@ -668,29 +672,29 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     ) -> Result<()>
         where T: ser::Serialize,
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_none(self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_some<T>(self, _value: T) -> Result<()>
         where T: ser::Serialize,
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_seq_fixed_size(self, _size: usize) -> Result<Self::SerializeSeq> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_tuple_struct(
@@ -698,7 +702,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         _name: &'static str,
         _len: usize
     ) -> Result<Self::SerializeTupleStruct> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_tuple_variant(
@@ -708,11 +712,11 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         _variant: &'static str,
         _len: usize
     ) -> Result<Self::SerializeTupleVariant> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_struct(
@@ -720,7 +724,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         _name: &'static str,
         _len: usize
     ) -> Result<Self::SerializeStruct> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_struct_variant(
@@ -730,7 +734,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         _variant: &'static str,
         _len: usize
     ) -> Result<Self::SerializeStructVariant> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 }
 
@@ -741,11 +745,11 @@ impl ser::SerializeSeq for Impossible {
     fn serialize_element<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn end(self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 }
 
@@ -756,11 +760,11 @@ impl ser::SerializeTuple for Impossible {
     fn serialize_element<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn end(self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 }
 
@@ -771,11 +775,11 @@ impl ser::SerializeTupleStruct for Impossible {
     fn serialize_field<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn end(self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 }
 
@@ -786,11 +790,11 @@ impl ser::SerializeTupleVariant for Impossible {
     fn serialize_field<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn end(self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 }
 
@@ -801,17 +805,17 @@ impl ser::SerializeMap for Impossible {
     fn serialize_key<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn serialize_value<T>(&mut self, _: T) -> Result<()>
         where T: ser::Serialize
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn end(self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 }
 
@@ -822,11 +826,11 @@ impl ser::SerializeStruct for Impossible {
     fn serialize_field<V>(&mut self, _: &'static str, _: V) -> Result<()>
         where V: ser::Serialize
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn end(self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 }
 
@@ -837,11 +841,11 @@ impl ser::SerializeStructVariant for Impossible {
     fn serialize_field<V>(&mut self, _: &'static str, _: V) -> Result<()>
         where V: ser::Serialize
     {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 
     fn end(self) -> Result<()> {
-        Err(Error::Syntax(ErrorCode::KeyMustBeAString, 0, 0))
+        Err(key_must_be_a_string())
     }
 }
 

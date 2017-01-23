@@ -94,7 +94,7 @@ impl<R: Read> Deserializer<R> {
     }
 
     fn peek(&mut self) -> Result<Option<u8>> {
-        self.read.peek().map_err(Error::Io)
+        self.read.peek().map_err(Into::into)
     }
 
     fn peek_or_null(&mut self) -> Result<u8> {
@@ -106,7 +106,7 @@ impl<R: Read> Deserializer<R> {
     }
 
     fn next_char(&mut self) -> Result<Option<u8>> {
-        self.read.next().map_err(Error::Io)
+        self.read.next().map_err(Into::into)
     }
 
     fn next_char_or_null(&mut self) -> Result<u8> {
@@ -116,13 +116,13 @@ impl<R: Read> Deserializer<R> {
     /// Error caused by a byte from next_char().
     fn error(&mut self, reason: ErrorCode) -> Error {
         let pos = self.read.position();
-        Error::Syntax(reason, pos.line, pos.column)
+        Error::syntax(reason, pos.line, pos.column)
     }
 
     /// Error caused by a byte from peek().
     fn peek_error(&mut self, reason: ErrorCode) -> Error {
         let pos = self.read.peek_position();
-        Error::Syntax(reason, pos.line, pos.column)
+        Error::syntax(reason, pos.line, pos.column)
     }
 
     /// Consume whitespace until the next non-whitespace character.
@@ -221,8 +221,7 @@ impl<R: Read> Deserializer<R> {
             // tell whether this should call `error` or `peek_error` so pick the
             // one that seems correct more often. Worst case, the position is
             // off by one character.
-            Err(Error::Syntax(code, 0, 0)) => Err(self.error(code)),
-            Err(err) => Err(err),
+            Err(err) => Err(err.fix_position(|code| self.error(code))),
         }
     }
 

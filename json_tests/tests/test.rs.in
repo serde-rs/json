@@ -17,10 +17,12 @@ use serde_json::{
     from_slice,
     from_str,
     from_value,
+    to_string,
+    to_string_pretty,
     to_value,
+    to_vec,
+    to_writer,
 };
-
-use serde_json::error::{Error, ErrorCode};
 
 macro_rules! treemap {
     () => {
@@ -64,11 +66,11 @@ fn test_encode_ok<T>(errors: &[(T, &str)])
     for &(ref value, out) in errors {
         let out = out.to_string();
 
-        let s = serde_json::to_string(value).unwrap();
+        let s = to_string(value).unwrap();
         assert_eq!(s, out);
 
         let v = to_value(&value).unwrap();
-        let s = serde_json::to_string(&v).unwrap();
+        let s = to_string(&v).unwrap();
         assert_eq!(s, out);
     }
 }
@@ -79,11 +81,11 @@ fn test_pretty_encode_ok<T>(errors: &[(T, &str)])
     for &(ref value, out) in errors {
         let out = out.to_string();
 
-        let s = serde_json::to_string_pretty(value).unwrap();
+        let s = to_string_pretty(value).unwrap();
         assert_eq!(s, out);
 
         let v = to_value(&value).unwrap();
-        let s = serde_json::to_string_pretty(&v).unwrap();
+        let s = to_string_pretty(&v).unwrap();
         assert_eq!(s, out);
     }
 }
@@ -720,36 +722,27 @@ fn test_parse_unusual_ok<T>(tests: Vec<(&str, T)>)
 }
 
 macro_rules! test_parse_err {
-    ($name:ident::<$($ty:ty),*>($arg:expr) => $err:expr) => {
-        match ($err, &$name::<$($ty),*>($arg).unwrap_err()) {
-            (
-                &Error::Syntax(ref expected_code, expected_line, expected_col),
-                &Error::Syntax(ref actual_code, actual_line, actual_col),
-            ) if expected_code == actual_code
-                && expected_line == actual_line
-                && expected_col == actual_col => { /* pass */ }
-            (expected_err, actual_err) => {
-                panic!("unexpected {} error: {}, expected: {}", stringify!($name), actual_err, expected_err)
-            }
-        }
+    ($name:ident::<$($ty:ty),*>($arg:expr) => $expected:expr) => {
+        let actual = $name::<$($ty),*>($arg).unwrap_err().to_string();
+        assert_eq!(actual, $expected, "unexpected {} error", stringify!($name));
     };
 }
 
 // FIXME (#5527): these could be merged once UFCS is finished.
-fn test_parse_err<T>(errors: Vec<(&str, Error)>)
+fn test_parse_err<T>(errors: Vec<(&str, &'static str)>)
     where T: Debug + PartialEq + de::Deserialize,
 {
-    for &(s, ref err) in &errors {
+    for &(s, err) in &errors {
         test_parse_err!(from_str::<T>(s) => err);
         test_parse_err!(from_slice::<T>(s.as_bytes()) => err);
         test_parse_err!(from_iter::<_, T>(s.bytes().map(Ok)) => err);
     }
 }
 
-fn test_parse_slice_err<T>(errors: Vec<(&[u8], Error)>)
+fn test_parse_slice_err<T>(errors: Vec<(&[u8], &'static str)>)
     where T: Debug + PartialEq + de::Deserialize,
 {
-    for &(s, ref err) in &errors {
+    for &(s, err) in &errors {
         test_parse_err!(from_slice::<T>(s) => err);
         test_parse_err!(from_iter::<_, T>(s.iter().cloned().map(Ok)) => err);
     }
@@ -758,9 +751,9 @@ fn test_parse_slice_err<T>(errors: Vec<(&[u8], Error)>)
 #[test]
 fn test_parse_null() {
     test_parse_err::<()>(vec![
-        ("n", Error::Syntax(ErrorCode::ExpectedSomeIdent, 1, 1)),
-        ("nul", Error::Syntax(ErrorCode::ExpectedSomeIdent, 1, 3)),
-        ("nulla", Error::Syntax(ErrorCode::TrailingCharacters, 1, 5)),
+        ("n", "expected ident at line 1 column 1"),
+        ("nul", "expected ident at line 1 column 3"),
+        ("nulla", "trailing characters at line 1 column 5"),
     ]);
 
     test_parse_ok(vec![
@@ -771,12 +764,12 @@ fn test_parse_null() {
 #[test]
 fn test_parse_bool() {
     test_parse_err::<bool>(vec![
-        ("t", Error::Syntax(ErrorCode::ExpectedSomeIdent, 1, 1)),
-        ("truz", Error::Syntax(ErrorCode::ExpectedSomeIdent, 1, 4)),
-        ("f", Error::Syntax(ErrorCode::ExpectedSomeIdent, 1, 1)),
-        ("faz", Error::Syntax(ErrorCode::ExpectedSomeIdent, 1, 3)),
-        ("truea", Error::Syntax(ErrorCode::TrailingCharacters, 1, 5)),
-        ("falsea", Error::Syntax(ErrorCode::TrailingCharacters, 1, 6)),
+        ("t", "expected ident at line 1 column 1"),
+        ("truz", "expected ident at line 1 column 4"),
+        ("f", "expected ident at line 1 column 1"),
+        ("faz", "expected ident at line 1 column 3"),
+        ("truea", "trailing characters at line 1 column 5"),
+        ("falsea", "trailing characters at line 1 column 6"),
     ]);
 
     test_parse_ok(vec![
@@ -790,41 +783,43 @@ fn test_parse_bool() {
 #[test]
 fn test_parse_number_errors() {
     test_parse_err::<f64>(vec![
-        ("+", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
-        (".", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
-        ("-", Error::Syntax(ErrorCode::InvalidNumber, 1, 1)),
-        ("00", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
-        ("0x80", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
-        ("\\0", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
-        ("1.", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
-        ("1.a", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
-        ("1.e1", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
-        ("1e", Error::Syntax(ErrorCode::InvalidNumber, 1, 2)),
-        ("1e+", Error::Syntax(ErrorCode::InvalidNumber, 1, 3)),
-        ("1a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 2)),
-        ("100e777777777777777777777777777", Error::Syntax(ErrorCode::NumberOutOfRange, 1, 14)),
-        ("-100e777777777777777777777777777", Error::Syntax(ErrorCode::NumberOutOfRange, 1, 15)),
+        ("+", "expected value at line 1 column 1"),
+        (".", "expected value at line 1 column 1"),
+        ("-", "invalid number at line 1 column 1"),
+        ("00", "invalid number at line 1 column 2"),
+        ("0x80", "trailing characters at line 1 column 2"),
+        ("\\0", "expected value at line 1 column 1"),
+        ("1.", "invalid number at line 1 column 2"),
+        ("1.a", "invalid number at line 1 column 3"),
+        ("1.e1", "invalid number at line 1 column 3"),
+        ("1e", "invalid number at line 1 column 2"),
+        ("1e+", "invalid number at line 1 column 3"),
+        ("1a", "trailing characters at line 1 column 2"),
+        ("100e777777777777777777777777777",
+            "number out of range at line 1 column 14"),
+        ("-100e777777777777777777777777777",
+            "number out of range at line 1 column 15"),
         ("1000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000", // 1e309
-           Error::Syntax(ErrorCode::NumberOutOfRange, 1, 310)),
+            "number out of range at line 1 column 310"),
         ("1000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            .0e9", // 1e309
-           Error::Syntax(ErrorCode::NumberOutOfRange, 1, 305)),
+            "number out of range at line 1 column 305"),
         ("1000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            e9", // 1e309
-           Error::Syntax(ErrorCode::NumberOutOfRange, 1, 303)),
+            "number out of range at line 1 column 303"),
     ]);
 }
 
@@ -922,17 +917,17 @@ fn test_parse_f64() {
 #[test]
 fn test_parse_string() {
     test_parse_err::<String>(vec![
-        ("\"", Error::Syntax(ErrorCode::EOFWhileParsingString, 1, 1)),
-        ("\"lol", Error::Syntax(ErrorCode::EOFWhileParsingString, 1, 4)),
-        ("\"lol\"a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 6)),
-        ("\"\\uD83C\\uFFFF\"", Error::Syntax(ErrorCode::LoneLeadingSurrogateInHexEscape, 1, 13)),
+        ("\"", "EOF while parsing a string at line 1 column 1"),
+        ("\"lol", "EOF while parsing a string at line 1 column 4"),
+        ("\"lol\"a", "trailing characters at line 1 column 6"),
+        ("\"\\uD83C\\uFFFF\"", "lone leading surrogate in hex escape at line 1 column 13"),
     ]);
 
     test_parse_slice_err::<String>(vec![
         (&[b'"', 159, 146, 150, b'"'],
-            Error::Syntax(ErrorCode::InvalidUnicodeCodePoint, 1, 5)),
+            "invalid unicode code point at line 1 column 5"),
         (&[b'"', b'\\', b'n', 159, 146, 150, b'"'],
-            Error::Syntax(ErrorCode::InvalidUnicodeCodePoint, 1, 7)),
+            "invalid unicode code point at line 1 column 7"),
     ]);
 
     test_parse_ok(vec![
@@ -953,13 +948,13 @@ fn test_parse_string() {
 #[test]
 fn test_parse_list() {
     test_parse_err::<Vec<f64>>(vec![
-        ("[", Error::Syntax(ErrorCode::EOFWhileParsingList, 1, 1)),
-        ("[ ", Error::Syntax(ErrorCode::EOFWhileParsingList, 1, 2)),
-        ("[1", Error::Syntax(ErrorCode::EOFWhileParsingList,  1, 2)),
-        ("[1,", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 3)),
-        ("[1,]", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 4)),
-        ("[1 2]", Error::Syntax(ErrorCode::ExpectedListCommaOrEnd, 1, 4)),
-        ("[]a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 3)),
+        ("[", "EOF while parsing a list at line 1 column 1"),
+        ("[ ", "EOF while parsing a list at line 1 column 2"),
+        ("[1", "EOF while parsing a list at line 1 column 2"),
+        ("[1,", "EOF while parsing a value at line 1 column 3"),
+        ("[1,]", "expected value at line 1 column 4"),
+        ("[1 2]", "expected `,` or `]` at line 1 column 4"),
+        ("[]a", "trailing characters at line 1 column 3"),
     ]);
 
     test_parse_ok(vec![
@@ -1005,18 +1000,18 @@ fn test_parse_list() {
 #[test]
 fn test_parse_object() {
     test_parse_err::<BTreeMap<String, u32>>(vec![
-        ("{", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 1)),
-        ("{ ", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 2)),
-        ("{1", Error::Syntax(ErrorCode::KeyMustBeAString, 1, 2)),
-        ("{ \"a\"", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 5)),
-        ("{\"a\"", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 4)),
-        ("{\"a\" ", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 5)),
-        ("{\"a\" 1", Error::Syntax(ErrorCode::ExpectedColon, 1, 6)),
-        ("{\"a\":", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 5)),
-        ("{\"a\":1", Error::Syntax(ErrorCode::EOFWhileParsingObject, 1, 6)),
-        ("{\"a\":1 1", Error::Syntax(ErrorCode::ExpectedObjectCommaOrEnd, 1, 8)),
-        ("{\"a\":1,", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 7)),
-        ("{}a", Error::Syntax(ErrorCode::TrailingCharacters, 1, 3)),
+        ("{", "EOF while parsing an object at line 1 column 1"),
+        ("{ ", "EOF while parsing an object at line 1 column 2"),
+        ("{1", "key must be a string at line 1 column 2"),
+        ("{ \"a\"", "EOF while parsing an object at line 1 column 5"),
+        ("{\"a\"", "EOF while parsing an object at line 1 column 4"),
+        ("{\"a\" ", "EOF while parsing an object at line 1 column 5"),
+        ("{\"a\" 1", "expected `:` at line 1 column 6"),
+        ("{\"a\":", "EOF while parsing a value at line 1 column 5"),
+        ("{\"a\":1", "EOF while parsing an object at line 1 column 6"),
+        ("{\"a\":1 1", "expected `,` or `}` at line 1 column 8"),
+        ("{\"a\":1,", "EOF while parsing a value at line 1 column 7"),
+        ("{}a", "trailing characters at line 1 column 3"),
     ]);
 
     test_parse_ok(vec![
@@ -1056,11 +1051,16 @@ fn test_parse_object() {
 #[test]
 fn test_parse_struct() {
     test_parse_err::<Outer>(vec![
-        ("5", Error::Syntax(ErrorCode::Message("invalid type: integer `5`, expected struct Outer".into()), 1, 1)),
-        ("\"hello\"", Error::Syntax(ErrorCode::Message("invalid type: string \"hello\", expected struct Outer".into()), 1, 7)),
-        ("{\"inner\": true}", Error::Syntax(ErrorCode::Message("invalid type: boolean `true`, expected a sequence".into()), 1, 14)),
-        ("{}", Error::Syntax(ErrorCode::Message("missing field `inner`".into()), 1, 2)),
-        (r#"{"inner": [{"b": 42, "c": []}]}"#, Error::Syntax(ErrorCode::Message("missing field `a`".into()), 1, 29)),
+        ("5",
+            "invalid type: integer `5`, expected struct Outer at line 1 column 1"),
+        ("\"hello\"",
+            "invalid type: string \"hello\", expected struct Outer at line 1 column 7"),
+        ("{\"inner\": true}",
+            "invalid type: boolean `true`, expected a sequence at line 1 column 14"),
+        ("{}",
+            "missing field `inner` at line 1 column 2"),
+        (r#"{"inner": [{"b": 42, "c": []}]}"#,
+            "missing field `a` at line 1 column 29"),
     ]);
 
     test_parse_ok(vec![
@@ -1127,23 +1127,34 @@ fn test_parse_option() {
 #[test]
 fn test_parse_enum_errors() {
     test_parse_err::<Animal>(vec![
-        ("{}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 2)),
-        ("[]", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 1)),
-        ("\"unknown\"", Error::Syntax(ErrorCode::Message("unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive`".into()), 1, 9)),
-        ("{\"unknown\":[]}", Error::Syntax(ErrorCode::Message("unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive`".into()), 1, 10)),
-        ("{\"Dog\":", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 7)),
-        ("{\"Dog\":}", Error::Syntax(ErrorCode::ExpectedSomeValue, 1, 8)),
-        ("{\"Dog\":{}}", Error::Syntax(ErrorCode::Message("invalid type: map, expected unit".into()), 1, 9)),
-        ("{\"Dog\":[0]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 9)),
-        ("\"Frog\"", Error::Syntax(ErrorCode::EOFWhileParsingValue, 1, 6)),
-        ("{\"Frog\":{}}", Error::Syntax(ErrorCode::Message("invalid type: map, expected tuple variant Animal::Frog".into()), 1, 10)),
-        ("{\"Cat\":[]}", Error::Syntax(ErrorCode::Message("invalid length 0, expected tuple of 2 elements".into()), 1, 9)),
-        ("{\"Cat\":[0]}", Error::Syntax(ErrorCode::Message("invalid length 1, expected tuple of 2 elements".into()), 1, 10)),
-        ("{\"Cat\":[0, \"\", 2]}", Error::Syntax(ErrorCode::TrailingCharacters, 1, 14)),
-        (
-            "{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",
-            Error::Syntax(ErrorCode::Message("unknown field `foo`, expected `age` or `name`".into()), 1, 39)
-        ),
+        ("{}",
+            "expected value at line 1 column 2"),
+        ("[]",
+            "expected value at line 1 column 1"),
+        ("\"unknown\"",
+            "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 9"),
+        ("{\"unknown\":[]}",
+            "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 10"),
+        ("{\"Dog\":",
+            "EOF while parsing a value at line 1 column 7"),
+        ("{\"Dog\":}",
+            "expected value at line 1 column 8"),
+        ("{\"Dog\":{}}",
+            "invalid type: map, expected unit at line 1 column 9"),
+        ("{\"Dog\":[0]}",
+            "trailing characters at line 1 column 9"),
+        ("\"Frog\"",
+            "EOF while parsing a value at line 1 column 6"),
+        ("{\"Frog\":{}}",
+            "invalid type: map, expected tuple variant Animal::Frog at line 1 column 10"),
+        ("{\"Cat\":[]}",
+            "invalid length 0, expected tuple of 2 elements at line 1 column 9"),
+        ("{\"Cat\":[0]}",
+            "invalid length 1, expected tuple of 2 elements at line 1 column 10"),
+        ("{\"Cat\":[0, \"\", 2]}",
+            "trailing characters at line 1 column 14"),
+        ("{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",
+            "unknown field `foo`, expected `age` or `name` at line 1 column 39"),
     ]);
 }
 
@@ -1208,7 +1219,7 @@ fn test_parse_trailing_whitespace() {
 #[test]
 fn test_multiline_errors() {
     test_parse_err::<BTreeMap<String, String>>(vec![
-        ("{\n  \"foo\":\n \"bar\"", Error::Syntax(ErrorCode::EOFWhileParsingObject, 3, 6)),
+        ("{\n  \"foo\":\n \"bar\"", "EOF while parsing an object at line 3 column 6"),
     ]);
 }
 
@@ -1240,7 +1251,7 @@ fn test_missing_nonoption_field() {
     }
 
     test_parse_err::<Foo>(vec![
-        ("{}", Error::Syntax(ErrorCode::Message("missing field `x`".into()), 1, 2)),
+        ("{}", "missing field `x` at line 1 column 2"),
     ]);
 }
 
@@ -1267,7 +1278,7 @@ fn test_missing_renamed_field() {
 
 #[test]
 fn test_find_path() {
-    let obj: Value = serde_json::from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
+    let obj: Value = from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
 
     assert!(obj.find_path(&["x", "a"]).unwrap() == &1.into());
     assert!(obj.find_path(&["y"]).unwrap() == &2.into());
@@ -1351,7 +1362,7 @@ fn test_serialize_seq_with_no_len() {
         ),
     ]);
 
-    let s = serde_json::to_string_pretty(&vec).unwrap();
+    let s = to_string_pretty(&vec).unwrap();
     let expected = indoc!("
         [
           [],
@@ -1441,7 +1452,7 @@ fn test_serialize_map_with_no_len() {
         ),
     ]);
 
-    let s = serde_json::to_string_pretty(&map).unwrap();
+    let s = to_string_pretty(&map).unwrap();
     let expected = indoc!(r#"
         {
           "a": {},
@@ -1472,13 +1483,13 @@ fn test_deserialize_from_stream() {
             let mut de = Deserializer::from_reader(read_stream);
             let request = Message::deserialize(&mut de).unwrap();
             let response = Message { message: request.message };
-            serde_json::to_writer(&mut stream, &response).unwrap();
+            to_writer(&mut stream, &response).unwrap();
         }
     });
 
     let mut stream = net::TcpStream::connect("localhost:20000").unwrap();
     let request = Message { message: "hi there".to_string() };
-    serde_json::to_writer(&mut stream, &request).unwrap();
+    to_writer(&mut stream, &request).unwrap();
 
     let mut de = Deserializer::from_reader(stream);
     let response = Message::deserialize(&mut de).unwrap();
@@ -1493,10 +1504,8 @@ fn test_serialize_rejects_bool_keys() {
         false => 4
     );
 
-    match serde_json::to_vec(&map).unwrap_err() {
-        serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
-        _ => panic!("bools used as keys"),
-    }
+    let err = to_vec(&map).unwrap_err();
+    assert_eq!(err.to_string(), "key must be a string");
 }
 
 #[test]
@@ -1507,10 +1516,8 @@ fn test_serialize_rejects_adt_keys() {
         None => 6
     );
 
-    match serde_json::to_vec(&map).unwrap_err() {
-        serde_json::Error::Syntax(serde_json::ErrorCode::KeyMustBeAString, 0, 0) => {}
-        _ => panic!("adts used as keys"),
-    }
+    let err = to_vec(&map).unwrap_err();
+    assert_eq!(err.to_string(), "key must be a string");
 }
 
 #[test]
@@ -1522,8 +1529,8 @@ fn test_effectively_string_keys() {
         Enum::One => 1
     };
     let expected = r#"{"Zero":0,"One":1}"#;
-    assert_eq!(serde_json::to_string(&map).unwrap(), expected);
-    assert_eq!(map, serde_json::from_str(expected).unwrap());
+    assert_eq!(to_string(&map).unwrap(), expected);
+    assert_eq!(map, from_str(expected).unwrap());
 
     #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
     struct Wrapper(String);
@@ -1532,38 +1539,38 @@ fn test_effectively_string_keys() {
         Wrapper("one".to_owned()) => 1
     };
     let expected = r#"{"one":1,"zero":0}"#;
-    assert_eq!(serde_json::to_string(&map).unwrap(), expected);
-    assert_eq!(map, serde_json::from_str(expected).unwrap());
+    assert_eq!(to_string(&map).unwrap(), expected);
+    assert_eq!(map, from_str(expected).unwrap());
 }
 
 #[test]
 fn test_bytes_ser() {
     let buf = vec![];
     let bytes = Bytes::from(&buf);
-    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[]".to_string());
+    assert_eq!(to_string(&bytes).unwrap(), "[]".to_string());
 
     let buf = vec![1, 2, 3];
     let bytes = Bytes::from(&buf);
-    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[1,2,3]".to_string());
+    assert_eq!(to_string(&bytes).unwrap(), "[1,2,3]".to_string());
 }
 
 #[test]
 fn test_byte_buf_ser() {
     let bytes = ByteBuf::new();
-    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[]".to_string());
+    assert_eq!(to_string(&bytes).unwrap(), "[]".to_string());
 
     let bytes = ByteBuf::from(vec![1, 2, 3]);
-    assert_eq!(serde_json::to_string(&bytes).unwrap(), "[1,2,3]".to_string());
+    assert_eq!(to_string(&bytes).unwrap(), "[1,2,3]".to_string());
 }
 
 #[test]
 fn test_byte_buf_de() {
     let bytes = ByteBuf::new();
-    let v: ByteBuf = serde_json::from_str("[]").unwrap();
+    let v: ByteBuf = from_str("[]").unwrap();
     assert_eq!(v, bytes);
 
     let bytes = ByteBuf::from(vec![1, 2, 3]);
-    let v: ByteBuf = serde_json::from_str("[1, 2, 3]").unwrap();
+    let v: ByteBuf = from_str("[1, 2, 3]").unwrap();
     assert_eq!(v, bytes);
 }
 
@@ -1615,7 +1622,7 @@ fn test_json_stream_empty() {
 #[test]
 fn test_json_pointer() {
     // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
-    let data: Value = serde_json::from_str(r#"{
+    let data: Value = from_str(r#"{
         "foo": ["bar", "baz"],
         "": 0,
         "a/b": 1,
@@ -1651,7 +1658,7 @@ fn test_json_pointer_mut() {
     use std::mem;
 
     // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
-    let mut data: Value = serde_json::from_str(r#"{
+    let mut data: Value = from_str(r#"{
         "foo": ["bar", "baz"],
         "": 0,
         "a/b": 1,
@@ -1702,11 +1709,11 @@ fn test_json_pointer_mut() {
 #[test]
 fn test_stack_overflow() {
     let brackets: String = iter::repeat('[').take(127).chain(iter::repeat(']').take(127)).collect();
-    let _: Value = serde_json::from_str(&brackets).unwrap();
+    let _: Value = from_str(&brackets).unwrap();
 
     let brackets: String = iter::repeat('[').take(128).collect();
     test_parse_err::<Value>(vec![
-        (&brackets, Error::Syntax(ErrorCode::RecursionLimitExceeded, 1, 128)),
+        (&brackets, "recursion limit exceeded at line 1 column 128"),
     ]);
 }
 
@@ -1719,7 +1726,7 @@ fn test_allow_ser_integers_as_map_keys() {
         -2 => 8
     );
 
-    assert_eq!(serde_json::to_string(&map).unwrap(), r#"{"-2":8,"-1":6,"1":2,"2":4}"#);
+    assert_eq!(to_string(&map).unwrap(), r#"{"-2":8,"-1":6,"1":2,"2":4}"#);
 }
 
 #[test]
@@ -1754,13 +1761,13 @@ fn test_from_iter_unfused() {
         key: u32,
     }
 
-    let msg: Message = serde_json::from_iter(Source {
+    let msg: Message = from_iter(Source {
         iter: b"{\"key\": 1337}".iter().cloned(),
         finished: false,
     }).unwrap();
     assert_eq!(msg.key, 1337);
 
-    let msg: Message = serde_json::from_iter(Source {
+    let msg: Message = from_iter(Source {
         iter: b"{\"key\": 1337}  \t\t ".iter().cloned(),
         finished: false,
     }).unwrap();

@@ -138,7 +138,7 @@ impl<Iter> Read for IteratorRead<Iter>
         scratch: &'s mut Vec<u8>
     ) -> Result<&'s str> {
         loop {
-            let ch = match try!(self.next().map_err(Error::Io)) {
+            let ch = match try!(self.next()) {
                 Some(ch) => ch,
                 None => {
                     return error(self, ErrorCode::EOFWhileParsingString);
@@ -368,7 +368,7 @@ static ESCAPE: [bool; 256] = [
 
 fn error<R: Read, T>(read: &R, reason: ErrorCode) -> Result<T> {
     let pos = read.position();
-    Err(Error::Syntax(reason, pos.line, pos.column))
+    Err(Error::syntax(reason, pos.line, pos.column))
 }
 
 fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
@@ -379,7 +379,7 @@ fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
 /// the previous byte read was a backslash.
 fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
-    let ch = match try!(read.next().map_err(Error::Io)) {
+    let ch = match try!(read.next()) {
         Some(ch) => ch,
         None => {
             return error(read, ErrorCode::EOFWhileParsingString);
@@ -405,8 +405,8 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
                     // Non-BMP characters are encoded as a sequence of
                     // two hex escapes, representing UTF-16 surrogates.
                     n1 @ 0xD800...0xDBFF => {
-                        match (try!(read.next().map_err(Error::Io)),
-                               try!(read.next().map_err(Error::Io))) {
+                        match (try!(read.next()),
+                               try!(read.next())) {
                             (Some(b'\\'), Some(b'u')) => (),
                             _ => {
                                 return error(read, ErrorCode::UnexpectedEndOfHexEscape);
