@@ -397,6 +397,9 @@ impl Value {
 
 /// A type that can be used to index into a `serde_json::Value`. See the `get`
 /// and `get_mut` methods of `Value`.
+///
+/// This trait is sealed and cannot be implemented for types outside of
+/// `serde_json`.
 pub trait Index: private::Sealed {
     #[doc(hidden)]
     fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value>;
