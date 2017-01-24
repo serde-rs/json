@@ -937,6 +937,16 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
     from_iter(rdr.bytes())
 }
 
+/// Decodes a json value from a byte slice `&[u8]`
+/// and yields how many bytes have been read.
+pub fn try_from_slice<T>(v: &[u8]) -> Result<(T, usize)>
+    where T: de::Deserialize,
+{
+    let mut de = Deserializer::new(read::SliceRead::new(v));
+    let value = try!(de::Deserialize::deserialize(&mut de));
+    Ok((value, de.read.pos()))
+}
+
 /// Decodes a json value from a byte slice `&[u8]`.
 pub fn from_slice<T>(v: &[u8]) -> Result<T>
     where T: de::Deserialize,
