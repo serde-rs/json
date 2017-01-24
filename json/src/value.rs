@@ -82,10 +82,10 @@ impl Value {
     /// value in a map, and a usize index can be used to access an element of an
     /// array.
     ///
-    /// Returns None if the type of `self` does not match the type of the index,
-    /// for example if the index is a string and `self` is an array or a number.
-    /// Also returns None if the given key does not exist in the map or the
-    /// given index is not within the bounds of the array.
+    /// Returns `None` if the type of `self` does not match the type of the
+    /// index, for example if the index is a string and `self` is an array or a
+    /// number. Also returns `None` if the given key does not exist in the map
+    /// or the given index is not within the bounds of the array.
     ///
     /// ```rust
     /// # #[macro_use] extern crate serde_json;
@@ -102,7 +102,7 @@ impl Value {
     ///
     /// Square brackets can also be used to index into a value in a more concise
     /// way. This returns `Value::Null` in cases where `get` would have returned
-    /// None.
+    /// `None`.
     ///
     /// ```rust
     /// # #[macro_use] extern crate serde_json;
@@ -126,10 +126,10 @@ impl Value {
     /// access a value in a map, and a usize index can be used to access an
     /// element of an array.
     ///
-    /// Returns None if the type of `self` does not match the type of the index,
-    /// for example if the index is a string and `self` is an array or a number.
-    /// Also returns None if the given key does not exist in the map or the
-    /// given index is not within the bounds of the array.
+    /// Returns `None` if the type of `self` does not match the type of the
+    /// index, for example if the index is a string and `self` is an array or a
+    /// number. Also returns `None` if the given key does not exist in the map
+    /// or the given index is not within the bounds of the array.
     ///
     /// ```rust
     /// # #[macro_use] extern crate serde_json;
