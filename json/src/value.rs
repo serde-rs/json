@@ -470,8 +470,35 @@ mod private {
     impl<'a, T: ?Sized> Sealed for &'a T where T: Sealed {}
 }
 
+// The usual semantics of Index is to panic on invalid indexing.
+//
+// That said, the usual semantics are for things like Vec and BTreeMap which
+// have different use cases than Value. If you are working with a Vec, you know
+// that you are working with a Vec and you can get the len of the Vec and make
+// sure your indices are within bounds. The Value use cases are more
+// loosey-goosey. You got some JSON from an endpoint and you want to pull values
+// out of it. Outside of this Index impl, you already have the option of using
+// value.as_array() and working with the Vec directly, or matching on
+// Value::Array and getting the Vec directly. The Index impl means you can skip
+// that and index directly into the thing using a concise syntax. You don't have
+// to check the type, you don't have to check the len, it is all about what you
+// expect the Value to look like.
+//
+// Basically the use cases that would be well served by panicking here are
+// better served by using one of the other approaches: get and get_mut,
+// as_array, or match. The value of this impl is that it adds a way of working
+// with Value that is not well served by the existing approaches: concise and
+// careless and sometimes that is exactly what you want.
 impl<I> ops::Index<I> for Value where I: Index {
     type Output = Value;
+
+    /// Index into a `serde_json::Value` using the syntax `value[0]` or
+    /// `value["k"]`.
+    ///
+    /// Returns `Value::Null` if the type of `self` does not match the type of
+    /// the index, for example if the index is a string and `self` is an array
+    /// or a number. Also returns `Value::Null` if the given key does not exist
+    /// in the map or the given index is not within the bounds of the array.
     fn index(&self, index: I) -> &Value {
         static NULL: Value = Value::Null;
         index.index_into(self).unwrap_or(&NULL)
