@@ -1277,15 +1277,6 @@ fn test_missing_renamed_field() {
 }
 
 #[test]
-fn test_find_path() {
-    let obj: Value = from_str(r#"{"x": {"a": 1}, "y": 2}"#).unwrap();
-
-    assert!(obj.find_path(&["x", "a"]).unwrap() == &1.into());
-    assert!(obj.find_path(&["y"]).unwrap() == &2.into());
-    assert!(obj.find_path(&["z"]).is_none());
-}
-
-#[test]
 fn test_serialize_seq_with_no_len() {
     #[derive(Clone, Debug, PartialEq)]
     struct MyVec<T>(Vec<T>);

@@ -77,31 +77,6 @@ fn parse_index(s: &str) -> Option<usize> {
 }
 
 impl Value {
-    /// If the `Value` is an Object, returns the value associated with the provided key.
-    /// Otherwise, returns None.
-    pub fn find<'a>(&'a self, key: &str) -> Option<&'a Value> {
-        match *self {
-            Value::Object(ref map) => map.get(key),
-            _ => None,
-        }
-    }
-
-    /// Attempts to get a nested Value Object for each key in `keys`.
-    /// If any key is found not to exist, find_path will return None.
-    /// Otherwise, it will return the `Value` associated with the final key.
-    pub fn find_path<'a>(&'a self, keys: &[&str]) -> Option<&'a Value> {
-        let mut target = self;
-        for key in keys {
-            match target.find(key) {
-                Some(t) => {
-                    target = t;
-                }
-                None => return None,
-            }
-        }
-        Some(target)
-    }
-
     /// Looks up a value by a JSON Pointer.
     ///
     /// JSON Pointer defines a string syntax for identifying a specific value
@@ -202,29 +177,6 @@ impl Value {
             }
         }
         Some(target)
-    }
-
-    /// If the `Value` is an Object, performs a depth-first search until
-    /// a value associated with the provided key is found. If no value is found
-    /// or the `Value` is not an Object, returns None.
-    pub fn search<'a>(&'a self, key: &str) -> Option<&'a Value> {
-        match *self {
-            Value::Object(ref map) => {
-                match map.get(key) {
-                    Some(json_value) => Some(json_value),
-                    None => {
-                        for (_, v) in map.iter() {
-                            match v.search(key) {
-                                x if x.is_some() => return x,
-                                _ => (),
-                            }
-                        }
-                        None
-                    }
-                }
-            }
-            _ => None,
-        }
     }
 
     /// Returns true if the `Value` is an Object. Returns false otherwise.
