@@ -2,10 +2,11 @@ use error::Error;
 use num_traits::NumCast;
 use serde::de::{self, Visitor};
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
-use std::{fmt, i64};
+use std::fmt::{self, Debug, Display};
+use std::i64;
 
 /// Represents a JSON number, whether integer or floating point.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Number(N);
 
 // "N" is a prefix of "NegInt"... this is a false positive.
@@ -94,10 +95,16 @@ impl Number {
 impl fmt::Display for Number {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
-            N::PosInt(i) => i.fmt(formatter),
-            N::NegInt(i) => i.fmt(formatter),
-            N::Float(f) => f.fmt(formatter),
+            N::PosInt(i) => Display::fmt(&i, formatter),
+            N::NegInt(i) => Display::fmt(&i, formatter),
+            N::Float(f) => Display::fmt(&f, formatter),
         }
+    }
+}
+
+impl Debug for Number {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(&self.0, formatter)
     }
 }
 
