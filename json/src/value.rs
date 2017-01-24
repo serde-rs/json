@@ -77,108 +77,6 @@ fn parse_index(s: &str) -> Option<usize> {
 }
 
 impl Value {
-    /// Looks up a value by a JSON Pointer.
-    ///
-    /// JSON Pointer defines a string syntax for identifying a specific value
-    /// within a JavaScript Object Notation (JSON) document.
-    ///
-    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
-    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
-    /// addressed value is returned and if there is no such value `None` is
-    /// returned.
-    ///
-    /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
-    pub fn pointer<'a>(&'a self, pointer: &str) -> Option<&'a Value> {
-        if pointer == "" {
-            return Some(self);
-        }
-        if !pointer.starts_with('/') {
-            return None;
-        }
-        let tokens = pointer.split('/').skip(1).map(|x| x.replace("~1", "/").replace("~0", "~"));
-        let mut target = self;
-
-        for token in tokens {
-            let target_opt = match *target {
-                Value::Object(ref map) => map.get(&token),
-                Value::Array(ref list) => parse_index(&token).and_then(|x| list.get(x)),
-                _ => return None,
-            };
-            if let Some(t) = target_opt {
-                target = t;
-            } else {
-                return None;
-            }
-        }
-        Some(target)
-    }
-
-    /// Looks up a value by a JSON Pointer and returns a mutable reference to
-    /// that value.
-    ///
-    /// JSON Pointer defines a string syntax for identifying a specific value
-    /// within a JavaScript Object Notation (JSON) document.
-    ///
-    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
-    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
-    /// addressed value is returned and if there is no such value `None` is
-    /// returned.
-    ///
-    /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
-    ///
-    /// # Example of Use
-    ///
-    /// ```rust
-    /// extern crate serde_json;
-    ///
-    /// use serde_json::Value;
-    /// use std::mem;
-    ///
-    /// fn main() {
-    ///     let s = r#"{"x": 1.0, "y": 2.0}"#;
-    ///     let mut value: Value = serde_json::from_str(s).unwrap();
-    ///
-    ///     // Check value using read-only pointer
-    ///     assert_eq!(value.pointer("/x"), Some(&1.0.into()));
-    ///     // Change value with direct assignment
-    ///     *value.pointer_mut("/x").unwrap() = 1.5.into();
-    ///     // Check that new value was written
-    ///     assert_eq!(value.pointer("/x"), Some(&1.5.into()));
-    ///
-    ///     // "Steal" ownership of a value. Can replace with any valid Value.
-    ///     let old_x = value.pointer_mut("/x").map(|x| mem::replace(x, Value::Null)).unwrap();
-    ///     assert_eq!(old_x, 1.5.into());
-    ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Null);
-    /// }
-    /// ```
-    pub fn pointer_mut<'a>(&'a mut self, pointer: &str) -> Option<&'a mut Value> {
-        if pointer == "" {
-            return Some(self);
-        }
-        if !pointer.starts_with('/') {
-            return None;
-        }
-        let tokens = pointer.split('/').skip(1).map(|x| x.replace("~1", "/").replace("~0", "~"));
-        let mut target = self;
-
-        for token in tokens {
-            // borrow checker gets confused about `target` being mutably borrowed too many times because of the loop
-            // this once-per-loop binding makes the scope clearer and circumvents the error
-            let target_once = target;
-            let target_opt = match *target_once {
-                Value::Object(ref mut map) => map.get_mut(&token),
-                Value::Array(ref mut list) => parse_index(&token).and_then(move |x| list.get_mut(x)),
-                _ => return None,
-            };
-            if let Some(t) = target_opt {
-                target = t;
-            } else {
-                return None;
-            }
-        }
-        Some(target)
-    }
-
     /// Returns true if the `Value` is an Object. Returns false otherwise.
     pub fn is_object(&self) -> bool {
         self.as_object().is_some()
@@ -324,6 +222,108 @@ impl Value {
             Value::Null => Some(()),
             _ => None,
         }
+    }
+
+    /// Looks up a value by a JSON Pointer.
+    ///
+    /// JSON Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (JSON) document.
+    ///
+    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
+    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
+    /// addressed value is returned and if there is no such value `None` is
+    /// returned.
+    ///
+    /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
+    pub fn pointer<'a>(&'a self, pointer: &str) -> Option<&'a Value> {
+        if pointer == "" {
+            return Some(self);
+        }
+        if !pointer.starts_with('/') {
+            return None;
+        }
+        let tokens = pointer.split('/').skip(1).map(|x| x.replace("~1", "/").replace("~0", "~"));
+        let mut target = self;
+
+        for token in tokens {
+            let target_opt = match *target {
+                Value::Object(ref map) => map.get(&token),
+                Value::Array(ref list) => parse_index(&token).and_then(|x| list.get(x)),
+                _ => return None,
+            };
+            if let Some(t) = target_opt {
+                target = t;
+            } else {
+                return None;
+            }
+        }
+        Some(target)
+    }
+
+    /// Looks up a value by a JSON Pointer and returns a mutable reference to
+    /// that value.
+    ///
+    /// JSON Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (JSON) document.
+    ///
+    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
+    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
+    /// addressed value is returned and if there is no such value `None` is
+    /// returned.
+    ///
+    /// For more information read [RFC6901](https://tools.ietf.org/html/rfc6901).
+    ///
+    /// # Example of Use
+    ///
+    /// ```rust
+    /// extern crate serde_json;
+    ///
+    /// use serde_json::Value;
+    /// use std::mem;
+    ///
+    /// fn main() {
+    ///     let s = r#"{"x": 1.0, "y": 2.0}"#;
+    ///     let mut value: Value = serde_json::from_str(s).unwrap();
+    ///
+    ///     // Check value using read-only pointer
+    ///     assert_eq!(value.pointer("/x"), Some(&1.0.into()));
+    ///     // Change value with direct assignment
+    ///     *value.pointer_mut("/x").unwrap() = 1.5.into();
+    ///     // Check that new value was written
+    ///     assert_eq!(value.pointer("/x"), Some(&1.5.into()));
+    ///
+    ///     // "Steal" ownership of a value. Can replace with any valid Value.
+    ///     let old_x = value.pointer_mut("/x").map(|x| mem::replace(x, Value::Null)).unwrap();
+    ///     assert_eq!(old_x, 1.5.into());
+    ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Null);
+    /// }
+    /// ```
+    pub fn pointer_mut<'a>(&'a mut self, pointer: &str) -> Option<&'a mut Value> {
+        if pointer == "" {
+            return Some(self);
+        }
+        if !pointer.starts_with('/') {
+            return None;
+        }
+        let tokens = pointer.split('/').skip(1).map(|x| x.replace("~1", "/").replace("~0", "~"));
+        let mut target = self;
+
+        for token in tokens {
+            // borrow checker gets confused about `target` being mutably borrowed too many times because of the loop
+            // this once-per-loop binding makes the scope clearer and circumvents the error
+            let target_once = target;
+            let target_opt = match *target_once {
+                Value::Object(ref mut map) => map.get_mut(&token),
+                Value::Array(ref mut list) => parse_index(&token).and_then(move |x| list.get_mut(x)),
+                _ => return None,
+            };
+            if let Some(t) = target_opt {
+                target = t;
+            } else {
+                return None;
+            }
+        }
+        Some(target)
     }
 }
 
