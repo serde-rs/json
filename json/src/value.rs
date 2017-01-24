@@ -35,6 +35,7 @@
 use std::fmt;
 use std::i64;
 use std::io;
+use std::ops;
 use std::str;
 use std::vec;
 
@@ -77,6 +78,73 @@ fn parse_index(s: &str) -> Option<usize> {
 }
 
 impl Value {
+    /// Index into a JSON array or map. A string index can be used to access a
+    /// value in a map, and a usize index can be used to access an element of an
+    /// array.
+    ///
+    /// Returns None if the type of `self` does not match the type of the index,
+    /// for example if the index is a string and `self` is an array or a number.
+    /// Also returns None if the given key does not exist in the map or the
+    /// given index is not within the bounds of the array.
+    ///
+    /// ```rust
+    /// # #[macro_use] extern crate serde_json;
+    /// # fn main() {
+    /// let object = json!({ "A": 65, "B": 66, "C": 67 });
+    /// assert_eq!(*object.get("A").unwrap(), json!(65));
+    ///
+    /// let array = json!([ "A", "B", "C" ]);
+    /// assert_eq!(*array.get(2).unwrap(), json!("C"));
+    ///
+    /// assert_eq!(array.get("A"), None);
+    /// # }
+    /// ```
+    ///
+    /// Square brackets can also be used to index into a value in a more concise
+    /// way. This returns `Value::Null` in cases where `get` would have returned
+    /// None.
+    ///
+    /// ```rust
+    /// # #[macro_use] extern crate serde_json;
+    /// # fn main() {
+    /// let object = json!({
+    ///     "A": ["a", "á", "à"],
+    ///     "B": ["b", "b́"],
+    ///     "C": ["c", "ć", "ć̣", "ḉ"],
+    /// });
+    /// assert_eq!(object["B"][0], json!("b"));
+    ///
+    /// assert_eq!(object["D"], json!(null));
+    /// assert_eq!(object[0]["x"]["y"]["z"], json!(null));
+    /// # }
+    /// ```
+    pub fn get<I: Index>(&self, index: I) -> Option<&Value> {
+        index.index_into(self)
+    }
+
+    /// Mutably index into a JSON array or map. A string index can be used to
+    /// access a value in a map, and a usize index can be used to access an
+    /// element of an array.
+    ///
+    /// Returns None if the type of `self` does not match the type of the index,
+    /// for example if the index is a string and `self` is an array or a number.
+    /// Also returns None if the given key does not exist in the map or the
+    /// given index is not within the bounds of the array.
+    ///
+    /// ```rust
+    /// # #[macro_use] extern crate serde_json;
+    /// # fn main() {
+    /// let mut object = json!({ "A": 65, "B": 66, "C": 67 });
+    /// *object.get_mut("A").unwrap() = json!(69);
+    ///
+    /// let mut array = json!([ "A", "B", "C" ]);
+    /// *array.get_mut(2).unwrap() = json!("D");
+    /// # }
+    /// ```
+    pub fn get_mut<I: Index>(&mut self, index: I) -> Option<&mut Value> {
+        index.index_into_mut(self)
+    }
+
     /// Returns true if the `Value` is an Object. Returns false otherwise.
     pub fn is_object(&self) -> bool {
         self.as_object().is_some()
@@ -324,6 +392,86 @@ impl Value {
             }
         }
         Some(target)
+    }
+}
+
+/// A type that can be used to index into a `serde_json::Value`. See the `get`
+/// and `get_mut` methods of `Value`.
+pub trait Index: private::Sealed {
+    #[doc(hidden)]
+    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value>;
+    #[doc(hidden)]
+    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value>;
+}
+
+impl Index for usize {
+    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
+        match *v {
+            Value::Array(ref vec) => vec.get(*self),
+            _ => None,
+        }
+    }
+    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value> {
+        match *v {
+            Value::Array(ref mut vec) => vec.get_mut(*self),
+            _ => None,
+        }
+    }
+}
+
+impl Index for str {
+    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
+        match *v {
+            Value::Object(ref map) => map.get(self),
+            _ => None,
+        }
+    }
+    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value> {
+        match *v {
+            Value::Object(ref mut map) => map.get_mut(self),
+            _ => None,
+        }
+    }
+}
+
+impl Index for String {
+    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
+        match *v {
+            Value::Object(ref map) => map.get(self),
+            _ => None,
+        }
+    }
+    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value> {
+        match *v {
+            Value::Object(ref mut map) => map.get_mut(self),
+            _ => None,
+        }
+    }
+}
+
+impl<'a, T: ?Sized> Index for &'a T where T: Index {
+    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
+        (**self).index_into(v)
+    }
+    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value> {
+        (**self).index_into_mut(v)
+    }
+}
+
+// Prevent users from implementing the Index trait.
+mod private {
+    pub trait Sealed {}
+    impl Sealed for usize {}
+    impl Sealed for str {}
+    impl Sealed for String {}
+    impl<'a, T: ?Sized> Sealed for &'a T where T: Sealed {}
+}
+
+impl<I> ops::Index<I> for Value where I: Index {
+    type Output = Value;
+    fn index(&self, index: I) -> &Value {
+        static NULL: Value = Value::Null;
+        index.index_into(self).unwrap_or(&NULL)
     }
 }
 
