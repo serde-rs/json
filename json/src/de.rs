@@ -1,6 +1,4 @@
-//! JSON Deserialization
-//!
-//! This module provides for JSON deserialization with the type `Deserializer`.
+//! Deserialize JSON data to a Rust data structure.
 
 use std::{i32, u64};
 use std::io;

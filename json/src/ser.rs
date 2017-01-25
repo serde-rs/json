@@ -1,6 +1,4 @@
-//! JSON Serialization
-//!
-//! This module provides for JSON serialization with the type `Serializer`.
+//! Serialize a Rust data structure into JSON data.
 
 use std::io;
 use std::num::FpCategory;

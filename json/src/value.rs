@@ -1,36 +1,85 @@
-//! JSON Value
+//! The Value enum, a loosely typed way of representing any valid JSON value.
 //!
-//! This module is centered around the `Value` type, which can represent all possible JSON values.
+//! # Constructing JSON
 //!
-//! # Example of use:
+//! Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
+//! objects with very natural JSON syntax. In order to use this macro,
+//! `serde_json` needs to be imported with the `#[macro_use]` attribute.
 //!
 //! ```rust
+//! #[macro_use]
 //! extern crate serde_json;
 //!
+//! fn main() {
+//!     // The type of `john` is `serde_json::Value`
+//!     let john = json!({
+//!       "name": "John Doe",
+//!       "age": 43,
+//!       "phones": [
+//!         "+44 1234567",
+//!         "+44 2345678"
+//!       ]
+//!     });
+//!
+//!     println!("first phone number: {}", john["phones"][0]);
+//!
+//!     // Convert to a string of JSON and print it out
+//!     println!("{}", john.to_string());
+//! }
+//! ```
+//!
+//! The `Value::to_string()` function converts a `serde_json::Value` into a
+//! `String` of JSON text.
+//!
+//! One neat thing about the `json!` macro is that variables and expressions can
+//! be interpolated directly into the JSON value as you are building it. Serde
+//! will check at compile time that the value you are interpolating is able to
+//! be represented as JSON.
+//!
+//! ```rust
+//! # #[macro_use] extern crate serde_json;
+//! # fn random_phone() -> u16 { 0 }
+//! # fn main() {
+//! let full_name = "John Doe";
+//! let age_last_year = 42;
+//!
+//! // The type of `john` is `serde_json::Value`
+//! let john = json!({
+//!   "name": full_name,
+//!   "age": age_last_year + 1,
+//!   "phones": [
+//!     format!("+44 {}", random_phone())
+//!   ]
+//! });
+//! # let _ = john;
+//! # }
+//! ```
+//!
+//! A string of JSON data can be parsed into a `serde_json::Value` by the
+//! [`serde_json::from_str`][from_str] function. There is also
+//! [`from_slice`][from_slice] for parsing from a byte slice &[u8],
+//! [`from_iter`][from_iter] for parsing from an iterator of bytes, and
+//! [`from_reader`][from_reader] for parsing from any `io::Read` like a File or
+//! a TCP stream.
+//!
+//! ```rust
+//! # extern crate serde_json;
+//! # use serde_json::Error;
+//! # pub fn example() -> Result<(), Error> {
 //! use serde_json::Value;
 //!
-//! fn main() {
-//!     let s = "{\"x\": 1.0, \"y\": 2.0}";
-//!     let value: Value = serde_json::from_str(s).unwrap();
-//! }
+//! let data = r#" { "name": "John Doe", "age": 43, ... } "#;
+//! let v: Value = serde_json::from_str(data)?;
+//! println!("Please call {} at the number {}", v["name"], v["phones"][0]);
+//! # Ok(()) }
+//! # fn main() {}
 //! ```
 //!
-//! It is also possible to deserialize from a `Value` type:
-//!
-//! ```rust
-//! extern crate serde_json;
-//!
-//! use serde_json::{Value, Map};
-//!
-//! fn main() {
-//!     let mut map = Map::new();
-//!     map.insert(String::from("x"), 1.0.into());
-//!     map.insert(String::from("y"), 2.0.into());
-//!     let value = Value::Object(map);
-//!
-//!     let map: Map<String, Value> = serde_json::from_value(value).unwrap();
-//! }
-//! ```
+//! [macro]: https://docs.serde.rs/serde_json/macro.json.html
+//! [from_str]: https://docs.serde.rs/serde_json/de/fn.from_str.html
+//! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
+//! [from_iter]: https://docs.serde.rs/serde_json/de/fn.from_iter.html
+//! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
 use std::fmt;
 use std::i64;
