@@ -6,7 +6,7 @@
 
 You may be looking for:
 
-- [JSON API documentation](http://docs.serde.rs/serde_json/)
+- [JSON API documentation](https://docs.serde.rs/serde_json/)
 - [Serde API documentation](https://docs.serde.rs/serde/)
 - [Detailed documentation about Serde](https://serde.rs/)
 - [Setting up `#[derive(Serialize, Deserialize)]`](https://serde.rs/codegen.html)

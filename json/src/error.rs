@@ -1,7 +1,4 @@
-//! JSON Errors
-//!
-//! This module is centered around the `Error` and `ErrorCode` types, which represents all possible
-//! `serde_json` errors.
+//! When serializing or deserializing JSON goes wrong.
 
 use std::error;
 use std::fmt::{self, Debug, Display};
@@ -12,10 +9,10 @@ use serde::de;
 use serde::ser;
 
 /// This type represents all possible errors that can occur when serializing or
-/// deserializing a value into JSON.
+/// deserializing JSON data.
 pub struct Error(Box<ErrorImpl>);
 
-/// Helper alias for `Result` objects that return a JSON `Error`.
+/// Alias for a `Result` with the error type `serde_json::Error`.
 pub type Result<T> = result::Result<T, Error>;
 
 enum ErrorImpl {
