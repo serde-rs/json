@@ -77,11 +77,6 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_isize(self, value: isize) -> Result<()> {
-        self.formatter.write_isize(&mut self.writer, value)
-    }
-
-    #[inline]
     fn serialize_i8(self, value: i8) -> Result<()> {
         self.formatter.write_i8(&mut self.writer, value)
     }
@@ -99,11 +94,6 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     #[inline]
     fn serialize_i64(self, value: i64) -> Result<()> {
         self.formatter.write_i64(&mut self.writer, value)
-    }
-
-    #[inline]
-    fn serialize_usize(self, value: usize) -> Result<()> {
-        self.formatter.write_usize(&mut self.writer, value)
     }
 
     #[inline]
@@ -591,12 +581,6 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         Err(key_must_be_a_string())
     }
 
-    fn serialize_isize(self, value: isize) -> Result<()> {
-        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
-        try!(self.ser.formatter.write_isize(&mut self.ser.writer, value));
-        self.ser.formatter.end_string(&mut self.ser.writer)
-    }
-
     fn serialize_i8(self, value: i8) -> Result<()> {
         try!(self.ser.formatter.begin_string(&mut self.ser.writer));
         try!(self.ser.formatter.write_i8(&mut self.ser.writer, value));
@@ -618,12 +602,6 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     fn serialize_i64(self, value: i64) -> Result<()> {
         try!(self.ser.formatter.begin_string(&mut self.ser.writer));
         try!(self.ser.formatter.write_i64(&mut self.ser.writer, value));
-        self.ser.formatter.end_string(&mut self.ser.writer)
-    }
-
-    fn serialize_usize(self, value: usize) -> Result<()> {
-        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
-        try!(self.ser.formatter.write_usize(&mut self.ser.writer, value));
         self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
@@ -927,14 +905,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
-    fn write_isize<W: ?Sized>(&mut self, writer: &mut W, value: isize) -> Result<()>
-        where W: io::Write
-    {
-        itoa::write(writer, value).map_err(From::from)
-    }
-
-    /// Writes an integer value like `-123` to the specified writer.
-    #[inline]
     fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> Result<()>
         where W: io::Write
     {
@@ -960,14 +930,6 @@ pub trait Formatter {
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
     fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> Result<()>
-        where W: io::Write
-    {
-        itoa::write(writer, value).map_err(From::from)
-    }
-
-    /// Writes an integer value like `123` to the specified writer.
-    #[inline]
-    fn write_usize<W: ?Sized>(&mut self, writer: &mut W, value: usize) -> Result<()>
         where W: io::Write
     {
         itoa::write(writer, value).map_err(From::from)

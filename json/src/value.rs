@@ -757,11 +757,6 @@ impl ser::Serializer for Serializer {
     }
 
     #[inline]
-    fn serialize_isize(self, value: isize) -> Result<Value, Error> {
-        self.serialize_i64(value as i64)
-    }
-
-    #[inline]
     fn serialize_i8(self, value: i8) -> Result<Value, Error> {
         self.serialize_i64(value as i64)
     }
@@ -778,11 +773,6 @@ impl ser::Serializer for Serializer {
 
     fn serialize_i64(self, value: i64) -> Result<Value, Error> {
         Ok(Value::Number(value.into()))
-    }
-
-    #[inline]
-    fn serialize_usize(self, value: usize) -> Result<Value, Error> {
-        self.serialize_u64(value as u64)
     }
 
     #[inline]
@@ -1218,9 +1208,9 @@ impl de::Deserializer for Value {
     }
 
     forward_to_deserialize! {
-        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
-        unit seq seq_fixed_size bytes byte_buf map unit_struct tuple_struct
-        struct struct_field tuple ignored_any
+        bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string unit seq
+        seq_fixed_size bytes byte_buf map unit_struct tuple_struct struct
+        struct_field tuple ignored_any
     }
 }
 
@@ -1332,9 +1322,9 @@ impl de::Deserializer for SeqDeserializer {
     }
 
     forward_to_deserialize! {
-        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
-        unit option seq seq_fixed_size bytes byte_buf map unit_struct
-        newtype_struct tuple_struct struct struct_field tuple enum ignored_any
+        bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string unit option
+        seq seq_fixed_size bytes byte_buf map unit_struct newtype_struct
+        tuple_struct struct struct_field tuple enum ignored_any
     }
 }
 
@@ -1409,9 +1399,9 @@ impl de::Deserializer for MapDeserializer {
     }
 
     forward_to_deserialize! {
-        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
-        unit option seq seq_fixed_size bytes byte_buf map unit_struct
-        newtype_struct tuple_struct struct struct_field tuple enum ignored_any
+        bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string unit option
+        seq seq_fixed_size bytes byte_buf map unit_struct newtype_struct
+        tuple_struct struct struct_field tuple enum ignored_any
     }
 }
 

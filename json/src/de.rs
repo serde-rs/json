@@ -648,9 +648,9 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
     }
 
     forward_to_deserialize! {
-        bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 char str string
-        unit seq seq_fixed_size bytes byte_buf map unit_struct tuple_struct
-        struct struct_field tuple ignored_any
+        bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string unit seq
+        seq_fixed_size bytes byte_buf map unit_struct tuple_struct struct
+        struct_field tuple ignored_any
     }
 }
 
