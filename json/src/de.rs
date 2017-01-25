@@ -918,8 +918,15 @@ fn from_trait<R, T>(read: R) -> Result<T>
     Ok(value)
 }
 
-/// Decodes a json value from an iterator over an iterator
-/// `Iterator<Item=io::Result<u8>>`.
+/// Deserialize an instance of type `T` from an iterator over bytes of JSON.
+///
+/// This conversion can fail if the structure of the Value does not match the
+/// structure expected by `T`, for example if `T` is a struct type but the Value
+/// contains something other than a JSON map. It can also fail if the structure
+/// is correct but `T`'s implementation of `Deserialize` decides that something
+/// is wrong with the data, for example required struct fields are missing from
+/// the JSON map or some number is too big to fit in the expected primitive
+/// type.
 pub fn from_iter<I, T>(iter: I) -> Result<T>
     where I: Iterator<Item = io::Result<u8>>,
           T: de::Deserialize,
@@ -927,7 +934,15 @@ pub fn from_iter<I, T>(iter: I) -> Result<T>
     from_trait(read::IteratorRead::new(iter))
 }
 
-/// Decodes a json value from a `std::io::Read`.
+/// Deserialize an instance of type `T` from an IO stream of JSON.
+///
+/// This conversion can fail if the structure of the Value does not match the
+/// structure expected by `T`, for example if `T` is a struct type but the Value
+/// contains something other than a JSON map. It can also fail if the structure
+/// is correct but `T`'s implementation of `Deserialize` decides that something
+/// is wrong with the data, for example required struct fields are missing from
+/// the JSON map or some number is too big to fit in the expected primitive
+/// type.
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
     where R: io::Read,
           T: de::Deserialize,
@@ -935,14 +950,30 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
     from_iter(rdr.bytes())
 }
 
-/// Decodes a json value from a byte slice `&[u8]`.
+/// Deserialize an instance of type `T` from bytes of JSON text.
+///
+/// This conversion can fail if the structure of the Value does not match the
+/// structure expected by `T`, for example if `T` is a struct type but the Value
+/// contains something other than a JSON map. It can also fail if the structure
+/// is correct but `T`'s implementation of `Deserialize` decides that something
+/// is wrong with the data, for example required struct fields are missing from
+/// the JSON map or some number is too big to fit in the expected primitive
+/// type.
 pub fn from_slice<T>(v: &[u8]) -> Result<T>
     where T: de::Deserialize,
 {
     from_trait(read::SliceRead::new(v))
 }
 
-/// Decodes a json value from a `&str`.
+/// Deserialize an instance of type `T` from a string of JSON text.
+///
+/// This conversion can fail if the structure of the Value does not match the
+/// structure expected by `T`, for example if `T` is a struct type but the Value
+/// contains something other than a JSON map. It can also fail if the structure
+/// is correct but `T`'s implementation of `Deserialize` decides that something
+/// is wrong with the data, for example required struct fields are missing from
+/// the JSON map or some number is too big to fit in the expected primitive
+/// type.
 pub fn from_str<T>(s: &str) -> Result<T>
     where T: de::Deserialize,
 {

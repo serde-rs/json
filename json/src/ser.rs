@@ -1384,7 +1384,10 @@ fn format_escaped_char<W: ?Sized, F: ?Sized>(wr: &mut W, formatter: &mut F, valu
     format_escaped_str(wr, formatter, &s)
 }
 
-/// Encode the specified struct into a json `[u8]` writer.
+/// Serialize the given data structure as JSON into the IO stream.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_writer<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Result<()>
     where W: io::Write,
@@ -1395,7 +1398,11 @@ pub fn to_writer<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Result<()>
     Ok(())
 }
 
-/// Encode the specified struct into a json `[u8]` writer.
+/// Serialize the given data structure as pretty-printed JSON into the IO
+/// stream.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_writer_pretty<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Result<()>
     where W: io::Write,
@@ -1406,7 +1413,10 @@ pub fn to_writer_pretty<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Resu
     Ok(())
 }
 
-/// Encode the specified struct into a json `[u8]` buffer.
+/// Serialize the given data structure as a JSON byte vector.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     where T: ser::Serialize,
@@ -1418,7 +1428,10 @@ pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     Ok(writer)
 }
 
-/// Encode the specified struct into a json `[u8]` buffer.
+/// Serialize the given data structure as a pretty-printed JSON byte vector.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_vec_pretty<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     where T: ser::Serialize,
@@ -1430,7 +1443,10 @@ pub fn to_vec_pretty<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     Ok(writer)
 }
 
-/// Encode the specified struct into a json `String` buffer.
+/// Serialize the given data structure as a String of JSON.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_string<T: ?Sized>(value: &T) -> Result<String>
     where T: ser::Serialize,
@@ -1443,7 +1459,10 @@ pub fn to_string<T: ?Sized>(value: &T) -> Result<String>
     Ok(string)
 }
 
-/// Encode the specified struct into a json `String` buffer.
+/// Serialize the given data structure as a pretty-printed String of JSON.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_string_pretty<T: ?Sized>(value: &T) -> Result<String>
     where T: ser::Serialize,
