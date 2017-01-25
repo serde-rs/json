@@ -151,8 +151,8 @@ extern crate linked_hash_map;
 pub use self::de::{Deserializer, StreamDeserializer, from_iter, from_reader,
                    from_slice, from_str};
 pub use self::error::{Error, Result};
-pub use self::ser::{Serializer, escape_str, to_string, to_string_pretty,
-                    to_vec, to_vec_pretty, to_writer, to_writer_pretty};
+pub use self::ser::{Serializer, to_string, to_string_pretty, to_vec,
+                    to_vec_pretty, to_writer, to_writer_pretty};
 pub use self::value::{Map, Number, Value, from_value, to_value};
 
 #[macro_use]

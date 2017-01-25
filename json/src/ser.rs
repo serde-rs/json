@@ -1308,13 +1308,6 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 }
 
-/// Serializes and escapes a `&str` into a JSON string.
-pub fn escape_str<W: ?Sized>(wr: &mut W, value: &str) -> Result<()>
-    where W: io::Write
-{
-    format_escaped_str(wr, &mut CompactFormatter, value)
-}
-
 fn format_escaped_str<W: ?Sized, F: ?Sized>(writer: &mut W, formatter: &mut F, value: &str) -> Result<()>
     where W: io::Write,
           F: Formatter
