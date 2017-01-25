@@ -4,6 +4,11 @@
 
 ---
 
+```toml
+[dependencies]
+serde_json = "0.9"
+```
+
 You may be looking for:
 
 - [JSON API documentation](https://docs.serde.rs/serde_json/)
@@ -11,11 +16,6 @@ You may be looking for:
 - [Detailed documentation about Serde](https://serde.rs/)
 - [Setting up `#[derive(Serialize, Deserialize)]`](https://serde.rs/codegen.html)
 - [Release notes](https://github.com/serde-rs/json/releases)
-
-```toml
-[dependencies]
-serde_json = "0.9"
-```
 
 JSON is a ubiquitous open-standard format that uses human readable-test to
 transmit data objects consisting of key-value pairs.
@@ -52,7 +52,7 @@ with JSON data in Rust.
 Serde JSON provides efficient, flexible, safe ways of converting data
 between each of these representations.
 
-# JSON to the Value enum
+## JSON to the Value enum
 
 Any valid JSON data can be manipulated in the following recursive enum
 representation. This data structure is [`serde_json::Value`][value].
@@ -76,16 +76,11 @@ A string of JSON data can be parsed into a `serde_json::Value` by the
 a TCP stream.
 
 ```rust
-# extern crate serde_json;
-# use serde_json::Error;
-# pub fn example() -> Result<(), Error> {
 use serde_json::Value;
 
 let data = r#" { "name": "John Doe", "age": 43, ... } "#;
 let v: Value = serde_json::from_str(data)?;
 println!("Please call {} at the number {}", v["name"], v["phones"][0]);
-# Ok(()) }
-# fn main() {}
 ```
 
 The `Value` representation is sufficient for very basic tasks but is brittle
@@ -95,16 +90,12 @@ the input data. The compiler is powerless to help you when you make a
 mistake, for example imagine typoing `v["name"]` as `v["nmae"]` in one of
 the dozens of places it is used in your code.
 
-# JSON to strongly typed data structures
+## JSON to strongly typed data structures
 
 Serde provides a powerful way of mapping JSON data into Rust data structures
 largely automatically.
 
 ```rust
-# extern crate serde_json;
-# #[macro_use] extern crate serde_derive;
-# use serde_json::Error;
-# pub fn example() -> Result<(), Error> {
 #[derive(Serialize, Deserialize)]
 struct Person {
     name: String,
@@ -122,8 +113,6 @@ struct Address {
 let data = r#" { "name": "John Doe", "age": 43, ... } "#;
 let p: Person = serde_json::from_str(data)?;
 println!("Please call {} at the number {}", p.name, p.phones[0]);
-# Ok(()) }
-# fn main() {}
 ```
 
 This is the same `serde_json::from_str` function as before, but this time we
@@ -144,7 +133,7 @@ autocomplete field names to prevent typos, which was impossible in the
 when we write `p.phones[0]`, then `p.phones` is guaranteed to be a
 `Vec<String>` so indexing into it makes sense and produces a `String`.
 
-# Constructing JSON
+## Constructing JSON
 
 Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
 objects with very natural JSON syntax. In order to use this macro,
@@ -181,9 +170,6 @@ will check at compile time that the value you are interpolating is able to
 be represented as JSON.
 
 ```rust
-# #[macro_use] extern crate serde_json;
-# fn random_phone() -> u16 { 0 }
-# fn main() {
 let full_name = "John Doe";
 let age_last_year = 42;
 
@@ -195,8 +181,6 @@ let john = json!({
     format!("+44 {}", random_phone())
   ]
 });
-# let _ = john;
-# }
 ```
 
 This is amazingly convenient but we have the problem we had before with
@@ -204,7 +188,7 @@ This is amazingly convenient but we have the problem we had before with
 wrong. Serde JSON provides a better way of serializing strongly-typed data
 structures into JSON text.
 
-# Serializing data structures
+## Serializing data structures
 
 A data structure can be converted to a JSON string by
 [`serde_json::to_string`][to_string]. There is also
@@ -213,10 +197,6 @@ A data structure can be converted to a JSON string by
 such as a File or a TCP stream.
 
 ```rust
-# extern crate serde_json;
-# #[macro_use] extern crate serde_derive;
-# use serde_json::Error;
-# pub fn example() -> Result<String, Error> {
 #[derive(Serialize, Deserialize)]
 struct Address {
     street: String,
@@ -229,8 +209,6 @@ let address = Address {
 };
 
 let j = serde_json::to_string(&address)?;
-# Ok(j) }
-# fn main() {}
 ```
 
 Any type that implements Serde's `Serialize` trait can be serialized this
