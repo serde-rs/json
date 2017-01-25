@@ -1,6 +1,4 @@
-//! JSON Serialization
-//!
-//! This module provides for JSON serialization with the type `Serializer`.
+//! Serialize a Rust data structure into JSON data.
 
 use std::io;
 use std::num::FpCategory;
@@ -79,11 +77,6 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_isize(self, value: isize) -> Result<()> {
-        self.formatter.write_isize(&mut self.writer, value)
-    }
-
-    #[inline]
     fn serialize_i8(self, value: i8) -> Result<()> {
         self.formatter.write_i8(&mut self.writer, value)
     }
@@ -101,11 +94,6 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     #[inline]
     fn serialize_i64(self, value: i64) -> Result<()> {
         self.formatter.write_i64(&mut self.writer, value)
-    }
-
-    #[inline]
-    fn serialize_usize(self, value: usize) -> Result<()> {
-        self.formatter.write_usize(&mut self.writer, value)
     }
 
     #[inline]
@@ -593,12 +581,6 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         Err(key_must_be_a_string())
     }
 
-    fn serialize_isize(self, value: isize) -> Result<()> {
-        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
-        try!(self.ser.formatter.write_isize(&mut self.ser.writer, value));
-        self.ser.formatter.end_string(&mut self.ser.writer)
-    }
-
     fn serialize_i8(self, value: i8) -> Result<()> {
         try!(self.ser.formatter.begin_string(&mut self.ser.writer));
         try!(self.ser.formatter.write_i8(&mut self.ser.writer, value));
@@ -620,12 +602,6 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     fn serialize_i64(self, value: i64) -> Result<()> {
         try!(self.ser.formatter.begin_string(&mut self.ser.writer));
         try!(self.ser.formatter.write_i64(&mut self.ser.writer, value));
-        self.ser.formatter.end_string(&mut self.ser.writer)
-    }
-
-    fn serialize_usize(self, value: usize) -> Result<()> {
-        try!(self.ser.formatter.begin_string(&mut self.ser.writer));
-        try!(self.ser.formatter.write_usize(&mut self.ser.writer, value));
         self.ser.formatter.end_string(&mut self.ser.writer)
     }
 
@@ -929,14 +905,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
-    fn write_isize<W: ?Sized>(&mut self, writer: &mut W, value: isize) -> Result<()>
-        where W: io::Write
-    {
-        itoa::write(writer, value).map_err(From::from)
-    }
-
-    /// Writes an integer value like `-123` to the specified writer.
-    #[inline]
     fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> Result<()>
         where W: io::Write
     {
@@ -962,14 +930,6 @@ pub trait Formatter {
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
     fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> Result<()>
-        where W: io::Write
-    {
-        itoa::write(writer, value).map_err(From::from)
-    }
-
-    /// Writes an integer value like `123` to the specified writer.
-    #[inline]
-    fn write_usize<W: ?Sized>(&mut self, writer: &mut W, value: usize) -> Result<()>
         where W: io::Write
     {
         itoa::write(writer, value).map_err(From::from)
@@ -1308,13 +1268,6 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 }
 
-/// Serializes and escapes a `&str` into a JSON string.
-pub fn escape_str<W: ?Sized>(wr: &mut W, value: &str) -> Result<()>
-    where W: io::Write
-{
-    format_escaped_str(wr, &mut CompactFormatter, value)
-}
-
 fn format_escaped_str<W: ?Sized, F: ?Sized>(writer: &mut W, formatter: &mut F, value: &str) -> Result<()>
     where W: io::Write,
           F: Formatter
@@ -1393,7 +1346,10 @@ fn format_escaped_char<W: ?Sized, F: ?Sized>(wr: &mut W, formatter: &mut F, valu
     format_escaped_str(wr, formatter, &s)
 }
 
-/// Encode the specified struct into a json `[u8]` writer.
+/// Serialize the given data structure as JSON into the IO stream.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_writer<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Result<()>
     where W: io::Write,
@@ -1404,7 +1360,11 @@ pub fn to_writer<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Result<()>
     Ok(())
 }
 
-/// Encode the specified struct into a json `[u8]` writer.
+/// Serialize the given data structure as pretty-printed JSON into the IO
+/// stream.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_writer_pretty<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Result<()>
     where W: io::Write,
@@ -1415,7 +1375,10 @@ pub fn to_writer_pretty<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Resu
     Ok(())
 }
 
-/// Encode the specified struct into a json `[u8]` buffer.
+/// Serialize the given data structure as a JSON byte vector.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     where T: ser::Serialize,
@@ -1427,7 +1390,10 @@ pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     Ok(writer)
 }
 
-/// Encode the specified struct into a json `[u8]` buffer.
+/// Serialize the given data structure as a pretty-printed JSON byte vector.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_vec_pretty<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     where T: ser::Serialize,
@@ -1439,7 +1405,10 @@ pub fn to_vec_pretty<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     Ok(writer)
 }
 
-/// Encode the specified struct into a json `String` buffer.
+/// Serialize the given data structure as a String of JSON.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_string<T: ?Sized>(value: &T) -> Result<String>
     where T: ser::Serialize,
@@ -1452,7 +1421,10 @@ pub fn to_string<T: ?Sized>(value: &T) -> Result<String>
     Ok(string)
 }
 
-/// Encode the specified struct into a json `String` buffer.
+/// Serialize the given data structure as a pretty-printed String of JSON.
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
 #[inline]
 pub fn to_string_pretty<T: ?Sized>(value: &T) -> Result<String>
     where T: ser::Serialize,

@@ -1,116 +1,235 @@
-//! JSON and serialization
+//! # Serde JSON
 //!
-//! # What is JSON?
+//! JSON is a ubiquitous open-standard format that uses human readable-test to
+//! transmit data objects consisting of key-value pairs.
 //!
-//! JSON (JavaScript Object Notation) is a way to write data in JavaScript.  Like XML, it allows to
-//! encode structured data in a text format that can be easily read by humans.  Its simple syntax
-//! and native compatibility with JavaScript have made it a widely used format.
-//!
-//! Data types that can be encoded are JavaScript types (see the `serde_json:Value` enum for more
-//! details):
-//!
-//! * `Bool`: equivalent to rust's `bool`
-//! * `I64`: equivalent to rust's `i64`
-//! * `U64`: equivalent to rust's `u64`
-//! * `F64`: equivalent to rust's `f64`
-//! * `String`: equivalent to rust's `String`
-//! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
-//!    same array
-//! * `Object`: equivalent to rust's `BTreeMap<String, serde_json::Value>`; set the
-//!    `preserve_order` feature to use `LinkedHashMap<String, serde_json::Value>` instead
-//! * `Null`
-//!
-//! An object is a series of string keys mapping to values, in `"key": value` format.  Arrays are
-//! enclosed in square brackets ([ ... ]) and objects in curly brackets ({ ... }).  A simple JSON
-//! document encoding a person, his/her age, address and phone numbers could look like
-//!
-//! ```ignore
+//! ```json,ignore
 //! {
-//!     "FirstName": "John",
-//!     "LastName": "Doe",
-//!     "Age": 43,
-//!     "Address": {
-//!         "Street": "Downing Street 10",
-//!         "City": "London",
-//!         "Country": "Great Britain"
-//!     },
-//!     "PhoneNumbers": [
-//!         "+44 1234567",
-//!         "+44 2345678"
-//!     ]
+//!   "name": "John Doe",
+//!   "age": 43,
+//!   "address": {
+//!     "street": "10 Downing Street",
+//!     "city": "London"
+//!   },
+//!   "phones": [
+//!     "+44 1234567",
+//!     "+44 2345678"
+//!   ]
 //! }
 //! ```
 //!
-//! If we assume that `FirstName` is optional and all other fields are mandatory, the above JSON could
-//! correspond to the following Rust structs:
+//! There are three common ways that you might find yourself needing to work
+//! with JSON data in Rust.
 //!
-//! ```ignore
+//!  - **As text data.** An unprocessed string of JSON data that you receive on
+//!    an HTTP endpoint, read from a file, or prepare to send to a remote
+//!    server.
+//!  - **As an untyped or loosely typed representation.** Maybe you want to
+//!    check that some JSON data is valid before passing it on, but without
+//!    knowing the structure of what it contains. Or you want to do very basic
+//!    manipulations like add a level of nesting.
+//!  - **As a strongly typed Rust data structure.** When you expect all or most
+//!    of your data to conform to a particular structure and want to get real
+//!    work done without JSON's loosey-goosey nature tripping you up.
+//!
+//! Serde JSON provides efficient, flexible, safe ways of converting data
+//! between each of these representations.
+//!
+//! # JSON to the Value enum
+//!
+//! Any valid JSON data can be manipulated in the following recursive enum
+//! representation. This data structure is [`serde_json::Value`][value].
+//!
+//! ```rust,ignore
+//! enum Value {
+//!     Null,
+//!     Bool(bool),
+//!     Number(Number),
+//!     String(String),
+//!     Array(Vec<Value>),
+//!     Object(Map<String, Value>),
+//! }
+//! ```
+//!
+//! A string of JSON data can be parsed into a `serde_json::Value` by the
+//! [`serde_json::from_str`][from_str] function. There is also
+//! [`from_slice`][from_slice] for parsing from a byte slice &[u8],
+//! [`from_iter`][from_iter] for parsing from an iterator of bytes, and
+//! [`from_reader`][from_reader] for parsing from any `io::Read` like a File or
+//! a TCP stream.
+//!
+//! ```rust
+//! # extern crate serde_json;
+//! # use serde_json::Error;
+//! # pub fn example() -> Result<(), Error> {
+//! use serde_json::Value;
+//!
+//! let data = r#" { "name": "John Doe", "age": 43, ... } "#;
+//! let v: Value = serde_json::from_str(data)?;
+//! println!("Please call {} at the number {}", v["name"], v["phones"][0]);
+//! # Ok(()) }
+//! # fn main() {}
+//! ```
+//!
+//! The `Value` representation is sufficient for very basic tasks but is brittle
+//! and tedious to work with. Error handling is verbose to implement correctly,
+//! for example imagine trying to detect the presence of unrecognized fields in
+//! the input data. The compiler is powerless to help you when you make a
+//! mistake, for example imagine typoing `v["name"]` as `v["nmae"]` in one of
+//! the dozens of places it is used in your code.
+//!
+//! # JSON to strongly typed data structures
+//!
+//! Serde provides a powerful way of mapping JSON data into Rust data structures
+//! largely automatically.
+//!
+//! ```rust
+//! # extern crate serde_json;
+//! # #[macro_use] extern crate serde_derive;
+//! # use serde_json::Error;
+//! # pub fn example() -> Result<(), Error> {
 //! #[derive(Serialize, Deserialize)]
-//! struct Data {
-//!     #[serde(rename="FirstName")] // to comply with Rust coding standards
-//!     first_name: Option<String>,
-//!     LastName: String,
-//!     Age: u32,
-//!     Address: Address,
-//!     PhoneNumbers: Vec<String>,
+//! struct Person {
+//!     name: String,
+//!     age: u8,
+//!     address: Address,
+//!     phones: Vec<String>,
 //! }
 //!
 //! #[derive(Serialize, Deserialize)]
 //! struct Address {
-//!     Street: String,
-//!     City: String,
-//!     Country: String,
+//!     street: String,
+//!     city: String,
 //! }
+//!
+//! let data = r#" { "name": "John Doe", "age": 43, ... } "#;
+//! let p: Person = serde_json::from_str(data)?;
+//! println!("Please call {} at the number {}", p.name, p.phones[0]);
+//! # Ok(()) }
+//! # fn main() {}
 //! ```
 //!
-//! # Type-based Serialization and Deserialization
+//! This is the same `serde_json::from_str` function as before, but this time we
+//! assign the return value to a variable of type `Person` so Serde JSON will
+//! automatically interpret the input data as a `Person` and produce informative
+//! error messages if the layout does not conform to what a `Person` is expected
+//! to look like.
 //!
-//! Serde provides a mechanism for low boilerplate serialization & deserialization of values to and
-//! from JSON via the serialization API.  To be able to serialize a piece of data, it must implement
-//! the `serde::Serialize` trait.  To be able to deserialize a piece of data, it must implement the
-//! `serde::Deserialize` trait.  Serde provides provides an annotation to automatically generate
-//! the code for these traits: `#[derive(Serialize, Deserialize)]`.
+//! Any type that implements Serde's `Deserialize` trait can be deserialized
+//! this way. This includes built-in Rust standard library types like `Vec<T>`
+//! and `HashMap<K, V>`, as well as any structs or enums annotated with
+//! `#[derive(Deserialize)]`.
 //!
-//! The JSON API also provides an enum `serde_json::Value` and a method `to_value` to serialize
-//! objects.  A `serde_json::Value` value can be serialized as a string or buffer using the
-//! functions described above.  You can also use the `json::Serializer` object, which implements the
-//! `Serializer` trait.
+//! Once we have `p` of type `Person`, our IDE and the Rust compiler can help us
+//! use it correctly like they do for any other Rust code. The IDE can
+//! autocomplete field names to prevent typos, which was impossible in the
+//! `serde_json::Value` representation. And the Rust compiler can check that
+//! when we write `p.phones[0]`, then `p.phones` is guaranteed to be a
+//! `Vec<String>` so indexing into it makes sense and produces a `String`.
 //!
-//! # Examples of use
+//! # Constructing JSON
 //!
-//! ## Parsing a `str` to `Value` and reading the result
+//! Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
+//! objects with very natural JSON syntax. In order to use this macro,
+//! `serde_json` needs to be imported with the `#[macro_use]` attribute.
 //!
 //! ```rust
+//! #[macro_use]
 //! extern crate serde_json;
 //!
-//! use serde_json::Value;
-//!
 //! fn main() {
-//!     let data: Value = serde_json::from_str("{\"foo\": 13, \"bar\": \"baz\"}").unwrap();
-//!     println!("data: {:?}", data);
-//!     // data: {"bar":"baz","foo":13}
-//!     println!("object? {}", data.is_object());
-//!     // object? true
+//!     // The type of `john` is `serde_json::Value`
+//!     let john = json!({
+//!       "name": "John Doe",
+//!       "age": 43,
+//!       "phones": [
+//!         "+44 1234567",
+//!         "+44 2345678"
+//!       ]
+//!     });
 //!
-//!     let obj = data.as_object().unwrap();
-//!     let foo = obj.get("foo").unwrap();
+//!     println!("first phone number: {}", john["phones"][0]);
 //!
-//!     println!("array? {:?}", foo.as_array());
-//!     // array? None
-//!     println!("u64? {:?}", foo.as_u64());
-//!     // u64? Some(13u64)
-//!
-//!     for (key, value) in obj.iter() {
-//!         println!("{}: {}", key, match *value {
-//!             Value::Number(ref v) => format!("{} (number)", v),
-//!             Value::String(ref v) => format!("{} (string)", v),
-//!             _ => format!("other")
-//!         });
-//!     }
-//!     // bar: baz (string)
-//!     // foo: 13 (u64)
+//!     // Convert to a string of JSON and print it out
+//!     println!("{}", john.to_string());
 //! }
 //! ```
+//!
+//! The `Value::to_string()` function converts a `serde_json::Value` into a
+//! `String` of JSON text.
+//!
+//! One neat thing about the `json!` macro is that variables and expressions can
+//! be interpolated directly into the JSON value as you are building it. Serde
+//! will check at compile time that the value you are interpolating is able to
+//! be represented as JSON.
+//!
+//! ```rust
+//! # #[macro_use] extern crate serde_json;
+//! # fn random_phone() -> u16 { 0 }
+//! # fn main() {
+//! let full_name = "John Doe";
+//! let age_last_year = 42;
+//!
+//! // The type of `john` is `serde_json::Value`
+//! let john = json!({
+//!   "name": full_name,
+//!   "age": age_last_year + 1,
+//!   "phones": [
+//!     format!("+44 {}", random_phone())
+//!   ]
+//! });
+//! # let _ = john;
+//! # }
+//! ```
+//!
+//! This is amazingly convenient but we have the problem we had before with
+//! `Value` which is that the IDE and Rust compiler cannot help us if we get it
+//! wrong. Serde JSON provides a better way of serializing strongly-typed data
+//! structures into JSON text.
+//!
+//! # Serializing data structures
+//!
+//! A data structure can be converted to a JSON string by
+//! [`serde_json::to_string`][to_string]. There is also
+//! [`serde_json::to_vec`][to_vec] which serializes to a `Vec<u8>` and
+//! [`serde_json::to_writer`][to_writer] which serializes to any `io::Write`
+//! such as a File or a TCP stream.
+//!
+//! ```rust
+//! # extern crate serde_json;
+//! # #[macro_use] extern crate serde_derive;
+//! # use serde_json::Error;
+//! # pub fn example() -> Result<String, Error> {
+//! #[derive(Serialize, Deserialize)]
+//! struct Address {
+//!     street: String,
+//!     city: String,
+//! }
+//!
+//! let address = Address {
+//!     street: "10 Downing Street".to_owned(),
+//!     city: "London".to_owned(),
+//! };
+//!
+//! let j = serde_json::to_string(&address)?;
+//! # Ok(j) }
+//! # fn main() {}
+//! ```
+//!
+//! Any type that implements Serde's `Serialize` trait can be serialized this
+//! way. This includes built-in Rust standard library types like `Vec<T>` and
+//! `HashMap<K, V>`, as well as any structs or enums annotated with
+//! `#[derive(Serialize)]`.
+//!
+//! [value]: https://docs.serde.rs/serde_json/value/enum.Value.html
+//! [from_str]: https://docs.serde.rs/serde_json/de/fn.from_str.html
+//! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
+//! [from_iter]: https://docs.serde.rs/serde_json/de/fn.from_iter.html
+//! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
+//! [to_string]: https://docs.serde.rs/serde_json/ser/fn.to_string.html
+//! [to_vec]: https://docs.serde.rs/serde_json/ser/fn.to_vec.html
+//! [to_writer]: https://docs.serde.rs/serde_json/ser/fn.to_writer.html
+//! [macro]: https://docs.serde.rs/serde_json/macro.json.html
 
 #![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
@@ -151,8 +270,8 @@ extern crate linked_hash_map;
 pub use self::de::{Deserializer, StreamDeserializer, from_iter, from_reader,
                    from_slice, from_str};
 pub use self::error::{Error, Result};
-pub use self::ser::{Serializer, escape_str, to_string, to_string_pretty,
-                    to_vec, to_vec_pretty, to_writer, to_writer_pretty};
+pub use self::ser::{Serializer, to_string, to_string_pretty, to_vec,
+                    to_vec_pretty, to_writer, to_writer_pretty};
 pub use self::value::{Map, Number, Value, from_value, to_value};
 
 #[macro_use]
