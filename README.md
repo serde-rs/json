@@ -17,7 +17,7 @@ You may be looking for:
 - [Setting up `#[derive(Serialize, Deserialize)]`](https://serde.rs/codegen.html)
 - [Release notes](https://github.com/serde-rs/json/releases)
 
-JSON is a ubiquitous open-standard format that uses human readable-test to
+JSON is a ubiquitous open-standard format that uses human-readable text to
 transmit data objects consisting of key-value pairs.
 
 ```json,ignore
