@@ -961,12 +961,14 @@ pub fn from_partial_stream<T>(v: &[u8]) -> Result<Option<(T, usize)>>
     use super::error::ErrorCode::*;
     let mut de = Deserializer::new(read::SliceRead::new(v));
     match de::Deserialize::deserialize(&mut de) {
-        Ok(val) => Ok(Some((value, de.read.pos()))),
-        Err(EOFWhileParsingList) |
-        Err(EOFWhileParsingObject) |
-        Err(EOFWhileParsingString) |
-        Err(EOFWhileParsingValue) => Ok(None),
-        Err(other) => Err(other),
+        Ok(value) => Ok(Some((value, de.read.pos()))),
+        Err(e) => match *e.0 {
+            ErrorImpl::Syntax(EOFWhileParsingList, _, _) |
+            ErrorImpl::Syntax(EOFWhileParsingObject, _, _) |
+            ErrorImpl::Syntax(EOFWhileParsingString, _, _) |
+            ErrorImpl::Syntax(EOFWhileParsingValue, _, _) => Ok(None),
+            _ => Err(e),
+        }
     }
 }
 
