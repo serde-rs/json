@@ -10,13 +10,6 @@ rust:
 - 1.13.0
 - beta
 
-addons:
-  apt:
-    packages:
-    - libcurl4-openssl-dev
-    - libelf-dev
-    - libdw-dev
-
 before_script:
 - |
     pip install 'travis-cargo<0.2' --user &&
@@ -29,9 +22,6 @@ script:
     (cd json && travis-cargo --only nightly test) &&
     (cd json_tests && travis-cargo --only nightly test) &&
     (cd json_tests && travis-cargo --only nightly test -- --features unstable-testing)
-
-after_success:
-- (cd json_tests && travis-cargo --only stable coveralls --no-sudo)
 
 env:
   global:
