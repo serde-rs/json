@@ -28,8 +28,7 @@ script:
     (cd json && travis-cargo --skip 1.8.0 build -- --features preserve_order) &&
     (cd json && travis-cargo --only nightly test) &&
     (cd json_tests && travis-cargo --only nightly test) &&
-    (cd json_tests && travis-cargo --only nightly test -- --features unstable-testing) &&
-    (cd json && travis-cargo --only stable doc)
+    (cd json_tests && travis-cargo --only nightly test -- --features unstable-testing)
 
 after_success:
 - (cd json_tests && travis-cargo --only stable coveralls --no-sudo)
