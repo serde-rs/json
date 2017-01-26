@@ -18,7 +18,7 @@ script:
   - (cd json && travis-cargo build)
   - (cd json && travis-cargo build -- --features preserve_order)
   - (cd json && travis-cargo --only nightly test)
-  - (cd json_tests && travis-cargo --skip nightly test)
+  - (cd json_tests && travis-cargo --only beta test)
   - (cd json_tests && travis-cargo --only nightly test -- --features unstable-testing)
 
 env:
