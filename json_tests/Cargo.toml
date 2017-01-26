@@ -10,7 +10,6 @@ trace-macros = []
 
 [dependencies]
 clippy = { version = "0.*", optional = true }
-indoc = "*"
 num-traits = "*"
 rustc-serialize = "*"
 serde = "0.9"

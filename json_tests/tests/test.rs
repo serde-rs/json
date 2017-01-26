@@ -1,6 +1,5 @@
-#![feature(plugin)]
+#![cfg_attr(feature = "clippy", feature(plugin))]
 #![cfg_attr(feature = "clippy", plugin(clippy))]
-#![plugin(indoc)]
 
 #![cfg_attr(feature = "trace-macros", feature(trace_macros))]
 #[cfg(feature = "trace-macros")]
@@ -12,6 +11,9 @@ extern crate serde_derive;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
+
+#[macro_use]
+mod macros;
 
 use std::collections::BTreeMap;
 use std::f64;
@@ -204,55 +206,47 @@ fn test_write_list() {
     test_pretty_encode_ok(&[
         (
             vec![vec![], vec![], vec![]],
-            indoc!("
-                [
-                  [],
-                  [],
-                  []
-                ]"
-            ),
+            pretty_str!([
+                [],
+                [],
+                []
+            ]),
         ),
         (
             vec![vec![1, 2, 3], vec![], vec![]],
-            indoc!("
+            pretty_str!([
                 [
-                  [
                     1,
                     2,
                     3
-                  ],
-                  [],
-                  []
-                ]"
-            ),
+                ],
+                [],
+                []
+            ]),
         ),
         (
             vec![vec![], vec![1, 2, 3], vec![]],
-            indoc!("
+            pretty_str!([
+                [],
                 [
-                  [],
-                  [
                     1,
                     2,
                     3
-                  ],
-                  []
-                ]"
-            ),
+                ],
+                []
+            ]),
         ),
         (
             vec![vec![], vec![], vec![1, 2, 3]],
-            indoc!("
+            pretty_str!([
+                [],
+                [],
                 [
-                  [],
-                  [],
-                  [
                     1,
                     2,
                     3
-                  ]
-                ]"
-            ),
+                ]
+            ]),
         ),
     ]);
 
@@ -260,20 +254,16 @@ fn test_write_list() {
         (vec![], "[]"),
         (
             vec![true],
-            indoc!("
-                [
-                  true
-                ]"
-            ),
+            pretty_str!([
+                true
+            ]),
         ),
         (
             vec![true, false],
-            indoc!("
-                [
-                  true,
-                  false
-                ]"
-            ),
+            pretty_str!([
+                true,
+                false
+            ]),
         ),
     ]);
 
@@ -282,23 +272,28 @@ fn test_write_list() {
     test_encode_ok(&[
         (
             long_test_list.clone(),
-            "[false,null,[\"foo\\nbar\",3.5]]",
+            json_str!([
+                false,
+                null,
+                [
+                    "foo\nbar",
+                    3.5
+                ]
+            ]),
         ),
     ]);
 
     test_pretty_encode_ok(&[
         (
             long_test_list,
-            indoc!(r#"
+            pretty_str!([
+                false,
+                null,
                 [
-                  false,
-                  null,
-                  [
                     "foo\nbar",
                     3.5
-                  ]
-                ]"#
-            ),
+                ]
+            ]),
         )
     ]);
 }
@@ -370,13 +365,11 @@ fn test_write_object() {
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-            indoc!(r#"
-                {
-                  "a": {},
-                  "b": {},
-                  "c": {}
-                }"#
-            ),
+            pretty_str!({
+                "a": {},
+                "b": {},
+                "c": {}
+            }),
         ),
         (
             treemap![
@@ -388,23 +381,21 @@ fn test_write_object() {
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-            indoc!(r#"
-                {
-                  "a": {
+            pretty_str!({
+                "a": {
                     "a": {
-                      "a": [
-                        1,
-                        2,
-                        3
-                      ]
+                        "a": [
+                            1,
+                            2,
+                            3
+                        ]
                     },
                     "b": {},
                     "c": {}
-                  },
-                  "b": {},
-                  "c": {}
-                }"#
-            ),
+                },
+                "b": {},
+                "c": {}
+            }),
         ),
         (
             treemap![
@@ -416,23 +407,21 @@ fn test_write_object() {
                 ],
                 "c".to_string() => treemap![]
             ],
-            indoc!(r#"
-                {
-                  "a": {},
-                  "b": {
+            pretty_str!({
+                "a": {},
+                "b": {
                     "a": {
-                      "a": [
-                        1,
-                        2,
-                        3
-                      ]
+                        "a": [
+                            1,
+                            2,
+                            3
+                        ]
                     },
                     "b": {},
                     "c": {}
-                  },
-                  "c": {}
-                }"#
-            ),
+                },
+                "c": {}
+            }),
         ),
         (
             treemap![
@@ -444,23 +433,21 @@ fn test_write_object() {
                     "c".to_string() => treemap![]
                 ]
             ],
-            indoc!(r#"
-                {
-                  "a": {},
-                  "b": {},
-                  "c": {
+            pretty_str!({
+                "a": {},
+                "b": {},
+                "c": {
                     "a": {
-                      "a": [
-                        1,
-                        2,
-                        3
-                      ]
+                        "a": [
+                            1,
+                            2,
+                            3
+                        ]
                     },
                     "b": {},
                     "c": {}
-                  }
-                }"#
-            ),
+                }
+            }),
         ),
     ]);
 
@@ -468,23 +455,19 @@ fn test_write_object() {
         (treemap!(), "{}"),
         (
             treemap!("a".to_string() => true),
-            indoc!(r#"
-                {
-                  "a": true
-                }"#
-            ),
+            pretty_str!({
+                "a": true
+            }),
         ),
         (
             treemap!(
                 "a".to_string() => true,
                 "b".to_string() => false
             ),
-            indoc!(r#"
-                {
-                  "a": true,
-                  "b": false
-                }"#
-            ),
+            pretty_str!( {
+                "a": true,
+                "b": false
+            }),
         ),
     ]);
 
@@ -498,30 +481,32 @@ fn test_write_object() {
     test_encode_ok(&[
         (
             complex_obj.clone(),
-            "{\
-                \"b\":[\
-                    {\"c\":\"\\f\\u001f\\r\"},\
-                    {\"d\":\"\"}\
-                ]\
-            }"
+            json_str!({
+                "b": [
+                    {
+                        "c": (r#""\f\u001f\r""#)
+                    },
+                    {
+                        "d": ""
+                    }
+                ]
+            })
         ),
     ]);
 
     test_pretty_encode_ok(&[
         (
             complex_obj.clone(),
-            indoc!(r#"
-                {
-                  "b": [
+            pretty_str!({
+                "b": [
                     {
-                      "c": "\f\u001f\r"
+                        "c": (r#""\f\u001f\r""#)
                     },
                     {
-                      "d": ""
+                        "d": ""
                     }
-                  ]
-                }"#
-            ),
+                ]
+            }),
         )
     ]);
 }
@@ -538,11 +523,9 @@ fn test_write_tuple() {
     test_pretty_encode_ok(&[
         (
             (5,),
-            indoc!("
-                [
-                  5
-                ]"
-            ),
+            pretty_str!([
+                5
+            ]),
         ),
     ]);
 
@@ -556,15 +539,13 @@ fn test_write_tuple() {
     test_pretty_encode_ok(&[
         (
             (5, (6, "abc")),
-            indoc!(r#"
+            pretty_str!([
+                5,
                 [
-                  5,
-                  [
                     6,
                     "abc"
-                  ]
-                ]"#
-            ),
+                ]
+            ]),
         ),
     ]);
 }
@@ -605,41 +586,35 @@ fn test_write_enum() {
         ),
         (
             Animal::Frog("Henry".to_string(), vec![]),
-            indoc!(r#"
-                {
-                  "Frog": [
+            pretty_str!({
+                "Frog": [
                     "Henry",
                     []
-                  ]
-                }"#
-            ),
+                ]
+            }),
         ),
         (
             Animal::Frog("Henry".to_string(), vec![349]),
-            indoc!(r#"
-                {
-                  "Frog": [
+            pretty_str!({
+                "Frog": [
                     "Henry",
                     [
-                      349
+                        349
                     ]
-                  ]
-                }"#
-            ),
+                ]
+            }),
         ),
         (
             Animal::Frog("Henry".to_string(), vec![349, 102]),
-            indoc!(r#"
-                {
-                  "Frog": [
+            pretty_str!({
+                "Frog": [
                     "Henry",
                     [
                       349,
                       102
                     ]
-                  ]
-                }"#
-            ),
+                ]
+            }),
         ),
     ]);
 }
@@ -665,12 +640,10 @@ fn test_write_option() {
         (None, "null"),
         (
             Some(vec!["foo", "bar"]),
-            indoc!(r#"
-                [
-                  "foo",
-                  "bar"
-                ]"#
-            ),
+            pretty_str!([
+                "foo",
+                "bar"
+            ]),
         ),
     ]);
 }
@@ -1369,11 +1342,10 @@ fn test_serialize_seq_with_no_len() {
     ]);
 
     let s = to_string_pretty(&vec).unwrap();
-    let expected = indoc!("
-        [
-          [],
-          []
-        ]");
+    let expected = pretty_str!([
+        [],
+        []
+    ]);
     assert_eq!(s, expected);
 }
 
@@ -1459,11 +1431,10 @@ fn test_serialize_map_with_no_len() {
     ]);
 
     let s = to_string_pretty(&map).unwrap();
-    let expected = indoc!(r#"
-        {
-          "a": {},
-          "b": {}
-        }"#);
+    let expected = pretty_str!({
+        "a": {},
+        "b": {}
+    });
     assert_eq!(s, expected);
 }
 
