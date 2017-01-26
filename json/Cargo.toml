@@ -8,6 +8,10 @@ repository = "https://github.com/serde-rs/json"
 documentation = "http://docs.serde.rs/serde_json/"
 readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
+categories = ["encoding"]
+
+[badges]
+travis-ci = { repository = "serde-rs/json" }
 
 [features]
 unstable-testing = ["clippy"]
