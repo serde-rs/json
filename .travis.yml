@@ -1,29 +1,26 @@
+sudo: false
 language: rust
 cache: cargo
-sudo: false
 
 # run builds for all the trains (and more)
 rust:
-- stable
-- nightly
-- 1.12.0
-- 1.13.0
-- beta
+  - stable
+  - nightly
+  - 1.12.0
+  - 1.13.0
+  - beta
 
 before_script:
-- |
-    pip install 'travis-cargo<0.2' --user &&
-    export PATH=$HOME/.local/bin:$PATH
+  - pip install 'travis-cargo<0.2' --user
+  - export PATH=$HOME/.local/bin:$PATH
 
 script:
-- |
-    (cd json && travis-cargo build) &&
-    (cd json && travis-cargo --skip 1.8.0 build -- --features preserve_order) &&
-    (cd json && travis-cargo --only nightly test) &&
-    (cd json_tests && travis-cargo --only nightly test) &&
-    (cd json_tests && travis-cargo --only nightly test -- --features unstable-testing)
+  - (cd json && travis-cargo build)
+  - (cd json && travis-cargo build -- --features preserve_order)
+  - (cd json && travis-cargo --only nightly test)
+  - (cd json_tests && travis-cargo --only nightly test)
+  - (cd json_tests && travis-cargo --only nightly test -- --features unstable-testing)
 
 env:
   global:
-    # override the default `--features unstable` used for the nightly branch (optional)
     - TRAVIS_CARGO_NIGHTLY_FEATURE=""
