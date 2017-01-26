@@ -3,6 +3,7 @@ use std::fmt::{self, Debug};
 use value::Value;
 use std::hash::Hash;
 use std::borrow::Borrow;
+use std::ops;
 
 #[cfg(not(feature = "preserve_order"))]
 use std::collections::{BTreeMap, btree_map};
@@ -162,6 +163,32 @@ impl PartialEq for Map<String, Value> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
+    }
+}
+
+/// Access an element of this map. Panics if the given key is not present in the
+/// map.
+///
+/// ```rust
+/// # use serde_json::Value;
+/// # let val = &Value::String("".to_owned());
+/// # let _ =
+/// match *val {
+///     Value::String(ref s) => Some(s.as_str()),
+///     Value::Array(ref arr) => arr[0].as_str(),
+///     Value::Object(ref map) => map["type"].as_str(),
+///     _ => None,
+/// }
+/// # ;
+/// ```
+impl<'a, Q: ?Sized> ops::Index<&'a Q> for Map<String, Value>
+    where String: Borrow<Q>,
+          Q: Ord + Eq + Hash
+{
+    type Output = Value;
+
+    fn index(&self, index: &Q) -> &Value {
+        self.0.index(index)
     }
 }
 
