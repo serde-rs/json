@@ -17,8 +17,10 @@
 /// # }
 /// ```
 ///
-/// Any variable or expression that implements Serde's `Serialize` trait can be
-/// interpolated into the JSON literal just by referring to it.
+/// Variables or expressions can be interpolated into the JSON literal. Any type
+/// interpolated into an array element or object value must implement Serde's
+/// `Serialize` trait, while any type interpolated into a object key must
+/// implement `Into<String>`.
 ///
 /// ```rust
 /// # #![allow(unused_variables)]
