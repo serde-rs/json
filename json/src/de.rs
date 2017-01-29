@@ -642,7 +642,7 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
                     _ => Err(self.error(ErrorCode::ExpectedSomeValue)),
                 }
             }
-            b'"' => visitor.visit_enum(KeyOnlyVariantVisitor::new(self)),
+            b'"' => visitor.visit_enum(UnitVariantVisitor::new(self)),
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
         }
     }
@@ -816,19 +816,19 @@ impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
     }
 }
 
-struct KeyOnlyVariantVisitor<'a, R: Read + 'a> {
+struct UnitVariantVisitor<'a, R: Read + 'a> {
     de: &'a mut Deserializer<R>,
 }
 
-impl<'a, R: Read + 'a> KeyOnlyVariantVisitor<'a, R> {
+impl<'a, R: Read + 'a> UnitVariantVisitor<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        KeyOnlyVariantVisitor {
+        UnitVariantVisitor {
             de: de,
         }
     }
 }
 
-impl<'a, R: Read + 'a> de::EnumVisitor for KeyOnlyVariantVisitor<'a, R> {
+impl<'a, R: Read + 'a> de::EnumVisitor for UnitVariantVisitor<'a, R> {
     type Error = Error;
     type Variant = Self;
 
@@ -840,33 +840,33 @@ impl<'a, R: Read + 'a> de::EnumVisitor for KeyOnlyVariantVisitor<'a, R> {
     }
 }
 
-impl<'a, R: Read + 'a> de::VariantVisitor for KeyOnlyVariantVisitor<'a, R> {
+impl<'a, R: Read + 'a> de::VariantVisitor for UnitVariantVisitor<'a, R> {
     type Error = Error;
 
     fn visit_unit(self) -> Result<()> {
         Ok(())
     }
 
-    fn visit_newtype_seed<T>(self, seed: T) -> Result<T::Value>
+    fn visit_newtype_seed<T>(self, _seed: T) -> Result<T::Value>
         where T: de::DeserializeSeed,
     {
-        seed.deserialize(self.de)
+        Err(self.de.error(ErrorCode::EOFWhileParsingValue))
     }
 
-    fn visit_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    fn visit_tuple<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        de::Deserializer::deserialize(self.de, visitor)
+        Err(self.de.error(ErrorCode::EOFWhileParsingValue))
     }
 
     fn visit_struct<V>(
         self,
         _fields: &'static [&'static str],
-        visitor: V
+        _visitor: V
     ) -> Result<V::Value>
         where V: de::Visitor,
     {
-        de::Deserializer::deserialize(self.de, visitor)
+        Err(self.de.error(ErrorCode::EOFWhileParsingValue))
     }
 }
 

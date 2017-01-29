@@ -1133,6 +1133,8 @@ fn test_parse_enum_errors() {
             "trailing characters at line 1 column 9"),
         ("\"Frog\"",
             "EOF while parsing a value at line 1 column 6"),
+        ("\"Frog\" 0 ",
+            "EOF while parsing a value at line 1 column 6"),
         ("{\"Frog\":{}}",
             "invalid type: map, expected tuple variant Animal::Frog at line 1 column 10"),
         ("{\"Cat\":[]}",
@@ -1771,4 +1773,16 @@ fn test_json_macro() {
         (<Result<&str, ()> as Clone>::clone(&Ok("")).unwrap()): "ok",
         (<Result<(), &str> as Clone>::clone(&Err("")).unwrap_err()): "err"
     });
+}
+
+#[test]
+fn issue_220() {
+    #[derive(Debug, PartialEq, Eq, Deserialize)]
+    enum E {
+        V(u8),
+    }
+
+    assert!(from_str::<E>(r#" "V"0 "#).is_err());
+
+    assert_eq!(from_str::<E>(r#"{"V": 0}"#).unwrap(), E::V(0));
 }
