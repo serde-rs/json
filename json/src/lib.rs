@@ -40,7 +40,9 @@
 //! Any valid JSON data can be manipulated in the following recursive enum
 //! representation. This data structure is [`serde_json::Value`][value].
 //!
-//! ```rust,ignore
+//! ```rust
+//! # use serde_json::{Number, Map};
+//! # #[allow(dead_code)]
 //! enum Value {
 //!     Null,
 //!     Bool(bool),
