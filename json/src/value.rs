@@ -605,18 +605,19 @@ impl<I> ops::Index<I> for Value where I: Index {
     ///
     /// ```rust
     /// # #[macro_use] extern crate serde_json;
-    /// use serde_json::{Value, from_str};
-    ///
-    /// # pub fn try_main() -> Result<(), serde_json::Error> {
-    /// let data: Value = from_str(r#"{"x": {"y": ["z", "zz"]}}"#)?;
+    /// # fn main() {
+    /// let data = json!({
+    ///     "x": {
+    ///         "y": ["z", "zz"]
+    ///     }
+    /// });
     ///
     /// assert_eq!(data["x"]["y"], json!(["z", "zz"]));
     /// assert_eq!(data["x"]["y"][0], json!("z"));
     ///
     /// assert_eq!(data["a"], json!(null)); // returns null for undefined values
     /// assert_eq!(data["a"]["b"], json!(null)); // does not panic
-    /// # Ok(()) }
-    /// # fn main() { try_main().unwrap() }
+    /// # }
     /// ```
     fn index(&self, index: I) -> &Value {
         static NULL: Value = Value::Null;
