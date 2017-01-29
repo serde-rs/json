@@ -1122,6 +1122,7 @@ impl ser::SerializeMap for SerializeMap {
     {
         match try!(to_value(&key)) {
             Value::String(s) => self.next_key = Some(s),
+            Value::Number(s) => self.next_key = Some(s.to_string()),
             _ => return Err(Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)),
         };
         Ok(())
