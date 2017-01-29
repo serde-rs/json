@@ -665,6 +665,21 @@ fn test_write_newtype_struct() {
     ]);
 }
 
+#[test]
+fn test_write_map_with_integer_keys_issue_221() {
+    let mut map = BTreeMap::new();
+    map.insert(0, "x"); // map with integer key
+
+    assert_eq!(
+        serde_json::to_value(&map).unwrap(),
+        json!({"0": "x"})
+    );
+
+    test_encode_ok(&[
+        (&map, r#"{"0":"x"}"#),
+    ]);
+}
+
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)
     where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
 {
