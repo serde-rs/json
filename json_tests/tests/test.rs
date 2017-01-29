@@ -171,8 +171,8 @@ fn test_encode_nonfinite_float_yields_null() {
 #[test]
 fn test_write_str() {
     let tests = &[
-        ("", "\"\""),
-        ("foo", "\"foo\""),
+        ("", r#""""#),
+        ("foo", r#""foo""#),
     ];
     test_encode_ok(tests);
     test_pretty_encode_ok(tests);
@@ -302,13 +302,13 @@ fn test_write_list() {
 fn test_write_object() {
     test_encode_ok(&[
         (treemap!(), "{}"),
-        (treemap!("a".to_string() => true), "{\"a\":true}"),
+        (treemap!("a".to_string() => true), r#"{"a":true}"#),
         (
             treemap!(
                 "a".to_string() => true,
                 "b".to_string() => false
             ),
-            "{\"a\":true,\"b\":false}"),
+            r#"{"a":true,"b":false}"#),
     ]);
 
     test_encode_ok(&[
@@ -318,7 +318,7 @@ fn test_write_object() {
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-            "{\"a\":{},\"b\":{},\"c\":{}}",
+            r#"{"a":{},"b":{},"c":{}}"#,
         ),
         (
             treemap![
@@ -330,7 +330,7 @@ fn test_write_object() {
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-            "{\"a\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"b\":{},\"c\":{}}",
+            r#"{"a":{"a":{"a":[1,2,3]},"b":{},"c":{}},"b":{},"c":{}}"#,
         ),
         (
             treemap![
@@ -342,7 +342,7 @@ fn test_write_object() {
                 ],
                 "c".to_string() => treemap![]
             ],
-            "{\"a\":{},\"b\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"c\":{}}",
+            r#"{"a":{},"b":{"a":{"a":[1,2,3]},"b":{},"c":{}},"c":{}}"#,
         ),
         (
             treemap![
@@ -354,7 +354,7 @@ fn test_write_object() {
                     "c".to_string() => treemap![]
                 ]
             ],
-            "{\"a\":{},\"b\":{},\"c\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}}}",
+            r#"{"a":{},"b":{},"c":{"a":{"a":[1,2,3]},"b":{},"c":{}}}"#,
         ),
     ]);
 
@@ -532,7 +532,7 @@ fn test_write_tuple() {
     test_encode_ok(&[
         (
             (5, (6, "abc")),
-            "[5,[6,\"abc\"]]",
+            r#"[5,[6,"abc"]]"#,
         ),
     ]);
 
@@ -555,34 +555,34 @@ fn test_write_enum() {
     test_encode_ok(&[
         (
             Animal::Dog,
-            "\"Dog\"",
+            r#""Dog""#,
         ),
         (
             Animal::Frog("Henry".to_string(), vec![]),
-            "{\"Frog\":[\"Henry\",[]]}",
+            r#"{"Frog":["Henry",[]]}"#,
         ),
         (
             Animal::Frog("Henry".to_string(), vec![349]),
-            "{\"Frog\":[\"Henry\",[349]]}",
+            r#"{"Frog":["Henry",[349]]}"#,
         ),
         (
             Animal::Frog("Henry".to_string(), vec![349, 102]),
-            "{\"Frog\":[\"Henry\",[349,102]]}",
+            r#"{"Frog":["Henry",[349,102]]}"#,
         ),
         (
             Animal::Cat { age: 5, name: "Kate".to_string() },
-            "{\"Cat\":{\"age\":5,\"name\":\"Kate\"}}"
+            r#"{"Cat":{"age":5,"name":"Kate"}}"#,
         ),
         (
             Animal::AntHive(vec!["Bob".to_string(), "Stuart".to_string()]),
-            "{\"AntHive\":[\"Bob\",\"Stuart\"]}",
+            r#"{"AntHive":["Bob","Stuart"]}"#,
         ),
     ]);
 
     test_pretty_encode_ok(&[
         (
             Animal::Dog,
-            "\"Dog\"",
+            r#""Dog""#,
         ),
         (
             Animal::Frog("Henry".to_string(), vec![]),
@@ -623,17 +623,17 @@ fn test_write_enum() {
 fn test_write_option() {
     test_encode_ok(&[
         (None, "null"),
-        (Some("jodhpurs"), "\"jodhpurs\""),
+        (Some("jodhpurs"), r#""jodhpurs""#),
     ]);
 
     test_encode_ok(&[
         (None, "null"),
-        (Some(vec!["foo", "bar"]), "[\"foo\",\"bar\"]"),
+        (Some(vec!["foo", "bar"]), r#"["foo","bar"]"#),
     ]);
 
     test_pretty_encode_ok(&[
         (None, "null"),
-        (Some("jodhpurs"), "\"jodhpurs\""),
+        (Some("jodhpurs"), r#""jodhpurs""#),
     ]);
 
     test_pretty_encode_ok(&[
@@ -991,14 +991,14 @@ fn test_parse_object() {
         ("{", "EOF while parsing an object at line 1 column 1"),
         ("{ ", "EOF while parsing an object at line 1 column 2"),
         ("{1", "key must be a string at line 1 column 2"),
-        ("{ \"a\"", "EOF while parsing an object at line 1 column 5"),
-        ("{\"a\"", "EOF while parsing an object at line 1 column 4"),
-        ("{\"a\" ", "EOF while parsing an object at line 1 column 5"),
-        ("{\"a\" 1", "expected `:` at line 1 column 6"),
-        ("{\"a\":", "EOF while parsing a value at line 1 column 5"),
-        ("{\"a\":1", "EOF while parsing an object at line 1 column 6"),
-        ("{\"a\":1 1", "expected `,` or `}` at line 1 column 8"),
-        ("{\"a\":1,", "EOF while parsing a value at line 1 column 7"),
+        (r#"{ "a""#, "EOF while parsing an object at line 1 column 5"),
+        (r#"{"a""#, "EOF while parsing an object at line 1 column 4"),
+        (r#"{"a" "#, "EOF while parsing an object at line 1 column 5"),
+        (r#"{"a" 1"#, "expected `:` at line 1 column 6"),
+        (r#"{"a":"#, "EOF while parsing a value at line 1 column 5"),
+        (r#"{"a":1"#, "EOF while parsing an object at line 1 column 6"),
+        (r#"{"a":1 1"#, "expected `,` or `}` at line 1 column 8"),
+        (r#"{"a":1,"#, "EOF while parsing a value at line 1 column 7"),
         ("{}a", "trailing characters at line 1 column 3"),
     ]);
 
@@ -1006,26 +1006,26 @@ fn test_parse_object() {
         ("{}", treemap!()),
         ("{ }", treemap!()),
         (
-            "{\"a\":3}",
+            r#"{"a":3}"#,
             treemap!("a".to_string() => 3u64)
         ),
         (
-            "{ \"a\" : 3 }",
+            r#"{ "a" : 3 }"#,
             treemap!("a".to_string() => 3)
         ),
         (
-            "{\"a\":3,\"b\":4}",
+            r#"{"a":3,"b":4}"#,
             treemap!("a".to_string() => 3, "b".to_string() => 4)
         ),
         (
-            " { \"a\" : 3 , \"b\" : 4 } ",
+            r#" { "a" : 3 , "b" : 4 } "#,
             treemap!("a".to_string() => 3, "b".to_string() => 4),
         ),
     ]);
 
     test_parse_ok(vec![
         (
-            "{\"a\": {\"b\": 3, \"c\": 4}}",
+            r#"{"a": {"b": 3, "c": 4}}"#,
             treemap!(
                 "a".to_string() => treemap!(
                     "b".to_string() => 3u64,
@@ -1041,9 +1041,9 @@ fn test_parse_struct() {
     test_parse_err::<Outer>(vec![
         ("5",
             "invalid type: integer `5`, expected struct Outer at line 1 column 1"),
-        ("\"hello\"",
-            "invalid type: string \"hello\", expected struct Outer at line 1 column 7"),
-        ("{\"inner\": true}",
+        (r#""hello""#,
+            r#"invalid type: string "hello", expected struct Outer at line 1 column 7"#),
+        (r#"{"inner": true}"#,
             "invalid type: boolean `true`, expected a sequence at line 1 column 14"),
         ("{}",
             "missing field `inner` at line 1 column 2"),
@@ -1053,19 +1053,19 @@ fn test_parse_struct() {
 
     test_parse_ok(vec![
         (
-            "{
-                \"inner\": []
-            }",
+            r#"{
+                "inner": []
+            }"#,
             Outer {
                 inner: vec![]
             },
         ),
         (
-            "{
-                \"inner\": [
-                    { \"a\": null, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
+            r#"{
+                "inner": [
+                    { "a": null, "b": 2, "c": ["abc", "xyz"] }
                 ]
-            }",
+            }"#,
             Outer {
                 inner: vec![
                     Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }
@@ -1075,11 +1075,11 @@ fn test_parse_struct() {
     ]);
 
     let v: Outer = from_str(
-        "[
+        r#"[
             [
-                [ null, 2, [\"abc\", \"xyz\"] ]
+                [ null, 2, ["abc", "xyz"] ]
             ]
-        ]").unwrap();
+        ]"#).unwrap();
 
     assert_eq!(
         v,
@@ -1095,7 +1095,7 @@ fn test_parse_struct() {
 fn test_parse_option() {
     test_parse_ok(vec![
         ("null", None::<String>),
-        ("\"jodhpurs\"", Some("jodhpurs".to_string())),
+        (r#""jodhpurs""#, Some("jodhpurs".to_string())),
     ]);
 
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -1107,8 +1107,8 @@ fn test_parse_option() {
     assert_eq!(value, Foo { x: None });
 
     test_parse_ok(vec![
-        ("{\"x\": null}", Foo { x: None }),
-        ("{\"x\": 5}", Foo { x: Some(5) }),
+        (r#"{"x": null}"#, Foo { x: None }),
+        (r#"{"x": 5}"#, Foo { x: Some(5) }),
     ]);
 }
 
@@ -1119,29 +1119,29 @@ fn test_parse_enum_errors() {
             "expected value at line 1 column 2"),
         ("[]",
             "expected value at line 1 column 1"),
-        ("\"unknown\"",
+        (r#""unknown""#,
             "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 9"),
-        ("{\"unknown\":[]}",
+        (r#"{"unknown":[]}"#,
             "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 10"),
-        ("{\"Dog\":",
+        (r#"{"Dog":"#,
             "EOF while parsing a value at line 1 column 7"),
-        ("{\"Dog\":}",
+        (r#"{"Dog":}"#,
             "expected value at line 1 column 8"),
-        ("{\"Dog\":{}}",
+        (r#"{"Dog":{}}"#,
             "invalid type: map, expected unit at line 1 column 9"),
-        ("{\"Dog\":[0]}",
+        (r#"{"Dog":[0]}"#,
             "trailing characters at line 1 column 9"),
-        ("\"Frog\"",
+        (r#""Frog""#,
             "EOF while parsing a value at line 1 column 6"),
-        ("{\"Frog\":{}}",
+        (r#"{"Frog":{}}"#,
             "invalid type: map, expected tuple variant Animal::Frog at line 1 column 10"),
-        ("{\"Cat\":[]}",
+        (r#"{"Cat":[]}"#,
             "invalid length 0, expected tuple of 2 elements at line 1 column 9"),
-        ("{\"Cat\":[0]}",
+        (r#"{"Cat":[0]}"#,
             "invalid length 1, expected tuple of 2 elements at line 1 column 10"),
-        ("{\"Cat\":[0, \"\", 2]}",
+        (r#"{"Cat":[0, "", 2]}"#,
             "trailing characters at line 1 column 14"),
-        ("{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",
+        (r#"{"Cat":{"age": 5, "name": "Kate", "foo":"bar"}"#,
             "unknown field `foo`, expected `age` or `name` at line 1 column 39"),
     ]);
 }
@@ -1149,41 +1149,41 @@ fn test_parse_enum_errors() {
 #[test]
 fn test_parse_enum() {
     test_parse_ok(vec![
-        ("\"Dog\"", Animal::Dog),
-        (" \"Dog\" ", Animal::Dog),
+        (r#""Dog""#, Animal::Dog),
+        (r#" "Dog" "#, Animal::Dog),
         (
-            "{\"Frog\":[\"Henry\",[]]}",
+            r#"{"Frog":["Henry",[]]}"#,
             Animal::Frog("Henry".to_string(), vec![]),
         ),
         (
-            " { \"Frog\": [ \"Henry\" , [ 349, 102 ] ] } ",
+            r#" { "Frog": [ "Henry" , [ 349, 102 ] ] } "#,
             Animal::Frog("Henry".to_string(), vec![349, 102]),
         ),
         (
-            "{\"Cat\": {\"age\": 5, \"name\": \"Kate\"}}",
+            r#"{"Cat": {"age": 5, "name": "Kate"}}"#,
             Animal::Cat { age: 5, name: "Kate".to_string() },
         ),
         (
-            " { \"Cat\" : { \"age\" : 5 , \"name\" : \"Kate\" } } ",
+            r#" { "Cat" : { "age" : 5 , "name" : "Kate" } } "#,
             Animal::Cat { age: 5, name: "Kate".to_string() },
         ),
         (
-            " { \"AntHive\" : [\"Bob\", \"Stuart\"] } ",
+            r#" { "AntHive" : ["Bob", "Stuart"] } "#,
             Animal::AntHive(vec!["Bob".to_string(), "Stuart".to_string()]),
         ),
     ]);
 
     test_parse_unusual_ok(vec![
-        ("{\"Dog\":[]}", Animal::Dog),
-        (" { \"Dog\" : [ ] } ", Animal::Dog),
+        (r#"{"Dog":[]}"#, Animal::Dog),
+        (r#" { "Dog" : [ ] } "#, Animal::Dog),
     ]);
 
     test_parse_ok(vec![
         (
             concat!(
                 "{",
-                "  \"a\": \"Dog\",",
-                "  \"b\": {\"Frog\":[\"Henry\", []]}",
+                r#"  "a": "Dog","#,
+                r#"  "b": {"Frog":["Henry", []]}"#,
                 "}"
             ),
             treemap!(
@@ -1221,7 +1221,7 @@ fn test_missing_option_field() {
     let value: Foo = from_str("{}").unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_str("{\"x\": 5}").unwrap();
+    let value: Foo = from_str(r#"{"x": 5}"#).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
     let value: Foo = from_value(json!({})).unwrap();
@@ -1254,7 +1254,7 @@ fn test_missing_renamed_field() {
     let value: Foo = from_str("{}").unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_str("{\"y\": 5}").unwrap();
+    let value: Foo = from_str(r#"{"y": 5}"#).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
     let value: Foo = from_value(json!({})).unwrap();
@@ -1426,7 +1426,7 @@ fn test_serialize_map_with_no_len() {
     test_encode_ok(&[
         (
             map.clone(),
-            "{\"a\":{},\"b\":{}}",
+            r#"{"a":{},"b":{}}"#,
         ),
     ]);
 
@@ -1739,7 +1739,7 @@ fn test_from_iter_unfused() {
     }
 
     let msg: Message = from_iter(Source {
-        iter: b"{\"key\": 1337}".iter().cloned(),
+        iter: br#"{"key": 1337}"#.iter().cloned(),
         finished: false,
     }).unwrap();
     assert_eq!(msg.key, 1337);
