@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 use std::u64;
 
 use serde::de;
-use serde::ser;
+use serde::ser::{self, Serialize, Serializer};
 use serde::bytes::{ByteBuf, Bytes};
 
 use serde_json::{
@@ -678,6 +678,19 @@ fn test_write_map_with_integer_keys_issue_221() {
     test_encode_ok(&[
         (&map, r#"{"0":"x"}"#),
     ]);
+
+    #[derive(Eq, PartialEq, Ord, PartialOrd)]
+    struct Float;
+    impl Serialize for Float {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where S: Serializer
+        {
+            serializer.serialize_f32(1.0)
+        }
+    }
+    let mut map = BTreeMap::new();
+    map.insert(Float, "x"); // map with float key
+    assert!(serde_json::to_value(&map).is_err());
 }
 
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)
