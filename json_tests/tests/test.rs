@@ -16,12 +16,12 @@ extern crate serde_json;
 mod macros;
 
 use std::collections::BTreeMap;
-use std::f64;
+use std::{f32, f64};
 use std::fmt::{self, Debug};
-use std::i64;
+use std::{i8, i16, i32, i64};
 use std::iter;
 use std::marker::PhantomData;
-use std::u64;
+use std::{u8, u16, u32, u64};
 
 use serde::de;
 use serde::ser::{self, Serialize, Serializer};
@@ -1813,4 +1813,38 @@ fn issue_220() {
     assert!(from_str::<E>(r#" "V"0 "#).is_err());
 
     assert_eq!(from_str::<E>(r#"{"V": 0}"#).unwrap(), E::V(0));
+}
+
+macro_rules! number_partialeq_ok {
+    ($($n:expr)*) => {
+        $(
+            let value = to_value($n).unwrap();
+            let s = $n.to_string();
+            assert_eq!(value, $n);
+            assert_eq!($n, value);
+            assert_ne!(value, s);
+        )*
+    }
+}
+
+#[test]
+fn test_partialeq_number() {
+    number_partialeq_ok!(0 1 100
+        i8::MIN i8::MAX i16::MIN i16::MAX i32::MIN i32::MAX i64::MIN i64::MAX
+        u8::MIN u8::MAX u16::MIN u16::MAX u32::MIN u32::MAX u64::MIN u64::MAX
+        f32::MIN f32::MAX f32::MIN_EXP f32::MAX_EXP f32::MIN_POSITIVE
+        f64::MIN f64::MAX f64::MIN_EXP f64::MAX_EXP f64::MIN_POSITIVE
+        f32::consts::E f32::consts::PI f32::consts::LN_2 f32::consts::LOG2_E
+        f64::consts::E f64::consts::PI f64::consts::LN_2 f64::consts::LOG2_E
+    );
+}
+
+#[test]
+fn test_partialeq_string() {
+    let v = to_value("42").unwrap();
+    assert_eq!(v, "42");
+    assert_eq!("42", v);
+    assert_ne!(v, 42);
+    assert_eq!(v, String::from("42"));
+    assert_eq!(String::from("42"), v);
 }
