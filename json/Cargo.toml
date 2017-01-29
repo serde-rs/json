@@ -22,8 +22,8 @@ serde = "0.9"
 num-traits = "0.1.32"
 clippy = { version = "0.*", optional = true }
 linked-hash-map = { version = "0.3", optional = true }
-itoa = "0.2"
-dtoa = "0.3"
+itoa = "0.3"
+dtoa = "0.4"
 
 [dev-dependencies]
 serde_derive = "0.9"
