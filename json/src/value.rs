@@ -357,15 +357,16 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use] extern crate serde_json;
-    /// use serde_json::{Value, from_str};
-    ///
-    /// # pub fn try_main() -> Result<(), serde_json::Error> {
-    /// let data: Value = from_str(r#"{"x": {"y": ["z", "zz"]}}"#)?;
+    /// # fn main() {
+    /// let data = json!({
+    ///     "x": {
+    ///         "y": ["z", "zz"]
+    ///     }
+    /// });
     ///
     /// assert_eq!(data.pointer("/x/y/1").unwrap(), &json!("zz"));
     /// assert_eq!(data.pointer("/a/b/c"), None);
-    /// # Ok(()) }
-    /// # fn main() { try_main().unwrap() }
+    /// # }
     /// ```
     pub fn pointer<'a>(&'a self, pointer: &str) -> Option<&'a Value> {
         if pointer == "" {
