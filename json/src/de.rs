@@ -847,26 +847,26 @@ impl<'a, R: Read + 'a> de::VariantVisitor for UnitVariantVisitor<'a, R> {
         Ok(())
     }
 
-    fn visit_newtype_seed<T>(self, seed: T) -> Result<T::Value>
+    fn visit_newtype_seed<T>(self, _seed: T) -> Result<T::Value>
         where T: de::DeserializeSeed,
     {
-        seed.deserialize(self.de)
+        Err(self.de.error(ErrorCode::EOFWhileParsingValue))
     }
 
-    fn visit_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    fn visit_tuple<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        de::Deserializer::deserialize(self.de, visitor)
+        Err(self.de.error(ErrorCode::EOFWhileParsingValue))
     }
 
     fn visit_struct<V>(
         self,
         _fields: &'static [&'static str],
-        visitor: V
+        _visitor: V
     ) -> Result<V::Value>
         where V: de::Visitor,
     {
-        de::Deserializer::deserialize(self.de, visitor)
+        Err(self.de.error(ErrorCode::EOFWhileParsingValue))
     }
 }
 
