@@ -596,6 +596,27 @@ impl<I> ops::Index<I> for Value where I: Index {
     /// the index, for example if the index is a string and `self` is an array
     /// or a number. Also returns `Value::Null` if the given key does not exist
     /// in the map or the given index is not within the bounds of the array.
+    ///
+    /// For retrieving deeply nested values, you should have a look at the
+    /// `Value::pointer` method.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #[macro_use] extern crate serde_json;
+    /// use serde_json::{Value, from_str};
+    ///
+    /// # pub fn try_main() -> Result<(), serde_json::Error> {
+    /// let data: Value = from_str(r#"{"x": {"y": ["z", "zz"]}}"#)?;
+    ///
+    /// assert_eq!(data["x"]["y"], json!(["z", "zz"]));
+    /// assert_eq!(data["x"]["y"][0], json!("z"));
+    ///
+    /// assert_eq!(data["a"], json!(null)); // returns null for undefined values
+    /// assert_eq!(data["a"]["b"], json!(null)); // does not panic
+    /// # Ok(()) }
+    /// # fn main() { try_main().unwrap() }
+    /// ```
     fn index(&self, index: I) -> &Value {
         static NULL: Value = Value::Null;
         index.index_into(self).unwrap_or(&NULL)
