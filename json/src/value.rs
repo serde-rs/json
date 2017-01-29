@@ -444,6 +444,39 @@ impl Value {
     }
 }
 
+/// `Value`'s defaults to `null`
+///
+/// This is useful for handling omitted `Value` fields when deserializing.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate serde_json;
+/// # #[macro_use] extern crate serde_derive;
+/// use serde_json::Value;
+///
+/// #[derive(Deserialize)]
+/// struct Settings {
+///     level: i32,
+///     #[serde(default)]
+///     extras: Value,
+/// }
+///
+/// # pub fn try_main() -> Result<(), serde_json::Error> {
+/// let data = r#" { "level": 42 } "#;
+/// let s: Settings = serde_json::from_str(data)?;
+///
+/// assert_eq!(s.level, 42);
+/// assert_eq!(s.extras, Value::Null);
+/// # Ok(()) }
+/// # fn main() { try_main().unwrap() }
+/// ```
+impl Default for Value {
+    fn default() -> Value {
+        Value::Null
+    }
+}
+
 /// A type that can be used to index into a `serde_json::Value`. See the `get`
 /// and `get_mut` methods of `Value`.
 ///
