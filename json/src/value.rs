@@ -459,7 +459,7 @@ impl Value {
     }
 }
 
-/// `Value`'s defaults to `null`
+/// The default value is `Value::Null`.
 ///
 /// This is useful for handling omitted `Value` fields when deserializing.
 ///
