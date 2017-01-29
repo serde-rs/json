@@ -642,7 +642,7 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
                     _ => Err(self.error(ErrorCode::ExpectedSomeValue)),
                 }
             }
-            b'"' => visitor.visit_enum(KeyOnlyVariantVisitor::new(self)),
+            b'"' => visitor.visit_enum(UnitVariantVisitor::new(self)),
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
         }
     }
@@ -816,19 +816,19 @@ impl<'a, R: Read + 'a> de::VariantVisitor for VariantVisitor<'a, R> {
     }
 }
 
-struct KeyOnlyVariantVisitor<'a, R: Read + 'a> {
+struct UnitVariantVisitor<'a, R: Read + 'a> {
     de: &'a mut Deserializer<R>,
 }
 
-impl<'a, R: Read + 'a> KeyOnlyVariantVisitor<'a, R> {
+impl<'a, R: Read + 'a> UnitVariantVisitor<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        KeyOnlyVariantVisitor {
+        UnitVariantVisitor {
             de: de,
         }
     }
 }
 
-impl<'a, R: Read + 'a> de::EnumVisitor for KeyOnlyVariantVisitor<'a, R> {
+impl<'a, R: Read + 'a> de::EnumVisitor for UnitVariantVisitor<'a, R> {
     type Error = Error;
     type Variant = Self;
 
@@ -840,7 +840,7 @@ impl<'a, R: Read + 'a> de::EnumVisitor for KeyOnlyVariantVisitor<'a, R> {
     }
 }
 
-impl<'a, R: Read + 'a> de::VariantVisitor for KeyOnlyVariantVisitor<'a, R> {
+impl<'a, R: Read + 'a> de::VariantVisitor for UnitVariantVisitor<'a, R> {
     type Error = Error;
 
     fn visit_unit(self) -> Result<()> {
