@@ -908,7 +908,9 @@ pub trait Formatter {
     fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> Result<()>
         where W: io::Write
     {
-        itoa::write(writer, value).map_err(From::from)
+        itoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -916,7 +918,9 @@ pub trait Formatter {
     fn write_i16<W: ?Sized>(&mut self, writer: &mut W, value: i16) -> Result<()>
         where W: io::Write
     {
-        itoa::write(writer, value).map_err(From::from)
+        itoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -924,7 +928,9 @@ pub trait Formatter {
     fn write_i32<W: ?Sized>(&mut self, writer: &mut W, value: i32) -> Result<()>
         where W: io::Write
     {
-        itoa::write(writer, value).map_err(From::from)
+        itoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -932,7 +938,9 @@ pub trait Formatter {
     fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> Result<()>
         where W: io::Write
     {
-        itoa::write(writer, value).map_err(From::from)
+        itoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -940,7 +948,9 @@ pub trait Formatter {
     fn write_u8<W: ?Sized>(&mut self, writer: &mut W, value: u8) -> Result<()>
         where W: io::Write
     {
-        itoa::write(writer, value).map_err(From::from)
+        itoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -948,7 +958,9 @@ pub trait Formatter {
     fn write_u16<W: ?Sized>(&mut self, writer: &mut W, value: u16) -> Result<()>
         where W: io::Write
     {
-        itoa::write(writer, value).map_err(From::from)
+        itoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -956,7 +968,9 @@ pub trait Formatter {
     fn write_u32<W: ?Sized>(&mut self, writer: &mut W, value: u32) -> Result<()>
         where W: io::Write
     {
-        itoa::write(writer, value).map_err(From::from)
+        itoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -964,7 +978,9 @@ pub trait Formatter {
     fn write_u64<W: ?Sized>(&mut self, writer: &mut W, value: u64) -> Result<()>
         where W: io::Write
     {
-        itoa::write(writer, value).map_err(From::from)
+        itoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
@@ -972,7 +988,9 @@ pub trait Formatter {
     fn write_f32<W: ?Sized>(&mut self, writer: &mut W, value: f32) -> Result<()>
         where W: io::Write
     {
-        dtoa::write(writer, value).map_err(From::from)
+        dtoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
@@ -980,7 +998,9 @@ pub trait Formatter {
     fn write_f64<W: ?Sized>(&mut self, writer: &mut W, value: f64) -> Result<()>
         where W: io::Write
     {
-        dtoa::write(writer, value).map_err(From::from)
+        dtoa::write(writer, value)
+            .map(|_| ())
+            .map_err(From::from)
     }
 
     /// Called before each series of `write_string_fragment` and
