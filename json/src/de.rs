@@ -4,7 +4,7 @@ use std::{i32, u64};
 use std::io;
 use std::marker::PhantomData;
 
-use serde::de;
+use serde::de::{self, Unexpected};
 
 use super::error::{Error, ErrorCode, Result};
 
@@ -850,13 +850,13 @@ impl<'a, R: Read + 'a> de::VariantVisitor for UnitVariantVisitor<'a, R> {
     fn visit_newtype_seed<T>(self, _seed: T) -> Result<T::Value>
         where T: de::DeserializeSeed,
     {
-        Err(self.de.error(ErrorCode::EOFWhileParsingValue))
+        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"newtype variant"))
     }
 
     fn visit_tuple<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
         where V: de::Visitor,
     {
-        Err(self.de.error(ErrorCode::EOFWhileParsingValue))
+        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"tuple variant"))
     }
 
     fn visit_struct<V>(
@@ -866,7 +866,7 @@ impl<'a, R: Read + 'a> de::VariantVisitor for UnitVariantVisitor<'a, R> {
     ) -> Result<V::Value>
         where V: de::Visitor,
     {
-        Err(self.de.error(ErrorCode::EOFWhileParsingValue))
+        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"struct variant"))
     }
 }
 
