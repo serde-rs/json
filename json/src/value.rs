@@ -427,7 +427,7 @@ impl Value {
     ///
     ///     // "Steal" ownership of a value. Can replace with any valid Value.
     ///     let old_x = value.pointer_mut("/x").map(|x| mem::replace(x, Value::Null)).unwrap();
-    ///     assert_eq!(old_x, 1.5.into());
+    ///     assert_eq!(old_x, 1.5);
     ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Null);
     /// }
     /// ```

@@ -1586,14 +1586,10 @@ fn test_json_stream_newlines() {
     let data = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}";
     let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &39.into());
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &40.into());
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &41.into());
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &42.into());
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 39);
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 40);
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 41);
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 42);
     assert!(parsed.next().is_none());
 }
 
@@ -1602,8 +1598,7 @@ fn test_json_stream_trailing_whitespaces() {
     let data = "{\"x\":42} \t\n";
     let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &42.into());
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 42);
     assert!(parsed.next().is_none());
 }
 
@@ -1612,8 +1607,7 @@ fn test_json_stream_truncated() {
     let data = "{\"x\":40}\n{\"x\":";
     let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &40.into());
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 40);
     assert!(parsed.next().unwrap().is_err());
     assert!(parsed.next().is_none());
 }
@@ -1681,15 +1675,15 @@ fn test_json_pointer_mut() {
     // Basic pointer checks
     assert_eq!(data.pointer_mut("/foo").unwrap(), &json!(["bar", "baz"]));
     assert_eq!(data.pointer_mut("/foo/0").unwrap(), &json!("bar"));
-    assert_eq!(data.pointer_mut("/").unwrap(), &0.into());
-    assert_eq!(data.pointer_mut("/a~1b").unwrap(), &1.into());
-    assert_eq!(data.pointer_mut("/c%d").unwrap(), &2.into());
-    assert_eq!(data.pointer_mut("/e^f").unwrap(), &3.into());
-    assert_eq!(data.pointer_mut("/g|h").unwrap(), &4.into());
-    assert_eq!(data.pointer_mut("/i\\j").unwrap(), &5.into());
-    assert_eq!(data.pointer_mut("/k\"l").unwrap(), &6.into());
-    assert_eq!(data.pointer_mut("/ ").unwrap(), &7.into());
-    assert_eq!(data.pointer_mut("/m~0n").unwrap(), &8.into());
+    assert_eq!(data.pointer_mut("/").unwrap(), 0);
+    assert_eq!(data.pointer_mut("/a~1b").unwrap(), 1);
+    assert_eq!(data.pointer_mut("/c%d").unwrap(), 2);
+    assert_eq!(data.pointer_mut("/e^f").unwrap(), 3);
+    assert_eq!(data.pointer_mut("/g|h").unwrap(), 4);
+    assert_eq!(data.pointer_mut("/i\\j").unwrap(), 5);
+    assert_eq!(data.pointer_mut("/k\"l").unwrap(), 6);
+    assert_eq!(data.pointer_mut("/ ").unwrap(), 7);
+    assert_eq!(data.pointer_mut("/m~0n").unwrap(), 8);
 
     // Invalid pointers
     assert!(data.pointer_mut("/unknown").is_none());
@@ -1699,12 +1693,12 @@ fn test_json_pointer_mut() {
 
     // Mutable pointer checks
     *data.pointer_mut("/").unwrap() = 100.into();
-    assert_eq!(data.pointer("/").unwrap(), &100.into());
+    assert_eq!(data.pointer("/").unwrap(), 100);
     *data.pointer_mut("/foo/0").unwrap() = json!("buzz");
     assert_eq!(data.pointer("/foo/0").unwrap(), &json!("buzz"));
 
     // Example of ownership stealing
-    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, json!(null))).unwrap(), 1.into());
+    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, json!(null))).unwrap(), 1);
     assert_eq!(data.pointer("/a~1b").unwrap(), &json!(null));
 
     // Need to compare against a clone so we don't anger the borrow checker
