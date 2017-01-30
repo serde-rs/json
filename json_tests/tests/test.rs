@@ -16,12 +16,12 @@ extern crate serde_json;
 mod macros;
 
 use std::collections::BTreeMap;
-use std::f64;
+use std::{f32, f64};
 use std::fmt::{self, Debug};
-use std::i64;
+use std::{i8, i16, i32, i64};
 use std::iter;
 use std::marker::PhantomData;
-use std::u64;
+use std::{u8, u16, u32, u64};
 
 use serde::de;
 use serde::ser::{self, Serialize, Serializer};
@@ -1586,14 +1586,10 @@ fn test_json_stream_newlines() {
     let data = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}";
     let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &39.into());
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &40.into());
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &41.into());
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &42.into());
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 39);
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 40);
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 41);
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 42);
     assert!(parsed.next().is_none());
 }
 
@@ -1602,8 +1598,7 @@ fn test_json_stream_trailing_whitespaces() {
     let data = "{\"x\":42} \t\n";
     let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &42.into());
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 42);
     assert!(parsed.next().is_none());
 }
 
@@ -1612,8 +1607,7 @@ fn test_json_stream_truncated() {
     let data = "{\"x\":40}\n{\"x\":";
     let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
-    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(),
-               &40.into());
+    assert_eq!(parsed.next().unwrap().ok().unwrap().pointer("/x").unwrap(), 40);
     assert!(parsed.next().unwrap().is_err());
     assert!(parsed.next().is_none());
 }
@@ -1681,15 +1675,15 @@ fn test_json_pointer_mut() {
     // Basic pointer checks
     assert_eq!(data.pointer_mut("/foo").unwrap(), &json!(["bar", "baz"]));
     assert_eq!(data.pointer_mut("/foo/0").unwrap(), &json!("bar"));
-    assert_eq!(data.pointer_mut("/").unwrap(), &0.into());
-    assert_eq!(data.pointer_mut("/a~1b").unwrap(), &1.into());
-    assert_eq!(data.pointer_mut("/c%d").unwrap(), &2.into());
-    assert_eq!(data.pointer_mut("/e^f").unwrap(), &3.into());
-    assert_eq!(data.pointer_mut("/g|h").unwrap(), &4.into());
-    assert_eq!(data.pointer_mut("/i\\j").unwrap(), &5.into());
-    assert_eq!(data.pointer_mut("/k\"l").unwrap(), &6.into());
-    assert_eq!(data.pointer_mut("/ ").unwrap(), &7.into());
-    assert_eq!(data.pointer_mut("/m~0n").unwrap(), &8.into());
+    assert_eq!(data.pointer_mut("/").unwrap(), 0);
+    assert_eq!(data.pointer_mut("/a~1b").unwrap(), 1);
+    assert_eq!(data.pointer_mut("/c%d").unwrap(), 2);
+    assert_eq!(data.pointer_mut("/e^f").unwrap(), 3);
+    assert_eq!(data.pointer_mut("/g|h").unwrap(), 4);
+    assert_eq!(data.pointer_mut("/i\\j").unwrap(), 5);
+    assert_eq!(data.pointer_mut("/k\"l").unwrap(), 6);
+    assert_eq!(data.pointer_mut("/ ").unwrap(), 7);
+    assert_eq!(data.pointer_mut("/m~0n").unwrap(), 8);
 
     // Invalid pointers
     assert!(data.pointer_mut("/unknown").is_none());
@@ -1699,12 +1693,12 @@ fn test_json_pointer_mut() {
 
     // Mutable pointer checks
     *data.pointer_mut("/").unwrap() = 100.into();
-    assert_eq!(data.pointer("/").unwrap(), &100.into());
+    assert_eq!(data.pointer("/").unwrap(), 100);
     *data.pointer_mut("/foo/0").unwrap() = json!("buzz");
     assert_eq!(data.pointer("/foo/0").unwrap(), &json!("buzz"));
 
     // Example of ownership stealing
-    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, json!(null))).unwrap(), 1.into());
+    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, json!(null))).unwrap(), 1);
     assert_eq!(data.pointer("/a~1b").unwrap(), &json!(null));
 
     // Need to compare against a clone so we don't anger the borrow checker
@@ -1813,4 +1807,38 @@ fn issue_220() {
     assert!(from_str::<E>(r#" "V"0 "#).is_err());
 
     assert_eq!(from_str::<E>(r#"{"V": 0}"#).unwrap(), E::V(0));
+}
+
+macro_rules! number_partialeq_ok {
+    ($($n:expr)*) => {
+        $(
+            let value = to_value($n).unwrap();
+            let s = $n.to_string();
+            assert_eq!(value, $n);
+            assert_eq!($n, value);
+            assert_ne!(value, s);
+        )*
+    }
+}
+
+#[test]
+fn test_partialeq_number() {
+    number_partialeq_ok!(0 1 100
+        i8::MIN i8::MAX i16::MIN i16::MAX i32::MIN i32::MAX i64::MIN i64::MAX
+        u8::MIN u8::MAX u16::MIN u16::MAX u32::MIN u32::MAX u64::MIN u64::MAX
+        f32::MIN f32::MAX f32::MIN_EXP f32::MAX_EXP f32::MIN_POSITIVE
+        f64::MIN f64::MAX f64::MIN_EXP f64::MAX_EXP f64::MIN_POSITIVE
+        f32::consts::E f32::consts::PI f32::consts::LN_2 f32::consts::LOG2_E
+        f64::consts::E f64::consts::PI f64::consts::LN_2 f64::consts::LOG2_E
+    );
+}
+
+#[test]
+fn test_partialeq_string() {
+    let v = to_value("42").unwrap();
+    assert_eq!(v, "42");
+    assert_eq!("42", v);
+    assert_ne!(v, 42);
+    assert_eq!(v, String::from("42"));
+    assert_eq!(String::from("42"), v);
 }

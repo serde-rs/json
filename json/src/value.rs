@@ -427,7 +427,7 @@ impl Value {
     ///
     ///     // "Steal" ownership of a value. Can replace with any valid Value.
     ///     let old_x = value.pointer_mut("/x").map(|x| mem::replace(x, Value::Null)).unwrap();
-    ///     assert_eq!(old_x, 1.5.into());
+    ///     assert_eq!(old_x, 1.5);
     ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Null);
     /// }
     /// ```
@@ -623,6 +623,79 @@ impl<I> ops::Index<I> for Value where I: Index {
         static NULL: Value = Value::Null;
         index.index_into(self).unwrap_or(&NULL)
     }
+}
+
+impl PartialEq<str> for Value {
+    fn eq(&self, other: &str) -> bool {
+        self.as_str().map_or(false, |s| s == other)
+    }
+}
+
+impl<'a> PartialEq<&'a str> for Value {
+    fn eq(&self, other: &&str) -> bool {
+        self.as_str().map_or(false, |s| s == *other)
+    }
+}
+
+impl PartialEq<Value> for str {
+    fn eq(&self, other: &Value) -> bool {
+        other.as_str().map_or(false, |s| s == self)
+    }
+}
+
+impl<'a> PartialEq<Value> for &'a str {
+    fn eq(&self, other: &Value) -> bool {
+        other.as_str().map_or(false, |s| s == *self)
+    }
+}
+
+impl PartialEq<String> for Value {
+    fn eq(&self, other: &String) -> bool {
+        self.as_str().map_or(false, |s| s == other)
+    }
+}
+
+
+impl PartialEq<Value> for String {
+    fn eq(&self, other: &Value) -> bool {
+        other.as_str().map_or(false, |s| s == self)
+    }
+}
+
+macro_rules! partialeq_numeric {
+    ($([$($ty:ty)*], $conversion:ident, $base:ty)*) => {
+        $($(
+            impl PartialEq<$ty> for Value {
+                fn eq(&self, other: &$ty) -> bool {
+                    self.$conversion().map_or(false, |i| i == (*other as $base))
+                }
+            }
+
+            impl PartialEq<Value> for $ty {
+                fn eq(&self, other: &Value) -> bool {
+                    other.$conversion().map_or(false, |i| i == (*self as $base))
+                }
+            }
+
+            impl<'a> PartialEq<$ty> for &'a Value {
+                fn eq(&self, other: &$ty) -> bool {
+                    self.$conversion().map_or(false, |i| i == (*other as $base))
+                }
+            }
+
+            impl<'a> PartialEq<$ty> for &'a mut Value {
+                fn eq(&self, other: &$ty) -> bool {
+                    self.$conversion().map_or(false, |i| i == (*other as $base))
+                }
+            }
+        )*)*
+    }
+}
+
+partialeq_numeric! {
+    [i8 i16 i32 i64 isize], as_i64, i64
+    [u8 u16 u32 u64 usize], as_u64, u64
+    [f32 f64], as_f64, f64
 }
 
 macro_rules! from_integer {
