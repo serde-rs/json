@@ -3,7 +3,7 @@
 use std::io;
 use std::num::FpCategory;
 
-use serde::ser;
+use serde::ser::{self, Impossible};
 use super::error::{Error, ErrorCode, Result};
 
 use itoa;
@@ -533,9 +533,6 @@ fn key_must_be_a_string() -> Error {
     Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
 }
 
-#[doc(hidden)]
-pub enum Impossible {}
-
 impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     where W: io::Write,
           F: Formatter,
@@ -569,13 +566,13 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         value.serialize(self)
     }
 
-    type SerializeSeq = Impossible;
-    type SerializeTuple = Impossible;
-    type SerializeTupleStruct = Impossible;
-    type SerializeTupleVariant = Impossible;
-    type SerializeMap = Impossible;
-    type SerializeStruct = Impossible;
-    type SerializeStructVariant = Impossible;
+    type SerializeSeq = Impossible<(), Error>;
+    type SerializeTuple = Impossible<(), Error>;
+    type SerializeTupleStruct = Impossible<(), Error>;
+    type SerializeTupleVariant = Impossible<(), Error>;
+    type SerializeMap = Impossible<(), Error>;
+    type SerializeStruct = Impossible<(), Error>;
+    type SerializeStructVariant = Impossible<(), Error>;
 
     fn serialize_bool(self, _value: bool) -> Result<()> {
         Err(key_must_be_a_string())
@@ -724,117 +721,6 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
         _variant: &'static str,
         _len: usize
     ) -> Result<Self::SerializeStructVariant> {
-        Err(key_must_be_a_string())
-    }
-}
-
-impl ser::SerializeSeq for Impossible {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_element<T: ?Sized>(&mut self, _: &T) -> Result<()>
-        where T: ser::Serialize
-    {
-        Err(key_must_be_a_string())
-    }
-
-    fn end(self) -> Result<()> {
-        Err(key_must_be_a_string())
-    }
-}
-
-impl ser::SerializeTuple for Impossible {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_element<T: ?Sized>(&mut self, _: &T) -> Result<()>
-        where T: ser::Serialize
-    {
-        Err(key_must_be_a_string())
-    }
-
-    fn end(self) -> Result<()> {
-        Err(key_must_be_a_string())
-    }
-}
-
-impl ser::SerializeTupleStruct for Impossible {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_field<T: ?Sized>(&mut self, _: &T) -> Result<()>
-        where T: ser::Serialize
-    {
-        Err(key_must_be_a_string())
-    }
-
-    fn end(self) -> Result<()> {
-        Err(key_must_be_a_string())
-    }
-}
-
-impl ser::SerializeTupleVariant for Impossible {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_field<T: ?Sized>(&mut self, _: &T) -> Result<()>
-        where T: ser::Serialize
-    {
-        Err(key_must_be_a_string())
-    }
-
-    fn end(self) -> Result<()> {
-        Err(key_must_be_a_string())
-    }
-}
-
-impl ser::SerializeMap for Impossible {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_key<T: ?Sized>(&mut self, _: &T) -> Result<()>
-        where T: ser::Serialize
-    {
-        Err(key_must_be_a_string())
-    }
-
-    fn serialize_value<T: ?Sized>(&mut self, _: &T) -> Result<()>
-        where T: ser::Serialize
-    {
-        Err(key_must_be_a_string())
-    }
-
-    fn end(self) -> Result<()> {
-        Err(key_must_be_a_string())
-    }
-}
-
-impl ser::SerializeStruct for Impossible {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_field<T: ?Sized>(&mut self, _: &'static str, _: &T) -> Result<()>
-        where T: ser::Serialize
-    {
-        Err(key_must_be_a_string())
-    }
-
-    fn end(self) -> Result<()> {
-        Err(key_must_be_a_string())
-    }
-}
-
-impl ser::SerializeStructVariant for Impossible {
-    type Ok = ();
-    type Error = Error;
-
-    fn serialize_field<T: ?Sized>(&mut self, _: &'static str, _: &T) -> Result<()>
-        where T: ser::Serialize
-    {
-        Err(key_must_be_a_string())
-    }
-
-    fn end(self) -> Result<()> {
         Err(key_must_be_a_string())
     }
 }

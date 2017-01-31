@@ -18,7 +18,7 @@ unstable-testing = ["clippy"]
 preserve_order = ["linked-hash-map"]
 
 [dependencies]
-serde = "0.9"
+serde = "0.9.4"
 num-traits = "0.1.32"
 clippy = { version = "0.*", optional = true }
 linked-hash-map = { version = "0.3", optional = true }
