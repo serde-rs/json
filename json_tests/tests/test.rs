@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "cargo-clippy", allow(float_cmp))]
+
 #![cfg_attr(feature = "trace-macros", feature(trace_macros))]
 #[cfg(feature = "trace-macros")]
 trace_macros!(true);
@@ -1006,8 +1008,7 @@ fn test_parse_list() {
         ("[1, [2, 3]]", (1u64, (2u64, 3u64))),
     ]);
 
-    let v: () = from_str("[]").unwrap();
-    assert_eq!(v, ());
+    from_str::<()>("[]").unwrap();
 }
 
 #[test]

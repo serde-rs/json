@@ -196,6 +196,12 @@ macro_rules! json_internal {
         json_internal!(@object $object [,] (,));
     };
 
+    // Key is fully parenthesized. This avoids clippy double_parens false
+    // positives because the parenthesization may be necessary here.
+    (@object $object:ident () ($key:expr) : $($rest:tt)*) => {
+        json_internal!(@object $object ($key) : $($rest)*);
+    };
+
     // Munch a token into the current key.
     (@object $object:ident ($($key:tt)*) $tt:tt $($rest:tt)*) => {
         json_internal!(@object $object ($($key)* $tt) $($rest)*);
