@@ -7,7 +7,9 @@ use std::i64;
 
 /// Represents a JSON number, whether integer or floating point.
 #[derive(Clone, PartialEq)]
-pub struct Number(N);
+pub struct Number {
+    n: N,
+}
 
 // "N" is a prefix of "NegInt"... this is a false positive.
 // https://github.com/Manishearth/rust-clippy/issues/1241
@@ -25,7 +27,7 @@ impl Number {
     /// Returns true if the number can be represented by i64.
     #[inline]
     pub fn is_i64(&self) -> bool {
-        match self.0 {
+        match self.n {
             N::PosInt(v) => v <= i64::MAX as u64,
             N::NegInt(_) => true,
             N::Float(_) => false,
@@ -35,7 +37,7 @@ impl Number {
     /// Returns true if the number can be represented as u64.
     #[inline]
     pub fn is_u64(&self) -> bool {
-        match self.0 {
+        match self.n {
             N::PosInt(_) => true,
             N::NegInt(_) | N::Float(_) => false,
         }
@@ -44,7 +46,7 @@ impl Number {
     /// Returns true if the number can be represented as f64.
     #[inline]
     pub fn is_f64(&self) -> bool {
-        match self.0 {
+        match self.n {
             N::Float(_) => true,
             N::PosInt(_) | N::NegInt(_) => false,
         }
@@ -53,7 +55,7 @@ impl Number {
     /// Returns the number represented as i64 if possible, or else None.
     #[inline]
     pub fn as_i64(&self) -> Option<i64> {
-        match self.0 {
+        match self.n {
             N::PosInt(n) => NumCast::from(n),
             N::NegInt(n) => Some(n),
             N::Float(_) => None,
@@ -63,7 +65,7 @@ impl Number {
     /// Returns the number represented as u64 if possible, or else None.
     #[inline]
     pub fn as_u64(&self) -> Option<u64> {
-        match self.0 {
+        match self.n {
             N::PosInt(n) => Some(n),
             N::NegInt(n) => NumCast::from(n),
             N::Float(_) => None,
@@ -73,7 +75,7 @@ impl Number {
     /// Returns the number represented as f64 if possible, or else None.
     #[inline]
     pub fn as_f64(&self) -> Option<f64> {
-        match self.0 {
+        match self.n {
             N::PosInt(n) => NumCast::from(n),
             N::NegInt(n) => NumCast::from(n),
             N::Float(n) => Some(n),
@@ -85,7 +87,7 @@ impl Number {
     #[inline]
     pub fn from_f64(f: f64) -> Option<Number> {
         if f.is_finite() {
-            Some(Number(N::Float(f)))
+            Some(Number { n: N::Float(f) })
         } else {
             None
         }
@@ -94,7 +96,7 @@ impl Number {
 
 impl fmt::Display for Number {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        match self.0 {
+        match self.n {
             N::PosInt(i) => Display::fmt(&i, formatter),
             N::NegInt(i) => Display::fmt(&i, formatter),
             N::Float(f) => Display::fmt(&f, formatter),
@@ -104,7 +106,7 @@ impl fmt::Display for Number {
 
 impl Debug for Number {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.0, formatter)
+        Debug::fmt(&self.n, formatter)
     }
 }
 
@@ -113,7 +115,7 @@ impl Serialize for Number {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer
     {
-        match self.0 {
+        match self.n {
             N::PosInt(i) => serializer.serialize_u64(i),
             N::NegInt(i) => serializer.serialize_i64(i),
             N::Float(f) => serializer.serialize_f64(f),
@@ -164,7 +166,7 @@ impl Deserializer for Number {
     fn deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
         where V: Visitor
     {
-        match self.0 {
+        match self.n {
             N::PosInt(i) => visitor.visit_u64(i),
             N::NegInt(i) => visitor.visit_i64(i),
             N::Float(f) => visitor.visit_f64(f),
@@ -185,9 +187,9 @@ macro_rules! from_signed {
                 #[inline]
                 fn from(i: $signed_ty) -> Self {
                     if i < 0 {
-                        Number(N::NegInt(i as i64))
+                        Number { n: N::NegInt(i as i64) }
                     } else {
-                        Number(N::PosInt(i as u64))
+                        Number { n: N::PosInt(i as u64) }
                     }
                 }
             }
@@ -201,7 +203,7 @@ macro_rules! from_unsigned {
             impl From<$unsigned_ty> for Number {
                 #[inline]
                 fn from(u: $unsigned_ty) -> Self {
-                    Number(N::PosInt(u as u64))
+                    Number { n: N::PosInt(u as u64) }
                 }
             }
         )*
