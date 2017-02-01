@@ -10,7 +10,9 @@ use serde::ser;
 
 /// This type represents all possible errors that can occur when serializing or
 /// deserializing JSON data.
-pub struct Error(Box<ErrorImpl>);
+pub struct Error {
+    err: Box<ErrorImpl>,
+}
 
 /// Alias for a `Result` with the error type `serde_json::Error`.
 pub type Result<T> = result::Result<T, Error>;
@@ -89,7 +91,9 @@ impl Error {
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
     pub fn syntax(code: ErrorCode, line: usize, col: usize) -> Self {
-        Error(Box::new(ErrorImpl::Syntax(code, line, col)))
+        Error {
+            err: Box::new(ErrorImpl::Syntax(code, line, col)),
+        }
     }
 
     // Not public API. Should be pub(crate).
@@ -97,7 +101,7 @@ impl Error {
     pub fn fix_position<F>(self, f: F) -> Self
         where F: FnOnce(ErrorCode) -> Error
     {
-        if let ErrorImpl::Syntax(code, 0, 0) = *self.0 {
+        if let ErrorImpl::Syntax(code, 0, 0) = *self.err {
             f(code)
         } else {
             self
@@ -169,14 +173,14 @@ impl Display for ErrorCode {
 
 impl error::Error for Error {
     fn description(&self) -> &str {
-        match *self.0 {
+        match *self.err {
             ErrorImpl::Syntax(..) => "syntax error",
             ErrorImpl::Io(ref error) => error::Error::description(error),
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
-        match *self.0 {
+        match *self.err {
             ErrorImpl::Io(ref error) => Some(error),
             _ => None,
         }
@@ -185,7 +189,7 @@ impl error::Error for Error {
 
 impl Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match *self.0 {
+        match *self.err {
             ErrorImpl::Syntax(ref code, line, col) => {
                 if line == 0 && col == 0 {
                     write!(fmt, "{}", code)
@@ -202,7 +206,7 @@ impl Display for Error {
 // end up seeing this representation because it is what unwrap() shows.
 impl Debug for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        match *self.0 {
+        match *self.err {
             ErrorImpl::Syntax(ref code, ref line, ref col) => {
                 formatter.debug_tuple("Syntax")
                     .field(code)
@@ -221,30 +225,40 @@ impl Debug for Error {
 
 impl From<ErrorImpl> for Error {
     fn from(error: ErrorImpl)  -> Error {
-        Error(Box::new(error))
+        Error {
+            err: Box::new(error),
+        }
     }
 }
 
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
-        Error(Box::new(ErrorImpl::Io(error)))
+        Error {
+            err: Box::new(ErrorImpl::Io(error)),
+        }
     }
 }
 
 impl From<de::value::Error> for Error {
     fn from(error: de::value::Error) -> Error {
-        Error(Box::new(ErrorImpl::Syntax(ErrorCode::Message(error.to_string()), 0, 0)))
+        Error {
+            err: Box::new(ErrorImpl::Syntax(ErrorCode::Message(error.to_string()), 0, 0)),
+        }
     }
 }
 
 impl de::Error for Error {
     fn custom<T: Display>(msg: T) -> Error {
-        Error(Box::new(ErrorImpl::Syntax(ErrorCode::Message(msg.to_string()), 0, 0)))
+        Error {
+            err: Box::new(ErrorImpl::Syntax(ErrorCode::Message(msg.to_string()), 0, 0)),
+        }
     }
 }
 
 impl ser::Error for Error {
     fn custom<T: Display>(msg: T) -> Error {
-        Error(Box::new(ErrorImpl::Syntax(ErrorCode::Message(msg.to_string()), 0, 0)))
+        Error {
+            err: Box::new(ErrorImpl::Syntax(ErrorCode::Message(msg.to_string()), 0, 0)),
+        }
     }
 }
