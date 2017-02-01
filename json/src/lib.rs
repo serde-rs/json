@@ -233,13 +233,11 @@
 //! [to_writer]: https://docs.serde.rs/serde_json/ser/fn.to_writer.html
 //! [macro]: https://docs.serde.rs/serde_json/macro.json.html
 
-#![cfg_attr(feature = "clippy", feature(plugin))]
-#![cfg_attr(feature = "clippy", plugin(clippy))]
-#![cfg_attr(feature = "clippy", deny(clippy, clippy_pedantic))]
+#![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
 // Because of "JavaScript"... fixed in Manishearth/rust-clippy#1071
-#![cfg_attr(feature = "clippy", allow(doc_markdown))]
+#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown))]
 // Whitelisted clippy_pedantic lints
-#![cfg_attr(feature = "clippy", allow(
+#![cfg_attr(feature = "cargo-clippy", allow(
 // Deserializer::from_str, from_iter, into_iter
     should_implement_trait,
 // integer and float ser/de requires these sorts of casts

@@ -10,17 +10,9 @@ rust:
   - 1.13.0
   - beta
 
-before_script:
-  - pip install 'travis-cargo<0.2' --user
-  - export PATH=$HOME/.local/bin:$PATH
+matrix:
+  include:
+    - rust: nightly
+      env: CLIPPY=true
 
-script:
-  - (cd json && travis-cargo build)
-  - (cd json && travis-cargo build -- --features preserve_order)
-  - (cd json && travis-cargo --only nightly test)
-  - (cd json_tests && travis-cargo --only beta test)
-  - (cd json_tests && travis-cargo --only nightly test -- --features unstable-testing)
-
-env:
-  global:
-    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+script: ./travis.sh
