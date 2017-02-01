@@ -184,6 +184,12 @@ macro_rules! json_internal {
         json_internal!(@object $object [$($key)+] (json_internal!($value)));
     };
 
+    // Missing value for last entry. Trigger a reasonable error message
+    // referring to the unexpected end of macro invocation.
+    (@object $object:ident ($($key:tt)+) :) => {
+        json_internal!();
+    };
+
     // Misplaced colon. Trigger a reasonable error message by failing to match
     // the colon in the recursive call.
     (@object $object:ident () : $($rest:tt)*) => {
