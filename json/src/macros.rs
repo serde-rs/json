@@ -193,13 +193,13 @@ macro_rules! json_internal {
     // Misplaced colon. Trigger a reasonable error message by failing to match
     // the colon in the recursive call.
     (@object $object:ident () : $($rest:tt)*) => {
-        json_internal!(@object $object [:] (:));
+        json_internal!(:);
     };
 
     // Found a comma inside a key. Trigger a reasonable error message by failing
     // to match the comma in the recursive call.
     (@object $object:ident ($($key:tt)*) , $($rest:tt)*) => {
-        json_internal!(@object $object [,] (,));
+        json_internal!(,);
     };
 
     // Key is fully parenthesized. This avoids clippy double_parens false
