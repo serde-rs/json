@@ -283,6 +283,12 @@ impl FromIterator<(String, Value)> for Map<String, Value> {
     }
 }
 
+impl Extend<(String, Value)> for Map<String, Value> {
+    fn extend<T>(&mut self, iter: T) where T: IntoIterator<Item=(String, Value)> {
+        self.map.extend(iter);
+    }
+}
+
 macro_rules! delegate_iterator {
     (($name:ident $($generics:tt)*) => $item:ty) => {
         impl $($generics)* Iterator for $name $($generics)* {
