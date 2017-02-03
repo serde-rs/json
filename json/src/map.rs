@@ -2,6 +2,7 @@ use serde::{ser, de};
 use std::fmt::{self, Debug};
 use value::Value;
 use std::hash::Hash;
+use std::iter::FromIterator;
 use std::borrow::Borrow;
 use std::ops;
 
@@ -271,6 +272,20 @@ impl de::Deserialize for Map<String, Value> {
         }
 
         deserializer.deserialize_map(Visitor)
+    }
+}
+
+impl FromIterator<(String, Value)> for Map<String, Value> {
+    fn from_iter<T>(iter: T) -> Self where T: IntoIterator<Item=(String, Value)> {
+        Map {
+            map: FromIterator::from_iter(iter)
+        }
+    }
+}
+
+impl Extend<(String, Value)> for Map<String, Value> {
+    fn extend<T>(&mut self, iter: T) where T: IntoIterator<Item=(String, Value)> {
+        self.map.extend(iter);
     }
 }
 
