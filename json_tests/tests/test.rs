@@ -28,6 +28,7 @@ use serde::bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     Deserializer,
+    Error,
     Value,
     from_iter,
     from_slice,
@@ -39,6 +40,7 @@ use serde_json::{
     to_vec,
     to_writer,
 };
+use serde_json::value::ToJson;
 
 macro_rules! treemap {
     () => {
@@ -1793,6 +1795,18 @@ fn test_json_macro() {
         (<Result<&str, ()> as Clone>::clone(&Ok("")).unwrap()): "ok",
         (<Result<(), &str> as Clone>::clone(&Err("")).unwrap_err()): "err"
     });
+}
+
+#[test]
+fn test_json_not_serializable() {
+    // Does not implement Serialize
+    struct S;
+    impl ToJson for S {
+        fn to_json(&self) -> Result<Value, Error> {
+            Ok(Value::String("S".to_owned()))
+        }
+    }
+    assert_eq!(Value::String("S".to_owned()), json!(S));
 }
 
 #[test]
