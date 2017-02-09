@@ -8,7 +8,9 @@ use serde::de::{self, Unexpected};
 
 use super::error::{Error, ErrorCode, Result};
 
-use read::{self, Read};
+use read;
+
+pub use read::Read;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -873,10 +875,26 @@ impl<'a, R: Read + 'a> de::VariantVisitor for UnitVariantVisitor<'a, R> {
 //////////////////////////////////////////////////////////////////////////////
 
 /// Iterator that deserializes a stream into multiple JSON values.
-pub struct StreamDeserializer<R, T>
-    where R: Read,
-          T: de::Deserialize,
-{
+///
+/// A stream deserializer can be create from any JSON deserializer using the
+/// `Deserializer::into_iter` method.
+///
+/// ```rust
+/// extern crate serde_json;
+///
+/// use serde_json::{Deserializer, Value};
+///
+/// fn main() {
+///     let data = "1 2 {\"k\": 3}";
+///
+///     let stream = Deserializer::from_str(data).into_iter::<Value>();
+///
+///     for value in stream {
+///         println!("{}", value.unwrap());
+///     }
+/// }
+/// ```
+pub struct StreamDeserializer<R, T> {
     de: Deserializer<R>,
     _marker: PhantomData<T>,
 }
