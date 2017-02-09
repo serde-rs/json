@@ -214,6 +214,26 @@ impl<'a, Q: ?Sized> ops::Index<&'a Q> for Map<String, Value>
     }
 }
 
+/// Mutably access an element of this map. Panics if the given key is not
+/// present in the map.
+///
+/// ```rust
+/// # #[macro_use] extern crate serde_json;
+/// # fn main() {
+/// # let mut map = serde_json::Map::new();
+/// # map.insert("key".to_owned(), serde_json::Value::Null);
+/// map["key"] = json!("value");
+/// # }
+/// ```
+impl<'a, Q: ?Sized> ops::IndexMut<&'a Q> for Map<String, Value>
+    where String: Borrow<Q>,
+          Q: Ord + Eq + Hash
+{
+    fn index_mut(&mut self, index: &Q) -> &mut Value {
+        self.map.get_mut(index).expect("no entry found for key")
+    }
+}
+
 impl Debug for Map<String, Value> {
     #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
