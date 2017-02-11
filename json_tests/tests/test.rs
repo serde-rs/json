@@ -22,14 +22,13 @@ use std::iter;
 use std::marker::PhantomData;
 use std::{u8, u16, u32, u64};
 
-use serde::de::{self, Deserialize};
+use serde::de;
 use serde::ser::{self, Serialize, Serializer};
 use serde::bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     Deserializer,
     Error,
-    Number,
     Value,
     from_iter,
     from_slice,
@@ -42,6 +41,11 @@ use serde_json::{
     to_writer,
 };
 use serde_json::value::ToJson;
+
+#[cfg(feature = "arbitrary_precision")]
+use serde_json::Number;
+#[cfg(feature = "arbitrary_precision")]
+use serde::Deserialize;
 
 macro_rules! treemap {
     () => {

@@ -16,7 +16,7 @@ use dtoa;
 #[cfg(feature = "arbitrary_precision")]
 use itoa;
 #[cfg(feature = "arbitrary_precision")]
-use value::Value;
+use value::{Value, ValueVisitor};
 
 /// Represents a JSON number, whether integer or floating point.
 #[derive(Clone, PartialEq)]
@@ -267,15 +267,39 @@ impl Deserializer for Number {
     fn deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
         where V: Visitor
     {
-        if let Some(u) = self.as_u64() {
-            visitor.visit_u64(u)
-        } else if let Some(i) = self.as_i64() {
-            visitor.visit_i64(i)
-        } else if let Some(f) = self.as_f64() {
-            visitor.visit_f64(f)
-        } else {
-            visitor.visit_string(self.n)
+        trait VisitNumber: Visitor {
+            fn visit_number(self, number: Number) -> Result<Self::Value, Error>;
         }
+
+        impl<V> VisitNumber for V where V: Visitor {
+            default fn visit_number(self, number: Number) -> Result<V::Value, Error> {
+                if let Some(u) = number.as_u64() {
+                    self.visit_u64(u)
+                } else if let Some(i) = number.as_i64() {
+                    self.visit_i64(i)
+                } else if let Some(f) = number.as_f64() {
+                    self.visit_f64(f)
+                } else {
+                    self.visit_string(number.n)
+                }
+            }
+        }
+
+        impl VisitNumber for NumberVisitor {
+            #[inline]
+            fn visit_number(self, number: Number) -> Result<Number, Error> {
+                Ok(number)
+            }
+        }
+
+        impl VisitNumber for ValueVisitor {
+            #[inline]
+            fn visit_number(self, number: Number) -> Result<Value, Error> {
+                Ok(Value::Number(number))
+            }
+        }
+
+        visitor.visit_number(self)
     }
 
     forward_to_deserialize! {
