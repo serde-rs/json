@@ -7,11 +7,17 @@ use super::error::{Error, ErrorCode, Result};
 /// Trait used by the deserializer for iterating over input. This is manually
 /// "specialized" for iterating over &[u8]. Once feature(specialization) is
 /// stable we can use actual specialization.
-pub trait Read {
+///
+/// This trait is sealed and cannot be implemented for types outside of
+/// `serde_json`.
+pub trait Read: private::Sealed {
+    #[doc(hidden)]
     fn next(&mut self) -> io::Result<Option<u8>>;
+    #[doc(hidden)]
     fn peek(&mut self) -> io::Result<Option<u8>>;
 
     /// Only valid after a call to peek(). Discards the peeked byte.
+    #[doc(hidden)]
     fn discard(&mut self);
 
     /// Position of the most recent call to next().
@@ -21,6 +27,7 @@ pub trait Read {
     /// actually peek() because we don't always know.
     ///
     /// Only called in case of an error, so performance is not important.
+    #[doc(hidden)]
     fn position(&self) -> Position;
 
     /// Position of the most recent call to peek().
@@ -30,11 +37,13 @@ pub trait Read {
     /// actually next() because we don't always know.
     ///
     /// Only called in case of an error, so performance is not important.
+    #[doc(hidden)]
     fn peek_position(&self) -> Position;
 
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
+    #[doc(hidden)]
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
@@ -68,6 +77,11 @@ pub struct StrRead<'a> {
     delegate: SliceRead<'a>,
 }
 
+// Prevent users from implementing the Read trait.
+mod private {
+    pub trait Sealed {}
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 impl<Iter> IteratorRead<Iter>
@@ -80,6 +94,9 @@ impl<Iter> IteratorRead<Iter>
         }
     }
 }
+
+impl<Iter> private::Sealed for IteratorRead<Iter>
+    where Iter: Iterator<Item = io::Result<u8>> {}
 
 impl<Iter> Read for IteratorRead<Iter>
     where Iter: Iterator<Item = io::Result<u8>>,
@@ -242,6 +259,8 @@ impl<'a> SliceRead<'a> {
     }
 }
 
+impl<'a> private::Sealed for SliceRead<'a> {}
+
 impl<'a> Read for SliceRead<'a> {
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
@@ -299,6 +318,8 @@ impl<'a> StrRead<'a> {
         }
     }
 }
+
+impl<'a> private::Sealed for StrRead<'a> {}
 
 impl<'a> Read for StrRead<'a> {
     #[inline]
