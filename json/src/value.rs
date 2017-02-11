@@ -847,94 +847,97 @@ impl ser::Serialize for Value {
     }
 }
 
+/// Not public API. Should be pub(crate). The deserializer specializes on this
+/// type.
+#[doc(hidden)]
+pub struct ValueVisitor;
+
+impl de::Visitor for ValueVisitor {
+    type Value = Value;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("any valid JSON value")
+    }
+
+    #[inline]
+    fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
+        Ok(Value::Bool(value))
+    }
+
+    #[inline]
+    fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
+        Ok(Value::Number(value.into()))
+    }
+
+    #[inline]
+    fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
+        Ok(Value::Number(value.into()))
+    }
+
+    #[inline]
+    fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
+        Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
+    }
+
+    #[inline]
+    fn visit_str<E>(self, value: &str) -> Result<Value, E>
+        where E: de::Error,
+    {
+        self.visit_string(String::from(value))
+    }
+
+    #[inline]
+    fn visit_string<E>(self, value: String) -> Result<Value, E> {
+        Ok(Value::String(value))
+    }
+
+    #[inline]
+    fn visit_none<E>(self) -> Result<Value, E> {
+        Ok(Value::Null)
+    }
+
+    #[inline]
+    fn visit_some<D>(
+        self,
+        deserializer: D
+    ) -> Result<Value, D::Error>
+        where D: de::Deserializer,
+    {
+        de::Deserialize::deserialize(deserializer)
+    }
+
+    #[inline]
+    fn visit_unit<E>(self) -> Result<Value, E> {
+        Ok(Value::Null)
+    }
+
+    #[inline]
+    fn visit_seq<V>(self, visitor: V) -> Result<Value, V::Error>
+        where V: de::SeqVisitor,
+    {
+        let values = try!(de::impls::VecVisitor::new()
+            .visit_seq(visitor));
+        Ok(Value::Array(values))
+    }
+
+    fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
+        where V: de::MapVisitor,
+    {
+        let mut values = Map::with_capacity(visitor.size_hint().0);
+
+        while let Some((key, value)) = try!(visitor.visit()) {
+            values.insert(key, value);
+        }
+
+        Ok(Value::Object(values))
+    }
+}
+
 impl de::Deserialize for Value {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Value, D::Error>
         where D: de::Deserializer,
     {
-        struct ValueVisitor;
-
-        impl de::Visitor for ValueVisitor {
-            type Value = Value;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("any valid JSON value")
-            }
-
-            #[inline]
-            fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
-                Ok(Value::Bool(value))
-            }
-
-            #[inline]
-            fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
-                Ok(Value::Number(value.into()))
-            }
-
-            #[inline]
-            fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
-                Ok(Value::Number(value.into()))
-            }
-
-            #[inline]
-            fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
-                Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
-            }
-
-            #[inline]
-            fn visit_str<E>(self, value: &str) -> Result<Value, E>
-                where E: de::Error,
-            {
-                self.visit_string(String::from(value))
-            }
-
-            #[inline]
-            fn visit_string<E>(self, value: String) -> Result<Value, E> {
-                Ok(Value::String(value))
-            }
-
-            #[inline]
-            fn visit_none<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
-            }
-
-            #[inline]
-            fn visit_some<D>(
-                self,
-                deserializer: D
-            ) -> Result<Value, D::Error>
-                where D: de::Deserializer,
-            {
-                de::Deserialize::deserialize(deserializer)
-            }
-
-            #[inline]
-            fn visit_unit<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
-            }
-
-            #[inline]
-            fn visit_seq<V>(self, visitor: V) -> Result<Value, V::Error>
-                where V: de::SeqVisitor,
-            {
-                let values = try!(de::impls::VecVisitor::new()
-                    .visit_seq(visitor));
-                Ok(Value::Array(values))
-            }
-
-            fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
-                where V: de::MapVisitor,
-            {
-                let mut values = Map::with_capacity(visitor.size_hint().0);
-
-                while let Some((key, value)) = try!(visitor.visit()) {
-                    values.insert(key, value);
-                }
-
-                Ok(Value::Object(values))
-            }
-        }
-
         deserializer.deserialize(ValueVisitor)
     }
 }

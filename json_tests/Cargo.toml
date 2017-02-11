@@ -5,6 +5,7 @@ authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
 publish = false
 
 [features]
+arbitrary_precision = ["serde_json/arbitrary_precision"]
 trace-macros = []
 
 [dependencies]

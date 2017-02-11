@@ -64,6 +64,13 @@ impl Number {
             None
         }
     }
+
+    /// Not public API. Should be pub(crate). The deserializer uses this.
+    #[doc(hidden)]
+    #[inline]
+    pub fn from_string_unchecked(n: String) -> Self {
+        Number { n: n }
+    }
 }
 
 impl Display for Number {
@@ -125,38 +132,41 @@ fn serialize_number<S>(serializer: S, number: &Number) -> Result<S::Ok, S::Error
     }
 }
 
+/// Not public API. Should be pub(crate). The deserializer specializes on this
+/// type.
+#[doc(hidden)]
+pub struct NumberVisitor;
+
+impl Visitor for NumberVisitor {
+    type Value = Number;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a number")
+    }
+
+    #[inline]
+    fn visit_i64<E>(self, value: i64) -> Result<Number, E> {
+        Ok(value.into())
+    }
+
+    #[inline]
+    fn visit_u64<E>(self, value: u64) -> Result<Number, E> {
+        Ok(value.into())
+    }
+
+    #[inline]
+    fn visit_f64<E>(self, value: f64) -> Result<Number, E>
+        where E: de::Error
+    {
+        Number::from_f64(value).ok_or_else(|| de::Error::custom("not a JSON number"))
+    }
+}
+
 impl Deserialize for Number {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Number, D::Error>
         where D: Deserializer
     {
-        struct NumberVisitor;
-
-        impl Visitor for NumberVisitor {
-            type Value = Number;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a number")
-            }
-
-            #[inline]
-            fn visit_i64<E>(self, value: i64) -> Result<Number, E> {
-                Ok(value.into())
-            }
-
-            #[inline]
-            fn visit_u64<E>(self, value: u64) -> Result<Number, E> {
-                Ok(value.into())
-            }
-
-            #[inline]
-            fn visit_f64<E>(self, value: f64) -> Result<Number, E>
-                where E: de::Error
-            {
-                Number::from_f64(value).ok_or_else(|| de::Error::custom("not a JSON number"))
-            }
-        }
-
         deserializer.deserialize(NumberVisitor)
     }
 }
