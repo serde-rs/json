@@ -15,6 +15,8 @@ use std::io;
 use dtoa;
 #[cfg(feature = "arbitrary_precision")]
 use itoa;
+#[cfg(feature = "arbitrary_precision")]
+use value::Value;
 
 /// Represents a JSON number, whether integer or floating point.
 #[derive(Clone, PartialEq)]
@@ -193,6 +195,12 @@ impl Serialize for Number {
             #[inline]
             fn serialize_number(self, number: &Number) -> Result<(), Error> {
                 self.write_number_str(&number.n)
+            }
+        }
+
+        impl SerializeNumber for ::value::Serializer {
+            fn serialize_number(self, number: &Number) -> Result<Value, Error> {
+                Ok(Value::Number(number.clone()))
             }
         }
 

@@ -980,7 +980,10 @@ impl str::FromStr for Value {
     }
 }
 
-struct Serializer;
+/// Not public API. Should be pub(crate). Number's Serialize implementation
+/// specializes on this type.
+#[doc(hidden)]
+pub struct Serializer;
 
 impl ser::Serializer for Serializer {
     type Ok = Value;
