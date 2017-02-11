@@ -37,6 +37,7 @@ else
     channel test
     cd "$DIR/json_tests"
     channel test
+    channel test --features arbitrary_precision
 
     for CHANNEL in stable 1.12.0 1.13.0 beta; do
         cd "$DIR/json"
