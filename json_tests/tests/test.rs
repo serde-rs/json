@@ -692,6 +692,7 @@ fn test_write_map_with_integer_keys_issue_221() {
     let mut map = BTreeMap::new();
     map.insert(Float, "x"); // map with float key
     assert!(serde_json::to_value(&map).is_err());
+    assert!(serde_json::to_string(&map).is_err());
 }
 
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)
