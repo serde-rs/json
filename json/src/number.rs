@@ -6,6 +6,9 @@ use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use std::fmt::{self, Display};
 use std::i64;
 
+#[cfg(feature = "arbitrary_precision")]
+use std::io;
+
 /// Represents a JSON number, whether integer or floating point.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Number {
@@ -70,19 +73,55 @@ impl Display for Number {
 }
 
 impl Serialize for Number {
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer
     {
-        if let Some(u) = self.as_u64() {
-            serializer.serialize_u64(u)
-        } else if let Some(i) = self.as_i64() {
-            serializer.serialize_i64(i)
-        } else if let Some(f) = self.as_f64() {
-            serializer.serialize_f64(f)
-        } else {
-            serializer.serialize_str(&self.n)
+        serialize_number(serializer, self)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        trait SerializeNumber: Serializer {
+            fn serialize_number(self, number: &Number) -> Result<Self::Ok, Self::Error>;
         }
+
+        impl<T> SerializeNumber for T where T: Serializer {
+            #[inline]
+            default fn serialize_number(self, number: &Number) -> Result<T::Ok, T::Error> {
+                serialize_number(self, number)
+            }
+        }
+
+        impl<'a, W, F> SerializeNumber for &'a mut ::ser::Serializer<W, F>
+            where W: io::Write,
+                  F: ::ser::Formatter
+        {
+            #[inline]
+            fn serialize_number(self, number: &Number) -> Result<(), Error> {
+                self.write_number_str(&number.n)
+            }
+        }
+
+        serializer.serialize_number(self)
+    }
+}
+
+fn serialize_number<S>(serializer: S, number: &Number) -> Result<S::Ok, S::Error>
+    where S: Serializer
+{
+    if let Some(u) = number.as_u64() {
+        serializer.serialize_u64(u)
+    } else if let Some(i) = number.as_i64() {
+        serializer.serialize_i64(i)
+    } else if let Some(f) = number.as_f64() {
+        serializer.serialize_f64(f)
+    } else {
+        serializer.serialize_str(&number.n)
     }
 }
 
