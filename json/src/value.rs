@@ -920,7 +920,15 @@ impl<'a> From<Cow<'a, str>> for Value {
     ///
     /// let s: Cow<str> = Cow::Borrowed("lorem");
     /// let x: Value = s.into();
+    /// # }
+    /// ```
     ///
+    /// ```rust
+    /// # extern crate serde_json;
+    /// use serde_json::Value;
+    /// use std::borrow::Cow;
+    ///
+    /// # fn main() {
     /// let s: Cow<str> = Cow::Owned("lorem".to_string());
     /// let x: Value = s.into();
     /// # }
@@ -985,6 +993,47 @@ impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     /// ```
     fn from(f: &'a [T]) -> Self {
         Value::Array(f.into_iter().cloned().map(Into::into).collect())
+    }
+}
+
+impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
+    /// Convert an iteratable type to a `Value`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate serde_json;
+    /// use serde_json::Value;
+    /// # fn main() {
+    ///
+    /// let v = std::iter::repeat(42).take(5);
+    /// let x: Value = v.collect();
+    /// # }
+    /// ```
+    ///
+    /// ```rust
+    /// # extern crate serde_json;
+    /// use serde_json::Value;
+    ///
+    /// # fn main() {
+    /// let v: Vec<_> = vec!["lorem", "ipsum", "dolor"];
+    /// let x: Value = v.into_iter().collect();
+    /// # }
+    /// ```
+    ///
+    /// ```rust
+    /// # extern crate serde_json;
+    /// use std::iter::FromIterator;
+    /// use serde_json::Value;
+    ///
+    /// # fn main() {
+    /// let x: Value = Value::from_iter(vec!["lorem", "ipsum", "dolor"]);
+    /// # }
+    /// ```
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
+        let vec: Vec<Value> = iter.into_iter().map(|x| x.into()).collect();
+
+        Value::Array(vec)
     }
 }
 
