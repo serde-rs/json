@@ -174,7 +174,10 @@ impl Display for ErrorCode {
 impl error::Error for Error {
     fn description(&self) -> &str {
         match *self.err {
-            ErrorImpl::Syntax(..) => "syntax error",
+            ErrorImpl::Syntax(..) => {
+                // If you want a better message, use Display::fmt or to_string().
+                "JSON error"
+            }
             ErrorImpl::Io(ref error) => error::Error::description(error),
         }
     }
