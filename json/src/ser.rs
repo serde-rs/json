@@ -54,6 +54,13 @@ impl<W, F> Serializer<W, F>
     pub fn into_inner(self) -> W {
         self.writer
     }
+
+    /// Not public API. Should be pub(crate).
+    #[doc(hidden)]
+    #[inline]
+    pub fn write_number_str(&mut self, data: &str) -> Result<()> {
+        self.formatter.write_number_str(&mut self.writer, data)
+    }
 }
 
 impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
@@ -887,6 +894,14 @@ pub trait Formatter {
         dtoa::write(writer, value)
             .map(|_| ())
             .map_err(From::from)
+    }
+
+    /// Writes a number that has already been rendered to a string.
+    #[inline]
+    fn write_number_str<W: ?Sized>(&mut self, writer: &mut W, value: &str) -> Result<()>
+        where W: io::Write
+    {
+        writer.write_all(value.as_bytes()).map_err(From::from)
     }
 
     /// Called before each series of `write_string_fragment` and

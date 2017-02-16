@@ -256,6 +256,8 @@
     missing_docs_in_private_items,
 ))]
 
+#![cfg_attr(feature = "arbitrary_precision", feature(specialization))]
+
 #![deny(missing_docs)]
 
 extern crate num_traits;

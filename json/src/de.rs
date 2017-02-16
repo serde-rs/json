@@ -10,6 +10,11 @@ use super::error::{Error, ErrorCode, Result};
 
 use read;
 
+#[cfg(feature = "arbitrary_precision")]
+use number::{Number, NumberVisitor};
+#[cfg(feature = "arbitrary_precision")]
+use value::{Value, ValueVisitor};
+
 pub use read::Read;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -169,9 +174,9 @@ impl<R: Read> Deserializer<R> {
             }
             b'-' => {
                 self.eat_char();
-                self.parse_integer(false, visitor)
+                visitor.parse_number(self, false)
             }
-            b'0'...b'9' => self.parse_integer(true, visitor),
+            b'0'...b'9' => visitor.parse_number(self, true),
             b'"' => {
                 self.eat_char();
                 self.str_buf.clear();
@@ -537,6 +542,152 @@ impl<R: Read> Deserializer<R> {
             Some(_) => Err(self.error(ErrorCode::TrailingCharacters)),
             None => Err(self.error(ErrorCode::EOFWhileParsingObject)),
         }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_or_null(&mut self, buf: &mut String) -> Result<u8> {
+        match try!(self.next_char()) {
+            Some(b) => {
+                buf.push(b as char);
+                Ok(b)
+            }
+            None => {
+                Ok(b'\x00')
+            }
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_integer(&mut self, buf: &mut String) -> Result<()> {
+        match try!(self.scan_or_null(buf)) {
+            b'0' => {
+                // There can be only one leading '0'.
+                match try!(self.peek_or_null()) {
+                    b'0'...b'9' => {
+                        Err(self.peek_error(ErrorCode::InvalidNumber))
+                    }
+                    _ => self.scan_number(buf),
+                }
+            }
+            b'1'...b'9' => {
+                loop {
+                    match try!(self.peek_or_null()) {
+                        c @ b'0'...b'9' => {
+                            self.eat_char();
+                            buf.push(c as char);
+                        }
+                        _ => {
+                            return self.scan_number(buf);
+                        }
+                    }
+                }
+            }
+            _ => Err(self.error(ErrorCode::InvalidNumber)),
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_number(&mut self, buf: &mut String) -> Result<()> {
+        match try!(self.peek_or_null()) {
+            b'.' => self.scan_decimal(buf),
+            b'e' | b'E' => self.scan_exponent(buf),
+            _ => Ok(()),
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_decimal(&mut self, buf: &mut String) -> Result<()> {
+        self.eat_char();
+        buf.push('.');
+
+        let mut at_least_one_digit = false;
+        while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+            self.eat_char();
+            buf.push(c as char);
+            at_least_one_digit = true;
+        }
+
+        if !at_least_one_digit {
+            return Err(self.peek_error(ErrorCode::InvalidNumber));
+        }
+
+        match try!(self.peek_or_null()) {
+            b'e' | b'E' => self.scan_exponent(buf),
+            _ => Ok(()),
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_exponent(&mut self, buf: &mut String) -> Result<()> {
+        self.eat_char();
+        buf.push('e');
+
+        match try!(self.peek_or_null()) {
+            b'+' => {
+                self.eat_char();
+            }
+            b'-' => {
+                self.eat_char();
+                buf.push('-');
+            }
+            _ => {}
+        }
+
+        // Make sure a digit follows the exponent place.
+        match try!(self.scan_or_null(buf)) {
+            b'0'...b'9' => {}
+            _ => {
+                return Err(self.error(ErrorCode::InvalidNumber));
+            }
+        }
+
+        while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+            self.eat_char();
+            buf.push(c as char);
+        }
+
+        Ok(())
+    }
+}
+
+trait ParseNumber: de::Visitor {
+    fn parse_number<R: Read>(self, de: &mut Deserializer<R>, positive: bool) -> Result<Self::Value>;
+}
+
+impl<V> ParseNumber for V where V: de::Visitor {
+    #[cfg(not(feature = "arbitrary_precision"))]
+    #[inline]
+    fn parse_number<R: Read>(self, de: &mut Deserializer<R>, positive: bool) -> Result<V::Value> {
+        de.parse_integer(positive, self)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    default fn parse_number<R: Read>(self, de: &mut Deserializer<R>, positive: bool) -> Result<V::Value> {
+        de.parse_integer(positive, self)
+    }
+}
+
+#[cfg(feature = "arbitrary_precision")]
+impl ParseNumber for NumberVisitor {
+    #[inline]
+    fn parse_number<R: Read>(self, de: &mut Deserializer<R>, positive: bool) -> Result<Number> {
+        let mut buf = String::with_capacity(16);
+        if !positive {
+            buf.push('-');
+        }
+
+        try!(de.scan_integer(&mut buf));
+
+        Ok(Number::from_string_unchecked(buf))
+    }
+}
+
+#[cfg(feature = "arbitrary_precision")]
+impl ParseNumber for ValueVisitor {
+    #[inline]
+    fn parse_number<R: Read>(self, de: &mut Deserializer<R>, positive: bool) -> Result<Value> {
+        ParseNumber::parse_number(NumberVisitor, de, positive).map(Value::Number)
     }
 }
 
