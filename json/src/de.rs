@@ -876,7 +876,7 @@ impl<'a, R: Read + 'a> de::VariantVisitor for UnitVariantVisitor<'a, R> {
 
 /// Iterator that deserializes a stream into multiple JSON values.
 ///
-/// A stream deserializer can be create from any JSON deserializer using the
+/// A stream deserializer can be created from any JSON deserializer using the
 /// `Deserializer::into_iter` method.
 ///
 /// ```rust
