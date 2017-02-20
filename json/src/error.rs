@@ -59,6 +59,9 @@ pub enum ErrorCode {
     /// Expected this character to start a JSON value.
     ExpectedSomeValue,
 
+    /// Expected this character to start a JSON string.
+    ExpectedSomeString,
+
     /// Invalid hex escape code.
     InvalidEscape,
 
@@ -139,6 +142,9 @@ impl Display for ErrorCode {
             }
             ErrorCode::ExpectedSomeValue => {
                 f.write_str("expected value")
+            }
+            ErrorCode::ExpectedSomeString => {
+                f.write_str("expected string")
             }
             ErrorCode::InvalidEscape => {
                 f.write_str("invalid escape")

@@ -649,9 +649,72 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
         }
     }
 
+    /// Parses a JSON string as bytes. Note that this function does not
+    /// check whether the bytes represent valid unicode code points.
+    ///
+    /// The JSON specification requires that strings only contain valid
+    /// unicode characters. To deal with non-conforming JSON, you may use
+    /// this function, which attempts to parse a string without checking
+    /// whether the bytes represent valid unicode code points.
+    /// number of extra processing as possible.
+    ///
+    /// Escape sequences are processed as usual, and for `\uXXXX` escapes 
+    /// it is still checked if the hex number represents a valid unicode
+    /// code point.
+    ///
+    /// # Example usage
+    ///
+    /// You can use this to parse JSON strings containing non-unicode bytes:
+    ///
+    /// ```
+    /// # extern crate serde;
+    /// # extern crate serde_json;
+    /// #
+    /// let bytes = serde::bytes::ByteBuf::from(b"some raw bytes: \xe5\x00\xe5".to_vec());
+    /// let parsed = serde_json::from_slice(  b"\"some raw bytes: \xe5\x00\xe5\"").unwrap();
+    /// 
+    /// assert_eq!(bytes, parsed);
+    /// ```
+    ///
+    /// `\u` escape sequences with invalid unicode code points still fail to parse:
+    ///
+    /// ```
+    /// # extern crate serde;
+    /// # extern crate serde_json;
+    /// #
+    /// let json = "\"invalid unicode surrogate: \\uD801\"";
+    /// let parsed: Result<serde::bytes::ByteBuf, _> = serde_json::from_str(json);
+    /// assert!(parsed.is_err(), "{} should not parse: {:?}", json, parsed);
+    /// ```
+    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
+        where V: de::Visitor
+    {
+        try!(self.parse_whitespace());
+
+        let next = try!(self.peek());
+        let next = try!(next.ok_or(self.peek_error(ErrorCode::ExpectedSomeString)));
+
+        match next {
+            b'"' => {
+                self.eat_char();
+                let slice = try!(self.read.parse_str_raw(&mut self.str_buf));
+                visitor.visit_bytes(slice)
+            }
+            _ => self.deserialize(visitor),
+        }
+
+    }
+
+    fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
+        where V: de::Visitor
+    {
+        self.deserialize_bytes(visitor)
+    }
+
+
     forward_to_deserialize! {
         bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string unit seq
-        seq_fixed_size bytes byte_buf map unit_struct tuple_struct struct
+        seq_fixed_size map unit_struct tuple_struct struct
         struct_field tuple ignored_any
     }
 }
