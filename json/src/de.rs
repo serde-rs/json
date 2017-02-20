@@ -656,7 +656,6 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
     /// unicode characters. To deal with non-conforming JSON, you may use
     /// this function, which attempts to parse a string without checking
     /// whether the bytes represent valid unicode code points.
-    /// number of extra processing as possible.
     ///
     /// Escape sequences are processed as usual, and for `\uXXXX` escapes 
     /// it is still checked if the hex number represents a valid unicode
