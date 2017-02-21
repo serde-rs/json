@@ -711,6 +711,10 @@ fn test_parse_ok<T>(tests: Vec<(&str, T)>)
         let json_value: Value = from_str(s).unwrap();
         assert_eq!(json_value, to_value(&value).unwrap());
 
+        // Make sure we can deserialize from a `&Value`.
+        let v = T::deserialize(&json_value).unwrap();
+        assert_eq!(v, value);
+
         // Make sure we can deserialize from a `Value`.
         let v: T = from_value(json_value.clone()).unwrap();
         assert_eq!(v, value);
