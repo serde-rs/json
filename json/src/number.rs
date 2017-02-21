@@ -180,6 +180,27 @@ impl Deserializer for Number {
     }
 }
 
+impl<'a> Deserializer for &'a Number {
+    type Error = Error;
+
+    #[inline]
+    fn deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
+        where V: Visitor
+    {
+        match self.n {
+            N::PosInt(i) => visitor.visit_u64(i),
+            N::NegInt(i) => visitor.visit_i64(i),
+            N::Float(f) => visitor.visit_f64(f),
+        }
+    }
+
+    forward_to_deserialize! {
+        bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string unit option
+        seq seq_fixed_size bytes byte_buf map unit_struct newtype_struct
+        tuple_struct struct struct_field tuple enum ignored_any
+    }
+}
+
 macro_rules! from_signed {
     ($($signed_ty:ident)*) => {
         $(
