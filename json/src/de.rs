@@ -699,9 +699,7 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
         where V: de::Visitor
     {
-        if try!(self.parse_whitespace()) { // true if eof
-            return Err(self.peek_error(ErrorCode::EOFWhileParsingValue));
-        }
+        try!(self.parse_whitespace());
 
         match try!(self.peek_or_null()) {
             b'"' => {
