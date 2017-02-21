@@ -706,6 +706,7 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
         match try!(self.peek_or_null()) {
             b'"' => {
                 self.eat_char();
+                self.str_buf.clear();
                 let slice = try!(self.read.parse_str_raw(&mut self.str_buf));
                 visitor.visit_bytes(slice)
             }

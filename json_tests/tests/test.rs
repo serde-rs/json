@@ -1586,6 +1586,14 @@ fn test_byte_buf_de() {
 }
 
 #[test]
+fn test_byte_buf_de_multiple() {
+    let s: Vec<ByteBuf> = from_str(r#"["ab\nc", "cd\ne"]"#).unwrap();
+    let a = ByteBuf::from(b"ab\nc".to_vec());
+    let b =  ByteBuf::from(b"cd\ne".to_vec());
+    assert_eq!(vec![a, b], s);
+}
+
+#[test]
 fn test_json_stream_newlines() {
     let data = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}";
     let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
