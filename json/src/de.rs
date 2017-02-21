@@ -10,7 +10,7 @@ use super::error::{Error, ErrorCode, Result};
 
 use read;
 
-pub use read::Read;
+pub use read::{Read, IteratorRead, SliceRead, StrRead};
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -21,8 +21,19 @@ pub struct Deserializer<R> {
     remaining_depth: u8,
 }
 
-impl<R> Deserializer<R> {
-    fn new(read: R) -> Self {
+impl<R> Deserializer<R>
+    where R: read::Read
+{
+    /// Create a JSON deserializer from one of the possible serde_json input
+    /// sources.
+    ///
+    /// Typically it is more convenient to use one of these methods instead:
+    ///
+    ///   - Deserializer::from_str
+    ///   - Deserializer::from_bytes
+    ///   - Deserializer::from_iter
+    ///   - Deserializer::from_reader
+    pub fn new(read: R) -> Self {
         Deserializer {
             read: read,
             str_buf: Vec::with_capacity(128),
@@ -34,30 +45,30 @@ impl<R> Deserializer<R> {
 impl<I> Deserializer<read::IteratorRead<I>>
     where I: Iterator<Item = io::Result<u8>>
 {
-    /// Creates a JSON parser from a `std::iter::Iterator`.
+    /// Creates a JSON deserializer from a `std::iter::Iterator`.
     pub fn from_iter(iter: I) -> Self {
         Deserializer::new(read::IteratorRead::new(iter))
     }
 }
 
-impl<R> Deserializer<read::IteratorRead<io::Bytes<R>>>
+impl<R> Deserializer<read::IoRead<R>>
     where R: io::Read
 {
-    /// Creates a JSON parser from an `io::Read`.
+    /// Creates a JSON deserializer from an `io::Read`.
     pub fn from_reader(reader: R) -> Self {
-        Deserializer::new(read::IteratorRead::new(reader.bytes()))
+        Deserializer::new(read::IoRead::new(reader))
     }
 }
 
 impl<'a> Deserializer<read::SliceRead<'a>> {
-    /// Creates a JSON parser from a `&[u8]`.
+    /// Creates a JSON deserializer from a `&[u8]`.
     pub fn from_slice(bytes: &'a [u8]) -> Self {
         Deserializer::new(read::SliceRead::new(bytes))
     }
 }
 
 impl<'a> Deserializer<read::StrRead<'a>> {
-    /// Creates a JSON parser from a `&str`.
+    /// Creates a JSON deserializer from a `&str`.
     pub fn from_str(s: &'a str) -> Self {
         Deserializer::new(read::StrRead::new(s))
     }
@@ -959,6 +970,27 @@ impl<'a, R: Read + 'a> de::VariantVisitor for UnitVariantVisitor<'a, R> {
 pub struct StreamDeserializer<R, T> {
     de: Deserializer<R>,
     _marker: PhantomData<T>,
+}
+
+impl<R, T> StreamDeserializer<R, T>
+    where R: read::Read,
+          T: de::Deserialize
+{
+    /// Create a JSON stream deserializer from one of the possible serde_json
+    /// input sources.
+    ///
+    /// Typically it is more convenient to use one of these methods instead:
+    ///
+    ///   - Deserializer::from_str(...).into_iter()
+    ///   - Deserializer::from_bytes(...).into_iter()
+    ///   - Deserializer::from_iter(...).into_iter()
+    ///   - Deserializer::from_reader(...).into_iter()
+    pub fn new(read: R) -> Self {
+        StreamDeserializer {
+            de: Deserializer::new(read),
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<R, T> Iterator for StreamDeserializer<R, T>

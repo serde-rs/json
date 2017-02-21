@@ -67,6 +67,7 @@ pub struct Position {
     pub column: usize,
 }
 
+/// JSON input source that reads from an iterator of bytes.
 pub struct IteratorRead<Iter>
     where Iter: Iterator<Item = io::Result<u8>>,
 {
@@ -75,16 +76,26 @@ pub struct IteratorRead<Iter>
     ch: Option<u8>,
 }
 
-/// Specialization for Iter=&[u8]. This is more efficient than other iterators
-/// because peek() can be read-only and we can compute line/col position only if
-/// an error happens.
+/// JSON input source that reads from a std::io input stream.
+pub struct IoRead<R>
+    where R: io::Read
+{
+    delegate: IteratorRead<io::Bytes<R>>,
+}
+
+/// JSON input source that reads from a slice of bytes.
+//
+// This is more efficient than other iterators because peek() can be read-only
+// and we can compute line/col position only if an error happens.
 pub struct SliceRead<'a> {
     slice: &'a [u8],
     /// Index of the *next* byte that will be returned by next() or peek().
     index: usize,
 }
 
-/// Elide UTF-8 checks by assuming that the input is valid UTF-8.
+/// JSON input source that reads from a UTF-8 string.
+//
+// Able to elide UTF-8 checks by assuming that the input is valid UTF-8.
 pub struct StrRead<'a> {
     delegate: SliceRead<'a>,
 }
@@ -99,6 +110,7 @@ mod private {
 impl<Iter> IteratorRead<Iter>
     where Iter: Iterator<Item = io::Result<u8>>,
 {
+    /// Create a JSON input source to read from an iterator of bytes.
     pub fn new(iter: Iter) -> Self {
         IteratorRead {
             iter: LineColIterator::new(iter),
@@ -220,7 +232,69 @@ impl<Iter> Read for IteratorRead<Iter>
 
 //////////////////////////////////////////////////////////////////////////////
 
+impl<R> IoRead<R>
+    where R: io::Read
+{
+    /// Create a JSON input source to read from a std::io input stream.
+    pub fn new(reader: R) -> Self {
+        IoRead {
+            delegate: IteratorRead::new(reader.bytes()),
+        }
+    }
+}
+
+impl<R> private::Sealed for IoRead<R>
+    where R: io::Read {}
+
+impl<R> Read for IoRead<R>
+    where R: io::Read
+{
+    #[inline]
+    fn next(&mut self) -> io::Result<Option<u8>> {
+        self.delegate.next()
+    }
+
+    #[inline]
+    fn peek(&mut self) -> io::Result<Option<u8>> {
+        self.delegate.peek()
+    }
+
+    #[inline]
+    fn discard(&mut self) {
+        self.delegate.discard();
+    }
+
+    #[inline]
+    fn position(&self) -> Position {
+        self.delegate.position()
+    }
+
+    #[inline]
+    fn peek_position(&self) -> Position {
+        self.delegate.peek_position()
+    }
+
+    #[inline]
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>
+    ) -> Result<&'s str> {
+        self.delegate.parse_str(scratch)
+    }
+
+    #[inline]
+    fn parse_str_raw<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>
+    ) -> Result<&'s [u8]> {
+        self.delegate.parse_str_raw(scratch)
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
 impl<'a> SliceRead<'a> {
+    /// Create a JSON input source to read from a slice of bytes.
     pub fn new(slice: &'a [u8]) -> Self {
         SliceRead {
             slice: slice,
@@ -362,6 +436,7 @@ impl<'a> Read for SliceRead<'a> {
 //////////////////////////////////////////////////////////////////////////////
 
 impl<'a> StrRead<'a> {
+    /// Create a JSON input source to read from a UTF-8 string.
     pub fn new(s: &'a str) -> Self {
         StrRead {
             delegate: SliceRead::new(s.as_bytes()),
