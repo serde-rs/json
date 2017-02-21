@@ -6,9 +6,10 @@ license = "MIT/Apache-2.0"
 description = "A JSON serialization file format"
 repository = "https://github.com/serde-rs/json"
 documentation = "http://docs.serde.rs/serde_json/"
-readme = "../README.md"
 keywords = ["json", "serde", "serialization"]
 categories = ["encoding"]
+readme = "../README.md"
+include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [badges]
 travis-ci = { repository = "serde-rs/json" }
