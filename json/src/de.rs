@@ -701,12 +701,10 @@ impl<'a, R: Read> de::Deserializer for &'a mut Deserializer<R> {
     {
         try!(self.parse_whitespace());
 
-        let next = try!(self.peek());
-        let next = try!(next.ok_or(self.peek_error(ErrorCode::ExpectedSomeString)));
-
-        match next {
+        match try!(self.peek_or_null()) {
             b'"' => {
                 self.eat_char();
+                self.str_buf.clear();
                 let slice = try!(self.read.parse_str_raw(&mut self.str_buf));
                 visitor.visit_bytes(slice)
             }
