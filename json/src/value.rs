@@ -243,7 +243,7 @@ impl Value {
     }
 
     /// Returns true if the `Value` is a String. Returns false otherwise.
-    pub fn is_string(&self) -> bool {
+    pub fn is_str(&self) -> bool {
         self.as_str().is_some()
     }
 
@@ -316,7 +316,7 @@ impl Value {
     }
 
     /// Returns true if the `Value` is a Boolean. Returns false otherwise.
-    pub fn is_boolean(&self) -> bool {
+    pub fn is_bool(&self) -> bool {
         self.as_bool().is_some()
     }
 
