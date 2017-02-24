@@ -10,7 +10,7 @@ use super::error::{Error, ErrorCode, Result};
 
 use read;
 
-pub use read::{Read, IteratorRead, SliceRead, StrRead};
+pub use read::{Read, IoRead, IteratorRead, SliceRead, StrRead};
 
 //////////////////////////////////////////////////////////////////////////////
 
