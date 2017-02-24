@@ -1289,8 +1289,6 @@ pub fn to_writer_pretty<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Resu
 pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     where T: ser::Serialize,
 {
-    // We are writing to a Vec, which doesn't fail. So we can ignore
-    // the error.
     let mut writer = Vec::with_capacity(128);
     try!(to_writer(&mut writer, value));
     Ok(writer)
@@ -1304,8 +1302,6 @@ pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
 pub fn to_vec_pretty<T: ?Sized>(value: &T) -> Result<Vec<u8>>
     where T: ser::Serialize,
 {
-    // We are writing to a Vec, which doesn't fail. So we can ignore
-    // the error.
     let mut writer = Vec::with_capacity(128);
     try!(to_writer_pretty(&mut writer, value));
     Ok(writer)
