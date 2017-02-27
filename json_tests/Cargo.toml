@@ -8,7 +8,7 @@ publish = false
 trace-macros = []
 
 [dependencies]
-serde = "0.9"
+serde = "0.9.10"
 serde_json = { path = "../json" }
 serde_derive = "0.9"
 

@@ -1,5 +1,6 @@
 //! Serialize a Rust data structure into JSON data.
 
+use std::fmt;
 use std::io;
 use std::num::FpCategory;
 use std::str;
@@ -307,6 +308,50 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
         try!(self.formatter.end_object_key(&mut self.writer));
         try!(self.formatter.begin_object_value(&mut self.writer));
         self.serialize_map(Some(len))
+    }
+
+    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok>
+        where T: fmt::Display,
+    {
+        use std::fmt::Write;
+
+        struct Adapter<'ser, W: 'ser, F: 'ser> {
+            writer: &'ser mut W,
+            formatter: &'ser mut F,
+            error: Option<Error>,
+        }
+
+        impl<'ser, W, F> Write for Adapter<'ser, W, F>
+            where W: io::Write,
+                  F: Formatter,
+        {
+            fn write_str(&mut self, s: &str) -> fmt::Result {
+                assert!(self.error.is_none());
+                match format_escaped_str_contents(self.writer, self.formatter, s) {
+                    Ok(()) => Ok(()),
+                    Err(err) => {
+                        self.error = Some(err);
+                        Err(fmt::Error)
+                    }
+                }
+            }
+        }
+
+        try!(self.formatter.begin_string(&mut self.writer));
+        {
+            let mut adapter = Adapter {
+                writer: &mut self.writer,
+                formatter: &mut self.formatter,
+                error: None
+            };
+            match write!(adapter, "{}", value) {
+                Ok(()) => assert!(adapter.error.is_none()),
+                Err(_) => {
+                    return Err(adapter.error.expect("there should be an error"));
+                },
+            }
+        }
+        self.formatter.end_string(&mut self.writer)
     }
 }
 
@@ -1179,9 +1224,20 @@ fn format_escaped_str<W: ?Sized, F: ?Sized>(writer: &mut W, formatter: &mut F, v
     where W: io::Write,
           F: Formatter
 {
-    let bytes = value.as_bytes();
-
     try!(formatter.begin_string(writer));
+    try!(format_escaped_str_contents(writer, formatter, value));
+    try!(formatter.end_string(writer));
+    Ok(())
+}
+
+fn format_escaped_str_contents<W: ?Sized, F: ?Sized>(writer: &mut W,
+                                                     formatter: &mut F,
+                                                     value: &str)
+                                                     -> Result<()>
+    where W: io::Write,
+          F: Formatter,
+{
+    let bytes = value.as_bytes();
 
     let mut start = 0;
 
@@ -1205,7 +1261,6 @@ fn format_escaped_str<W: ?Sized, F: ?Sized>(writer: &mut W, formatter: &mut F, v
         try!(formatter.write_string_fragment(writer, &bytes[start..]));
     }
 
-    try!(formatter.end_string(writer));
     Ok(())
 }
 
