@@ -2,6 +2,7 @@
 
 use std::io;
 use std::num::FpCategory;
+use std::str;
 
 use serde::ser::{self, Impossible};
 use super::error::{Error, ErrorCode, Result};
@@ -1245,11 +1246,16 @@ fn format_escaped_char<W: ?Sized, F: ?Sized>(wr: &mut W, formatter: &mut F, valu
     where W: io::Write,
           F: Formatter,
 {
-    // FIXME: this allocation is required in order to be compatible with stable
-    // rust, which doesn't support encoding a `char` into a stack buffer.
-    let mut s = String::new();
-    s.push(value);
-    format_escaped_str(wr, formatter, &s)
+    use std::io::Write;
+    // A char encoded as UTF-8 takes 4 bytes at most.
+    let mut buf = [0; 4];
+    write!(&mut buf[..], "{}", value).unwrap();
+    // Writing a char successfully always produce valid UTF-8.
+    // Once we do not support Rust <1.15 we will be able to just use
+    // the method `char::encode_utf8`.
+    // See https://github.com/serde-rs/json/issues/270.
+    let slice = unsafe { str::from_utf8_unchecked(&buf[0..value.len_utf8()]) };
+    format_escaped_str(wr, formatter, slice)
 }
 
 /// Serialize the given data structure as JSON into the IO stream.
