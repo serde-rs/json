@@ -910,10 +910,10 @@ pub trait Formatter {
     /// Writes a string fragment that doesn't need any escaping to the
     /// specified writer.
     #[inline]
-    fn write_string_fragment<W: ?Sized>(&mut self, writer: &mut W, fragment: &[u8]) -> Result<()>
+    fn write_string_fragment<W: ?Sized>(&mut self, writer: &mut W, fragment: &str) -> Result<()>
         where W: io::Write
     {
-        writer.write_all(fragment).map_err(From::from)
+        writer.write_all(fragment.as_bytes()).map_err(From::from)
     }
 
     /// Writes a character escape code to the specified writer.
@@ -1191,7 +1191,7 @@ fn format_escaped_str<W: ?Sized, F: ?Sized>(writer: &mut W, formatter: &mut F, v
         }
 
         if start < i {
-            try!(formatter.write_string_fragment(writer, &bytes[start..i]));
+            try!(formatter.write_string_fragment(writer, &value[start..i]));
         }
 
         let char_escape = CharEscape::from_escape_table(escape, byte);
@@ -1201,7 +1201,7 @@ fn format_escaped_str<W: ?Sized, F: ?Sized>(writer: &mut W, formatter: &mut F, v
     }
 
     if start != bytes.len() {
-        try!(formatter.write_string_fragment(writer, &bytes[start..]));
+        try!(formatter.write_string_fragment(writer, &value[start..]));
     }
 
     try!(formatter.end_string(writer));
