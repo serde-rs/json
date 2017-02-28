@@ -2193,6 +2193,9 @@ impl Value {
 /// let val = serde_json::to_value("s").unwrap();
 /// assert_eq!(val, Value::String("s".to_owned()));
 /// ```
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+// Taking by value is more friendly to iterator adapters, option and result
+// consumers, etc. See https://github.com/serde-rs/json/pull/149.
 pub fn to_value<T>(value: T) -> Result<Value, Error>
     where T: ser::Serialize,
 {
