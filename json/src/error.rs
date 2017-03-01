@@ -10,6 +10,7 @@ use serde::ser;
 
 /// This type represents all possible errors that can occur when serializing or
 /// deserializing JSON data.
+#[derive(Debug, PartialEq)]
 pub struct Error {
     err: Box<ErrorImpl>,
 }
