@@ -769,20 +769,20 @@ macro_rules! test_parse_err {
 }
 
 // FIXME (#5527): these could be merged once UFCS is finished.
-fn test_parse_err<T>(errors: Vec<(&str, &'static str)>)
+fn test_parse_err<T>(errors: &[(&str, &'static str)])
     where T: Debug + PartialEq + de::Deserialize,
 {
-    for &(s, err) in &errors {
+    for &(s, err) in errors {
         test_parse_err!(from_str::<T>(s) => err);
         test_parse_err!(from_slice::<T>(s.as_bytes()) => err);
         test_parse_err!(from_iter::<_, T>(s.bytes().map(Ok)) => err);
     }
 }
 
-fn test_parse_slice_err<T>(errors: Vec<(&[u8], &'static str)>)
+fn test_parse_slice_err<T>(errors: &[(&[u8], &'static str)])
     where T: Debug + PartialEq + de::Deserialize,
 {
-    for &(s, err) in &errors {
+    for &(s, err) in errors {
         test_parse_err!(from_slice::<T>(s) => err);
         test_parse_err!(from_iter::<_, T>(s.iter().cloned().map(Ok)) => err);
     }
@@ -790,7 +790,7 @@ fn test_parse_slice_err<T>(errors: Vec<(&[u8], &'static str)>)
 
 #[test]
 fn test_parse_null() {
-    test_parse_err::<()>(vec![
+    test_parse_err::<()>(&[
         ("n", "expected ident at line 1 column 1"),
         ("nul", "expected ident at line 1 column 3"),
         ("nulla", "trailing characters at line 1 column 5"),
@@ -803,7 +803,7 @@ fn test_parse_null() {
 
 #[test]
 fn test_parse_bool() {
-    test_parse_err::<bool>(vec![
+    test_parse_err::<bool>(&[
         ("t", "expected ident at line 1 column 1"),
         ("truz", "expected ident at line 1 column 4"),
         ("f", "expected ident at line 1 column 1"),
@@ -822,7 +822,7 @@ fn test_parse_bool() {
 
 #[test]
 fn test_parse_char() {
-    test_parse_err::<char>(vec![
+    test_parse_err::<char>(&[
         ("\"ab\"", "invalid value: string \"ab\", expected a character at line 1 column 4"),
         ("10", "invalid type: integer `10`, expected a character at line 1 column 2"),
     ]);
@@ -845,7 +845,7 @@ fn test_parse_char() {
 
 #[test]
 fn test_parse_number_errors() {
-    test_parse_err::<f64>(vec![
+    test_parse_err::<f64>(&[
         ("+", "expected value at line 1 column 1"),
         (".", "expected value at line 1 column 1"),
         ("-", "invalid number at line 1 column 1"),
@@ -979,14 +979,14 @@ fn test_parse_f64() {
 
 #[test]
 fn test_parse_string() {
-    test_parse_err::<String>(vec![
+    test_parse_err::<String>(&[
         ("\"", "EOF while parsing a string at line 1 column 1"),
         ("\"lol", "EOF while parsing a string at line 1 column 4"),
         ("\"lol\"a", "trailing characters at line 1 column 6"),
         ("\"\\uD83C\\uFFFF\"", "lone leading surrogate in hex escape at line 1 column 13"),
     ]);
 
-    test_parse_slice_err::<String>(vec![
+    test_parse_slice_err::<String>(&[
         (&[b'"', 159, 146, 150, b'"'],
             "invalid unicode code point at line 1 column 5"),
         (&[b'"', b'\\', b'n', 159, 146, 150, b'"'],
@@ -1010,7 +1010,7 @@ fn test_parse_string() {
 
 #[test]
 fn test_parse_list() {
-    test_parse_err::<Vec<f64>>(vec![
+    test_parse_err::<Vec<f64>>(&[
         ("[", "EOF while parsing a list at line 1 column 1"),
         ("[ ", "EOF while parsing a list at line 1 column 2"),
         ("[1", "EOF while parsing a list at line 1 column 2"),
@@ -1061,7 +1061,7 @@ fn test_parse_list() {
 
 #[test]
 fn test_parse_object() {
-    test_parse_err::<BTreeMap<String, u32>>(vec![
+    test_parse_err::<BTreeMap<String, u32>>(&[
         ("{", "EOF while parsing an object at line 1 column 1"),
         ("{ ", "EOF while parsing an object at line 1 column 2"),
         ("{1", "key must be a string at line 1 column 2"),
@@ -1112,7 +1112,7 @@ fn test_parse_object() {
 
 #[test]
 fn test_parse_struct() {
-    test_parse_err::<Outer>(vec![
+    test_parse_err::<Outer>(&[
         ("5",
             "invalid type: integer `5`, expected struct Outer at line 1 column 1"),
         ("\"hello\"",
@@ -1188,7 +1188,7 @@ fn test_parse_option() {
 
 #[test]
 fn test_parse_enum_errors() {
-    test_parse_err::<Animal>(vec![
+    test_parse_err::<Animal>(&[
         ("{}",
             "expected value at line 1 column 2"),
         ("[]",
@@ -1282,7 +1282,7 @@ fn test_parse_trailing_whitespace() {
 
 #[test]
 fn test_multiline_errors() {
-    test_parse_err::<BTreeMap<String, String>>(vec![
+    test_parse_err::<BTreeMap<String, String>>(&[
         ("{\n  \"foo\":\n \"bar\"", "EOF while parsing an object at line 3 column 6"),
     ]);
 }
@@ -1314,7 +1314,7 @@ fn test_missing_nonoption_field() {
         x: u32,
     }
 
-    test_parse_err::<Foo>(vec![
+    test_parse_err::<Foo>(&[
         ("{}", "missing field `x` at line 1 column 2"),
     ]);
 }
@@ -1767,7 +1767,7 @@ fn test_stack_overflow() {
     let _: Value = from_str(&brackets).unwrap();
 
     let brackets: String = iter::repeat('[').take(128).collect();
-    test_parse_err::<Value>(vec![
+    test_parse_err::<Value>(&[
         (&brackets, "recursion limit exceeded at line 1 column 128"),
     ]);
 }
