@@ -190,6 +190,25 @@ fn test_write_bool() {
 }
 
 #[test]
+fn test_write_char() {
+    let tests = &[
+        ('n', "\"n\""),
+        ('"', "\"\\\"\""),
+        ('\\', "\"\\\\\""),
+        ('/', "\"/\""),
+        ('\x08', "\"\\b\""),
+        ('\x0C', "\"\\f\""),
+        ('\n', "\"\\n\""),
+        ('\r', "\"\\r\""),
+        ('\t', "\"\\t\""),
+        ('\x0B', "\"\\u000b\""),
+        ('\u{3A3}', "\"\u{3A3}\""),
+    ];
+    test_encode_ok(tests);
+    test_pretty_encode_ok(tests);
+}
+
+#[test]
 fn test_write_list() {
     test_encode_ok(&[
         (vec![], "[]"),
@@ -798,6 +817,29 @@ fn test_parse_bool() {
         (" true ", true),
         ("false", false),
         (" false ", false),
+    ]);
+}
+
+#[test]
+fn test_parse_char() {
+    test_parse_err::<char>(vec![
+        ("\"ab\"", "invalid value: string \"ab\", expected a character at line 1 column 4"),
+        ("10", "invalid type: integer `10`, expected a character at line 1 column 2"),
+    ]);
+
+    test_parse_ok(vec![
+        ("\"n\"", 'n'),
+        ("\"\\\"\"", '"'),
+        ("\"\\\\\"", '\\'),
+        ("\"/\"", '/'),
+        ("\"\\b\"", '\x08'),
+        ("\"\\f\"", '\x0C'),
+        ("\"\\n\"", '\n'),
+        ("\"\\r\"", '\r'),
+        ("\"\\t\"", '\t'),
+        ("\"\\u000b\"", '\x0B'),
+        ("\"\\u000B\"", '\x0B'),
+        ("\"\u{3A3}\"", '\u{3A3}'),
     ]);
 }
 

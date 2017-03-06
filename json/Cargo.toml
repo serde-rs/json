@@ -18,7 +18,7 @@ travis-ci = { repository = "serde-rs/json" }
 preserve_order = ["linked-hash-map"]
 
 [dependencies]
-serde = "0.9.4"
+serde = "0.9.11"
 num-traits = "0.1.32"
 linked-hash-map = { version = "0.4.1", optional = true }
 itoa = "0.3"
