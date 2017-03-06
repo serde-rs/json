@@ -768,7 +768,6 @@ macro_rules! test_parse_err {
     };
 }
 
-// FIXME (#5527): these could be merged once UFCS is finished.
 fn test_parse_err<T>(errors: &[(&str, &'static str)])
     where T: Debug + PartialEq + de::Deserialize,
 {
