@@ -24,10 +24,10 @@ if [ -n "${CLIPPY}" ]; then
     fi
 
     cd "$DIR/json"
-    cargo clippy
+    cargo clippy -- -Dclippy
 
     cd "$DIR/json_tests"
-    cargo clippy
+    cargo clippy -- -Dclippy
 else
     CHANNEL=nightly
     cd "$DIR/json"
