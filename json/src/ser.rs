@@ -1304,7 +1304,7 @@ fn format_escaped_char<W: ?Sized, F: ?Sized>(wr: &mut W, formatter: &mut F, valu
     use std::io::Write;
     // A char encoded as UTF-8 takes 4 bytes at most.
     let mut buf = [0; 4];
-    write!(&mut buf[..], "{}", value).unwrap();
+    write!(&mut buf[..], "{}", value).expect("write char to 4-byte buffer");
     // Writing a char successfully always produce valid UTF-8.
     // Once we do not support Rust <1.15 we will be able to just use
     // the method `char::encode_utf8`.
