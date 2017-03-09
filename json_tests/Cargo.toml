@@ -6,12 +6,12 @@ publish = false
 
 [features]
 trace-macros = []
+unstable-testing = ["compiletest_rs"]
 
-[dependencies]
+[dev-dependencies]
 serde = "0.9.11"
 serde_json = { path = "../json" }
 serde_derive = "0.9"
 
-[[test]]
-name = "test"
-path = "tests/test.rs"
+[dependencies]
+compiletest_rs = { version = "0.2", optional = true }

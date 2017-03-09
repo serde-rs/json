@@ -1,0 +1,8 @@
+error: no field `s` on type `&'static str`
+ --> $DIR/parse_key.rs:5:16
+  |
+5 |     json!({ "".s : true });
+  |                ^
+
+error: aborting due to previous error
+
