@@ -1178,10 +1178,15 @@ impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
 impl fmt::Display for Value {
     /// Serializes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let normal = !f.alternate();
         let mut wr = WriterFormatter {
             inner: f,
         };
-        super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
+        if normal {
+            super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
+        } else {
+            super::ser::to_writer_pretty(&mut wr, self).map_err(|_| fmt::Error)
+        }
     }
 }
 
