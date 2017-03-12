@@ -135,12 +135,7 @@ impl<Iter> IteratorRead<Iter>
               F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
     {
         loop {
-            let ch = match try!(self.next()) {
-                Some(ch) => ch,
-                None => {
-                    return error(self, ErrorCode::EOFWhileParsingString);
-                }
-            };
+            let ch = try!(next_or_eof(self));
             if !ESCAPE[ch as usize] {
                 scratch.push(ch);
                 continue;
@@ -342,7 +337,7 @@ impl<'a> SliceRead<'a> {
                 self.index += 1;
             }
             if self.index == self.slice.len() {
-                return error(self, ErrorCode::EOFWhileParsingString);
+                return error(self, ErrorCode::EofWhileParsingString);
             }
             match self.slice[self.index] {
                 b'"' => {
@@ -519,6 +514,13 @@ static ESCAPE: [bool; 256] = [
      O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // F
 ];
 
+fn next_or_eof<R: Read>(read: &mut R) -> Result<u8> {
+    match try!(read.next()) {
+        Some(b) => Ok(b),
+        None => error(read, ErrorCode::EofWhileParsingString),
+    }
+}
+
 fn error<R: Read, T>(read: &R, reason: ErrorCode) -> Result<T> {
     let pos = read.position();
     Err(Error::syntax(reason, pos.line, pos.column))
@@ -532,12 +534,7 @@ fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
 /// the previous byte read was a backslash.
 fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
-    let ch = match try!(read.next()) {
-        Some(ch) => ch,
-        None => {
-            return error(read, ErrorCode::EOFWhileParsingString);
-        }
-    };
+    let ch = try!(next_or_eof(read));
 
     match ch {
         b'"' => scratch.push(b'"'),
@@ -558,12 +555,11 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
                     // Non-BMP characters are encoded as a sequence of
                     // two hex escapes, representing UTF-16 surrogates.
                     n1 @ 0xD800...0xDBFF => {
-                        match (try!(read.next()),
-                               try!(read.next())) {
-                            (Some(b'\\'), Some(b'u')) => (),
-                            _ => {
-                                return error(read, ErrorCode::UnexpectedEndOfHexEscape);
-                            }
+                        if try!(next_or_eof(read)) != b'\\' {
+                            return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                        }
+                        if try!(next_or_eof(read)) != b'u' {
+                            return error(read, ErrorCode::UnexpectedEndOfHexEscape);
                         }
 
                         let n2 = try!(decode_hex_escape(read));
@@ -609,10 +605,9 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
 }
 
 fn decode_hex_escape<R: Read>(read: &mut R) -> Result<u16> {
-    let mut i = 0;
     let mut n = 0;
-    while i < 4 && try!(read.peek()).is_some() {
-        n = match try!(read.next()).unwrap_or(b'\x00') {
+    for _ in 0..4 {
+        n = match try!(next_or_eof(read)) {
             c @ b'0'...b'9' => n * 16_u16 + ((c as u16) - (b'0' as u16)),
             b'a' | b'A' => n * 16_u16 + 10_u16,
             b'b' | b'B' => n * 16_u16 + 11_u16,
@@ -624,14 +619,6 @@ fn decode_hex_escape<R: Read>(read: &mut R) -> Result<u16> {
                 return error(read, ErrorCode::InvalidEscape);
             }
         };
-
-        i += 1;
     }
-
-    // Error out if we didn't parse 4 digits.
-    if i != 4 {
-        return error(read, ErrorCode::InvalidEscape);
-    }
-
     Ok(n)
 }

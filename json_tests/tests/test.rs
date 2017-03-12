@@ -1907,3 +1907,28 @@ fn test_partialeq_string() {
     assert_eq!(v, String::from("42"));
     assert_eq!(String::from("42"), v);
 }
+
+#[test]
+fn test_category() {
+    assert!(from_str::<String>("123").unwrap_err().is_data());
+
+    assert!(from_str::<String>("]").unwrap_err().is_syntax());
+
+    assert!(from_str::<String>("").unwrap_err().is_eof());
+    assert!(from_str::<String>("\"").unwrap_err().is_eof());
+    assert!(from_str::<String>("\"\\").unwrap_err().is_eof());
+    assert!(from_str::<String>("\"\\u").unwrap_err().is_eof());
+    assert!(from_str::<String>("\"\\u0").unwrap_err().is_eof());
+    assert!(from_str::<String>("\"\\u00").unwrap_err().is_eof());
+    assert!(from_str::<String>("\"\\u000").unwrap_err().is_eof());
+
+    assert!(from_str::<Vec<usize>>("[").unwrap_err().is_eof());
+    assert!(from_str::<Vec<usize>>("[0").unwrap_err().is_eof());
+    assert!(from_str::<Vec<usize>>("[0,").unwrap_err().is_eof());
+
+    assert!(from_str::<BTreeMap<String, usize>>("{").unwrap_err().is_eof());
+    assert!(from_str::<BTreeMap<String, usize>>("{\"k\"").unwrap_err().is_eof());
+    assert!(from_str::<BTreeMap<String, usize>>("{\"k\":").unwrap_err().is_eof());
+    assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0").unwrap_err().is_eof());
+    assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0,").unwrap_err().is_eof());
+}
