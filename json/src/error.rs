@@ -126,6 +126,51 @@ pub enum Category {
     Eof,
 }
 
+impl From<Error> for io::Error {
+    /// Convert a `serde_json::Error` into an `io::Error`.
+    ///
+    /// JSON syntax and data errors are turned into `InvalidData` IO errors.
+    /// EOF errors are turned into `UnexpectedEof` IO errors.
+    ///
+    /// ```rust
+    /// use std::io;
+    ///
+    /// enum MyError {
+    ///     Io(io::Error),
+    ///     Json(serde_json::Error),
+    /// }
+    ///
+    /// impl From<serde_json::Error> for MyError {
+    ///     fn from(err: serde_json::Error) -> MyError {
+    ///         use serde_json::error::Category;
+    ///         match err.classify() {
+    ///             Category::Io => {
+    ///                 MyError::Io(err.into())
+    ///             }
+    ///             Category::Syntax | Category::Data | Category::Eof => {
+    ///                 MyError::Json(err)
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    fn from(j: Error) -> Self {
+        if let ErrorCode::Io(err) = j.err.code {
+            err
+        } else {
+            match j.classify() {
+                Category::Io => unreachable!(),
+                Category::Syntax | Category::Data => {
+                    io::Error::new(io::ErrorKind::InvalidData, j)
+                }
+                Category::Eof => {
+                    io::Error::new(io::ErrorKind::UnexpectedEof, j)
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 struct ErrorImpl {
     code: ErrorCode,
