@@ -19,11 +19,12 @@ use std::collections::BTreeMap;
 use std::{f32, f64};
 use std::fmt::{self, Debug};
 use std::{i8, i16, i32, i64};
+use std::io;
 use std::iter;
 use std::marker::PhantomData;
 use std::{u8, u16, u32, u64};
 
-use serde::de;
+use serde::de::{self, Deserialize};
 use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
@@ -33,6 +34,7 @@ use serde_json::{
     Error,
     Value,
     from_iter,
+    from_reader,
     from_slice,
     from_str,
     from_value,
@@ -1905,6 +1907,14 @@ fn test_partialeq_string() {
     assert_eq!(String::from("42"), v);
 }
 
+struct FailReader(io::ErrorKind);
+
+impl io::Read for FailReader {
+    fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
+        Err(io::Error::new(self.0, "oh no!"))
+    }
+}
+
 #[test]
 fn test_category() {
     assert!(from_str::<String>("123").unwrap_err().is_data());
@@ -1928,6 +1938,24 @@ fn test_category() {
     assert!(from_str::<BTreeMap<String, usize>>("{\"k\":").unwrap_err().is_eof());
     assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0").unwrap_err().is_eof());
     assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0,").unwrap_err().is_eof());
+
+    let fail = FailReader(io::ErrorKind::NotConnected);
+    assert!(from_reader::<_, String>(fail).unwrap_err().is_io());
+}
+
+#[test]
+fn test_into_io_error() {
+    fn io_error<'de, T: Deserialize<'de> + Debug>(j: &'static str) -> io::Error {
+        from_str::<T>(j).unwrap_err().into()
+    }
+
+    assert_eq!(io_error::<String>("\"\\u").kind(), io::ErrorKind::UnexpectedEof);
+    assert_eq!(io_error::<String>("0").kind(), io::ErrorKind::InvalidData);
+    assert_eq!(io_error::<String>("]").kind(), io::ErrorKind::InvalidData);
+
+    let fail = FailReader(io::ErrorKind::NotConnected);
+    let io_err: io::Error = from_reader::<_, u8>(fail).unwrap_err().into();
+    assert_eq!(io_err.kind(), io::ErrorKind::NotConnected);
 }
 
 #[test]
