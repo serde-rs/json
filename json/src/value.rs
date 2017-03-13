@@ -1176,16 +1176,42 @@ impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
 }
 
 impl fmt::Display for Value {
-    /// Serializes a json value into a string
+    /// Display a JSON value as a string.
+    ///
+    /// ```rust
+    /// # #[macro_use] extern crate serde_json;
+    /// # fn main() {
+    /// let json = json!({ "city": "London", "street": "10 Downing Street" });
+    ///
+    /// // Compact format:
+    /// //
+    /// // {"city":"London","street":"10 Downing Street"}
+    /// let compact = format!("{}", json);
+    /// assert_eq!(compact,
+    ///     "{\"city\":\"London\",\"street\":\"10 Downing Street\"}");
+    ///
+    /// // Pretty format:
+    /// //
+    /// // {
+    /// //   "city": "London",
+    /// //   "street": "10 Downing Street"
+    /// // }
+    /// let pretty = format!("{:#}", json);
+    /// assert_eq!(pretty,
+    ///     "{\n  \"city\": \"London\",\n  \"street\": \"10 Downing Street\"\n}");
+    /// # }
+    /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let normal = !f.alternate();
+        let alternate = f.alternate();
         let mut wr = WriterFormatter {
             inner: f,
         };
-        if normal {
-            super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
-        } else {
+        if alternate {
+            // {:#}
             super::ser::to_writer_pretty(&mut wr, self).map_err(|_| fmt::Error)
+        } else {
+            // {}
+            super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
         }
     }
 }
