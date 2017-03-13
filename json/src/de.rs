@@ -159,7 +159,7 @@ impl<R: Read> Deserializer<R> {
         where V: de::Visitor,
     {
         if try!(self.parse_whitespace()) { // true if eof
-            return Err(self.peek_error(ErrorCode::EOFWhileParsingValue));
+            return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
         }
 
         let value = match try!(self.peek_or_null()) {
@@ -526,7 +526,7 @@ impl<R: Read> Deserializer<R> {
                 Ok(())
             }
             Some(_) => Err(self.peek_error(ErrorCode::ExpectedColon)),
-            None => Err(self.peek_error(ErrorCode::EOFWhileParsingObject)),
+            None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
         }
     }
 
@@ -536,7 +536,7 @@ impl<R: Read> Deserializer<R> {
         match try!(self.next_char()) {
             Some(b']') => Ok(()),
             Some(_) => Err(self.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.error(ErrorCode::EOFWhileParsingList)),
+            None => Err(self.error(ErrorCode::EofWhileParsingList)),
         }
     }
 
@@ -546,7 +546,7 @@ impl<R: Read> Deserializer<R> {
         match try!(self.next_char()) {
             Some(b'}') => Ok(()),
             Some(_) => Err(self.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.error(ErrorCode::EOFWhileParsingObject)),
+            None => Err(self.error(ErrorCode::EofWhileParsingObject)),
         }
     }
 }
@@ -765,7 +765,7 @@ impl<'a, R: Read + 'a> de::SeqVisitor for SeqVisitor<'a, R> {
                 }
             }
             None => {
-                return Err(self.de.peek_error(ErrorCode::EOFWhileParsingList));
+                return Err(self.de.peek_error(ErrorCode::EofWhileParsingList));
             }
         }
 
@@ -814,14 +814,14 @@ impl<'a, R: Read + 'a> de::MapVisitor for MapVisitor<'a, R> {
             }
             None => {
                 return Err(self.de
-                    .peek_error(ErrorCode::EOFWhileParsingObject));
+                    .peek_error(ErrorCode::EofWhileParsingObject));
             }
         }
 
         match try!(self.de.peek()) {
             Some(b'"') => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
             Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
-            None => Err(self.de.peek_error(ErrorCode::EOFWhileParsingValue)),
+            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
     }
 

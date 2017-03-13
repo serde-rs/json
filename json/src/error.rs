@@ -11,38 +11,149 @@ use serde::ser;
 /// This type represents all possible errors that can occur when serializing or
 /// deserializing JSON data.
 pub struct Error {
+    /// This `Box` allows us to keep the size of `Error` as small as possible. A
+    /// larger `Error` type was substantially slower due to all the functions
+    /// that pass around `Result<T, Error>`.
     err: Box<ErrorImpl>,
 }
 
 /// Alias for a `Result` with the error type `serde_json::Error`.
 pub type Result<T> = result::Result<T, Error>;
 
-enum ErrorImpl {
-    /// The JSON value had some syntatic error.
-    Syntax(ErrorCode, usize, usize),
+impl Error {
+    /// One-based line number at which the error was detected.
+    ///
+    /// Characters in the first line of the input (before the first newline
+    /// character) are in line 1.
+    pub fn line(&self) -> usize {
+        self.err.line
+    }
 
-    /// Some IO error occurred when serializing or deserializing a value.
-    Io(io::Error),
+    /// One-based column number at which the error was detected.
+    ///
+    /// The first character in the input and any characters immediately
+    /// following a newline character are in column 1.
+    ///
+    /// Note that errors may occur in column 0, for example if a read from an IO
+    /// stream fails immediately following a previously read newline character.
+    pub fn column(&self) -> usize {
+        self.err.column
+    }
+
+    /// Categorizes the cause of this error.
+    ///
+    /// - `Category::Io` - failure to read or write bytes on an IO stream
+    /// - `Category::Syntax` - input that is not syntactically valid JSON
+    /// - `Category::Data` - input data that is semantically incorrect
+    /// - `Category::Eof` - unexpected end of the input data
+    pub fn classify(&self) -> Category {
+        match self.err.code {
+            ErrorCode::Message(_) => Category::Data,
+            ErrorCode::Io(_) => Category::Io,
+            ErrorCode::EofWhileParsingList |
+            ErrorCode::EofWhileParsingObject |
+            ErrorCode::EofWhileParsingString |
+            ErrorCode::EofWhileParsingValue => Category::Eof,
+            ErrorCode::ExpectedColon |
+            ErrorCode::ExpectedListCommaOrEnd |
+            ErrorCode::ExpectedObjectCommaOrEnd |
+            ErrorCode::ExpectedSomeIdent |
+            ErrorCode::ExpectedSomeValue |
+            ErrorCode::ExpectedSomeString |
+            ErrorCode::InvalidEscape |
+            ErrorCode::InvalidNumber |
+            ErrorCode::NumberOutOfRange |
+            ErrorCode::InvalidUnicodeCodePoint |
+            ErrorCode::KeyMustBeAString |
+            ErrorCode::LoneLeadingSurrogateInHexEscape |
+            ErrorCode::TrailingCharacters |
+            ErrorCode::UnexpectedEndOfHexEscape |
+            ErrorCode::RecursionLimitExceeded => Category::Syntax,
+        }
+    }
+
+    /// Returns true if this error was caused by a failure to read or write
+    /// bytes on an IO stream.
+    pub fn is_io(&self) -> bool {
+        self.classify() == Category::Io
+    }
+
+    /// Returns true if this error was caused by input that was not
+    /// syntactically valid JSON.
+    pub fn is_syntax(&self) -> bool {
+        self.classify() == Category::Syntax
+    }
+
+    /// Returns true if this error was caused by input data that was
+    /// semantically incorrect.
+    ///
+    /// For example, JSON containing a number is semantically incorrect when the
+    /// type being deserialized into holds a String.
+    pub fn is_data(&self) -> bool {
+        self.classify() == Category::Data
+    }
+
+    /// Returns true if this error was caused by prematurely reaching the end of
+    /// the input data.
+    ///
+    /// Callers that process streaming input may be interested in retrying the
+    /// deserialization once more data is available.
+    pub fn is_eof(&self) -> bool {
+        self.classify() == Category::Eof
+    }
+}
+
+/// Categorizes the cause of a `serde_json::Error`.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum Category {
+    /// The error was caused by a failure to read or write bytes on an IO
+    /// stream.
+    Io,
+
+    /// The error was caused by input that was not syntactically valid JSON.
+    Syntax,
+
+    /// The error was caused by input data that was semantically incorrect.
+    ///
+    /// For example, JSON containing a number is semantically incorrect when the
+    /// type being deserialized into holds a String.
+    Data,
+
+    /// The error was caused by prematurely reaching the end of the input data.
+    ///
+    /// Callers that process streaming input may be interested in retrying the
+    /// deserialization once more data is available.
+    Eof,
+}
+
+#[derive(Debug)]
+struct ErrorImpl {
+    code: ErrorCode,
+    line: usize,
+    column: usize,
 }
 
 // Not public API. Should be pub(crate).
 #[doc(hidden)]
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Debug)]
 pub enum ErrorCode {
     /// Catchall for syntax error messages
     Message(String),
 
+    /// Some IO error occurred while serializing or deserializing.
+    Io(io::Error),
+
     /// EOF while parsing a list.
-    EOFWhileParsingList,
+    EofWhileParsingList,
 
     /// EOF while parsing an object.
-    EOFWhileParsingObject,
+    EofWhileParsingObject,
 
     /// EOF while parsing a string.
-    EOFWhileParsingString,
+    EofWhileParsingString,
 
     /// EOF while parsing a JSON value.
-    EOFWhileParsingValue,
+    EofWhileParsingValue,
 
     /// Expected this character to be a `':'`.
     ExpectedColon,
@@ -93,9 +204,9 @@ pub enum ErrorCode {
 impl Error {
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
-    pub fn syntax(code: ErrorCode, line: usize, col: usize) -> Self {
+    pub fn syntax(code: ErrorCode, line: usize, column: usize) -> Self {
         Error {
-            err: Box::new(ErrorImpl::Syntax(code, line, col)),
+            err: Box::new(ErrorImpl { code: code, line: line, column: column }),
         }
     }
 
@@ -104,8 +215,8 @@ impl Error {
     pub fn fix_position<F>(self, f: F) -> Self
         where F: FnOnce(ErrorCode) -> Error
     {
-        if let ErrorImpl::Syntax(code, 0, 0) = *self.err {
-            f(code)
+        if self.err.line == 0 {
+            f(self.err.code)
         } else {
             self
         }
@@ -115,17 +226,18 @@ impl Error {
 impl Display for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ErrorCode::Message(ref msg) => write!(f, "{}", msg),
-            ErrorCode::EOFWhileParsingList => {
+            ErrorCode::Message(ref msg) => f.write_str(msg),
+            ErrorCode::Io(ref err) => Display::fmt(err, f),
+            ErrorCode::EofWhileParsingList => {
                 f.write_str("EOF while parsing a list")
             }
-            ErrorCode::EOFWhileParsingObject => {
+            ErrorCode::EofWhileParsingObject => {
                 f.write_str("EOF while parsing an object")
             }
-            ErrorCode::EOFWhileParsingString => {
+            ErrorCode::EofWhileParsingString => {
                 f.write_str("EOF while parsing a string")
             }
-            ErrorCode::EOFWhileParsingValue => {
+            ErrorCode::EofWhileParsingValue => {
                 f.write_str("EOF while parsing a value")
             }
             ErrorCode::ExpectedColon => {
@@ -179,34 +291,35 @@ impl Display for ErrorCode {
 
 impl error::Error for Error {
     fn description(&self) -> &str {
-        match *self.err {
-            ErrorImpl::Syntax(..) => {
+        match self.err.code {
+            ErrorCode::Io(ref err) => error::Error::description(err),
+            _ => {
                 // If you want a better message, use Display::fmt or to_string().
                 "JSON error"
             }
-            ErrorImpl::Io(ref error) => error::Error::description(error),
         }
     }
 
     fn cause(&self) -> Option<&error::Error> {
-        match *self.err {
-            ErrorImpl::Io(ref error) => Some(error),
+        match self.err.code {
+            ErrorCode::Io(ref err) => Some(err),
             _ => None,
         }
     }
 }
 
 impl Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match *self.err {
-            ErrorImpl::Syntax(ref code, line, col) => {
-                if line == 0 && col == 0 {
-                    write!(fmt, "{}", code)
-                } else {
-                    write!(fmt, "{} at line {} column {}", code, line, col)
-                }
-            }
-            ErrorImpl::Io(ref error) => fmt::Display::fmt(error, fmt),
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&*self.err, f)
+    }
+}
+
+impl Display for ErrorImpl {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.line == 0 {
+            Display::fmt(&self.code, f)
+        } else {
+            write!(f, "{} at line {} column {}", self.code, self.line, self.column)
         }
     }
 }
@@ -214,21 +327,8 @@ impl Display for Error {
 // Remove two layers of verbosity from the debug representation. Humans often
 // end up seeing this representation because it is what unwrap() shows.
 impl Debug for Error {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        match *self.err {
-            ErrorImpl::Syntax(ref code, ref line, ref col) => {
-                formatter.debug_tuple("Syntax")
-                    .field(code)
-                    .field(line)
-                    .field(col)
-                    .finish()
-            }
-            ErrorImpl::Io(ref io) => {
-                formatter.debug_tuple("Io")
-                    .field(io)
-                    .finish()
-            }
-        }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(&*self.err, f)
     }
 }
 
@@ -243,7 +343,7 @@ impl From<ErrorImpl> for Error {
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
         Error {
-            err: Box::new(ErrorImpl::Io(error)),
+            err: Box::new(ErrorImpl { code: ErrorCode::Io(error), line: 0, column: 0 }),
         }
     }
 }
@@ -251,7 +351,7 @@ impl From<io::Error> for Error {
 impl From<de::value::Error> for Error {
     fn from(error: de::value::Error) -> Error {
         Error {
-            err: Box::new(ErrorImpl::Syntax(ErrorCode::Message(error.to_string()), 0, 0)),
+            err: Box::new(ErrorImpl { code: ErrorCode::Message(error.to_string()), line: 0, column: 0 }),
         }
     }
 }
@@ -259,7 +359,7 @@ impl From<de::value::Error> for Error {
 impl de::Error for Error {
     fn custom<T: Display>(msg: T) -> Error {
         Error {
-            err: Box::new(ErrorImpl::Syntax(ErrorCode::Message(msg.to_string()), 0, 0)),
+            err: Box::new(ErrorImpl { code: ErrorCode::Message(msg.to_string()), line: 0, column: 0 }),
         }
     }
 }
@@ -267,7 +367,7 @@ impl de::Error for Error {
 impl ser::Error for Error {
     fn custom<T: Display>(msg: T) -> Error {
         Error {
-            err: Box::new(ErrorImpl::Syntax(ErrorCode::Message(msg.to_string()), 0, 0)),
+            err: Box::new(ErrorImpl { code: ErrorCode::Message(msg.to_string()), line: 0, column: 0 }),
         }
     }
 }
