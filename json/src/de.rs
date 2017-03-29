@@ -21,8 +21,8 @@ pub struct Deserializer<R> {
     remaining_depth: u8,
 }
 
-impl<R> Deserializer<R>
-    where R: read::Read
+impl<'de, R> Deserializer<R>
+    where R: read::Read<'de>
 {
     /// Create a JSON deserializer from one of the possible serde_json input
     /// sources.
@@ -80,7 +80,7 @@ macro_rules! overflow {
     }
 }
 
-impl<R: Read> Deserializer<R> {
+impl<'de, R: Read<'de>> Deserializer<R> {
     /// The `Deserializer::end` method should be called after a value has been fully deserialized.
     /// This allows the `Deserializer` to validate that the input stream is at the end or that it
     /// only has trailing whitespace.
@@ -93,14 +93,15 @@ impl<R: Read> Deserializer<R> {
     }
 
     /// Turn a JSON deserializer into an iterator over values of type T.
-    pub fn into_iter<T>(self) -> StreamDeserializer<R, T>
-        where T: de::DeserializeOwned
+    pub fn into_iter<T>(self) -> StreamDeserializer<'de, R, T>
+        where T: de::Deserialize<'de>
     {
         // This cannot be an implementation of std::iter::IntoIterator because
         // we need the caller to choose what T is.
         StreamDeserializer {
             de: self,
-            _marker: PhantomData,
+            output: PhantomData,
+            lifetime: PhantomData,
         }
     }
 
@@ -155,7 +156,7 @@ impl<R: Read> Deserializer<R> {
         }
     }
 
-    fn parse_value<'de, V>(&mut self, visitor: V) -> Result<V::Value>
+    fn parse_value<V>(&mut self, visitor: V) -> Result<V::Value>
         where V: de::Visitor<'de>,
     {
         if try!(self.parse_whitespace()) { // true if eof
@@ -186,8 +187,7 @@ impl<R: Read> Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.str_buf.clear();
-                let s = try!(self.read.parse_str(&mut self.str_buf));
-                visitor.visit_str(s)
+                self.read.parse_str(&mut self.str_buf, visitor)
             }
             b'[' => {
                 self.remaining_depth -= 1;
@@ -246,7 +246,7 @@ impl<R: Read> Deserializer<R> {
         Ok(())
     }
 
-    fn parse_integer<'de, V>(&mut self, pos: bool, visitor: V) -> Result<V::Value>
+    fn parse_integer<V>(&mut self, pos: bool, visitor: V) -> Result<V::Value>
         where V: de::Visitor<'de>,
     {
         match try!(self.next_char_or_null()) {
@@ -290,7 +290,7 @@ impl<R: Read> Deserializer<R> {
         }
     }
 
-    fn parse_long_integer<'de, V>(
+    fn parse_long_integer<V>(
         &mut self,
         pos: bool,
         significand: u64,
@@ -323,7 +323,7 @@ impl<R: Read> Deserializer<R> {
         }
     }
 
-    fn parse_number<'de, V>(
+    fn parse_number<V>(
         &mut self,
         pos: bool,
         significand: u64,
@@ -351,7 +351,7 @@ impl<R: Read> Deserializer<R> {
         }
     }
 
-    fn parse_decimal<'de, V>(
+    fn parse_decimal<V>(
         &mut self,
         pos: bool,
         mut significand: u64,
@@ -393,7 +393,7 @@ impl<R: Read> Deserializer<R> {
         }
     }
 
-    fn parse_exponent<'de, V>(
+    fn parse_exponent<V>(
         &mut self,
         pos: bool,
         significand: u64,
@@ -451,7 +451,7 @@ impl<R: Read> Deserializer<R> {
     // exponent-parsing loop above.
     #[cold]
     #[inline(never)]
-    fn parse_exponent_overflow<'de, V>(
+    fn parse_exponent_overflow<V>(
         &mut self,
         pos: bool,
         significand: u64,
@@ -475,7 +475,7 @@ impl<R: Read> Deserializer<R> {
         })
     }
 
-    fn visit_f64_from_parts<'de, V>(
+    fn visit_f64_from_parts<V>(
         &mut self,
         pos: bool,
         significand: u64,
@@ -584,7 +584,7 @@ static POW10: [f64; 309] =
      1e290, 1e291, 1e292, 1e293, 1e294, 1e295, 1e296, 1e297, 1e298, 1e299,
      1e300, 1e301, 1e302, 1e303, 1e304, 1e305, 1e306, 1e307, 1e308];
 
-impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
+impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
 
     #[inline]
@@ -727,12 +727,12 @@ impl<'de, 'a, R: Read> de::Deserializer<'de> for &'a mut Deserializer<R> {
     }
 }
 
-struct SeqVisitor<'a, R: Read + 'a> {
+struct SeqVisitor<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
     first: bool,
 }
 
-impl<'a, R: Read + 'a> SeqVisitor<'a, R> {
+impl<'a, R: 'a> SeqVisitor<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
         SeqVisitor {
             de: de,
@@ -741,7 +741,7 @@ impl<'a, R: Read + 'a> SeqVisitor<'a, R> {
     }
 }
 
-impl<'de, 'a, R: Read + 'a> de::SeqVisitor<'de> for SeqVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::SeqVisitor<'de> for SeqVisitor<'a, R> {
     type Error = Error;
 
     fn visit_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
@@ -774,12 +774,12 @@ impl<'de, 'a, R: Read + 'a> de::SeqVisitor<'de> for SeqVisitor<'a, R> {
     }
 }
 
-struct MapVisitor<'a, R: Read + 'a> {
+struct MapVisitor<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
     first: bool,
 }
 
-impl<'a, R: Read + 'a> MapVisitor<'a, R> {
+impl<'a, R: 'a> MapVisitor<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
         MapVisitor {
             de: de,
@@ -788,7 +788,7 @@ impl<'a, R: Read + 'a> MapVisitor<'a, R> {
     }
 }
 
-impl<'de, 'a, R: Read + 'a> de::MapVisitor<'de> for MapVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::MapVisitor<'de> for MapVisitor<'a, R> {
     type Error = Error;
 
     fn visit_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
@@ -834,11 +834,11 @@ impl<'de, 'a, R: Read + 'a> de::MapVisitor<'de> for MapVisitor<'a, R> {
     }
 }
 
-struct VariantVisitor<'a, R: Read + 'a> {
+struct VariantVisitor<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
 }
 
-impl<'a, R: Read + 'a> VariantVisitor<'a, R> {
+impl<'a, R: 'a> VariantVisitor<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
         VariantVisitor {
             de: de,
@@ -846,7 +846,7 @@ impl<'a, R: Read + 'a> VariantVisitor<'a, R> {
     }
 }
 
-impl<'de, 'a, R: Read + 'a> de::EnumVisitor<'de> for VariantVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::EnumVisitor<'de> for VariantVisitor<'a, R> {
     type Error = Error;
     type Variant = Self;
 
@@ -859,7 +859,7 @@ impl<'de, 'a, R: Read + 'a> de::EnumVisitor<'de> for VariantVisitor<'a, R> {
     }
 }
 
-impl<'de, 'a, R: Read + 'a> de::VariantVisitor<'de> for VariantVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::VariantVisitor<'de> for VariantVisitor<'a, R> {
     type Error = Error;
 
     fn visit_unit(self) -> Result<()> {
@@ -889,11 +889,11 @@ impl<'de, 'a, R: Read + 'a> de::VariantVisitor<'de> for VariantVisitor<'a, R> {
     }
 }
 
-struct UnitVariantVisitor<'a, R: Read + 'a> {
+struct UnitVariantVisitor<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
 }
 
-impl<'a, R: Read + 'a> UnitVariantVisitor<'a, R> {
+impl<'a, R: 'a> UnitVariantVisitor<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
         UnitVariantVisitor {
             de: de,
@@ -901,7 +901,7 @@ impl<'a, R: Read + 'a> UnitVariantVisitor<'a, R> {
     }
 }
 
-impl<'de, 'a, R: Read + 'a> de::EnumVisitor<'de> for UnitVariantVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::EnumVisitor<'de> for UnitVariantVisitor<'a, R> {
     type Error = Error;
     type Variant = Self;
 
@@ -913,7 +913,7 @@ impl<'de, 'a, R: Read + 'a> de::EnumVisitor<'de> for UnitVariantVisitor<'a, R> {
     }
 }
 
-impl<'de, 'a, R: Read + 'a> de::VariantVisitor<'de> for UnitVariantVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::VariantVisitor<'de> for UnitVariantVisitor<'a, R> {
     type Error = Error;
 
     fn visit_unit(self) -> Result<()> {
@@ -965,14 +965,15 @@ impl<'de, 'a, R: Read + 'a> de::VariantVisitor<'de> for UnitVariantVisitor<'a, R
 ///     }
 /// }
 /// ```
-pub struct StreamDeserializer<R, T> {
+pub struct StreamDeserializer<'de, R, T> {
     de: Deserializer<R>,
-    _marker: PhantomData<T>,
+    output: PhantomData<T>,
+    lifetime: PhantomData<&'de ()>,
 }
 
-impl<R, T> StreamDeserializer<R, T>
-    where R: read::Read,
-          T: de::DeserializeOwned
+impl<'de, R, T> StreamDeserializer<'de, R, T>
+    where R: read::Read<'de>,
+          T: de::Deserialize<'de>
 {
     /// Create a JSON stream deserializer from one of the possible serde_json
     /// input sources.
@@ -986,14 +987,15 @@ impl<R, T> StreamDeserializer<R, T>
     pub fn new(read: R) -> Self {
         StreamDeserializer {
             de: Deserializer::new(read),
-            _marker: PhantomData,
+            output: PhantomData,
+            lifetime: PhantomData,
         }
     }
 }
 
-impl<R, T> Iterator for StreamDeserializer<R, T>
-    where R: Read,
-          T: de::DeserializeOwned,
+impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
+    where R: Read<'de>,
+          T: de::Deserialize<'de>,
 {
     type Item = Result<T>;
 
@@ -1016,8 +1018,8 @@ impl<R, T> Iterator for StreamDeserializer<R, T>
 
 //////////////////////////////////////////////////////////////////////////////
 
-fn from_trait<R, T>(read: R) -> Result<T>
-    where R: Read,
+fn from_trait<'de, R, T>(read: R) -> Result<T>
+    where R: Read<'de>,
           T: de::DeserializeOwned,
 {
     let mut de = Deserializer::new(read);

@@ -1,5 +1,6 @@
 use std::{char, cmp, io, str};
 
+use serde::de::Visitor;
 use serde::iter::LineColIterator;
 
 use super::error::{Error, ErrorCode, Result};
@@ -10,7 +11,7 @@ use super::error::{Error, ErrorCode, Result};
 ///
 /// This trait is sealed and cannot be implemented for types outside of
 /// `serde_json`.
-pub trait Read: private::Sealed {
+pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn next(&mut self) -> io::Result<Option<u8>>;
     #[doc(hidden)]
@@ -44,10 +45,11 @@ pub trait Read: private::Sealed {
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
     #[doc(hidden)]
-    fn parse_str<'s>(
+    fn parse_str<'s, V: Visitor<'de>>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,
-    ) -> Result<&'s str>;
+        visitor: V,
+    ) -> Result<V::Value>;
 
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark using the given scratch space if
@@ -158,7 +160,7 @@ impl<Iter> IteratorRead<Iter>
     }
 }
 
-impl<Iter> Read for IteratorRead<Iter>
+impl<'de, Iter> Read<'de> for IteratorRead<Iter>
     where Iter: Iterator<Item = io::Result<u8>>,
 {
     #[inline]
@@ -210,11 +212,13 @@ impl<Iter> Read for IteratorRead<Iter>
         self.position()
     }
 
-    fn parse_str<'s>(
+    fn parse_str<'s, V: Visitor<'de>>(
         &'s mut self,
-        scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
-        self.parse_str_bytes(scratch, true, as_str)
+        scratch: &'s mut Vec<u8>,
+        visitor: V,
+    ) -> Result<V::Value> {
+        let s = self.parse_str_bytes(scratch, true, as_str)?;
+        visitor.visit_str(s)
     }
 
     fn parse_str_raw<'s>(
@@ -241,7 +245,7 @@ impl<R> IoRead<R>
 impl<R> private::Sealed for IoRead<R>
     where R: io::Read {}
 
-impl<R> Read for IoRead<R>
+impl<'de, R> Read<'de> for IoRead<R>
     where R: io::Read
 {
     #[inline]
@@ -270,11 +274,12 @@ impl<R> Read for IoRead<R>
     }
 
     #[inline]
-    fn parse_str<'s>(
+    fn parse_str<'s, V: Visitor<'de>>(
         &'s mut self,
-        scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
-        self.delegate.parse_str(scratch)
+        scratch: &'s mut Vec<u8>,
+        visitor: V,
+    ) -> Result<V::Value> {
+        self.delegate.parse_str(scratch, visitor)
     }
 
     #[inline]
@@ -372,7 +377,7 @@ impl<'a> SliceRead<'a> {
 
 impl<'a> private::Sealed for SliceRead<'a> {}
 
-impl<'a> Read for SliceRead<'a> {
+impl<'de, 'a> Read<'de> for SliceRead<'a> {
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
         // `Ok(self.slice.get(self.index).map(|ch| { self.index += 1; *ch }))`
@@ -412,11 +417,13 @@ impl<'a> Read for SliceRead<'a> {
         self.position_of_index(cmp::min(self.slice.len(), self.index + 1))
     }
 
-    fn parse_str<'s>(
+    fn parse_str<'s, V: Visitor<'de>>(
         &'s mut self,
-        scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
-        self.parse_str_bytes(scratch, true, as_str)
+        scratch: &'s mut Vec<u8>,
+        visitor: V,
+    ) -> Result<V::Value> {
+        let s = self.parse_str_bytes(scratch, true, as_str)?;
+        visitor.visit_str(s)
     }
 
     fn parse_str_raw<'s>(
@@ -441,7 +448,7 @@ impl<'a> StrRead<'a> {
 
 impl<'a> private::Sealed for StrRead<'a> {}
 
-impl<'a> Read for StrRead<'a> {
+impl<'de, 'a> Read<'de> for StrRead<'a> {
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
         self.delegate.next()
@@ -465,15 +472,17 @@ impl<'a> Read for StrRead<'a> {
         self.delegate.peek_position()
     }
 
-    fn parse_str<'s>(
+    fn parse_str<'s, V: Visitor<'de>>(
         &'s mut self,
-        scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
-        self.delegate.parse_str_bytes(scratch, true, |_, bytes| {
+        scratch: &'s mut Vec<u8>,
+        visitor: V,
+    ) -> Result<V::Value> {
+        let s = self.delegate.parse_str_bytes(scratch, true, |_, bytes| {
             // The input is assumed to be valid UTF-8 and the \u-escapes are
             // checked along the way, so don't need to check here.
             Ok(unsafe { str::from_utf8_unchecked(bytes) })
-        })
+        })?;
+        visitor.visit_str(s)
     }
 
     fn parse_str_raw<'s>(
@@ -514,26 +523,26 @@ static ESCAPE: [bool; 256] = [
      O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // F
 ];
 
-fn next_or_eof<R: Read>(read: &mut R) -> Result<u8> {
+fn next_or_eof<'de, R: Read<'de>>(read: &mut R) -> Result<u8> {
     match try!(read.next()) {
         Some(b) => Ok(b),
         None => error(read, ErrorCode::EofWhileParsingString),
     }
 }
 
-fn error<R: Read, T>(read: &R, reason: ErrorCode) -> Result<T> {
+fn error<'de, R: Read<'de>, T>(read: &R, reason: ErrorCode) -> Result<T> {
     let pos = read.position();
     Err(Error::syntax(reason, pos.line, pos.column))
 }
 
-fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
+fn as_str<'de, 's, R: Read<'de>>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
     str::from_utf8(slice)
         .or_else(|_| error(read, ErrorCode::InvalidUnicodeCodePoint))
 }
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
 /// the previous byte read was a backslash.
-fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
+fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
     let ch = try!(next_or_eof(read));
 
     match ch {
@@ -604,7 +613,7 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
     Ok(())
 }
 
-fn decode_hex_escape<R: Read>(read: &mut R) -> Result<u16> {
+fn decode_hex_escape<'de, R: Read<'de>>(read: &mut R) -> Result<u16> {
     let mut n = 0;
     for _ in 0..4 {
         n = match try!(next_or_eof(read)) {
