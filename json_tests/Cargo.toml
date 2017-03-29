@@ -9,9 +9,12 @@ trace-macros = []
 unstable-testing = ["compiletest_rs"]
 
 [dev-dependencies]
-serde = "0.9.11"
+#serde = "0.9.11"
 serde_json = { path = "../json" }
-serde_derive = "0.9"
+#serde_derive = "0.9"
+
+serde = { path = "../../serde/serde" }
+serde_derive = { path = "../../serde/serde_derive" }
 
 [dependencies]
 compiletest_rs = { version = "0.2", optional = true }
