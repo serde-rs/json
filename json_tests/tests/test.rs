@@ -1932,3 +1932,9 @@ fn test_category() {
     assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0").unwrap_err().is_eof());
     assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0,").unwrap_err().is_eof());
 }
+
+#[test]
+fn test_str() {
+    let s: &str = from_str("\"borrowed\"").unwrap();
+    assert_eq!("borrowed", s);
+}

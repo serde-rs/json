@@ -8,7 +8,7 @@ use serde::de::{self, Unexpected};
 
 use super::error::{Error, ErrorCode, Result};
 
-use read;
+use read::{self, Reference};
 
 pub use read::{Read, IoRead, IteratorRead, SliceRead, StrRead};
 
@@ -187,7 +187,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.str_buf.clear();
-                self.read.parse_str(&mut self.str_buf, visitor)
+                match try!(self.read.parse_str(&mut self.str_buf)) {
+                    Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
+                    Reference::Copied(s) => visitor.visit_str(s),
+                }
             }
             b'[' => {
                 self.remaining_depth -= 1;
@@ -705,8 +708,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.str_buf.clear();
-                let slice = try!(self.read.parse_str_raw(&mut self.str_buf));
-                visitor.visit_bytes(slice)
+                match try!(self.read.parse_str_raw(&mut self.str_buf)) {
+                    Reference::Borrowed(b) => visitor.visit_borrowed_bytes(b),
+                    Reference::Copied(b) => visitor.visit_bytes(b),
+                }
             }
             _ => self.deserialize(visitor),
         }
@@ -1020,7 +1025,7 @@ impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
 
 fn from_trait<'de, R, T>(read: R) -> Result<T>
     where R: Read<'de>,
-          T: de::DeserializeOwned,
+          T: de::Deserialize<'de>,
 {
     let mut de = Deserializer::new(read);
     let value = try!(de::Deserialize::deserialize(&mut de));
@@ -1086,8 +1091,8 @@ pub fn from_slice<T>(v: &[u8]) -> Result<T>
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
-pub fn from_str<T>(s: &str) -> Result<T>
-    where T: de::DeserializeOwned,
+pub fn from_str<'a, T>(s: &'a str) -> Result<T>
+    where T: de::Deserialize<'a>,
 {
     from_trait(read::StrRead::new(s))
 }
