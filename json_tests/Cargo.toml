@@ -9,9 +9,9 @@ trace-macros = []
 unstable-testing = ["compiletest_rs"]
 
 [dev-dependencies]
-serde = "0.9.11"
+serde = { git = "https://github.com/serde-rs/serde", branch = "1.0" }
 serde_json = { path = "../json" }
-serde_derive = "0.9"
+serde_derive = { git = "https://github.com/serde-rs/serde", branch = "1.0" }
 
 [dependencies]
 compiletest_rs = { version = "0.2", optional = true }

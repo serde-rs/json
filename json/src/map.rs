@@ -281,14 +281,14 @@ impl ser::Serialize for Map<String, Value> {
     }
 }
 
-impl de::Deserialize for Map<String, Value> {
+impl<'de> de::Deserialize<'de> for Map<String, Value> {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: de::Deserializer
+        where D: de::Deserializer<'de>
     {
         struct Visitor;
 
-        impl de::Visitor for Visitor {
+        impl<'de> de::Visitor<'de> for Visitor {
             type Value = Map<String, Value>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -304,7 +304,7 @@ impl de::Deserialize for Map<String, Value> {
 
             #[inline]
             fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
-                where V: de::MapVisitor
+                where V: de::MapVisitor<'de>
             {
                 let mut values = Map::with_capacity(visitor.size_hint().0);
 

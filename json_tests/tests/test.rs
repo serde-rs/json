@@ -714,7 +714,7 @@ fn test_write_map_with_integer_keys_issue_221() {
 }
 
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)
-    where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
+    where T: Clone + Debug + PartialEq + ser::Serialize + de::DeserializeOwned,
 {
     for (s, value) in tests {
         let v: T = from_str(s).unwrap();
@@ -747,7 +747,7 @@ fn test_parse_ok<T>(tests: Vec<(&str, T)>)
 // For testing representations that the deserializer accepts but the serializer
 // never generates. These do not survive a round-trip through Value.
 fn test_parse_unusual_ok<T>(tests: Vec<(&str, T)>)
-    where T: Clone + Debug + PartialEq + ser::Serialize + de::Deserialize,
+    where T: Clone + Debug + PartialEq + ser::Serialize + de::DeserializeOwned,
 {
     for (s, value) in tests {
         let v: T = from_str(s).unwrap();
@@ -769,7 +769,7 @@ macro_rules! test_parse_err {
 }
 
 fn test_parse_err<T>(errors: &[(&str, &'static str)])
-    where T: Debug + PartialEq + de::Deserialize,
+    where T: Debug + PartialEq + de::DeserializeOwned,
 {
     for &(s, err) in errors {
         test_parse_err!(from_str::<T>(s) => err);
@@ -779,7 +779,7 @@ fn test_parse_err<T>(errors: &[(&str, &'static str)])
 }
 
 fn test_parse_slice_err<T>(errors: &[(&[u8], &'static str)])
-    where T: Debug + PartialEq + de::Deserialize,
+    where T: Debug + PartialEq + de::DeserializeOwned,
 {
     for &(s, err) in errors {
         test_parse_err!(from_slice::<T>(s) => err);
@@ -1364,8 +1364,8 @@ fn test_serialize_seq_with_no_len() {
         marker: PhantomData<MyVec<T>>,
     }
 
-    impl<T> de::Visitor for Visitor<T>
-        where T: de::Deserialize,
+    impl<'de, T> de::Visitor<'de> for Visitor<T>
+        where T: de::Deserialize<'de>,
     {
         type Value = MyVec<T>;
 
@@ -1382,7 +1382,7 @@ fn test_serialize_seq_with_no_len() {
 
         #[inline]
         fn visit_seq<V>(self, mut visitor: V) -> Result<MyVec<T>, V::Error>
-            where V: de::SeqVisitor,
+            where V: de::SeqVisitor<'de>,
         {
             let mut values = Vec::new();
 
@@ -1394,11 +1394,11 @@ fn test_serialize_seq_with_no_len() {
         }
     }
 
-    impl<T> de::Deserialize for MyVec<T>
-        where T: de::Deserialize,
+    impl<'de, T> de::Deserialize<'de> for MyVec<T>
+        where T: de::Deserialize<'de>,
     {
         fn deserialize<D>(deserializer: D) -> Result<MyVec<T>, D::Error>
-            where D: de::Deserializer,
+            where D: de::Deserializer<'de>,
         {
             deserializer.deserialize_map(Visitor { marker: PhantomData })
         }
@@ -1451,9 +1451,9 @@ fn test_serialize_map_with_no_len() {
         marker: PhantomData<MyMap<K, V>>,
     }
 
-    impl<K, V> de::Visitor for Visitor<K, V>
-        where K: de::Deserialize + Eq + Ord,
-              V: de::Deserialize,
+    impl<'de, K, V> de::Visitor<'de> for Visitor<K, V>
+        where K: de::Deserialize<'de> + Eq + Ord,
+              V: de::Deserialize<'de>,
     {
         type Value = MyMap<K, V>;
 
@@ -1470,7 +1470,7 @@ fn test_serialize_map_with_no_len() {
 
         #[inline]
         fn visit_map<Visitor>(self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
-            where Visitor: de::MapVisitor,
+            where Visitor: de::MapVisitor<'de>,
         {
             let mut values = BTreeMap::new();
 
@@ -1482,12 +1482,12 @@ fn test_serialize_map_with_no_len() {
         }
     }
 
-    impl<K, V> de::Deserialize for MyMap<K, V>
-        where K: de::Deserialize + Eq + Ord,
-              V: de::Deserialize,
+    impl<'de, K, V> de::Deserialize<'de> for MyMap<K, V>
+        where K: de::Deserialize<'de> + Eq + Ord,
+              V: de::Deserialize<'de>,
     {
         fn deserialize<D>(deserializer: D) -> Result<MyMap<K, V>, D::Error>
-            where D: de::Deserializer,
+            where D: de::Deserializer<'de>,
         {
             deserializer.deserialize_map(Visitor { marker: PhantomData })
         }
@@ -1931,4 +1931,13 @@ fn test_category() {
     assert!(from_str::<BTreeMap<String, usize>>("{\"k\":").unwrap_err().is_eof());
     assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0").unwrap_err().is_eof());
     assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0,").unwrap_err().is_eof());
+}
+
+#[test]
+fn test_borrow() {
+    let s: &str = from_str("\"borrowed\"").unwrap();
+    assert_eq!("borrowed", s);
+
+    let s: &str = from_slice(b"\"borrowed\"").unwrap();
+    assert_eq!("borrowed", s);
 }

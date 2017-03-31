@@ -123,14 +123,14 @@ impl Serialize for Number {
     }
 }
 
-impl Deserialize for Number {
+impl<'de> Deserialize<'de> for Number {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Number, D::Error>
-        where D: Deserializer
+        where D: Deserializer<'de>
     {
         struct NumberVisitor;
 
-        impl Visitor for NumberVisitor {
+        impl<'de> Visitor<'de> for NumberVisitor {
             type Value = Number;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -159,12 +159,12 @@ impl Deserialize for Number {
     }
 }
 
-impl Deserializer for Number {
+impl<'de> Deserializer<'de> for Number {
     type Error = Error;
 
     #[inline]
     fn deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
-        where V: Visitor
+        where V: Visitor<'de>
     {
         match self.n {
             N::PosInt(i) => visitor.visit_u64(i),
@@ -180,12 +180,12 @@ impl Deserializer for Number {
     }
 }
 
-impl<'a> Deserializer for &'a Number {
+impl<'de, 'a> Deserializer<'de> for &'a Number {
     type Error = Error;
 
     #[inline]
     fn deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
-        where V: Visitor
+        where V: Visitor<'de>
     {
         match self.n {
             N::PosInt(i) => visitor.visit_u64(i),

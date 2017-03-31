@@ -10,7 +10,7 @@ use super::error::{Error, ErrorCode, Result};
 ///
 /// This trait is sealed and cannot be implemented for types outside of
 /// `serde_json`.
-pub trait Read: private::Sealed {
+pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn next(&mut self) -> io::Result<Option<u8>>;
     #[doc(hidden)]
@@ -46,8 +46,8 @@ pub trait Read: private::Sealed {
     #[doc(hidden)]
     fn parse_str<'s>(
         &'s mut self,
-        scratch: &'s mut Vec<u8>,
-    ) -> Result<&'s str>;
+        scratch: &'s mut Vec<u8>
+    ) -> Result<Reference<'de, 's, str>>;
 
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark using the given scratch space if
@@ -59,12 +59,17 @@ pub trait Read: private::Sealed {
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s [u8]>;
+    ) -> Result<Reference<'de, 's, [u8]>>;
 }
 
 pub struct Position {
     pub line: usize,
     pub column: usize,
+}
+
+pub enum Reference<'b, 'c, T: ?Sized + 'static> {
+    Borrowed(&'b T),
+    Copied(&'c T),
 }
 
 /// JSON input source that reads from an iterator of bytes.
@@ -158,7 +163,7 @@ impl<Iter> IteratorRead<Iter>
     }
 }
 
-impl<Iter> Read for IteratorRead<Iter>
+impl<'de, Iter> Read<'de> for IteratorRead<Iter>
     where Iter: Iterator<Item = io::Result<u8>>,
 {
     #[inline]
@@ -213,15 +218,15 @@ impl<Iter> Read for IteratorRead<Iter>
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
-        self.parse_str_bytes(scratch, true, as_str)
+    ) -> Result<Reference<'de, 's, str>> {
+        self.parse_str_bytes(scratch, true, as_str).map(Reference::Copied)
     }
 
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s [u8]> {
-        self.parse_str_bytes(scratch, false, |_, bytes| Ok(bytes))
+    ) -> Result<Reference<'de, 's, [u8]>> {
+        self.parse_str_bytes(scratch, false, |_, bytes| Ok(bytes)).map(Reference::Copied)
     }
 }
 
@@ -241,7 +246,7 @@ impl<R> IoRead<R>
 impl<R> private::Sealed for IoRead<R>
     where R: io::Read {}
 
-impl<R> Read for IoRead<R>
+impl<'de, R> Read<'de> for IoRead<R>
     where R: io::Read
 {
     #[inline]
@@ -273,7 +278,7 @@ impl<R> Read for IoRead<R>
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
+    ) -> Result<Reference<'de, 's, str>> {
         self.delegate.parse_str(scratch)
     }
 
@@ -281,7 +286,7 @@ impl<R> Read for IoRead<R>
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s [u8]> {
+    ) -> Result<Reference<'de, 's, [u8]>> {
         self.delegate.parse_str_raw(scratch)
     }
 }
@@ -319,14 +324,14 @@ impl<'a> SliceRead<'a> {
     /// The big optimization here over IteratorRead is that if the string
     /// contains no backslash escape sequences, the returned &str is a slice of
     /// the raw JSON data so we avoid copying into the scratch space.
-    fn parse_str_bytes<'s, T, F>(
+    fn parse_str_bytes<'s, T: ?Sized, F>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,
         validate: bool,
         result: F
-    ) -> Result<T>
+    ) -> Result<Reference<'a, 's, T>>
         where T: 's,
-              F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
+              F: for<'f> FnOnce(&'s Self, &'f [u8]) -> Result<&'f T>,
     {
         // Index of the first byte not yet copied into the scratch space.
         let mut start = self.index;
@@ -341,17 +346,19 @@ impl<'a> SliceRead<'a> {
             }
             match self.slice[self.index] {
                 b'"' => {
-                    let string = if scratch.is_empty() {
+                    if scratch.is_empty() {
                         // Fast path: return a slice of the raw JSON without any
                         // copying.
-                        &self.slice[start..self.index]
+                        let borrowed = &self.slice[start..self.index];
+                        self.index += 1;
+                        return result(self, borrowed).map(Reference::Borrowed);
                     } else {
                         scratch.extend_from_slice(&self.slice[start .. self.index]);
                         // "as &[u8]" is required for rustc 1.8.0
-                        scratch as &[u8]
-                    };
-                    self.index += 1;
-                    return result(self, string);
+                        let copied = scratch as &[u8];
+                        self.index += 1;
+                        return result(self, copied).map(Reference::Copied);
+                    }
                 }
                 b'\\' => {
                     scratch.extend_from_slice(&self.slice[start..self.index]);
@@ -372,7 +379,7 @@ impl<'a> SliceRead<'a> {
 
 impl<'a> private::Sealed for SliceRead<'a> {}
 
-impl<'a> Read for SliceRead<'a> {
+impl<'a> Read<'a> for SliceRead<'a> {
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
         // `Ok(self.slice.get(self.index).map(|ch| { self.index += 1; *ch }))`
@@ -415,14 +422,14 @@ impl<'a> Read for SliceRead<'a> {
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
+    ) -> Result<Reference<'a, 's, str>> {
         self.parse_str_bytes(scratch, true, as_str)
     }
 
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s [u8]> {
+    ) -> Result<Reference<'a, 's, [u8]>> {
         self.parse_str_bytes(scratch, false, |_, bytes| Ok(bytes))
     }
 
@@ -441,7 +448,7 @@ impl<'a> StrRead<'a> {
 
 impl<'a> private::Sealed for StrRead<'a> {}
 
-impl<'a> Read for StrRead<'a> {
+impl<'a> Read<'a> for StrRead<'a> {
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
         self.delegate.next()
@@ -468,7 +475,7 @@ impl<'a> Read for StrRead<'a> {
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s str> {
+    ) -> Result<Reference<'a, 's, str>> {
         self.delegate.parse_str_bytes(scratch, true, |_, bytes| {
             // The input is assumed to be valid UTF-8 and the \u-escapes are
             // checked along the way, so don't need to check here.
@@ -479,7 +486,7 @@ impl<'a> Read for StrRead<'a> {
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
-    ) -> Result<&'s [u8]> {
+    ) -> Result<Reference<'a, 's, [u8]>> {
         self.delegate.parse_str_raw(scratch)
     }
 }
@@ -514,26 +521,26 @@ static ESCAPE: [bool; 256] = [
      O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // F
 ];
 
-fn next_or_eof<R: Read>(read: &mut R) -> Result<u8> {
+fn next_or_eof<'de, R: Read<'de>>(read: &mut R) -> Result<u8> {
     match try!(read.next()) {
         Some(b) => Ok(b),
         None => error(read, ErrorCode::EofWhileParsingString),
     }
 }
 
-fn error<R: Read, T>(read: &R, reason: ErrorCode) -> Result<T> {
+fn error<'de, R: Read<'de>, T>(read: &R, reason: ErrorCode) -> Result<T> {
     let pos = read.position();
     Err(Error::syntax(reason, pos.line, pos.column))
 }
 
-fn as_str<'s, R: Read>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
+fn as_str<'de, 's, R: Read<'de>>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
     str::from_utf8(slice)
         .or_else(|_| error(read, ErrorCode::InvalidUnicodeCodePoint))
 }
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
 /// the previous byte read was a backslash.
-fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
+fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
     let ch = try!(next_or_eof(read));
 
     match ch {
@@ -604,7 +611,7 @@ fn parse_escape<R: Read>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
     Ok(())
 }
 
-fn decode_hex_escape<R: Read>(read: &mut R) -> Result<u16> {
+fn decode_hex_escape<'de, R: Read<'de>>(read: &mut R) -> Result<u16> {
     let mut n = 0;
     for _ in 0..4 {
         n = match try!(next_or_eof(read)) {
