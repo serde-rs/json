@@ -1934,7 +1934,10 @@ fn test_category() {
 }
 
 #[test]
-fn test_str() {
+fn test_borrow() {
     let s: &str = from_str("\"borrowed\"").unwrap();
+    assert_eq!("borrowed", s);
+
+    let s: &str = from_slice(b"\"borrowed\"").unwrap();
     assert_eq!("borrowed", s);
 }

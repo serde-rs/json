@@ -1076,8 +1076,8 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
-pub fn from_slice<T>(v: &[u8]) -> Result<T>
-    where T: de::DeserializeOwned,
+pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
+    where T: de::Deserialize<'a>,
 {
     from_trait(read::SliceRead::new(v))
 }
