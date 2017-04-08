@@ -1129,12 +1129,16 @@ impl<'de> de::Deserialize<'de> for Value {
             }
 
             #[inline]
-            fn visit_seq<V>(self, visitor: V) -> Result<Value, V::Error>
+            fn visit_seq<V>(self, mut visitor: V) -> Result<Value, V::Error>
                 where V: de::SeqVisitor<'de>,
             {
-                let values = try!(de::impls::VecVisitor::new()
-                    .visit_seq(visitor));
-                Ok(Value::Array(values))
+                let mut vec = Vec::with_capacity(visitor.size_hint().0);
+
+                while let Some(elem) = try!(visitor.visit()) {
+                    vec.push(elem);
+                }
+
+                Ok(Value::Array(vec))
             }
 
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>

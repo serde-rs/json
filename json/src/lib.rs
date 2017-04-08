@@ -287,5 +287,6 @@ pub mod map;
 pub mod ser;
 pub mod value;
 
+mod iter;
 mod number;
 mod read;

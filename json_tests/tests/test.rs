@@ -8,6 +8,7 @@ trace_macros!(true);
 extern crate serde_derive;
 
 extern crate serde;
+extern crate serde_bytes;
 #[macro_use]
 extern crate serde_json;
 
@@ -24,7 +25,8 @@ use std::{u8, u16, u32, u64};
 
 use serde::de;
 use serde::ser::{self, Serialize, Serializer};
-use serde::bytes::{ByteBuf, Bytes};
+
+use serde_bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     Deserializer,
@@ -915,7 +917,6 @@ fn test_parse_negative_zero() {
         "-1e-400",
         "-1e-4000000000000000000000000000000000000000000000000",
     ] {
-        assert_eq!(0, from_str::<u32>(negative_zero).unwrap());
         assert!(from_str::<f64>(negative_zero).unwrap().is_sign_negative(),
             "should have been negative: {:?}", negative_zero);
     }
@@ -1054,8 +1055,6 @@ fn test_parse_list() {
     test_parse_ok(vec![
         ("[1, [2, 3]]", (1u64, (2u64, 3u64))),
     ]);
-
-    from_str::<()>("[]").unwrap();
 }
 
 #[test]
@@ -1194,7 +1193,7 @@ fn test_parse_enum_errors() {
             "expected value at line 1 column 1"),
         ("\"unknown\"",
             "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 9"),
-        ("{\"unknown\":[]}",
+        ("{\"unknown\":null}",
             "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 10"),
         ("{\"Dog\":",
             "EOF while parsing a value at line 1 column 7"),
@@ -1202,8 +1201,6 @@ fn test_parse_enum_errors() {
             "expected value at line 1 column 8"),
         ("{\"Dog\":{}}",
             "invalid type: map, expected unit at line 1 column 9"),
-        ("{\"Dog\":[0]}",
-            "trailing characters at line 1 column 9"),
         ("\"Frog\"",
             "invalid type: unit variant, expected tuple variant"),
         ("\"Frog\" 0 ",
@@ -1249,8 +1246,8 @@ fn test_parse_enum() {
     ]);
 
     test_parse_unusual_ok(vec![
-        ("{\"Dog\":[]}", Animal::Dog),
-        (" { \"Dog\" : [ ] } ", Animal::Dog),
+        ("{\"Dog\":null}", Animal::Dog),
+        (" { \"Dog\" : null } ", Animal::Dog),
     ]);
 
     test_parse_ok(vec![
@@ -1598,11 +1595,11 @@ fn test_effectively_string_keys() {
 #[test]
 fn test_bytes_ser() {
     let buf = vec![];
-    let bytes = Bytes::from(&buf);
+    let bytes = Bytes::new(&buf);
     assert_eq!(to_string(&bytes).unwrap(), "[]".to_string());
 
     let buf = vec![1, 2, 3];
-    let bytes = Bytes::from(&buf);
+    let bytes = Bytes::new(&buf);
     assert_eq!(to_string(&bytes).unwrap(), "[1,2,3]".to_string());
 }
 

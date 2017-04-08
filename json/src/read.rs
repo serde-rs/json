@@ -1,6 +1,6 @@
 use std::{char, cmp, io, str};
 
-use serde::iter::LineColIterator;
+use iter::LineColIterator;
 
 use super::error::{Error, ErrorCode, Result};
 

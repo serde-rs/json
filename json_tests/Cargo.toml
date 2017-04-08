@@ -10,6 +10,7 @@ unstable-testing = ["compiletest_rs"]
 
 [dev-dependencies]
 serde = { git = "https://github.com/serde-rs/serde", branch = "1.0" }
+serde_bytes = { git = "https://github.com/serde-rs/bytes", branch = "1.0" }
 serde_json = { path = "../json" }
 serde_derive = { git = "https://github.com/serde-rs/serde", branch = "1.0" }
 
