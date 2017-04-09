@@ -10,6 +10,7 @@ keywords = ["json", "serde", "serialization"]
 categories = ["encoding"]
 readme = "../README.md"
 include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+publish = false # this branch contains breaking changes
 
 [badges]
 travis-ci = { repository = "serde-rs/json" }
