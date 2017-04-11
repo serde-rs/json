@@ -992,13 +992,17 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantVisitor<'de> for UnitVariantVisitor<
 /// A stream deserializer can be created from any JSON deserializer using the
 /// `Deserializer::into_iter` method.
 ///
+/// The data must consist of JSON arrays and JSON objects optionally separated
+/// by whitespace. A null, boolean, number, or string at the top level are all
+/// errors.
+///
 /// ```rust
 /// extern crate serde_json;
 ///
 /// use serde_json::{Deserializer, Value};
 ///
 /// fn main() {
-///     let data = "1 2 {\"k\": 3}";
+///     let data = "{\"k\": 3}  {}  [0, 1, 2]";
 ///
 ///     let stream = Deserializer::from_str(data).into_iter::<Value>();
 ///
@@ -1047,8 +1051,11 @@ impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
         // values are handled for us.
         match self.de.parse_whitespace() {
             Ok(None) => None,
-            Ok(Some(_)) => {
+            Ok(Some(b'{')) | Ok(Some(b'[')) => {
                 Some(de::Deserialize::deserialize(&mut self.de))
+            }
+            Ok(Some(_)) => {
+                Some(Err(self.de.peek_error(ErrorCode::ExpectedObjectOrArray)))
             }
             Err(e) => Some(Err(e)),
         }

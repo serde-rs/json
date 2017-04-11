@@ -31,6 +31,7 @@ use serde_bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     Deserializer,
+    Map,
     Value,
     from_iter,
     from_reader,
@@ -1668,6 +1669,18 @@ fn test_json_stream_empty() {
     let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
 
     assert!(parsed.next().is_none());
+}
+
+#[test]
+fn test_json_stream_primitive() {
+    let data = "{} true";
+    let mut parsed = Deserializer::from_str(data).into_iter::<Value>();
+
+    let first = parsed.next().unwrap().unwrap();
+    assert_eq!(first, Value::Object(Map::new()));
+
+    let second = parsed.next().unwrap().unwrap_err();
+    assert_eq!(second.to_string(), "expected `{` or `[` at line 1 column 4");
 }
 
 #[test]

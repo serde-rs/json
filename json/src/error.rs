@@ -57,6 +57,7 @@ impl Error {
             ErrorCode::ExpectedColon |
             ErrorCode::ExpectedListCommaOrEnd |
             ErrorCode::ExpectedObjectCommaOrEnd |
+            ErrorCode::ExpectedObjectOrArray |
             ErrorCode::ExpectedSomeIdent |
             ErrorCode::ExpectedSomeValue |
             ErrorCode::ExpectedSomeString |
@@ -203,11 +204,14 @@ pub enum ErrorCode {
     /// Expected this character to be a `':'`.
     ExpectedColon,
 
-    /// Expected this character to be either a `','` or a `]`.
+    /// Expected this character to be either a `','` or a `']'`.
     ExpectedListCommaOrEnd,
 
-    /// Expected this character to be either a `','` or a `}`.
+    /// Expected this character to be either a `','` or a `'}'`.
     ExpectedObjectCommaOrEnd,
+
+    /// Expected this character to be either a `'{'` or a `'['`.
+    ExpectedObjectOrArray,
 
     /// Expected to parse either a `true`, `false`, or a `null`.
     ExpectedSomeIdent,
@@ -293,6 +297,9 @@ impl Display for ErrorCode {
             }
             ErrorCode::ExpectedObjectCommaOrEnd => {
                 f.write_str("expected `,` or `}`")
+            }
+            ErrorCode::ExpectedObjectOrArray => {
+                f.write_str("expected `{` or `[`")
             }
             ErrorCode::ExpectedSomeIdent => {
                 f.write_str("expected ident")
