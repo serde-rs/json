@@ -85,10 +85,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     /// This allows the `Deserializer` to validate that the input stream is at the end or that it
     /// only has trailing whitespace.
     pub fn end(&mut self) -> Result<()> {
-        if try!(self.parse_whitespace()) { // true if eof
-            Ok(())
-        } else {
-            Err(self.peek_error(ErrorCode::TrailingCharacters))
+        match try!(self.parse_whitespace()) {
+            Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+            None => Ok(()),
         }
     }
 
@@ -137,21 +136,17 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Error::syntax(reason, pos.line, pos.column)
     }
 
-    /// Consume whitespace until the next non-whitespace character.
-    ///
-    /// Return `Ok(true)` if EOF was encountered in the process and `Ok(false)` otherwise.
-    fn parse_whitespace(&mut self) -> Result<bool> {
+    /// Returns the first non-whitespace byte without consuming it, or `None` if
+    /// EOF is encountered.
+    fn parse_whitespace(&mut self) -> Result<Option<u8>> {
         loop {
             match try!(self.peek()) {
-                Some(b) => match b {
-                    b' ' | b'\n' | b'\t' | b'\r' => {
-                        self.eat_char();
-                    }
-                    _ => {
-                        return Ok(false);
-                    }
-                },
-                None => return Ok(true),
+                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') => {
+                    self.eat_char();
+                }
+                other => {
+                    return Ok(other);
+                }
             }
         }
     }
@@ -159,11 +154,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn parse_value<V>(&mut self, visitor: V) -> Result<V::Value>
         where V: de::Visitor<'de>,
     {
-        if try!(self.parse_whitespace()) { // true if eof
-            return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-        }
+        let peek = match try!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
 
-        let value = match try!(self.peek_or_null()) {
+        let value = match peek {
             b'n' => {
                 self.eat_char();
                 try!(self.parse_ident(b"ull"));
@@ -521,9 +519,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
-        try!(self.parse_whitespace());
-
-        match try!(self.peek()) {
+        match try!(self.parse_whitespace()) {
             Some(b':') => {
                 self.eat_char();
                 Ok(())
@@ -534,22 +530,24 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn end_seq(&mut self) -> Result<()> {
-        try!(self.parse_whitespace());
-
-        match try!(self.next_char()) {
-            Some(b']') => Ok(()),
-            Some(_) => Err(self.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.error(ErrorCode::EofWhileParsingList)),
+        match try!(self.parse_whitespace()) {
+            Some(b']') => {
+                self.eat_char();
+                Ok(())
+            }
+            Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+            None => Err(self.peek_error(ErrorCode::EofWhileParsingList)),
         }
     }
 
     fn end_map(&mut self) -> Result<()> {
-        try!(self.parse_whitespace());
-
-        match try!(self.next_char()) {
-            Some(b'}') => Ok(()),
-            Some(_) => Err(self.error(ErrorCode::TrailingCharacters)),
-            None => Err(self.error(ErrorCode::EofWhileParsingObject)),
+        match try!(self.parse_whitespace()) {
+            Some(b'}') => {
+                self.eat_char();
+                Ok(())
+            }
+            Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+            None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
         }
     }
 }
@@ -602,10 +600,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
         where V: de::Visitor<'de>,
     {
-        try!(self.parse_whitespace());
-
-        match try!(self.peek_or_null()) {
-            b'n' => {
+        match try!(self.parse_whitespace()) {
+            Some(b'n') => {
                 self.eat_char();
                 try!(self.parse_ident(b"ull"));
                 visitor.visit_none()
@@ -637,10 +633,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ) -> Result<V::Value>
         where V: de::Visitor<'de>,
     {
-        try!(self.parse_whitespace());
-
-        match try!(self.peek_or_null()) {
-            b'{' => {
+        match try!(self.parse_whitespace()) {
+            Some(b'{') => {
                 self.remaining_depth -= 1;
                 if self.remaining_depth == 0 {
                     return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
@@ -651,15 +645,18 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
                 self.remaining_depth += 1;
 
-                try!(self.parse_whitespace());
-
-                match try!(self.next_char_or_null()) {
-                    b'}' => Ok(value),
-                    _ => Err(self.error(ErrorCode::ExpectedSomeValue)),
+                match try!(self.parse_whitespace()) {
+                    Some(b'}') => {
+                        self.eat_char();
+                        Ok(value)
+                    }
+                    Some(_) => Err(self.error(ErrorCode::ExpectedSomeValue)),
+                    None => Err(self.error(ErrorCode::EofWhileParsingObject)),
                 }
             }
-            b'"' => visitor.visit_enum(UnitVariantVisitor::new(self)),
-            _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+            Some(b'"') => visitor.visit_enum(UnitVariantVisitor::new(self)),
+            Some(_) => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+            None => Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
         }
     }
 
@@ -747,10 +744,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
         where V: de::Visitor<'de>
     {
-        try!(self.parse_whitespace());
-
-        match try!(self.peek_or_null()) {
-            b'"' => {
+        match try!(self.parse_whitespace()) {
+            Some(b'"') => {
                 self.eat_char();
                 self.str_buf.clear();
                 match try!(self.read.parse_str_raw(&mut self.str_buf)) {
@@ -797,9 +792,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqVisitor<'de> for SeqVisitor<'a, R> {
     fn visit_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
         where T: de::DeserializeSeed<'de>,
     {
-        try!(self.de.parse_whitespace());
-
-        match try!(self.de.peek()) {
+        match try!(self.de.parse_whitespace()) {
             Some(b']') => {
                 return Ok(None);
             }
@@ -844,19 +837,18 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapVisitor<'de> for MapVisitor<'a, R> {
     fn visit_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
         where K: de::DeserializeSeed<'de>,
     {
-        try!(self.de.parse_whitespace());
-
-        match try!(self.de.peek()) {
+        let peek = match try!(self.de.parse_whitespace()) {
             Some(b'}') => {
                 return Ok(None);
             }
             Some(b',') if !self.first => {
                 self.de.eat_char();
-                try!(self.de.parse_whitespace());
+                try!(self.de.parse_whitespace())
             }
-            Some(_) => {
+            Some(b) => {
                 if self.first {
                     self.first = false;
+                    Some(b)
                 } else {
                     return Err(self.de
                         .peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
@@ -866,9 +858,9 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapVisitor<'de> for MapVisitor<'a, R> {
                 return Err(self.de
                     .peek_error(ErrorCode::EofWhileParsingObject));
             }
-        }
+        };
 
-        match try!(self.de.peek()) {
+        match peek {
             Some(b'"') => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
             Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
@@ -1054,12 +1046,9 @@ impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
         // this helps with trailing whitespaces, since whitespaces between
         // values are handled for us.
         match self.de.parse_whitespace() {
-            Ok(true) => None, // eof
-            Ok(false) => {
-                match de::Deserialize::deserialize(&mut self.de) {
-                    Ok(v) => Some(Ok(v)),
-                    Err(e) => Some(Err(e)),
-                }
+            Ok(None) => None,
+            Ok(Some(_)) => {
+                Some(de::Deserialize::deserialize(&mut self.de))
             }
             Err(e) => Some(Err(e)),
         }
