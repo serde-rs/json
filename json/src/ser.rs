@@ -176,7 +176,7 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     fn serialize_unit_variant(
         self,
         _name: &'static str,
-        _variant_index: usize,
+        _variant_index: u32,
         variant: &'static str
     ) -> Result<()> {
         self.serialize_str(variant)
@@ -198,7 +198,7 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     fn serialize_newtype_variant<T: ?Sized>(
         self,
         _name: &'static str,
-        _variant_index: usize,
+        _variant_index: u32,
         variant: &'static str,
         value: &T
     ) -> Result<()>
@@ -261,7 +261,7 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     fn serialize_tuple_variant(
         self,
         _name: &'static str,
-        _variant_index: usize,
+        _variant_index: u32,
         variant: &'static str,
         len: usize
     ) -> Result<Self::SerializeTupleVariant> {
@@ -298,7 +298,7 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     fn serialize_struct_variant(
         self,
         _name: &'static str,
-        _variant_index: usize,
+        _variant_index: u32,
         variant: &'static str,
         len: usize
     ) -> Result<Self::SerializeStructVariant> {
@@ -595,7 +595,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     fn serialize_unit_variant(
         self,
         _name: &'static str,
-        _variant_index: usize,
+        _variant_index: u32,
         variant: &'static str
     ) -> Result<()> {
         self.ser.serialize_str(variant)
@@ -699,7 +699,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     fn serialize_newtype_variant<T: ?Sized>(
         self,
         _name: &'static str,
-        _variant_index: usize,
+        _variant_index: u32,
         _variant: &'static str,
         _value: &T
     ) -> Result<()>
@@ -741,7 +741,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     fn serialize_tuple_variant(
         self,
         _name: &'static str,
-        _variant_index: usize,
+        _variant_index: u32,
         _variant: &'static str,
         _len: usize
     ) -> Result<Self::SerializeTupleVariant> {
@@ -763,7 +763,7 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     fn serialize_struct_variant(
         self,
         _name: &'static str,
-        _variant_index: usize,
+        _variant_index: u32,
         _variant: &'static str,
         _len: usize
     ) -> Result<Self::SerializeStructVariant> {

@@ -727,8 +727,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
     forward_to_deserialize! {
         bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string unit seq
-        seq_fixed_size map unit_struct tuple_struct struct
-        struct_field tuple ignored_any
+        seq_fixed_size map unit_struct tuple_struct struct identifier tuple
+        ignored_any
     }
 }
 
