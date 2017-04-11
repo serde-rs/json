@@ -1944,6 +1944,8 @@ fn test_category() {
 }
 
 #[test]
+// Clippy false positive: https://github.com/Manishearth/rust-clippy/issues/292
+#[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 fn test_into_io_error() {
     fn io_error<'de, T: Deserialize<'de> + Debug>(j: &'static str) -> io::Error {
         from_str::<T>(j).unwrap_err().into()
