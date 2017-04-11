@@ -266,6 +266,6 @@ macro_rules! json_internal {
     // Any Serialize type: numbers, strings, struct literals, variables etc.
     // Must be below every other rule.
     ($other:expr) => {
-        $crate::value::ToJson::to_json(&$other).unwrap()
+        $crate::to_value(&$other).unwrap()
     };
 }

@@ -2251,21 +2251,3 @@ pub fn from_value<T>(value: Value) -> Result<T, Error>
 {
     de::Deserialize::deserialize(value)
 }
-
-/// Representation of any serializable data as a `serde_json::Value`.
-pub trait ToJson {
-    /// Represent `self` as a `serde_json::Value`. Note that `Value` is not a
-    /// JSON string. If you need a string, use `serde_json::to_string` instead.
-    ///
-    /// This conversion can fail if `T`'s implementation of `Serialize` decides
-    /// to fail, or if `T` contains a map with non-string keys.
-    fn to_json(&self) -> Result<Value, Error>;
-}
-
-impl<T: ?Sized> ToJson for T
-    where T: ser::Serialize,
-{
-    fn to_json(&self) -> Result<Value, Error> {
-        to_value(self)
-    }
-}
