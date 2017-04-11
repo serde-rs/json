@@ -26,4 +26,5 @@ itoa = "0.3"
 dtoa = "0.4"
 
 [dev-dependencies]
+serde_bytes = { git = "https://github.com/serde-rs/bytes", branch = "1.0" }
 serde_derive = { git = "https://github.com/serde-rs/serde", branch = "1.0" }

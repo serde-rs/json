@@ -663,41 +663,86 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
-    /// Parses a JSON string as bytes. Note that this function does not
-    /// check whether the bytes represent valid unicode code points.
+    /// Parses a JSON string as bytes. Note that this function does not check
+    /// whether the bytes represent a valid UTF-8 string.
     ///
-    /// The JSON specification requires that strings only contain valid
-    /// unicode characters. To deal with non-conforming JSON, you may use
-    /// this function, which attempts to parse a string without checking
-    /// whether the bytes represent valid unicode code points.
+    /// The relevant part of the JSON specification is Section 8.2 of [RFC
+    /// 7159]:
     ///
-    /// Escape sequences are processed as usual, and for `\uXXXX` escapes 
-    /// it is still checked if the hex number represents a valid unicode
-    /// code point.
+    /// > When all the strings represented in a JSON text are composed entirely
+    /// > of Unicode characters (however escaped), then that JSON text is
+    /// > interoperable in the sense that all software implementations that
+    /// > parse it will agree on the contents of names and of string values in
+    /// > objects and arrays.
+    /// >
+    /// > However, the ABNF in this specification allows member names and string
+    /// > values to contain bit sequences that cannot encode Unicode characters;
+    /// > for example, "\uDEAD" (a single unpaired UTF-16 surrogate). Instances
+    /// > of this have been observed, for example, when a library truncates a
+    /// > UTF-16 string without checking whether the truncation split a
+    /// > surrogate pair.  The behavior of software that receives JSON texts
+    /// > containing such values is unpredictable; for example, implementations
+    /// > might return different values for the length of a string value or even
+    /// > suffer fatal runtime exceptions.
     ///
-    /// # Example usage
+    /// [RFC 7159]: https://tools.ietf.org/html/rfc7159
     ///
-    /// You can use this to parse JSON strings containing non-unicode bytes:
+    /// The behavior of serde_json is specified to fail on non-UTF-8 strings
+    /// when deserializing into Rust UTF-8 string types such as String, and
+    /// succeed with non-UTF-8 bytes when deserializing using this method.
+    ///
+    /// Escape sequences are processed as usual, and for `\uXXXX` escapes it is
+    /// still checked if the hex number represents a valid Unicode code point.
+    ///
+    /// # Examples
+    ///
+    /// You can use this to parse JSON strings containing invalid UTF-8 bytes.
     ///
     /// ```
-    /// # extern crate serde;
-    /// # extern crate serde_json;
+    /// extern crate serde_json;
+    /// extern crate serde_bytes;
+    ///
+    /// use serde_bytes::ByteBuf;
+    ///
+    /// fn look_at_bytes() -> Result<(), serde_json::Error> {
+    ///     let json_data = b"\"some bytes: \xe5\x00\xe5\"";
+    ///     let bytes: ByteBuf = serde_json::from_slice(json_data)?;
+    ///
+    ///     assert_eq!(b'\xe5', bytes[12]);
+    ///     assert_eq!(b'\0', bytes[13]);
+    ///     assert_eq!(b'\xe5', bytes[14]);
+    ///
+    ///     Ok(())
+    /// }
     /// #
-    /// let bytes = serde::bytes::ByteBuf::from(b"some raw bytes: \xe5\x00\xe5".to_vec());
-    /// let parsed = serde_json::from_slice(  b"\"some raw bytes: \xe5\x00\xe5\"").unwrap();
-    /// 
-    /// assert_eq!(bytes, parsed);
+    /// # fn main() {
+    /// #     look_at_bytes().unwrap();
+    /// # }
     /// ```
     ///
-    /// `\u` escape sequences with invalid unicode code points still fail to parse:
+    /// Backslash escape sequences like `\n` are still interpreted and required
+    /// to be valid, and `\u` escape sequences are required to represent valid
+    /// Unicode code points.
     ///
     /// ```
-    /// # extern crate serde;
-    /// # extern crate serde_json;
+    /// extern crate serde_json;
+    /// extern crate serde_bytes;
+    ///
+    /// use serde_bytes::ByteBuf;
+    ///
+    /// fn look_at_bytes() {
+    ///     let json_data = b"\"invalid unicode surrogate: \\uD801\"";
+    ///     let parsed: Result<ByteBuf, _> = serde_json::from_slice(json_data);
+    ///
+    ///     assert!(parsed.is_err());
+    ///
+    ///     let expected_msg = "unexpected end of hex escape at line 1 column 35";
+    ///     assert_eq!(expected_msg, parsed.unwrap_err().to_string());
+    /// }
     /// #
-    /// let json = "\"invalid unicode surrogate: \\uD801\"";
-    /// let parsed: Result<serde::bytes::ByteBuf, _> = serde_json::from_str(json);
-    /// assert!(parsed.is_err(), "{} should not parse: {:?}", json, parsed);
+    /// # fn main() {
+    /// #     look_at_bytes();
+    /// # }
     /// ```
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
         where V: de::Visitor<'de>
