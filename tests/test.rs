@@ -1,3 +1,5 @@
+#![cfg(not(feature = "preserve_order"))]
+
 #![cfg_attr(feature = "cargo-clippy", allow(float_cmp))]
 
 #![cfg_attr(feature = "trace-macros", feature(trace_macros))]

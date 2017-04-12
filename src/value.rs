@@ -120,6 +120,8 @@ pub use map::Map;
 pub use number::Number;
 
 /// Represents any valid JSON value.
+///
+/// See the `serde_json::value` module documentation for usage examples.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// Represents a JSON null value.
@@ -138,6 +140,12 @@ pub enum Value {
     Array(Vec<Value>),
 
     /// Represents a JSON object.
+    ///
+    /// By default the map is backed by a BTreeMap. Enable the `preserve_order`
+    /// feature of serde_json to use LinkedHashMap instead, which preserves
+    /// entries in the order they are inserted into the map. In particular, this
+    /// allows JSON data to be deserialized into a Value and serialized to a
+    /// string while retaining the order of map keys in the input.
     Object(Map<String, Value>),
 }
 

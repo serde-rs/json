@@ -15,9 +15,6 @@ publish = false # this branch contains breaking changes
 [badges]
 travis-ci = { repository = "serde-rs/json" }
 
-[features]
-preserve_order = ["linked-hash-map"]
-
 [dependencies]
 serde = { git = "https://github.com/serde-rs/serde", branch = "1.0" }
 num-traits = "0.1.32"
@@ -29,3 +26,14 @@ dtoa = "0.4"
 compiletest_rs = "0.2"
 serde_bytes = { git = "https://github.com/serde-rs/bytes", branch = "1.0" }
 serde_derive = { git = "https://github.com/serde-rs/serde", branch = "1.0" }
+
+
+### FEATURES #################################################################
+
+[features]
+default = []
+
+# Use LinkedHashMap rather than BTreeMap as the map type of serde_json::Value.
+# This allows data to be read into a Value and written back to a JSON string
+# while preserving the order of map keys in the input.
+preserve_order = ["linked-hash-map"]
