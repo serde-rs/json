@@ -297,6 +297,10 @@ impl<'a> SliceRead<'a> {
         }
     }
 
+    pub fn pos(&self) -> usize {
+        self.index
+    }
+
     fn position_of_index(&self, i: usize) -> Position {
         let mut pos = Position {
             line: 1,

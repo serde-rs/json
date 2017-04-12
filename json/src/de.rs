@@ -1060,6 +1060,28 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
     from_iter(rdr.bytes())
 }
 
+/// Decodes a json value from a byte slice `&[u8]`
+/// and yields how many bytes have been read.
+///
+/// In case the buffer ended before the value could be fully read, `Ok(None)`
+/// is returned.
+pub fn from_partial_stream<T>(v: &[u8]) -> Result<Option<(T, usize)>>
+    where T: de::Deserialize,
+{
+    use super::error::ErrorCode::*;
+    let mut de = Deserializer::new(read::SliceRead::new(v));
+    match de::Deserialize::deserialize(&mut de) {
+        Ok(value) => Ok(Some((value, de.read.pos()))),
+        Err(e) => match *e.0 {
+            ErrorImpl::Syntax(EOFWhileParsingList, _, _) |
+            ErrorImpl::Syntax(EOFWhileParsingObject, _, _) |
+            ErrorImpl::Syntax(EOFWhileParsingString, _, _) |
+            ErrorImpl::Syntax(EOFWhileParsingValue, _, _) => Ok(None),
+            _ => Err(e),
+        }
+    }
+}
+
 /// Deserialize an instance of type `T` from bytes of JSON text.
 ///
 /// This conversion can fail if the structure of the Value does not match the
