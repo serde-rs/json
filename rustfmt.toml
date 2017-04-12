@@ -1,6 +1,0 @@
-fn_arg_indent = "Tabbed"
-fn_args_layout = "Block"
-max_width = 80
-reorder_imports = true
-struct_lit_multiline_style = "ForceMulti"
-where_trailing_comma = true
