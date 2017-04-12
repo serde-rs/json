@@ -125,18 +125,63 @@ pub use number::Number;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// Represents a JSON null value.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!(null);
+    /// # }
+    /// ```
     Null,
 
     /// Represents a JSON boolean.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!(true);
+    /// # }
+    /// ```
     Bool(bool),
 
     /// Represents a JSON number, whether integer or floating point.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!(12.5);
+    /// # }
+    /// ```
     Number(Number),
 
     /// Represents a JSON string.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!("a string");
+    /// # }
+    /// ```
     String(String),
 
     /// Represents a JSON array.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!(["an", "array"]);
+    /// # }
+    /// ```
     Array(Vec<Value>),
 
     /// Represents a JSON object.
@@ -146,6 +191,15 @@ pub enum Value {
     /// entries in the order they are inserted into the map. In particular, this
     /// allows JSON data to be deserialized into a Value and serialized to a
     /// string while retaining the order of map keys in the input.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "an": "object" });
+    /// # }
+    /// ```
     Object(Map<String, Value>),
 }
 
@@ -231,12 +285,46 @@ impl Value {
     }
 
     /// Returns true if the `Value` is an Object. Returns false otherwise.
+    ///
+    /// For any Value on which `is_object` returns true, `as_object` and
+    /// `as_object_mut` are guaranteed to return the map representation of the
+    /// object.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let obj = json!({ "a": { "nested": true }, "b": ["an", "array"] });
+    ///
+    /// assert!(obj.is_object());
+    /// assert!(obj["a"].is_object());
+    ///
+    /// // array, not an object
+    /// assert!(!obj["b"].is_object());
+    /// # }
+    /// ```
     pub fn is_object(&self) -> bool {
         self.as_object().is_some()
     }
 
-    /// If the `Value` is an Object, returns the associated Map.
-    /// Returns None otherwise.
+    /// If the `Value` is an Object, returns the associated Map. Returns None
+    /// otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": { "nested": true }, "b": ["an", "array"] });
+    ///
+    /// // The length of `{"nested": true}` is 1 entry.
+    /// assert_eq!(v["a"].as_object().unwrap().len(), 1);
+    ///
+    /// // The array `["an", "array"]` is not an object.
+    /// assert_eq!(v["b"].as_object(), None);
+    /// # }
+    /// ```
     pub fn as_object(&self) -> Option<&Map<String, Value>> {
         match *self {
             Value::Object(ref map) => Some(map),
@@ -246,6 +334,19 @@ impl Value {
 
     /// If the `Value` is an Object, returns the associated mutable Map.
     /// Returns None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let mut v = json!({ "a": { "nested": true } });
+    ///
+    /// v["a"].as_object_mut().unwrap().clear();
+    /// assert_eq!(v, json!({ "a": {} }));
+    /// # }
+    ///
+    /// ```
     pub fn as_object_mut(&mut self) -> Option<&mut Map<String, Value>> {
         match *self {
             Value::Object(ref mut map) => Some(map),
@@ -254,12 +355,45 @@ impl Value {
     }
 
     /// Returns true if the `Value` is an Array. Returns false otherwise.
+    ///
+    /// For any Value on which `is_array` returns true, `as_array` and
+    /// `as_array_mut` are guaranteed to return the vector representing the
+    /// array.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let obj = json!({ "a": ["an", "array"], "b": { "an": "object" } });
+    ///
+    /// assert!(obj["a"].is_array());
+    ///
+    /// // an object, not an array
+    /// assert!(!obj["b"].is_array());
+    /// # }
+    /// ```
     pub fn is_array(&self) -> bool {
         self.as_array().is_some()
     }
 
-    /// If the `Value` is an Array, returns the associated vector.
-    /// Returns None otherwise.
+    /// If the `Value` is an Array, returns the associated vector. Returns None
+    /// otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": ["an", "array"], "b": { "an": "object" } });
+    ///
+    /// // The length of `["an", "array"]` is 2 elements.
+    /// assert_eq!(v["a"].as_array().unwrap().len(), 2);
+    ///
+    /// // The object `{"an": "object"}` is not an array.
+    /// assert_eq!(v["b"].as_array(), None);
+    /// # }
+    /// ```
     pub fn as_array(&self) -> Option<&Vec<Value>> {
         match *self {
             Value::Array(ref array) => Some(&*array),
@@ -269,6 +403,18 @@ impl Value {
 
     /// If the `Value` is an Array, returns the associated mutable vector.
     /// Returns None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let mut v = json!({ "a": ["an", "array"] });
+    ///
+    /// v["a"].as_array_mut().unwrap().clear();
+    /// assert_eq!(v, json!({ "a": [] }));
+    /// # }
+    /// ```
     pub fn as_array_mut(&mut self) -> Option<&mut Vec<Value>> {
         match *self {
             Value::Array(ref mut list) => Some(list),
@@ -277,12 +423,43 @@ impl Value {
     }
 
     /// Returns true if the `Value` is a String. Returns false otherwise.
+    ///
+    /// For any Value on which `is_string` returns true, `as_str` is guaranteed
+    /// to return the string slice.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": "some string", "b": false });
+    ///
+    /// assert!(v["a"].is_string());
+    ///
+    /// // The boolean `false` is not a string.
+    /// assert!(!v["b"].is_string());
+    /// # }
+    /// ```
     pub fn is_string(&self) -> bool {
         self.as_str().is_some()
     }
 
-    /// If the `Value` is a String, returns the associated str.
-    /// Returns None otherwise.
+    /// If the `Value` is a String, returns the associated str. Returns None
+    /// otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": "some string", "b": false });
+    ///
+    /// assert_eq!(v["a"].as_str(), Some("some string"));
+    ///
+    /// // The boolean `false` is not a string.
+    /// assert_eq!(v["b"].as_str(), None);
+    /// # }
+    /// ```
     pub fn as_str(&self) -> Option<&str> {
         match *self {
             Value::String(ref s) => Some(s),
@@ -291,6 +468,20 @@ impl Value {
     }
 
     /// Returns true if the `Value` is a Number. Returns false otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 1, "b": "2" });
+    ///
+    /// assert!(v["a"].is_number());
+    ///
+    /// // The string `"2"` is a string, not a number.
+    /// assert!(!v["b"].is_number());
+    /// # }
+    /// ```
     pub fn is_number(&self) -> bool {
         match *self {
             Value::Number(_) => true,
@@ -298,7 +489,31 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a number that can be represented by i64.
+    /// Returns true if the `Value` is an integer between `i64::MIN` and
+    /// `i64::MAX`.
+    ///
+    /// For any Value on which `is_i64` returns true, `as_i64` is guaranteed to
+    /// return the integer value.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # use std::i64;
+    /// #
+    /// # fn main() {
+    /// let big = i64::MAX as u64 + 10;
+    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    ///
+    /// assert!(v["a"].is_i64());
+    ///
+    /// // Greater than i64::MAX.
+    /// assert!(!v["b"].is_i64());
+    ///
+    /// // Numbers with a decimal point are not considered integers.
+    /// assert!(!v["c"].is_i64());
+    /// # }
+    /// ```
     pub fn is_i64(&self) -> bool {
         match *self {
             Value::Number(ref n) => n.is_i64(),
@@ -306,7 +521,27 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a number that can be represented by u64.
+    /// Returns true if the `Value` is an integer between zero and `u64::MAX`.
+    ///
+    /// For any Value on which `is_u64` returns true, `as_u64` is guaranteed to
+    /// return the integer value.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
+    ///
+    /// assert!(v["a"].is_u64());
+    ///
+    /// // Negative integer.
+    /// assert!(!v["b"].is_u64());
+    ///
+    /// // Numbers with a decimal point are not considered integers.
+    /// assert!(!v["c"].is_u64());
+    /// # }
+    /// ```
     pub fn is_u64(&self) -> bool {
         match *self {
             Value::Number(ref n) => n.is_u64(),
@@ -315,6 +550,27 @@ impl Value {
     }
 
     /// Returns true if the `Value` is a number that can be represented by f64.
+    ///
+    /// For any Value on which `is_f64` returns true, `as_f64` is guaranteed to
+    /// return the floating point value.
+    ///
+    /// Currently this function returns true if and only if both `is_i64` and
+    /// `is_u64` return false but this is not a guarantee in the future.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    ///
+    /// assert!(v["a"].is_f64());
+    ///
+    /// // Integers.
+    /// assert!(!v["b"].is_f64());
+    /// assert!(!v["c"].is_f64());
+    /// # }
+    /// ```
     pub fn is_f64(&self) -> bool {
         match *self {
             Value::Number(ref n) => n.is_f64(),
@@ -322,8 +578,24 @@ impl Value {
         }
     }
 
-    /// If the `Value` is a number, represent it as i64 if possible.
-    /// Returns None otherwise.
+    /// If the `Value` is an integer, represent it as i64 if possible. Returns
+    /// None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # use std::i64;
+    /// #
+    /// # fn main() {
+    /// let big = i64::MAX as u64 + 10;
+    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    ///
+    /// assert_eq!(v["a"].as_i64(), Some(64));
+    /// assert_eq!(v["b"].as_i64(), None);
+    /// assert_eq!(v["c"].as_i64(), None);
+    /// # }
+    /// ```
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
             Value::Number(ref n) => n.as_i64(),
@@ -331,8 +603,21 @@ impl Value {
         }
     }
 
-    /// If the `Value` is a number, represent it as u64 if possible.
-    /// Returns None otherwise.
+    /// If the `Value` is an integer, represent it as u64 if possible. Returns
+    /// None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
+    ///
+    /// assert_eq!(v["a"].as_u64(), Some(64));
+    /// assert_eq!(v["b"].as_u64(), None);
+    /// assert_eq!(v["c"].as_u64(), None);
+    /// # }
+    /// ```
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
             Value::Number(ref n) => n.as_u64(),
@@ -340,8 +625,21 @@ impl Value {
         }
     }
 
-    /// If the `Value` is a number, represent it as f64 if possible.
-    /// Returns None otherwise.
+    /// If the `Value` is a number, represent it as f64 if possible. Returns
+    /// None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    ///
+    /// assert_eq!(v["a"].as_f64(), Some(256.0));
+    /// assert_eq!(v["b"].as_f64(), Some(64.0));
+    /// assert_eq!(v["c"].as_f64(), Some(-64.0));
+    /// # }
+    /// ```
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
             Value::Number(ref n) => n.as_f64(),
@@ -350,12 +648,43 @@ impl Value {
     }
 
     /// Returns true if the `Value` is a Boolean. Returns false otherwise.
+    ///
+    /// For any Value on which `is_boolean` returns true, `as_bool` is
+    /// guaranteed to return the boolean value.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": false, "b": "false" });
+    ///
+    /// assert!(v["a"].is_boolean());
+    ///
+    /// // The string `"false"` is a string, not a boolean.
+    /// assert!(!v["b"].is_boolean());
+    /// # }
+    /// ```
     pub fn is_boolean(&self) -> bool {
         self.as_bool().is_some()
     }
 
-    /// If the `Value` is a Boolean, returns the associated bool.
-    /// Returns None otherwise.
+    /// If the `Value` is a Boolean, returns the associated bool. Returns None
+    /// otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": false, "b": "false" });
+    ///
+    /// assert_eq!(v["a"].as_bool(), Some(false));
+    ///
+    /// // The string `"false"` is a string, not a boolean.
+    /// assert_eq!(v["b"].as_bool(), None);
+    /// # }
+    /// ```
     pub fn as_bool(&self) -> Option<bool> {
         match *self {
             Value::Bool(b) => Some(b),
@@ -364,12 +693,42 @@ impl Value {
     }
 
     /// Returns true if the `Value` is a Null. Returns false otherwise.
+    ///
+    /// For any Value on which `is_null` returns true, `as_null` is guaranteed
+    /// to return `Some(())`.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": null, "b": false });
+    ///
+    /// assert!(v["a"].is_null());
+    ///
+    /// // The boolean `false` is not null.
+    /// assert!(!v["b"].is_null());
+    /// # }
+    /// ```
     pub fn is_null(&self) -> bool {
         self.as_null().is_some()
     }
 
-    /// If the `Value` is a Null, returns ().
-    /// Returns None otherwise.
+    /// If the `Value` is a Null, returns (). Returns None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": null, "b": false });
+    ///
+    /// assert_eq!(v["a"].as_null(), Some(()));
+    ///
+    /// // The boolean `false` is not null.
+    /// assert_eq!(v["b"].as_null(), None);
+    /// # }
+    /// ```
     pub fn as_null(&self) -> Option<()> {
         match *self {
             Value::Null => Some(()),

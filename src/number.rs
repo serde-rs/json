@@ -24,7 +24,31 @@ enum N {
 }
 
 impl Number {
-    /// Returns `true` if the number can be represented as `i64`.
+    /// Returns true if the `Number` is an integer between `i64::MIN` and
+    /// `i64::MAX`.
+    ///
+    /// For any Number on which `is_i64` returns true, `as_i64` is guaranteed to
+    /// return the integer value.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # use std::i64;
+    /// #
+    /// # fn main() {
+    /// let big = i64::MAX as u64 + 10;
+    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    ///
+    /// assert!(v["a"].is_i64());
+    ///
+    /// // Greater than i64::MAX.
+    /// assert!(!v["b"].is_i64());
+    ///
+    /// // Numbers with a decimal point are not considered integers.
+    /// assert!(!v["c"].is_i64());
+    /// # }
+    /// ```
     #[inline]
     pub fn is_i64(&self) -> bool {
         match self.n {
@@ -34,7 +58,27 @@ impl Number {
         }
     }
 
-    /// Returns `true` if the number can be represented as `u64`.
+    /// Returns true if the `Number` is an integer between zero and `u64::MAX`.
+    ///
+    /// For any Number on which `is_u64` returns true, `as_u64` is guaranteed to
+    /// return the integer value.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
+    ///
+    /// assert!(v["a"].is_u64());
+    ///
+    /// // Negative integer.
+    /// assert!(!v["b"].is_u64());
+    ///
+    /// // Numbers with a decimal point are not considered integers.
+    /// assert!(!v["c"].is_u64());
+    /// # }
+    /// ```
     #[inline]
     pub fn is_u64(&self) -> bool {
         match self.n {
@@ -43,7 +87,28 @@ impl Number {
         }
     }
 
-    /// Returns `true` if the number can be represented as `f64`.
+    /// Returns true if the `Number` can be represented by f64.
+    ///
+    /// For any Number on which `is_f64` returns true, `as_f64` is guaranteed to
+    /// return the floating point value.
+    ///
+    /// Currently this function returns true if and only if both `is_i64` and
+    /// `is_u64` return false but this is not a guarantee in the future.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    ///
+    /// assert!(v["a"].is_f64());
+    ///
+    /// // Integers.
+    /// assert!(!v["b"].is_f64());
+    /// assert!(!v["c"].is_f64());
+    /// # }
+    /// ```
     #[inline]
     pub fn is_f64(&self) -> bool {
         match self.n {
@@ -52,7 +117,24 @@ impl Number {
         }
     }
 
-    /// Returns the number represented as `i64` if possible, or else `None`.
+    /// If the `Number` is an integer, represent it as i64 if possible. Returns
+    /// None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # use std::i64;
+    /// #
+    /// # fn main() {
+    /// let big = i64::MAX as u64 + 10;
+    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    ///
+    /// assert_eq!(v["a"].as_i64(), Some(64));
+    /// assert_eq!(v["b"].as_i64(), None);
+    /// assert_eq!(v["c"].as_i64(), None);
+    /// # }
+    /// ```
     #[inline]
     pub fn as_i64(&self) -> Option<i64> {
         match self.n {
@@ -62,7 +144,21 @@ impl Number {
         }
     }
 
-    /// Returns the number represented as `u64` if possible, or else `None`.
+    /// If the `Number` is an integer, represent it as u64 if possible. Returns
+    /// None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
+    ///
+    /// assert_eq!(v["a"].as_u64(), Some(64));
+    /// assert_eq!(v["b"].as_u64(), None);
+    /// assert_eq!(v["c"].as_u64(), None);
+    /// # }
+    /// ```
     #[inline]
     pub fn as_u64(&self) -> Option<u64> {
         match self.n {
@@ -72,7 +168,20 @@ impl Number {
         }
     }
 
-    /// Returns the number represented as `f64` if possible, or else `None`.
+    /// Represents the number as f64 if possible. Returns None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    ///
+    /// assert_eq!(v["a"].as_f64(), Some(256.0));
+    /// assert_eq!(v["b"].as_f64(), Some(64.0));
+    /// assert_eq!(v["c"].as_f64(), Some(-64.0));
+    /// # }
+    /// ```
     #[inline]
     pub fn as_f64(&self) -> Option<f64> {
         match self.n {
@@ -84,6 +193,16 @@ impl Number {
 
     /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not JSON
     /// numbers.
+    ///
+    /// ```rust
+    /// # use std::f64;
+    /// #
+    /// # use serde_json::Number;
+    /// #
+    /// assert!(Number::from_f64(256.0).is_some());
+    ///
+    /// assert!(Number::from_f64(f64::NAN).is_none());
+    /// ```
     #[inline]
     pub fn from_f64(f: f64) -> Option<Number> {
         if f.is_finite() {
