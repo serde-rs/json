@@ -218,6 +218,7 @@ impl PartialEq for Map<String, Value> {
 ///
 /// ```rust
 /// # use serde_json::Value;
+/// #
 /// # let val = &Value::String("".to_owned());
 /// # let _ =
 /// match *val {
@@ -243,10 +244,13 @@ impl<'a, Q: ?Sized> ops::Index<&'a Q> for Map<String, Value>
 /// present in the map.
 ///
 /// ```rust
-/// # #[macro_use] extern crate serde_json;
+/// # #[macro_use]
+/// # extern crate serde_json;
+/// #
 /// # fn main() {
-/// # let mut map = serde_json::Map::new();
-/// # map.insert("key".to_owned(), serde_json::Value::Null);
+/// #     let mut map = serde_json::Map::new();
+/// #     map.insert("key".to_owned(), serde_json::Value::Null);
+/// #
 /// map["key"] = json!("value");
 /// # }
 /// ```
@@ -424,7 +428,9 @@ impl<'a> Entry<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// let mut map = serde_json::Map::new();
     /// map.entry("serde").or_insert(json!(12));
@@ -446,7 +452,9 @@ impl<'a> Entry<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// let mut map = serde_json::Map::new();
     /// map.entry("serde").or_insert_with(|| json!("hoho"));
@@ -493,7 +501,9 @@ impl<'a> VacantEntry<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// use serde_json::map::Entry;
     ///
@@ -519,7 +529,9 @@ impl<'a> OccupiedEntry<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// use serde_json::map::Entry;
     ///
@@ -544,7 +556,9 @@ impl<'a> OccupiedEntry<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// use serde_json::map::Entry;
     ///
@@ -569,7 +583,9 @@ impl<'a> OccupiedEntry<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// use serde_json::map::Entry;
     ///
@@ -596,7 +612,9 @@ impl<'a> OccupiedEntry<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// use serde_json::map::Entry;
     ///
@@ -624,7 +642,9 @@ impl<'a> OccupiedEntry<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// use serde_json::map::Entry;
     ///
@@ -650,7 +670,9 @@ impl<'a> OccupiedEntry<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// use serde_json::map::Entry;
     ///

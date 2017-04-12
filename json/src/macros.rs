@@ -1,8 +1,9 @@
 /// Construct a `serde_json::Value` from a JSON literal.
 ///
 /// ```rust
-/// # #![allow(unused_variables)]
-/// # #[macro_use] extern crate serde_json;
+/// # #[macro_use]
+/// # extern crate serde_json;
+/// #
 /// # fn main() {
 /// let value = json!({
 ///     "code": 200,
@@ -25,8 +26,9 @@
 /// map with non-string keys, the `json!` macro will panic.
 ///
 /// ```rust
-/// # #![allow(unused_variables)]
-/// # #[macro_use] extern crate serde_json;
+/// # #[macro_use]
+/// # extern crate serde_json;
+/// #
 /// # fn main() {
 /// let code = 200;
 /// let features = vec!["serde", "json"];
@@ -44,8 +46,9 @@
 /// Trailing commas are allowed inside both arrays and objects.
 ///
 /// ```rust
-/// # #![allow(unused_variables)]
-/// # #[macro_use] extern crate serde_json;
+/// # #[macro_use]
+/// # extern crate serde_json;
+/// #
 /// # fn main() {
 /// let value = json!([
 ///     "notice",

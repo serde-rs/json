@@ -37,8 +37,11 @@
 //! be represented as JSON.
 //!
 //! ```rust
-//! # #[macro_use] extern crate serde_json;
+//! # #[macro_use]
+//! # extern crate serde_json;
+//! #
 //! # fn random_phone() -> u16 { 0 }
+//! #
 //! # fn main() {
 //! let full_name = "John Doe";
 //! let age_last_year = 42;
@@ -51,7 +54,7 @@
 //!     format!("+44 {}", random_phone())
 //!   ]
 //! });
-//! # let _ = john;
+//! #     let _ = john;
 //! # }
 //! ```
 //!
@@ -63,16 +66,33 @@
 //! a TCP stream.
 //!
 //! ```rust
-//! # extern crate serde_json;
-//! # use serde_json::Error;
-//! # pub fn example() -> Result<(), Error> {
-//! use serde_json::Value;
+//! extern crate serde_json;
 //!
-//! let data = r#" { "name": "John Doe", "age": 43, ... } "#;
-//! let v: Value = serde_json::from_str(data)?;
-//! println!("Please call {} at the number {}", v["name"], v["phones"][0]);
-//! # Ok(()) }
-//! # fn main() {}
+//! use serde_json::{Value, Error};
+//!
+//! fn untyped_example() -> Result<(), Error> {
+//!     // Some JSON input data as a &str. Maybe this comes from the user.
+//!     let data = r#"{
+//!                     "name": "John Doe",
+//!                     "age": 43,
+//!                     "phones": [
+//!                       "+44 1234567",
+//!                       "+44 2345678"
+//!                     ]
+//!                   }"#;
+//!
+//!     // Parse the string of data into serde_json::Value.
+//!     let v: Value = serde_json::from_str(data)?;
+//!
+//!     // Access parts of the data by indexing with square brackets.
+//!     println!("Please call {} at the number {}", v["name"], v["phones"][0]);
+//!
+//!     Ok(())
+//! }
+//! #
+//! # fn main() {
+//! #     untyped_example().unwrap();
+//! # }
 //! ```
 //!
 //! [macro]: https://docs.serde.rs/serde_json/macro.json.html
@@ -139,7 +159,9 @@ impl Value {
     /// or the given index is not within the bounds of the array.
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// let object = json!({ "A": 65, "B": 66, "C": 67 });
     /// assert_eq!(*object.get("A").unwrap(), json!(65));
@@ -156,7 +178,9 @@ impl Value {
     /// `None`.
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// let object = json!({
     ///     "A": ["a", "á", "à"],
@@ -183,7 +207,9 @@ impl Value {
     /// or the given index is not within the bounds of the array.
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// let mut object = json!({ "A": 65, "B": 66, "C": 67 });
     /// *object.get_mut("A").unwrap() = json!(69);
@@ -358,7 +384,9 @@ impl Value {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// let data = json!({
     ///     "x": {
@@ -469,8 +497,11 @@ impl Value {
 /// # Examples
 ///
 /// ```rust
+/// # #[macro_use]
+/// # extern crate serde_derive;
+/// #
 /// # extern crate serde_json;
-/// # #[macro_use] extern crate serde_derive;
+/// #
 /// use serde_json::Value;
 ///
 /// #[derive(Deserialize)]
@@ -480,14 +511,19 @@ impl Value {
 ///     extras: Value,
 /// }
 ///
-/// # pub fn try_main() -> Result<(), serde_json::Error> {
+/// # fn try_main() -> Result<(), serde_json::Error> {
 /// let data = r#" { "level": 42 } "#;
 /// let s: Settings = serde_json::from_str(data)?;
 ///
 /// assert_eq!(s.level, 42);
 /// assert_eq!(s.extras, Value::Null);
-/// # Ok(()) }
-/// # fn main() { try_main().unwrap() }
+/// #
+/// #     Ok(())
+/// # }
+/// #
+/// # fn main() {
+/// #     try_main().unwrap()
+/// # }
 /// ```
 impl Default for Value {
     fn default() -> Value {
@@ -662,7 +698,9 @@ impl<I> ops::Index<I> for Value where I: Index {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// let data = json!({
     ///     "x": {
@@ -699,7 +737,9 @@ impl<I> ops::IndexMut<I> for Value where I: Index {
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// let mut data = json!({ "x": 0 });
     ///
@@ -820,9 +860,10 @@ impl From<f32> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
     /// use serde_json::Value;
     ///
-    /// # fn main() {
     /// let f: f32 = 13.37;
     /// let x: Value = f.into();
     /// # }
@@ -839,9 +880,10 @@ impl From<f64> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
     /// use serde_json::Value;
     ///
-    /// # fn main() {
     /// let f: f64 = 13.37;
     /// let x: Value = f.into();
     /// # }
@@ -858,9 +900,10 @@ impl From<bool> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
     /// use serde_json::Value;
     ///
-    /// # fn main() {
     /// let b = false;
     /// let x: Value = b.into();
     /// # }
@@ -877,9 +920,10 @@ impl From<String> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
     /// use serde_json::Value;
     ///
-    /// # fn main() {
     /// let s: String = "lorem".to_string();
     /// let x: Value = s.into();
     /// # }
@@ -896,9 +940,10 @@ impl<'a> From<&'a str> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
     /// use serde_json::Value;
     ///
-    /// # fn main() {
     /// let s: &str = "lorem";
     /// let x: Value = s.into();
     /// # }
@@ -915,9 +960,10 @@ impl<'a> From<Cow<'a, str>> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
     /// use serde_json::Value;
     /// use std::borrow::Cow;
-    /// # fn main() {
     ///
     /// let s: Cow<str> = Cow::Borrowed("lorem");
     /// let x: Value = s.into();
@@ -926,10 +972,11 @@ impl<'a> From<Cow<'a, str>> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
     /// use serde_json::Value;
     /// use std::borrow::Cow;
     ///
-    /// # fn main() {
     /// let s: Cow<str> = Cow::Owned("lorem".to_string());
     /// let x: Value = s.into();
     /// # }
@@ -946,8 +993,9 @@ impl From<Map<String, Value>> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
-    /// use serde_json::{Map, Value};
+    /// #
     /// # fn main() {
+    /// use serde_json::{Map, Value};
     ///
     /// let mut m = Map::new();
     /// m.insert("Lorem".to_string(), "ipsum".into());
@@ -966,8 +1014,9 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
-    /// use serde_json::Value;
+    /// #
     /// # fn main() {
+    /// use serde_json::Value;
     ///
     /// let v = vec!["lorem", "ipsum", "dolor"];
     /// let x: Value = v.into();
@@ -985,8 +1034,9 @@ impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
-    /// use serde_json::Value;
+    /// #
     /// # fn main() {
+    /// use serde_json::Value;
     ///
     /// let v: &[&str] = &["lorem", "ipsum", "dolor"];
     /// let x: Value = v.into();
@@ -1004,8 +1054,9 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
-    /// use serde_json::Value;
+    /// #
     /// # fn main() {
+    /// use serde_json::Value;
     ///
     /// let v = std::iter::repeat(42).take(5);
     /// let x: Value = v.collect();
@@ -1014,9 +1065,10 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
     /// use serde_json::Value;
     ///
-    /// # fn main() {
     /// let v: Vec<_> = vec!["lorem", "ipsum", "dolor"];
     /// let x: Value = v.into_iter().collect();
     /// # }
@@ -1024,10 +1076,11 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
     ///
     /// ```rust
     /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
     /// use std::iter::FromIterator;
     /// use serde_json::Value;
     ///
-    /// # fn main() {
     /// let x: Value = Value::from_iter(vec!["lorem", "ipsum", "dolor"]);
     /// # }
     /// ```
@@ -1183,7 +1236,9 @@ impl fmt::Display for Value {
     /// Display a JSON value as a string.
     ///
     /// ```rust
-    /// # #[macro_use] extern crate serde_json;
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
     /// # fn main() {
     /// let json = json!({ "city": "London", "street": "10 Downing Street" });
     ///
@@ -2225,6 +2280,7 @@ impl Value {
 ///
 /// ```rust
 /// # use serde_json::Value;
+/// #
 /// let val = serde_json::to_value("s").unwrap();
 /// assert_eq!(val, Value::String("s".to_owned()));
 /// ```

@@ -695,7 +695,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ///
     /// You can use this to parse JSON strings containing invalid UTF-8 bytes.
     ///
-    /// ```
+    /// ```rust
     /// extern crate serde_json;
     /// extern crate serde_bytes;
     ///
@@ -721,7 +721,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     /// to be valid, and `\u` escape sequences are required to represent valid
     /// Unicode code points.
     ///
-    /// ```
+    /// ```rust
     /// extern crate serde_json;
     /// extern crate serde_bytes;
     ///
