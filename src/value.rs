@@ -110,9 +110,8 @@ use std::str;
 use std::vec;
 use std::borrow::Cow;
 
-use serde::de::{self, Unexpected};
+use serde::de::{self, IntoDeserializer, Unexpected};
 use serde::ser;
-use serde::de::value::ValueDeserializer;
 
 use error::{Error, ErrorCode};
 
