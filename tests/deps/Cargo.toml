@@ -7,4 +7,4 @@ publish = false
 [workspace]
 
 [dependencies]
-serde_json = { path = "../../json" }
+serde_json = { path = "../.." }
