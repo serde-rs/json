@@ -1067,6 +1067,13 @@ impl<'de, R, T> StreamDeserializer<'de, R, T>
     /// // If err.is_eof(), can join the remaining data to new data and continue.
     /// let remaining = &data[stream.byte_offset()..];
     /// ```
+    ///
+    /// *Note:* In the future this method may be changed to return the number of
+    /// bytes so far deserialized into a successful T *or* syntactically valid
+    /// JSON skipped over due to a type error. See [serde-rs/json#70] for an
+    /// example illustrating this.
+    ///
+    /// [serde-rs/json#70]: https://github.com/serde-rs/json/issues/70
     pub fn byte_offset(&self) -> usize {
         self.offset
     }
