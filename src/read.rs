@@ -40,6 +40,11 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn peek_position(&self) -> Position;
 
+    /// Offset from the beginning of the input to the next byte that would be
+    /// returned by next() or peek().
+    #[doc(hidden)]
+    fn byte_offset(&self) ->  usize;
+
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
@@ -215,6 +220,13 @@ impl<'de, Iter> Read<'de> for IteratorRead<Iter>
         self.position()
     }
 
+    fn byte_offset(&self) -> usize {
+        match self.ch {
+            Some(_) => self.iter.byte_offset() - 1,
+            None => self.iter.byte_offset(),
+        }
+    }
+
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
@@ -272,6 +284,11 @@ impl<'de, R> Read<'de> for IoRead<R>
     #[inline]
     fn peek_position(&self) -> Position {
         self.delegate.peek_position()
+    }
+
+    #[inline]
+    fn byte_offset(&self) -> usize {
+        self.delegate.byte_offset()
     }
 
     #[inline]
@@ -419,6 +436,10 @@ impl<'a> Read<'a> for SliceRead<'a> {
         self.position_of_index(cmp::min(self.slice.len(), self.index + 1))
     }
 
+    fn byte_offset(&self) -> usize {
+        self.index
+    }
+
     fn parse_str<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>
@@ -470,6 +491,10 @@ impl<'a> Read<'a> for StrRead<'a> {
 
     fn peek_position(&self) -> Position {
         self.delegate.peek_position()
+    }
+
+    fn byte_offset(&self) -> usize {
+        self.delegate.byte_offset()
     }
 
     fn parse_str<'s>(

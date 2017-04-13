@@ -97,8 +97,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     {
         // This cannot be an implementation of std::iter::IntoIterator because
         // we need the caller to choose what T is.
+        let offset = self.read.byte_offset();
         StreamDeserializer {
             de: self,
+            offset: offset,
             output: PhantomData,
             lifetime: PhantomData,
         }
@@ -1013,6 +1015,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantVisitor<'de> for UnitVariantVisitor<
 /// ```
 pub struct StreamDeserializer<'de, R, T> {
     de: Deserializer<R>,
+    offset: usize,
     output: PhantomData<T>,
     lifetime: PhantomData<&'de ()>,
 }
@@ -1031,11 +1034,48 @@ impl<'de, R, T> StreamDeserializer<'de, R, T>
     ///   - Deserializer::from_iter(...).into_iter()
     ///   - Deserializer::from_reader(...).into_iter()
     pub fn new(read: R) -> Self {
+        let offset = read.byte_offset();
         StreamDeserializer {
             de: Deserializer::new(read),
+            offset: offset,
             output: PhantomData,
             lifetime: PhantomData,
         }
+    }
+
+    /// Returns the number of bytes so far deserialized into a successful `T`.
+    ///
+    /// If a stream deserializer returns an EOF error, new data can be joined to
+    /// `old_data[stream.byte_offset()..]` to try again.
+    ///
+    /// ```rust
+    /// let data = b"[0] [1] [";
+    ///
+    /// let de = serde_json::Deserializer::from_slice(data);
+    /// let mut stream = de.into_iter::<Vec<i32>>();
+    /// assert_eq!(0, stream.byte_offset());
+    ///
+    /// println!("{:?}", stream.next()); // [0]
+    /// assert_eq!(3, stream.byte_offset());
+    ///
+    /// println!("{:?}", stream.next()); // [1]
+    /// assert_eq!(7, stream.byte_offset());
+    ///
+    /// println!("{:?}", stream.next()); // error
+    /// assert_eq!(8, stream.byte_offset());
+    ///
+    /// // If err.is_eof(), can join the remaining data to new data and continue.
+    /// let remaining = &data[stream.byte_offset()..];
+    /// ```
+    ///
+    /// *Note:* In the future this method may be changed to return the number of
+    /// bytes so far deserialized into a successful T *or* syntactically valid
+    /// JSON skipped over due to a type error. See [serde-rs/json#70] for an
+    /// example illustrating this.
+    ///
+    /// [serde-rs/json#70]: https://github.com/serde-rs/json/issues/70
+    pub fn byte_offset(&self) -> usize {
+        self.offset
     }
 }
 
@@ -1050,9 +1090,17 @@ impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
         // this helps with trailing whitespaces, since whitespaces between
         // values are handled for us.
         match self.de.parse_whitespace() {
-            Ok(None) => None,
+            Ok(None) => {
+                self.offset = self.de.read.byte_offset();
+                None
+            }
             Ok(Some(b'{')) | Ok(Some(b'[')) => {
-                Some(de::Deserialize::deserialize(&mut self.de))
+                self.offset = self.de.read.byte_offset();
+                let result = de::Deserialize::deserialize(&mut self.de);
+                if result.is_ok() {
+                    self.offset = self.de.read.byte_offset();
+                }
+                Some(result)
             }
             Ok(Some(_)) => {
                 Some(Err(self.de.peek_error(ErrorCode::ExpectedObjectOrArray)))
