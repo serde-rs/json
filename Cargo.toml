@@ -8,7 +8,7 @@ repository = "https://github.com/serde-rs/json"
 documentation = "http://docs.serde.rs/serde_json/"
 keywords = ["json", "serde", "serialization"]
 categories = ["encoding"]
-readme = "../README.md"
+readme = "README.md"
 include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 publish = false # this branch contains breaking changes
 
