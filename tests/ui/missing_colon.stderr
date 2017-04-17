@@ -1,8 +1,8 @@
 error: unexpected end of macro invocation
- --> $DIR/missing_colon.rs:5:5
-  |
-5 |     json!({ "a" });
-  |     ^^^^^^^^^^^^^^^
-  |
-  = note: this error originates in a macro outside of the current crate
+  --> $DIR/missing_colon.rs:13:5
+   |
+13 |     json!({ "a" });
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate
 

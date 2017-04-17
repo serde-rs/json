@@ -1389,11 +1389,11 @@ fn test_serialize_seq_with_no_len() {
 
         #[inline]
         fn visit_seq<V>(self, mut visitor: V) -> Result<MyVec<T>, V::Error>
-            where V: de::SeqVisitor<'de>,
+            where V: de::SeqAccess<'de>,
         {
             let mut values = Vec::new();
 
-            while let Some(value) = try!(visitor.visit()) {
+            while let Some(value) = try!(visitor.next_element()) {
                 values.push(value);
             }
 
@@ -1477,11 +1477,11 @@ fn test_serialize_map_with_no_len() {
 
         #[inline]
         fn visit_map<Visitor>(self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
-            where Visitor: de::MapVisitor<'de>,
+            where Visitor: de::MapAccess<'de>,
         {
             let mut values = BTreeMap::new();
 
-            while let Some((key, value)) = try!(visitor.visit()) {
+            while let Some((key, value)) = try!(visitor.next_entry()) {
                 values.insert(key, value);
             }
 

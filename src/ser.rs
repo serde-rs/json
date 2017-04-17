@@ -262,11 +262,6 @@ impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
     }
 
     #[inline]
-    fn serialize_seq_fixed_size(self, size: usize) -> Result<Self::SerializeSeq> {
-        self.serialize_seq(Some(size))
-    }
-
-    #[inline]
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
         self.serialize_seq(Some(len))
     }
@@ -758,10 +753,6 @@ impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        Err(key_must_be_a_string())
-    }
-
-    fn serialize_seq_fixed_size(self, _size: usize) -> Result<Self::SerializeSeq> {
         Err(key_must_be_a_string())
     }
 

@@ -207,7 +207,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
 
                 self.eat_char();
-                let ret = visitor.visit_seq(SeqVisitor::new(self));
+                let ret = visitor.visit_seq(SeqAccess::new(self));
 
                 self.remaining_depth += 1;
 
@@ -223,7 +223,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
 
                 self.eat_char();
-                let ret = visitor.visit_map(MapVisitor::new(self));
+                let ret = visitor.visit_map(MapAccess::new(self));
 
                 self.remaining_depth += 1;
 
@@ -599,7 +599,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
 
     #[inline]
-    fn deserialize<V>(self, visitor: V) -> Result<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
         where V: de::Visitor<'de>,
     {
         self.parse_value(visitor)
@@ -651,7 +651,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
 
                 self.eat_char();
-                let value = try!(visitor.visit_enum(VariantVisitor::new(self)));
+                let value = try!(visitor.visit_enum(VariantAccess::new(self)));
 
                 self.remaining_depth += 1;
 
@@ -664,7 +664,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     None => Err(self.error(ErrorCode::EofWhileParsingObject)),
                 }
             }
-            Some(b'"') => visitor.visit_enum(UnitVariantVisitor::new(self)),
+            Some(b'"') => visitor.visit_enum(UnitVariantAccess::new(self)),
             Some(_) => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
         }
@@ -763,7 +763,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     Reference::Copied(b) => visitor.visit_bytes(b),
                 }
             }
-            _ => self.deserialize(visitor),
+            _ => self.deserialize_any(visitor),
         }
 
     }
@@ -775,31 +775,30 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self.deserialize_bytes(visitor)
     }
 
-    forward_to_deserialize! {
-        bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string unit seq
-        seq_fixed_size map unit_struct tuple_struct struct identifier tuple
-        ignored_any
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string unit
+        unit_struct seq tuple tuple_struct map struct identifier ignored_any
     }
 }
 
-struct SeqVisitor<'a, R: 'a> {
+struct SeqAccess<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
     first: bool,
 }
 
-impl<'a, R: 'a> SeqVisitor<'a, R> {
+impl<'a, R: 'a> SeqAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        SeqVisitor {
+        SeqAccess {
             de: de,
             first: true,
         }
     }
 }
 
-impl<'de, 'a, R: Read<'de> + 'a> de::SeqVisitor<'de> for SeqVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
     type Error = Error;
 
-    fn visit_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
         where T: de::DeserializeSeed<'de>,
     {
         match try!(self.de.parse_whitespace()) {
@@ -827,24 +826,24 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqVisitor<'de> for SeqVisitor<'a, R> {
     }
 }
 
-struct MapVisitor<'a, R: 'a> {
+struct MapAccess<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
     first: bool,
 }
 
-impl<'a, R: 'a> MapVisitor<'a, R> {
+impl<'a, R: 'a> MapAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        MapVisitor {
+        MapAccess {
             de: de,
             first: true,
         }
     }
 }
 
-impl<'de, 'a, R: Read<'de> + 'a> de::MapVisitor<'de> for MapVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
     type Error = Error;
 
-    fn visit_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
         where K: de::DeserializeSeed<'de>,
     {
         let peek = match try!(self.de.parse_whitespace()) {
@@ -877,7 +876,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapVisitor<'de> for MapVisitor<'a, R> {
         }
     }
 
-    fn visit_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
         where V: de::DeserializeSeed<'de>,
     {
         try!(self.de.parse_object_colon());
@@ -886,23 +885,23 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapVisitor<'de> for MapVisitor<'a, R> {
     }
 }
 
-struct VariantVisitor<'a, R: 'a> {
+struct VariantAccess<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
 }
 
-impl<'a, R: 'a> VariantVisitor<'a, R> {
+impl<'a, R: 'a> VariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        VariantVisitor {
+        VariantAccess {
             de: de,
         }
     }
 }
 
-impl<'de, 'a, R: Read<'de> + 'a> de::EnumVisitor<'de> for VariantVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::EnumAccess<'de> for VariantAccess<'a, R> {
     type Error = Error;
     type Variant = Self;
 
-    fn visit_variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
         where V: de::DeserializeSeed<'de>,
     {
         let val = try!(seed.deserialize(&mut *self.de));
@@ -911,53 +910,53 @@ impl<'de, 'a, R: Read<'de> + 'a> de::EnumVisitor<'de> for VariantVisitor<'a, R> 
     }
 }
 
-impl<'de, 'a, R: Read<'de> + 'a> de::VariantVisitor<'de> for VariantVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for VariantAccess<'a, R> {
     type Error = Error;
 
-    fn visit_unit(self) -> Result<()> {
+    fn unit_variant(self) -> Result<()> {
         de::Deserialize::deserialize(self.de)
     }
 
-    fn visit_newtype_seed<T>(self, seed: T) -> Result<T::Value>
+    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
         where T: de::DeserializeSeed<'de>,
     {
         seed.deserialize(self.de)
     }
 
-    fn visit_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
         where V: de::Visitor<'de>,
     {
-        de::Deserializer::deserialize(self.de, visitor)
+        de::Deserializer::deserialize_any(self.de, visitor)
     }
 
-    fn visit_struct<V>(
+    fn struct_variant<V>(
         self,
         _fields: &'static [&'static str],
         visitor: V
     ) -> Result<V::Value>
         where V: de::Visitor<'de>,
     {
-        de::Deserializer::deserialize(self.de, visitor)
+        de::Deserializer::deserialize_any(self.de, visitor)
     }
 }
 
-struct UnitVariantVisitor<'a, R: 'a> {
+struct UnitVariantAccess<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
 }
 
-impl<'a, R: 'a> UnitVariantVisitor<'a, R> {
+impl<'a, R: 'a> UnitVariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        UnitVariantVisitor {
+        UnitVariantAccess {
             de: de,
         }
     }
 }
 
-impl<'de, 'a, R: Read<'de> + 'a> de::EnumVisitor<'de> for UnitVariantVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::EnumAccess<'de> for UnitVariantAccess<'a, R> {
     type Error = Error;
     type Variant = Self;
 
-    fn visit_variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
         where V: de::DeserializeSeed<'de>,
     {
         let variant = try!(seed.deserialize(&mut *self.de));
@@ -965,26 +964,26 @@ impl<'de, 'a, R: Read<'de> + 'a> de::EnumVisitor<'de> for UnitVariantVisitor<'a,
     }
 }
 
-impl<'de, 'a, R: Read<'de> + 'a> de::VariantVisitor<'de> for UnitVariantVisitor<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for UnitVariantAccess<'a, R> {
     type Error = Error;
 
-    fn visit_unit(self) -> Result<()> {
+    fn unit_variant(self) -> Result<()> {
         Ok(())
     }
 
-    fn visit_newtype_seed<T>(self, _seed: T) -> Result<T::Value>
+    fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value>
         where T: de::DeserializeSeed<'de>,
     {
         Err(de::Error::invalid_type(Unexpected::UnitVariant, &"newtype variant"))
     }
 
-    fn visit_tuple<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
+    fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
         where V: de::Visitor<'de>,
     {
         Err(de::Error::invalid_type(Unexpected::UnitVariant, &"tuple variant"))
     }
 
-    fn visit_struct<V>(
+    fn struct_variant<V>(
         self,
         _fields: &'static [&'static str],
         _visitor: V

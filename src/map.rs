@@ -316,11 +316,11 @@ impl<'de> de::Deserialize<'de> for Map<String, Value> {
 
             #[inline]
             fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
-                where V: de::MapVisitor<'de>
+                where V: de::MapAccess<'de>
             {
-                let mut values = Map::with_capacity(visitor.size_hint().0);
+                let mut values = Map::new();
 
-                while let Some((key, value)) = try!(visitor.visit()) {
+                while let Some((key, value)) = try!(visitor.next_entry()) {
                     values.insert(key, value);
                 }
 

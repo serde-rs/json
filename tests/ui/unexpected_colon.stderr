@@ -1,6 +1,6 @@
 error: no rules expected the token `:`
- --> $DIR/unexpected_colon.rs:5:13
-  |
-5 |     json!({ : true });
-  |             ^
+  --> $DIR/unexpected_colon.rs:13:13
+   |
+13 |     json!({ : true });
+   |             ^
 
