@@ -1,0 +1,6 @@
+error: expected expression, found `~`
+  --> $DIR/parse_expr.rs:13:19
+   |
+13 |     json!({ "a" : ~ });
+   |                   ^
+

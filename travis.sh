@@ -10,6 +10,11 @@ channel() {
             pwd
             (set -x; cargo "$@")
         fi
+    elif [ -n "${APPVEYOR}" ]; then
+        if [ "${APPVEYOR_RUST_CHANNEL}" = "${CHANNEL}" ]; then
+            pwd
+            (set -x; cargo "$@")
+        fi
     else
         pwd
         (set -x; cargo "+${CHANNEL}" "$@")
@@ -23,25 +28,16 @@ if [ -n "${CLIPPY}" ]; then
         exit
     fi
 
-    cd "$DIR/json"
-    cargo clippy -- -Dclippy
-
-    cd "$DIR/json_tests"
     cargo clippy -- -Dclippy
 else
     CHANNEL=nightly
-    cd "$DIR/json"
     channel clean
     channel build
-    channel build --features preserve_order
+    (cd "$DIR/tests/deps" && channel build)
     channel test
-    cd "$DIR/json_tests/deps"
-    channel build
-    cd "$DIR/json_tests"
-    channel test --features unstable-testing
+    channel test --features preserve_order
 
     for CHANNEL in stable 1.12.0 1.13.0 beta; do
-        cd "$DIR/json"
         channel clean
         channel build
         channel build --features preserve_order

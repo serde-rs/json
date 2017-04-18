@@ -1,0 +1,8 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/not_found.rs:13:19
+   |
+13 |     json!({ "a" : x });
+   |                   ^ not found in this scope
+
+error: aborting due to previous error
+

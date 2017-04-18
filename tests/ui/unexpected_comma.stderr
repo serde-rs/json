@@ -1,0 +1,6 @@
+error: no rules expected the token `,`
+  --> $DIR/unexpected_comma.rs:13:17
+   |
+13 |     json!({ "a" , "b": true });
+   |                 ^
+

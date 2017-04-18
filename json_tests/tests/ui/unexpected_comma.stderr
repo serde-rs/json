@@ -1,6 +1,0 @@
-error: no rules expected the token `,`
- --> $DIR/unexpected_comma.rs:5:17
-  |
-5 |     json!({ "a" , "b": true });
-  |                 ^
-
