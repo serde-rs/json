@@ -240,7 +240,8 @@ impl Debug for Number {
 impl Serialize for Number {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer
+    where
+        S: Serializer,
     {
         match self.n {
             N::PosInt(i) => serializer.serialize_u64(i),
@@ -253,7 +254,8 @@ impl Serialize for Number {
 impl<'de> Deserialize<'de> for Number {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Number, D::Error>
-        where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         struct NumberVisitor;
 
@@ -276,7 +278,8 @@ impl<'de> Deserialize<'de> for Number {
 
             #[inline]
             fn visit_f64<E>(self, value: f64) -> Result<Number, E>
-                where E: de::Error
+            where
+                E: de::Error,
             {
                 Number::from_f64(value).ok_or_else(|| de::Error::custom("not a JSON number"))
             }
@@ -291,7 +294,8 @@ impl<'de> Deserializer<'de> for Number {
 
     #[inline]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
-        where V: Visitor<'de>
+    where
+        V: Visitor<'de>,
     {
         match self.n {
             N::PosInt(i) => visitor.visit_u64(i),
@@ -312,7 +316,8 @@ impl<'de, 'a> Deserializer<'de> for &'a Number {
 
     #[inline]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
-        where V: Visitor<'de>
+    where
+        V: Visitor<'de>,
     {
         match self.n {
             N::PosInt(i) => visitor.visit_u64(i),

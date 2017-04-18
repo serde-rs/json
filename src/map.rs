@@ -39,9 +39,7 @@ impl Map<String, Value> {
     /// Makes a new empty Map.
     #[inline]
     pub fn new() -> Self {
-        Map {
-            map: MapImpl::new(),
-        }
+        Map { map: MapImpl::new() }
     }
 
     #[cfg(not(feature = "preserve_order"))]
@@ -50,18 +48,14 @@ impl Map<String, Value> {
     pub fn with_capacity(capacity: usize) -> Self {
         // does not support with_capacity
         let _ = capacity;
-        Map {
-            map: BTreeMap::new(),
-        }
+        Map { map: BTreeMap::new() }
     }
 
     #[cfg(feature = "preserve_order")]
     /// Makes a new empty Map with the given initial capacity.
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        Map {
-            map: LinkedHashMap::with_capacity(capacity),
-        }
+        Map { map: LinkedHashMap::with_capacity(capacity) }
     }
 
     /// Clears the map, removing all values.
@@ -76,8 +70,9 @@ impl Map<String, Value> {
     /// on the borrowed form *must* match the ordering on the key type.
     #[inline]
     pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&Value>
-        where String: Borrow<Q>,
-              Q: Ord + Eq + Hash
+    where
+        String: Borrow<Q>,
+        Q: Ord + Eq + Hash,
     {
         self.map.get(key)
     }
@@ -88,8 +83,9 @@ impl Map<String, Value> {
     /// on the borrowed form *must* match the ordering on the key type.
     #[inline]
     pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool
-        where String: Borrow<Q>,
-              Q: Ord + Eq + Hash
+    where
+        String: Borrow<Q>,
+        Q: Ord + Eq + Hash,
     {
         self.map.contains_key(key)
     }
@@ -100,8 +96,9 @@ impl Map<String, Value> {
     /// on the borrowed form *must* match the ordering on the key type.
     #[inline]
     pub fn get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut Value>
-        where String: Borrow<Q>,
-              Q: Ord + Eq + Hash
+    where
+        String: Borrow<Q>,
+        Q: Ord + Eq + Hash,
     {
         self.map.get_mut(key)
     }
@@ -125,8 +122,9 @@ impl Map<String, Value> {
     /// on the borrowed form *must* match the ordering on the key type.
     #[inline]
     pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<Value>
-        where String: Borrow<Q>,
-              Q: Ord + Eq + Hash
+    where
+        String: Borrow<Q>,
+        Q: Ord + Eq + Hash,
     {
         self.map.remove(key)
     }
@@ -134,7 +132,8 @@ impl Map<String, Value> {
     /// Gets the given key's corresponding entry in the map for in-place
     /// manipulation.
     pub fn entry<S>(&mut self, key: S) -> Entry
-        where S: Into<String>
+    where
+        S: Into<String>,
     {
         #[cfg(not(feature = "preserve_order"))]
         use std::collections::btree_map::Entry as EntryImpl;
@@ -142,12 +141,8 @@ impl Map<String, Value> {
         use linked_hash_map::Entry as EntryImpl;
 
         match self.map.entry(key.into()) {
-            EntryImpl::Vacant(vacant) => {
-                Entry::Vacant(VacantEntry { vacant: vacant })
-            }
-            EntryImpl::Occupied(occupied) => {
-                Entry::Occupied(OccupiedEntry { occupied: occupied })
-            }
+            EntryImpl::Vacant(vacant) => Entry::Vacant(VacantEntry { vacant: vacant }),
+            EntryImpl::Occupied(occupied) => Entry::Occupied(OccupiedEntry { occupied: occupied }),
         }
     }
 
@@ -166,51 +161,39 @@ impl Map<String, Value> {
     /// Gets an iterator over the entries of the map.
     #[inline]
     pub fn iter(&self) -> Iter {
-        Iter {
-            iter: self.map.iter(),
-        }
+        Iter { iter: self.map.iter() }
     }
 
     /// Gets a mutable iterator over the entries of the map.
     #[inline]
     pub fn iter_mut(&mut self) -> IterMut {
-        IterMut {
-            iter: self.map.iter_mut(),
-        }
+        IterMut { iter: self.map.iter_mut() }
     }
 
     /// Gets an iterator over the keys of the map.
     #[inline]
     pub fn keys(&self) -> Keys {
-        Keys {
-            iter: self.map.keys(),
-        }
+        Keys { iter: self.map.keys() }
     }
 
     /// Gets an iterator over the values of the map.
     #[inline]
     pub fn values(&self) -> Values {
-        Values {
-            iter: self.map.values(),
-        }
+        Values { iter: self.map.values() }
     }
 }
 
 impl Default for Map<String, Value> {
     #[inline]
     fn default() -> Self {
-        Map {
-            map: MapImpl::new(),
-        }
+        Map { map: MapImpl::new() }
     }
 }
 
 impl Clone for Map<String, Value> {
     #[inline]
     fn clone(&self) -> Self {
-        Map {
-            map: self.map.clone(),
-        }
+        Map { map: self.map.clone() }
     }
 }
 
@@ -238,8 +221,9 @@ impl PartialEq for Map<String, Value> {
 /// # ;
 /// ```
 impl<'a, Q: ?Sized> ops::Index<&'a Q> for Map<String, Value>
-    where String: Borrow<Q>,
-          Q: Ord + Eq + Hash
+where
+    String: Borrow<Q>,
+    Q: Ord + Eq + Hash,
 {
     type Output = Value;
 
@@ -263,8 +247,9 @@ impl<'a, Q: ?Sized> ops::Index<&'a Q> for Map<String, Value>
 /// # }
 /// ```
 impl<'a, Q: ?Sized> ops::IndexMut<&'a Q> for Map<String, Value>
-    where String: Borrow<Q>,
-          Q: Ord + Eq + Hash
+where
+    String: Borrow<Q>,
+    Q: Ord + Eq + Hash,
 {
     fn index_mut(&mut self, index: &Q) -> &mut Value {
         self.map.get_mut(index).expect("no entry found for key")
@@ -281,7 +266,8 @@ impl Debug for Map<String, Value> {
 impl ser::Serialize for Map<String, Value> {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: ser::Serializer
+    where
+        S: ser::Serializer,
     {
         use serde::ser::SerializeMap;
         let mut map = try!(serializer.serialize_map(Some(self.len())));
@@ -296,7 +282,8 @@ impl ser::Serialize for Map<String, Value> {
 impl<'de> de::Deserialize<'de> for Map<String, Value> {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: de::Deserializer<'de>
+    where
+        D: de::Deserializer<'de>,
     {
         struct Visitor;
 
@@ -309,14 +296,16 @@ impl<'de> de::Deserialize<'de> for Map<String, Value> {
 
             #[inline]
             fn visit_unit<E>(self) -> Result<Self::Value, E>
-                where E: de::Error
+            where
+                E: de::Error,
             {
                 Ok(Map::new())
             }
 
             #[inline]
             fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
-                where V: de::MapAccess<'de>
+            where
+                V: de::MapAccess<'de>,
             {
                 let mut values = Map::new();
 
@@ -333,15 +322,19 @@ impl<'de> de::Deserialize<'de> for Map<String, Value> {
 }
 
 impl FromIterator<(String, Value)> for Map<String, Value> {
-    fn from_iter<T>(iter: T) -> Self where T: IntoIterator<Item=(String, Value)> {
-        Map {
-            map: FromIterator::from_iter(iter)
-        }
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = (String, Value)>,
+    {
+        Map { map: FromIterator::from_iter(iter) }
     }
 }
 
 impl Extend<(String, Value)> for Map<String, Value> {
-    fn extend<T>(&mut self, iter: T) where T: IntoIterator<Item=(String, Value)> {
+    fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = (String, Value)>,
+    {
         self.map.extend(iter);
     }
 }
@@ -471,7 +464,8 @@ impl<'a> Entry<'a> {
     /// # }
     /// ```
     pub fn or_insert_with<F>(self, default: F) -> &'a mut Value
-        where F: FnOnce() -> Value
+    where
+        F: FnOnce() -> Value,
     {
         match self {
             Entry::Vacant(entry) => entry.insert(default()),
@@ -708,9 +702,7 @@ impl<'a> IntoIterator for &'a Map<String, Value> {
     type IntoIter = Iter<'a>;
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        Iter {
-            iter: self.map.iter(),
-        }
+        Iter { iter: self.map.iter() }
     }
 }
 
@@ -733,9 +725,7 @@ impl<'a> IntoIterator for &'a mut Map<String, Value> {
     type IntoIter = IterMut<'a>;
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        IterMut {
-            iter: self.map.iter_mut(),
-        }
+        IterMut { iter: self.map.iter_mut() }
     }
 }
 
@@ -758,9 +748,7 @@ impl IntoIterator for Map<String, Value> {
     type IntoIter = IntoIter;
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter {
-            iter: self.map.into_iter(),
-        }
+        IntoIter { iter: self.map.into_iter() }
     }
 }
 

@@ -169,12 +169,8 @@ impl From<Error> for io::Error {
         } else {
             match j.classify() {
                 Category::Io => unreachable!(),
-                Category::Syntax | Category::Data => {
-                    io::Error::new(io::ErrorKind::InvalidData, j)
-                }
-                Category::Eof => {
-                    io::Error::new(io::ErrorKind::UnexpectedEof, j)
-                }
+                Category::Syntax | Category::Data => io::Error::new(io::ErrorKind::InvalidData, j),
+                Category::Eof => io::Error::new(io::ErrorKind::UnexpectedEof, j),
             }
         }
     }
@@ -263,14 +259,21 @@ impl Error {
     #[doc(hidden)]
     pub fn syntax(code: ErrorCode, line: usize, column: usize) -> Self {
         Error {
-            err: Box::new(ErrorImpl { code: code, line: line, column: column }),
+            err: Box::new(
+                ErrorImpl {
+                    code: code,
+                    line: line,
+                    column: column,
+                },
+            ),
         }
     }
 
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
     pub fn fix_position<F>(self, f: F) -> Self
-        where F: FnOnce(ErrorCode) -> Error
+    where
+        F: FnOnce(ErrorCode) -> Error,
     {
         if self.err.line == 0 {
             f(self.err.code)
@@ -285,66 +288,28 @@ impl Display for ErrorCode {
         match *self {
             ErrorCode::Message(ref msg) => f.write_str(msg),
             ErrorCode::Io(ref err) => Display::fmt(err, f),
-            ErrorCode::EofWhileParsingList => {
-                f.write_str("EOF while parsing a list")
-            }
-            ErrorCode::EofWhileParsingObject => {
-                f.write_str("EOF while parsing an object")
-            }
-            ErrorCode::EofWhileParsingString => {
-                f.write_str("EOF while parsing a string")
-            }
-            ErrorCode::EofWhileParsingValue => {
-                f.write_str("EOF while parsing a value")
-            }
-            ErrorCode::ExpectedColon => {
-                f.write_str("expected `:`")
-            }
-            ErrorCode::ExpectedListCommaOrEnd => {
-                f.write_str("expected `,` or `]`")
-            }
-            ErrorCode::ExpectedObjectCommaOrEnd => {
-                f.write_str("expected `,` or `}`")
-            }
-            ErrorCode::ExpectedObjectOrArray => {
-                f.write_str("expected `{` or `[`")
-            }
-            ErrorCode::ExpectedSomeIdent => {
-                f.write_str("expected ident")
-            }
-            ErrorCode::ExpectedSomeValue => {
-                f.write_str("expected value")
-            }
-            ErrorCode::ExpectedSomeString => {
-                f.write_str("expected string")
-            }
-            ErrorCode::InvalidEscape => {
-                f.write_str("invalid escape")
-            }
-            ErrorCode::InvalidNumber => {
-                f.write_str("invalid number")
-            }
-            ErrorCode::NumberOutOfRange => {
-                f.write_str("number out of range")
-            }
-            ErrorCode::InvalidUnicodeCodePoint => {
-                f.write_str("invalid unicode code point")
-            }
-            ErrorCode::KeyMustBeAString => {
-                f.write_str("key must be a string")
-            }
+            ErrorCode::EofWhileParsingList => f.write_str("EOF while parsing a list"),
+            ErrorCode::EofWhileParsingObject => f.write_str("EOF while parsing an object"),
+            ErrorCode::EofWhileParsingString => f.write_str("EOF while parsing a string"),
+            ErrorCode::EofWhileParsingValue => f.write_str("EOF while parsing a value"),
+            ErrorCode::ExpectedColon => f.write_str("expected `:`"),
+            ErrorCode::ExpectedListCommaOrEnd => f.write_str("expected `,` or `]`"),
+            ErrorCode::ExpectedObjectCommaOrEnd => f.write_str("expected `,` or `}`"),
+            ErrorCode::ExpectedObjectOrArray => f.write_str("expected `{` or `[`"),
+            ErrorCode::ExpectedSomeIdent => f.write_str("expected ident"),
+            ErrorCode::ExpectedSomeValue => f.write_str("expected value"),
+            ErrorCode::ExpectedSomeString => f.write_str("expected string"),
+            ErrorCode::InvalidEscape => f.write_str("invalid escape"),
+            ErrorCode::InvalidNumber => f.write_str("invalid number"),
+            ErrorCode::NumberOutOfRange => f.write_str("number out of range"),
+            ErrorCode::InvalidUnicodeCodePoint => f.write_str("invalid unicode code point"),
+            ErrorCode::KeyMustBeAString => f.write_str("key must be a string"),
             ErrorCode::LoneLeadingSurrogateInHexEscape => {
                 f.write_str("lone leading surrogate in hex escape")
             }
-            ErrorCode::TrailingCharacters => {
-                f.write_str("trailing characters")
-            }
-            ErrorCode::UnexpectedEndOfHexEscape => {
-                f.write_str("unexpected end of hex escape")
-            }
-            ErrorCode::RecursionLimitExceeded => {
-                f.write_str("recursion limit exceeded")
-            }
+            ErrorCode::TrailingCharacters => f.write_str("trailing characters"),
+            ErrorCode::UnexpectedEndOfHexEscape => f.write_str("unexpected end of hex escape"),
+            ErrorCode::RecursionLimitExceeded => f.write_str("recursion limit exceeded"),
         }
     }
 }
@@ -379,7 +344,13 @@ impl Display for ErrorImpl {
         if self.line == 0 {
             Display::fmt(&self.code, f)
         } else {
-            write!(f, "{} at line {} column {}", self.code, self.line, self.column)
+            write!(
+                f,
+                "{} at line {} column {}",
+                self.code,
+                self.line,
+                self.column
+            )
         }
     }
 }
@@ -393,17 +364,21 @@ impl Debug for Error {
 }
 
 impl From<ErrorImpl> for Error {
-    fn from(error: ErrorImpl)  -> Error {
-        Error {
-            err: Box::new(error),
-        }
+    fn from(error: ErrorImpl) -> Error {
+        Error { err: Box::new(error) }
     }
 }
 
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
         Error {
-            err: Box::new(ErrorImpl { code: ErrorCode::Io(error), line: 0, column: 0 }),
+            err: Box::new(
+                ErrorImpl {
+                    code: ErrorCode::Io(error),
+                    line: 0,
+                    column: 0,
+                },
+            ),
         }
     }
 }
@@ -411,7 +386,13 @@ impl From<io::Error> for Error {
 impl From<de::value::Error> for Error {
     fn from(error: de::value::Error) -> Error {
         Error {
-            err: Box::new(ErrorImpl { code: ErrorCode::Message(error.to_string()), line: 0, column: 0 }),
+            err: Box::new(
+                ErrorImpl {
+                    code: ErrorCode::Message(error.to_string()),
+                    line: 0,
+                    column: 0,
+                },
+            ),
         }
     }
 }
@@ -419,7 +400,13 @@ impl From<de::value::Error> for Error {
 impl de::Error for Error {
     fn custom<T: Display>(msg: T) -> Error {
         Error {
-            err: Box::new(ErrorImpl { code: ErrorCode::Message(msg.to_string()), line: 0, column: 0 }),
+            err: Box::new(
+                ErrorImpl {
+                    code: ErrorCode::Message(msg.to_string()),
+                    line: 0,
+                    column: 0,
+                },
+            ),
         }
     }
 }
@@ -427,7 +414,13 @@ impl de::Error for Error {
 impl ser::Error for Error {
     fn custom<T: Display>(msg: T) -> Error {
         Error {
-            err: Box::new(ErrorImpl { code: ErrorCode::Message(msg.to_string()), line: 0, column: 0 }),
+            err: Box::new(
+                ErrorImpl {
+                    code: ErrorCode::Message(msg.to_string()),
+                    line: 0,
+                    column: 0,
+                },
+            ),
         }
     }
 }

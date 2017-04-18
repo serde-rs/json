@@ -28,7 +28,8 @@ pub struct LineColIterator<I> {
 }
 
 impl<I> LineColIterator<I>
-    where I: Iterator<Item = io::Result<u8>>
+where
+    I: Iterator<Item = io::Result<u8>>,
 {
     pub fn new(iter: I) -> LineColIterator<I> {
         LineColIterator {
@@ -53,7 +54,8 @@ impl<I> LineColIterator<I>
 }
 
 impl<I> Iterator for LineColIterator<I>
-    where I: Iterator<Item = io::Result<u8>>
+where
+    I: Iterator<Item = io::Result<u8>>,
 {
     type Item = io::Result<u8>;
 

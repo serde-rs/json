@@ -30,7 +30,8 @@ pub struct Deserializer<R> {
 }
 
 impl<'de, R> Deserializer<R>
-    where R: read::Read<'de>
+where
+    R: read::Read<'de>,
 {
     /// Create a JSON deserializer from one of the possible serde_json input
     /// sources.
@@ -51,7 +52,8 @@ impl<'de, R> Deserializer<R>
 }
 
 impl<I> Deserializer<read::IteratorRead<I>>
-    where I: Iterator<Item = io::Result<u8>>
+where
+    I: Iterator<Item = io::Result<u8>>,
 {
     /// Creates a JSON deserializer from a `std::iter::Iterator`.
     pub fn from_iter(iter: I) -> Self {
@@ -60,7 +62,8 @@ impl<I> Deserializer<read::IteratorRead<I>>
 }
 
 impl<R> Deserializer<read::IoRead<R>>
-    where R: io::Read
+where
+    R: io::Read,
 {
     /// Creates a JSON deserializer from an `io::Read`.
     pub fn from_reader(reader: R) -> Self {
@@ -101,7 +104,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     /// Turn a JSON deserializer into an iterator over values of type T.
     pub fn into_iter<T>(self) -> StreamDeserializer<'de, R, T>
-        where T: de::Deserialize<'de>
+    where
+        T: de::Deserialize<'de>,
     {
         // This cannot be an implementation of std::iter::IntoIterator because
         // we need the caller to choose what T is.
@@ -162,7 +166,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn parse_value<V>(&mut self, visitor: V) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         let peek = match try!(self.parse_whitespace()) {
             Some(b) => b,
@@ -258,15 +263,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn parse_integer<V>(&mut self, pos: bool, visitor: V) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         match try!(self.next_char_or_null()) {
             b'0' => {
                 // There can be only one leading '0'.
                 match try!(self.peek_or_null()) {
-                    b'0'...b'9' => {
-                        Err(self.peek_error(ErrorCode::InvalidNumber))
-                    }
+                    b'0'...b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
                     _ => self.parse_number(pos, 0, visitor),
                 }
             }
@@ -283,10 +287,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             // number as a `u64` until we grow too large. At that point, switch to
                             // parsing the value as a `f64`.
                             if overflow!(res * 10 + digit, u64::MAX) {
-                                return self.parse_long_integer(pos,
-                                                               res,
-                                                               1, // res * 10^1
-                                                               visitor);
+                                return self.parse_long_integer(
+                                    pos,
+                                    res,
+                                    1, // res * 10^1
+                                    visitor,
+                                );
                             }
 
                             res = res * 10 + digit;
@@ -306,9 +312,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         pos: bool,
         significand: u64,
         mut exponent: i32,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         loop {
             match try!(self.peek_or_null()) {
@@ -325,22 +332,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     return self.parse_exponent(pos, significand, exponent, visitor);
                 }
                 _ => {
-                    return self.visit_f64_from_parts(pos,
-                                                     significand,
-                                                     exponent,
-                                                     visitor);
+                    return self.visit_f64_from_parts(pos, significand, exponent, visitor);
                 }
             }
         }
     }
 
-    fn parse_number<V>(
-        &mut self,
-        pos: bool,
-        significand: u64,
-        visitor: V
-    ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    fn parse_number<V>(&mut self, pos: bool, significand: u64, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
     {
         match try!(self.peek_or_null()) {
             b'.' => self.parse_decimal(pos, significand, 0, visitor),
@@ -367,9 +367,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         pos: bool,
         mut significand: u64,
         mut exponent: i32,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         self.eat_char();
 
@@ -397,9 +398,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         match try!(self.peek_or_null()) {
-            b'e' | b'E' => {
-                self.parse_exponent(pos, significand, exponent, visitor)
-            }
+            b'e' | b'E' => self.parse_exponent(pos, significand, exponent, visitor),
             _ => self.visit_f64_from_parts(pos, significand, exponent, visitor),
         }
     }
@@ -409,9 +408,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         pos: bool,
         significand: u64,
         starting_exp: i32,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         self.eat_char();
 
@@ -440,10 +440,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             let digit = (c - b'0') as i32;
 
             if overflow!(exp * 10 + digit, i32::MAX) {
-                return self.parse_exponent_overflow(pos,
-                                                    significand,
-                                                    pos_exp,
-                                                    visitor);
+                return self.parse_exponent_overflow(pos, significand, pos_exp, visitor);
             }
 
             exp = exp * 10 + digit;
@@ -467,9 +464,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         pos: bool,
         significand: u64,
         pos_exp: bool,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         // Error instead of +/- infinity.
         if significand != 0 && pos_exp {
@@ -479,11 +477,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         while let b'0'...b'9' = try!(self.peek_or_null()) {
             self.eat_char();
         }
-        visitor.visit_f64(if pos {
-            0.0
-        } else {
-            -0.0
-        })
+        visitor.visit_f64(if pos { 0.0 } else { -0.0 })
     }
 
     fn visit_f64_from_parts<V>(
@@ -491,9 +485,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         pos: bool,
         significand: u64,
         mut exponent: i32,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         let mut f = significand as f64;
         loop {
@@ -521,11 +516,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
             }
         }
-        visitor.visit_f64(if pos {
-            f
-        } else {
-            -f
-        })
+        visitor.visit_f64(if pos { f } else { -f })
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
@@ -562,6 +553,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 }
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 static POW10: [f64; 309] =
     [1e000, 1e001, 1e002, 1e003, 1e004, 1e005, 1e006, 1e007, 1e008, 1e009,
      1e010, 1e011, 1e012, 1e013, 1e014, 1e015, 1e016, 1e017, 1e018, 1e019,
@@ -600,7 +592,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
     #[inline]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         self.parse_value(visitor)
     }
@@ -608,7 +601,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     /// Parses a `null` as a None, and any other values as a `Some(...)`.
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         match try!(self.parse_whitespace()) {
             Some(b'n') => {
@@ -622,12 +616,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
     /// Parses a newtype struct as the underlying value.
     #[inline]
-    fn deserialize_newtype_struct<V>(
-        self,
-        _name: &str,
-        visitor: V
-    ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    fn deserialize_newtype_struct<V>(self, _name: &str, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
     {
         visitor.visit_newtype_struct(self)
     }
@@ -639,9 +630,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self,
         _name: &str,
         _variants: &'static [&'static str],
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         match try!(self.parse_whitespace()) {
             Some(b'{') => {
@@ -752,7 +744,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     /// # }
     /// ```
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
-        where V: de::Visitor<'de>
+    where
+        V: de::Visitor<'de>,
     {
         match try!(self.parse_whitespace()) {
             Some(b'"') => {
@@ -770,7 +763,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
     #[inline]
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
-        where V: de::Visitor<'de>
+    where
+        V: de::Visitor<'de>,
     {
         self.deserialize_bytes(visitor)
     }
@@ -799,7 +793,8 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
     type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
-        where T: de::DeserializeSeed<'de>,
+    where
+        T: de::DeserializeSeed<'de>,
     {
         match try!(self.de.parse_whitespace()) {
             Some(b']') => {
@@ -812,8 +807,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
                 if self.first {
                     self.first = false;
                 } else {
-                    return Err(self.de
-                        .peek_error(ErrorCode::ExpectedListCommaOrEnd));
+                    return Err(self.de.peek_error(ErrorCode::ExpectedListCommaOrEnd));
                 }
             }
             None => {
@@ -844,7 +838,8 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
-        where K: de::DeserializeSeed<'de>,
+    where
+        K: de::DeserializeSeed<'de>,
     {
         let peek = match try!(self.de.parse_whitespace()) {
             Some(b'}') => {
@@ -859,13 +854,11 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
                     self.first = false;
                     Some(b)
                 } else {
-                    return Err(self.de
-                        .peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
+                    return Err(self.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
                 }
             }
             None => {
-                return Err(self.de
-                    .peek_error(ErrorCode::EofWhileParsingObject));
+                return Err(self.de.peek_error(ErrorCode::EofWhileParsingObject));
             }
         };
 
@@ -877,7 +870,8 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
     }
 
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
-        where V: de::DeserializeSeed<'de>,
+    where
+        V: de::DeserializeSeed<'de>,
     {
         try!(self.de.parse_object_colon());
 
@@ -891,9 +885,7 @@ struct VariantAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> VariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        VariantAccess {
-            de: de,
-        }
+        VariantAccess { de: de }
     }
 }
 
@@ -902,7 +894,8 @@ impl<'de, 'a, R: Read<'de> + 'a> de::EnumAccess<'de> for VariantAccess<'a, R> {
     type Variant = Self;
 
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
-        where V: de::DeserializeSeed<'de>,
+    where
+        V: de::DeserializeSeed<'de>,
     {
         let val = try!(seed.deserialize(&mut *self.de));
         try!(self.de.parse_object_colon());
@@ -918,23 +911,22 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for VariantAccess<'a, R>
     }
 
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
-        where T: de::DeserializeSeed<'de>,
+    where
+        T: de::DeserializeSeed<'de>,
     {
         seed.deserialize(self.de)
     }
 
     fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
         de::Deserializer::deserialize_any(self.de, visitor)
     }
 
-    fn struct_variant<V>(
-        self,
-        _fields: &'static [&'static str],
-        visitor: V
-    ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
     {
         de::Deserializer::deserialize_any(self.de, visitor)
     }
@@ -946,9 +938,7 @@ struct UnitVariantAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> UnitVariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        UnitVariantAccess {
-            de: de,
-        }
+        UnitVariantAccess { de: de }
     }
 }
 
@@ -957,7 +947,8 @@ impl<'de, 'a, R: Read<'de> + 'a> de::EnumAccess<'de> for UnitVariantAccess<'a, R
     type Variant = Self;
 
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
-        where V: de::DeserializeSeed<'de>,
+    where
+        V: de::DeserializeSeed<'de>,
     {
         let variant = try!(seed.deserialize(&mut *self.de));
         Ok((variant, self))
@@ -972,25 +963,24 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for UnitVariantAccess<'a
     }
 
     fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value>
-        where T: de::DeserializeSeed<'de>,
+    where
+        T: de::DeserializeSeed<'de>,
     {
-        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"newtype variant"))
+        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"newtype variant"),)
     }
 
     fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    where
+        V: de::Visitor<'de>,
     {
-        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"tuple variant"))
+        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"tuple variant"),)
     }
 
-    fn struct_variant<V>(
-        self,
-        _fields: &'static [&'static str],
-        _visitor: V
-    ) -> Result<V::Value>
-        where V: de::Visitor<'de>,
+    fn struct_variant<V>(self, _fields: &'static [&'static str], _visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
     {
-        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"struct variant"))
+        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"struct variant"),)
     }
 }
 
@@ -1028,8 +1018,9 @@ pub struct StreamDeserializer<'de, R, T> {
 }
 
 impl<'de, R, T> StreamDeserializer<'de, R, T>
-    where R: read::Read<'de>,
-          T: de::Deserialize<'de>
+where
+    R: read::Read<'de>,
+    T: de::Deserialize<'de>,
 {
     /// Create a JSON stream deserializer from one of the possible serde_json
     /// input sources.
@@ -1087,8 +1078,9 @@ impl<'de, R, T> StreamDeserializer<'de, R, T>
 }
 
 impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
-    where R: Read<'de>,
-          T: de::Deserialize<'de>,
+where
+    R: Read<'de>,
+    T: de::Deserialize<'de>,
 {
     type Item = Result<T>;
 
@@ -1109,9 +1101,7 @@ impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
                 }
                 Some(result)
             }
-            Ok(Some(_)) => {
-                Some(Err(self.de.peek_error(ErrorCode::ExpectedObjectOrArray)))
-            }
+            Ok(Some(_)) => Some(Err(self.de.peek_error(ErrorCode::ExpectedObjectOrArray))),
             Err(e) => Some(Err(e)),
         }
     }
@@ -1120,8 +1110,9 @@ impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
 //////////////////////////////////////////////////////////////////////////////
 
 fn from_trait<'de, R, T>(read: R) -> Result<T>
-    where R: Read<'de>,
-          T: de::Deserialize<'de>,
+where
+    R: Read<'de>,
+    T: de::Deserialize<'de>,
 {
     let mut de = Deserializer::new(read);
     let value = try!(de::Deserialize::deserialize(&mut de));
@@ -1141,8 +1132,9 @@ fn from_trait<'de, R, T>(read: R) -> Result<T>
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
 pub fn from_iter<I, T>(iter: I) -> Result<T>
-    where I: Iterator<Item = io::Result<u8>>,
-          T: de::DeserializeOwned,
+where
+    I: Iterator<Item = io::Result<u8>>,
+    T: de::DeserializeOwned,
 {
     from_trait(read::IteratorRead::new(iter))
 }
@@ -1157,8 +1149,9 @@ pub fn from_iter<I, T>(iter: I) -> Result<T>
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
-    where R: io::Read,
-          T: de::DeserializeOwned,
+where
+    R: io::Read,
+    T: de::DeserializeOwned,
 {
     from_iter(rdr.bytes())
 }
@@ -1173,7 +1166,8 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
 pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
-    where T: de::Deserialize<'a>,
+where
+    T: de::Deserialize<'a>,
 {
     from_trait(read::SliceRead::new(v))
 }
@@ -1188,7 +1182,8 @@ pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
 pub fn from_str<'a, T>(s: &'a str) -> Result<T>
-    where T: de::Deserialize<'a>,
+where
+    T: de::Deserialize<'a>,
 {
     from_trait(read::StrRead::new(s))
 }
