@@ -383,20 +383,6 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<de::value::Error> for Error {
-    fn from(error: de::value::Error) -> Error {
-        Error {
-            err: Box::new(
-                ErrorImpl {
-                    code: ErrorCode::Message(error.to_string()),
-                    line: 0,
-                    column: 0,
-                },
-            ),
-        }
-    }
-}
-
 impl de::Error for Error {
     fn custom<T: Display>(msg: T) -> Error {
         Error {
