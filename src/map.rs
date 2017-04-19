@@ -8,8 +8,11 @@
 
 //! A map of String to serde_json::Value.
 //!
-//! By default the map is backed by a BTreeMap. Enable the `preserve_order`
-//! feature of serde_json to use LinkedHashMap instead.
+//! By default the map is backed by a [`BTreeMap`]. Enable the `preserve_order`
+//! feature of serde_json to use [`LinkedHashMap`] instead.
+//!
+//! [`BTreeMap`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
+//! [`LinkedHashMap`]: https://docs.rs/linked-hash-map/*/linked_hash_map/struct.LinkedHashMap.html
 
 use serde::{ser, de};
 use std::fmt::{self, Debug};
@@ -375,7 +378,7 @@ macro_rules! delegate_iterator {
 /// This enum is constructed from the [`entry`] method on [`Map`].
 ///
 /// [`entry`]: struct.Map.html#method.entry
-/// [`BTreeMap`]: struct.Map.html
+/// [`Map`]: struct.Map.html
 pub enum Entry<'a> {
     /// A vacant Entry.
     Vacant(VacantEntry<'a>),
