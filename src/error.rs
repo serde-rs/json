@@ -363,12 +363,6 @@ impl Debug for Error {
     }
 }
 
-impl From<ErrorImpl> for Error {
-    fn from(error: ErrorImpl) -> Error {
-        Error { err: Box::new(error) }
-    }
-}
-
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
         Error {
