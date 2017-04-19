@@ -555,7 +555,7 @@ static ESCAPE: [bool; 256] = [
 ];
 
 fn next_or_eof<'de, R: Read<'de>>(read: &mut R) -> Result<u8> {
-    match try!(read.next()) {
+    match try!(read.next().map_err(Error::io)) {
         Some(b) => Ok(b),
         None => error(read, ErrorCode::EofWhileParsingString),
     }

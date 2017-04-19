@@ -271,6 +271,20 @@ impl Error {
 
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
+    pub fn io(error: io::Error) -> Self {
+        Error {
+            err: Box::new(
+                ErrorImpl {
+                    code: ErrorCode::Io(error),
+                    line: 0,
+                    column: 0,
+                },
+            ),
+        }
+    }
+
+    // Not public API. Should be pub(crate).
+    #[doc(hidden)]
     pub fn fix_position<F>(self, f: F) -> Self
     where
         F: FnOnce(ErrorCode) -> Error,
@@ -360,20 +374,6 @@ impl Display for ErrorImpl {
 impl Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Debug::fmt(&*self.err, f)
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(error: io::Error) -> Error {
-        Error {
-            err: Box::new(
-                ErrorImpl {
-                    code: ErrorCode::Io(error),
-                    line: 0,
-                    column: 0,
-                },
-            ),
-        }
     }
 }
 
