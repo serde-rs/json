@@ -2376,7 +2376,7 @@ impl<'de> de::Deserializer<'de> for MapDeserializer {
     }
 }
 
-impl<'de, 'a> de::Deserializer<'de> for &'a Value {
+impl<'de> de::Deserializer<'de> for &'de Value {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
@@ -2387,7 +2387,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a Value {
             Value::Null => visitor.visit_unit(),
             Value::Bool(v) => visitor.visit_bool(v),
             Value::Number(ref n) => n.deserialize_any(visitor),
-            Value::String(ref v) => visitor.visit_str(v),
+            Value::String(ref v) => visitor.visit_borrowed_str(v),
             Value::Array(ref v) => {
                 let len = v.len();
                 let mut deserializer = SeqRefDeserializer::new(v);
@@ -2485,14 +2485,14 @@ impl<'de, 'a> de::Deserializer<'de> for &'a Value {
     }
 }
 
-struct EnumRefDeserializer<'a> {
-    variant: &'a str,
-    value: Option<&'a Value>,
+struct EnumRefDeserializer<'de> {
+    variant: &'de str,
+    value: Option<&'de Value>,
 }
 
-impl<'de, 'a> de::EnumAccess<'de> for EnumRefDeserializer<'a> {
+impl<'de> de::EnumAccess<'de> for EnumRefDeserializer<'de> {
     type Error = Error;
-    type Variant = VariantRefDeserializer<'a>;
+    type Variant = VariantRefDeserializer<'de>;
 
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Error>
     where
@@ -2504,11 +2504,11 @@ impl<'de, 'a> de::EnumAccess<'de> for EnumRefDeserializer<'a> {
     }
 }
 
-struct VariantRefDeserializer<'a> {
-    value: Option<&'a Value>,
+struct VariantRefDeserializer<'de> {
+    value: Option<&'de Value>,
 }
 
-impl<'de, 'a> de::VariantAccess<'de> for VariantRefDeserializer<'a> {
+impl<'de> de::VariantAccess<'de> for VariantRefDeserializer<'de> {
     type Error = Error;
 
     fn unit_variant(self) -> Result<(), Error> {
@@ -2559,17 +2559,17 @@ impl<'de, 'a> de::VariantAccess<'de> for VariantRefDeserializer<'a> {
     }
 }
 
-struct SeqRefDeserializer<'a> {
-    iter: slice::Iter<'a, Value>,
+struct SeqRefDeserializer<'de> {
+    iter: slice::Iter<'de, Value>,
 }
 
-impl<'a> SeqRefDeserializer<'a> {
-    fn new(slice: &'a [Value]) -> Self {
+impl<'de> SeqRefDeserializer<'de> {
+    fn new(slice: &'de [Value]) -> Self {
         SeqRefDeserializer { iter: slice.iter() }
     }
 }
 
-impl<'de, 'a> de::Deserializer<'de> for SeqRefDeserializer<'a> {
+impl<'de> de::Deserializer<'de> for SeqRefDeserializer<'de> {
     type Error = Error;
 
     #[inline]
@@ -2598,7 +2598,7 @@ impl<'de, 'a> de::Deserializer<'de> for SeqRefDeserializer<'a> {
     }
 }
 
-impl<'de, 'a> de::SeqAccess<'de> for SeqRefDeserializer<'a> {
+impl<'de> de::SeqAccess<'de> for SeqRefDeserializer<'de> {
     type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Error>
@@ -2619,13 +2619,13 @@ impl<'de, 'a> de::SeqAccess<'de> for SeqRefDeserializer<'a> {
     }
 }
 
-struct MapRefDeserializer<'a> {
-    iter: <&'a Map<String, Value> as IntoIterator>::IntoIter,
-    value: Option<&'a Value>,
+struct MapRefDeserializer<'de> {
+    iter: <&'de Map<String, Value> as IntoIterator>::IntoIter,
+    value: Option<&'de Value>,
 }
 
-impl<'a> MapRefDeserializer<'a> {
-    fn new(map: &'a Map<String, Value>) -> Self {
+impl<'de> MapRefDeserializer<'de> {
+    fn new(map: &'de Map<String, Value>) -> Self {
         MapRefDeserializer {
             iter: map.into_iter(),
             value: None,
@@ -2633,7 +2633,7 @@ impl<'a> MapRefDeserializer<'a> {
     }
 }
 
-impl<'de, 'a> de::MapAccess<'de> for MapRefDeserializer<'a> {
+impl<'de> de::MapAccess<'de> for MapRefDeserializer<'de> {
     type Error = Error;
 
     fn next_key_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Error>
@@ -2667,7 +2667,7 @@ impl<'de, 'a> de::MapAccess<'de> for MapRefDeserializer<'a> {
     }
 }
 
-impl<'de, 'a> de::Deserializer<'de> for MapRefDeserializer<'a> {
+impl<'de> de::Deserializer<'de> for MapRefDeserializer<'de> {
     type Error = Error;
 
     #[inline]
