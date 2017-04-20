@@ -39,7 +39,7 @@ use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
 
-use serde_json::{Deserializer, Value, from_iter, from_reader, from_slice, from_str, from_value,
+use serde_json::{Deserializer, Value, from_reader, from_slice, from_str, from_value,
                  to_string, to_string_pretty, to_value, to_vec, to_writer};
 
 macro_rules! treemap {
@@ -606,9 +606,6 @@ where
         let v: T = from_slice(s.as_bytes()).unwrap();
         assert_eq!(v, value.clone());
 
-        let v: T = from_iter(s.bytes().map(Ok)).unwrap();
-        assert_eq!(v, value.clone());
-
         // Make sure we can deserialize into a `Value`.
         let json_value: Value = from_str(s).unwrap();
         assert_eq!(json_value, to_value(&value).unwrap());
@@ -639,9 +636,6 @@ where
 
         let v: T = from_slice(s.as_bytes()).unwrap();
         assert_eq!(v, value.clone());
-
-        let v: T = from_iter(s.bytes().map(Ok)).unwrap();
-        assert_eq!(v, value.clone());
     }
 }
 
@@ -659,7 +653,6 @@ where
     for &(s, err) in errors {
         test_parse_err!(from_str::<T>(s) => err);
         test_parse_err!(from_slice::<T>(s.as_bytes()) => err);
-        test_parse_err!(from_iter::<_, T>(s.bytes().map(Ok)) => err);
     }
 }
 
@@ -669,7 +662,6 @@ where
 {
     for &(s, err) in errors {
         test_parse_err!(from_slice::<T>(s) => err);
-        test_parse_err!(from_iter::<_, T>(s.iter().cloned().map(Ok)) => err);
     }
 }
 
@@ -1692,57 +1684,6 @@ fn test_allow_ser_integers_as_map_keys() {
     );
 
     assert_eq!(to_string(&map).unwrap(), r#"{"-2":8,"-1":6,"1":2,"2":4}"#);
-}
-
-#[test]
-fn test_from_iter_unfused() {
-    // Test that iterator isn't called after EOF.
-
-    use std;
-
-    struct Source<I: Iterator<Item = u8>> {
-        iter: I,
-        finished: bool,
-    }
-
-    impl<I: Iterator<Item = u8>> Iterator for Source<I> {
-        type Item = std::io::Result<u8>;
-
-        fn next(&mut self) -> Option<Self::Item> {
-            assert!(!self.finished, "next() called after iterator EOF");
-
-            match self.iter.next() {
-                Some(b) => Some(Ok(b)),
-                None => {
-                    self.finished = true;
-                    None
-                }
-            }
-        }
-    }
-
-    #[derive(Deserialize)]
-    struct Message {
-        key: u32,
-    }
-
-    let msg: Message = from_iter(
-        Source {
-            iter: b"{\"key\": 1337}".iter().cloned(),
-            finished: false,
-        },
-    )
-            .unwrap();
-    assert_eq!(msg.key, 1337);
-
-    let msg: Message = from_iter(
-        Source {
-            iter: b"{\"key\": 1337}  \t\t ".iter().cloned(),
-            finished: false,
-        },
-    )
-            .unwrap();
-    assert_eq!(msg.key, 1337);
 }
 
 #[test]

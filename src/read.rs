@@ -82,22 +82,14 @@ pub enum Reference<'b, 'c, T: ?Sized + 'static> {
     Copied(&'c T),
 }
 
-/// JSON input source that reads from an iterator of bytes.
-pub struct IteratorRead<Iter>
-where
-    Iter: Iterator<Item = io::Result<u8>>,
-{
-    iter: LineColIterator<Iter>,
-    /// Temporary storage of peeked byte.
-    ch: Option<u8>,
-}
-
 /// JSON input source that reads from a std::io input stream.
 pub struct IoRead<R>
 where
     R: io::Read,
 {
-    delegate: IteratorRead<io::Bytes<R>>,
+    iter: LineColIterator<io::Bytes<R>>,
+    /// Temporary storage of peeked byte.
+    ch: Option<u8>,
 }
 
 /// JSON input source that reads from a slice of bytes.
@@ -124,28 +116,28 @@ mod private {
 
 //////////////////////////////////////////////////////////////////////////////
 
-impl<Iter> IteratorRead<Iter>
+impl<R> IoRead<R>
 where
-    Iter: Iterator<Item = io::Result<u8>>,
+    R: io::Read,
 {
-    /// Create a JSON input source to read from an iterator of bytes.
-    pub fn new(iter: Iter) -> Self {
-        IteratorRead {
-            iter: LineColIterator::new(iter),
+    /// Create a JSON input source to read from a std::io input stream.
+    pub fn new(reader: R) -> Self {
+        IoRead {
+            iter: LineColIterator::new(reader.bytes()),
             ch: None,
         }
     }
 }
 
-impl<Iter> private::Sealed for IteratorRead<Iter>
+impl<R> private::Sealed for IoRead<R>
 where
-    Iter: Iterator<Item = io::Result<u8>>,
+    R: io::Read,
 {
 }
 
-impl<Iter> IteratorRead<Iter>
+impl<R> IoRead<R>
 where
-    Iter: Iterator<Item = io::Result<u8>>,
+    R: io::Read,
 {
     fn parse_str_bytes<'s, T, F>(
         &'s mut self,
@@ -181,9 +173,9 @@ where
     }
 }
 
-impl<'de, Iter> Read<'de> for IteratorRead<Iter>
+impl<'de, R> Read<'de> for IoRead<R>
 where
-    Iter: Iterator<Item = io::Result<u8>>,
+    R: io::Read,
 {
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
@@ -257,72 +249,6 @@ where
 
 //////////////////////////////////////////////////////////////////////////////
 
-impl<R> IoRead<R>
-where
-    R: io::Read,
-{
-    /// Create a JSON input source to read from a std::io input stream.
-    pub fn new(reader: R) -> Self {
-        IoRead { delegate: IteratorRead::new(reader.bytes()) }
-    }
-}
-
-impl<R> private::Sealed for IoRead<R>
-where
-    R: io::Read,
-{
-}
-
-impl<'de, R> Read<'de> for IoRead<R>
-where
-    R: io::Read,
-{
-    #[inline]
-    fn next(&mut self) -> io::Result<Option<u8>> {
-        self.delegate.next()
-    }
-
-    #[inline]
-    fn peek(&mut self) -> io::Result<Option<u8>> {
-        self.delegate.peek()
-    }
-
-    #[inline]
-    fn discard(&mut self) {
-        self.delegate.discard();
-    }
-
-    #[inline]
-    fn position(&self) -> Position {
-        self.delegate.position()
-    }
-
-    #[inline]
-    fn peek_position(&self) -> Position {
-        self.delegate.peek_position()
-    }
-
-    #[inline]
-    fn byte_offset(&self) -> usize {
-        self.delegate.byte_offset()
-    }
-
-    #[inline]
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
-        self.delegate.parse_str(scratch)
-    }
-
-    #[inline]
-    fn parse_str_raw<'s>(
-        &'s mut self,
-        scratch: &'s mut Vec<u8>,
-    ) -> Result<Reference<'de, 's, [u8]>> {
-        self.delegate.parse_str_raw(scratch)
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////////
-
 impl<'a> SliceRead<'a> {
     /// Create a JSON input source to read from a slice of bytes.
     pub fn new(slice: &'a [u8]) -> Self {
@@ -348,9 +274,9 @@ impl<'a> SliceRead<'a> {
         pos
     }
 
-    /// The big optimization here over IteratorRead is that if the string
-    /// contains no backslash escape sequences, the returned &str is a slice of
-    /// the raw JSON data so we avoid copying into the scratch space.
+    /// The big optimization here over IoRead is that if the string contains no
+    /// backslash escape sequences, the returned &str is a slice of the raw JSON
+    /// data so we avoid copying into the scratch space.
     fn parse_str_bytes<'s, T: ?Sized, F>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,

@@ -30,12 +30,6 @@ macro_rules! test_stream {
             $test
         }
         {
-            let de = Deserializer::from_iter($data.bytes().map(Ok));
-            let mut $stream = de.into_iter::<$ty>();
-            assert_eq!($stream.byte_offset(), 0);
-            $test
-        }
-        {
             let mut bytes = $data.as_bytes();
             let de = Deserializer::from_reader(&mut bytes);
             let mut $stream = de.into_iter::<$ty>();

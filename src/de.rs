@@ -18,7 +18,7 @@ use super::error::{Error, ErrorCode, Result};
 
 use read::{self, Reference};
 
-pub use read::{Read, IoRead, IteratorRead, SliceRead, StrRead};
+pub use read::{Read, IoRead, SliceRead, StrRead};
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -40,7 +40,6 @@ where
     ///
     ///   - Deserializer::from_str
     ///   - Deserializer::from_bytes
-    ///   - Deserializer::from_iter
     ///   - Deserializer::from_reader
     pub fn new(read: R) -> Self {
         Deserializer {
@@ -48,16 +47,6 @@ where
             str_buf: Vec::with_capacity(128),
             remaining_depth: 128,
         }
-    }
-}
-
-impl<I> Deserializer<read::IteratorRead<I>>
-where
-    I: Iterator<Item = io::Result<u8>>,
-{
-    /// Creates a JSON deserializer from a `std::iter::Iterator`.
-    pub fn from_iter(iter: I) -> Self {
-        Deserializer::new(read::IteratorRead::new(iter))
     }
 }
 
@@ -1029,7 +1018,6 @@ where
     ///
     ///   - Deserializer::from_str(...).into_iter()
     ///   - Deserializer::from_bytes(...).into_iter()
-    ///   - Deserializer::from_iter(...).into_iter()
     ///   - Deserializer::from_reader(...).into_iter()
     pub fn new(read: R) -> Self {
         let offset = read.byte_offset();
@@ -1122,23 +1110,6 @@ where
     Ok(value)
 }
 
-/// Deserialize an instance of type `T` from an iterator over bytes of JSON.
-///
-/// This conversion can fail if the structure of the Value does not match the
-/// structure expected by `T`, for example if `T` is a struct type but the Value
-/// contains something other than a JSON map. It can also fail if the structure
-/// is correct but `T`'s implementation of `Deserialize` decides that something
-/// is wrong with the data, for example required struct fields are missing from
-/// the JSON map or some number is too big to fit in the expected primitive
-/// type.
-pub fn from_iter<I, T>(iter: I) -> Result<T>
-where
-    I: Iterator<Item = io::Result<u8>>,
-    T: de::DeserializeOwned,
-{
-    from_trait(read::IteratorRead::new(iter))
-}
-
 /// Deserialize an instance of type `T` from an IO stream of JSON.
 ///
 /// This conversion can fail if the structure of the Value does not match the
@@ -1153,7 +1124,7 @@ where
     R: io::Read,
     T: de::DeserializeOwned,
 {
-    from_iter(rdr.bytes())
+    from_trait(read::IoRead::new(rdr))
 }
 
 /// Deserialize an instance of type `T` from bytes of JSON text.

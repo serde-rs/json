@@ -75,8 +75,7 @@ enum Value {
 
 A string of JSON data can be parsed into a `serde_json::Value` by the
 [`serde_json::from_str`][from_str] function. There is also
-[`from_slice`][from_slice] for parsing from a byte slice &[u8],
-[`from_iter`][from_iter] for parsing from an iterator of bytes, and
+[`from_slice`][from_slice] for parsing from a byte slice &[u8] and
 [`from_reader`][from_reader] for parsing from any `io::Read` like a File or
 a TCP stream.
 
@@ -323,7 +322,6 @@ be dual licensed as above, without any additional terms or conditions.
 [value]: https://docs.serde.rs/serde_json/value/enum.Value.html
 [from_str]: https://docs.serde.rs/serde_json/de/fn.from_str.html
 [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
-[from_iter]: https://docs.serde.rs/serde_json/de/fn.from_iter.html
 [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 [to_string]: https://docs.serde.rs/serde_json/ser/fn.to_string.html
 [to_vec]: https://docs.serde.rs/serde_json/ser/fn.to_vec.html
