@@ -1732,7 +1732,7 @@ where
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
 #[inline]
-pub fn to_writer<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Result<()>
+pub fn to_writer<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
 where
     W: io::Write,
     T: ser::Serialize,
@@ -1750,7 +1750,7 @@ where
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
 #[inline]
-pub fn to_writer_pretty<W: ?Sized, T: ?Sized>(writer: &mut W, value: &T) -> Result<()>
+pub fn to_writer_pretty<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
 where
     W: io::Write,
     T: ser::Serialize,
