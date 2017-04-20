@@ -1119,6 +1119,42 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
+///
+/// ```rust
+/// #[macro_use]
+/// extern crate serde_derive;
+///
+/// extern crate serde;
+/// extern crate serde_json;
+///
+/// use std::error::Error;
+/// use std::fs::File;
+/// use std::path::Path;
+///
+/// #[derive(Deserialize, Debug)]
+/// struct User {
+///     fingerprint: String,
+///     location: String,
+/// }
+///
+/// fn read_user_from_file<P: AsRef<Path>>(path: P) -> Result<User, Box<Error>> {
+///     // Open the file in read-only mode.
+///     let file = File::open(path)?;
+///
+///     // Read the JSON contents of the file as an instance of `User`.
+///     let u = serde_json::from_reader(file)?;
+///
+///     // Return the `User`.
+///     Ok(u)
+/// }
+///
+/// fn main() {
+/// # }
+/// # fn fake_main() {
+///     let u = read_user_from_file("test.json").unwrap();
+///     println!("{:#?}", u);
+/// }
+/// ```
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
 where
     R: io::Read,
@@ -1136,6 +1172,31 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
+///
+/// ```rust
+/// #[macro_use]
+/// extern crate serde_derive;
+///
+/// extern crate serde;
+/// extern crate serde_json;
+///
+/// #[derive(Deserialize, Debug)]
+/// struct User {
+///     fingerprint: String,
+///     location: String,
+/// }
+///
+/// fn main() {
+///     // The type of `j` is `&[u8]`
+///     let j = b"{
+///                 \"fingerprint\": \"0xF9BA143B95FF6D82\",
+///                 \"location\": \"Menlo Park, CA\"
+///               }";
+///
+///     let u: User = serde_json::from_slice(j).unwrap();
+///     println!("{:#?}", u);
+/// }
+/// ```
 pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
 where
     T: de::Deserialize<'a>,
@@ -1152,6 +1213,31 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
+///
+/// ```rust
+/// #[macro_use]
+/// extern crate serde_derive;
+///
+/// extern crate serde;
+/// extern crate serde_json;
+///
+/// #[derive(Deserialize, Debug)]
+/// struct User {
+///     fingerprint: String,
+///     location: String,
+/// }
+///
+/// fn main() {
+///     // The type of `j` is `&str`
+///     let j = "{
+///                \"fingerprint\": \"0xF9BA143B95FF6D82\",
+///                \"location\": \"Menlo Park, CA\"
+///              }";
+///
+///     let u: User = serde_json::from_str(j).unwrap();
+///     println!("{:#?}", u);
+/// }
+/// ```
 pub fn from_str<'a, T>(s: &'a str) -> Result<T>
 where
     T: de::Deserialize<'a>,
