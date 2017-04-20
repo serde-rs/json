@@ -2710,9 +2710,6 @@ impl Value {
 /// Convert a `T` into `serde_json::Value` which is an enum that can represent
 /// any valid JSON data.
 ///
-/// This conversion can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
-///
 /// ```rust
 /// extern crate serde;
 ///
@@ -2751,6 +2748,25 @@ impl Value {
 /// # fn main() {
 /// #     compare_json_values().unwrap();
 /// # }
+/// ```
+///
+/// # Errors
+///
+/// This conversion can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+///
+/// ```rust
+/// extern crate serde_json;
+///
+/// use std::collections::BTreeMap;
+///
+/// fn main() {
+///     // The keys in this map are vectors, not strings.
+///     let mut map = BTreeMap::new();
+///     map.insert(vec![32, 64], "x86");
+///
+///     println!("{}", serde_json::to_value(map).unwrap_err());
+/// }
 /// ```
 #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 // Taking by value is more friendly to iterator adapters, option and result
