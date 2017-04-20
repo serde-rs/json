@@ -1727,6 +1727,8 @@ where
 
 /// Serialize the given data structure as JSON into the IO stream.
 ///
+/// # Errors
+///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
 #[inline]
@@ -1743,6 +1745,8 @@ where
 /// Serialize the given data structure as pretty-printed JSON into the IO
 /// stream.
 ///
+/// # Errors
+///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
 #[inline]
@@ -1758,6 +1762,8 @@ where
 
 /// Serialize the given data structure as a JSON byte vector.
 ///
+/// # Errors
+///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
 #[inline]
@@ -1772,6 +1778,8 @@ where
 
 /// Serialize the given data structure as a pretty-printed JSON byte vector.
 ///
+/// # Errors
+///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
 #[inline]
@@ -1785,6 +1793,8 @@ where
 }
 
 /// Serialize the given data structure as a String of JSON.
+///
+/// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
@@ -1802,6 +1812,8 @@ where
 }
 
 /// Serialize the given data structure as a pretty-printed String of JSON.
+///
+/// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
