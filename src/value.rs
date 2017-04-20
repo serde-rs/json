@@ -2738,9 +2738,36 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
+///
+/// ```rust
+/// #[macro_use]
+/// extern crate serde_json;
+///
+/// #[macro_use]
+/// extern crate serde_derive;
+///
+/// extern crate serde;
+///
+/// #[derive(Deserialize, Debug)]
+/// struct User {
+///     fingerprint: String,
+///     location: String,
+/// }
+///
+/// fn main() {
+///     // The type of `j` is `serde_json::Value`
+///     let j = json!({
+///                     "fingerprint": "0xF9BA143B95FF6D82",
+///                     "location": "Menlo Park, CA"
+///                   });
+///
+///     let u: User = serde_json::from_value(j).unwrap();
+///     println!("{:#?}", u);
+/// }
+/// ```
 pub fn from_value<T>(value: Value) -> Result<T, Error>
 where
     T: DeserializeOwned,
 {
-    Deserialize::deserialize(value)
+    T::deserialize(value)
 }
