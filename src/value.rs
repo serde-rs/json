@@ -2714,10 +2714,43 @@ impl Value {
 /// fail, or if `T` contains a map with non-string keys.
 ///
 /// ```rust
-/// # use serde_json::Value;
+/// extern crate serde;
+///
+/// #[macro_use]
+/// extern crate serde_derive;
+///
+/// #[macro_use]
+/// extern crate serde_json;
+///
+/// use std::error::Error;
+///
+/// #[derive(Serialize)]
+/// struct User {
+///     fingerprint: String,
+///     location: String,
+/// }
+///
+/// fn compare_json_values() -> Result<(), Box<Error>> {
+///     let u = User {
+///         fingerprint: "0xF9BA143B95FF6D82".to_owned(),
+///         location: "Menlo Park, CA".to_owned(),
+///     };
+///
+///     // The type of `expected` is `serde_json::Value`
+///     let expected = json!({
+///                            "fingerprint": "0xF9BA143B95FF6D82",
+///                            "location": "Menlo Park, CA",
+///                          });
+///
+///     let v = serde_json::to_value(u).unwrap();
+///     assert_eq!(v, expected);
+///
+///     Ok(())
+/// }
 /// #
-/// let val = serde_json::to_value("s").unwrap();
-/// assert_eq!(val, Value::String("s".to_owned()));
+/// # fn main() {
+/// #     compare_json_values().unwrap();
+/// # }
 /// ```
 #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 // Taking by value is more friendly to iterator adapters, option and result
