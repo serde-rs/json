@@ -80,12 +80,7 @@ impl Index for str {
         }
         match *v {
             Value::Object(ref mut map) => {
-                // TODO: use entry() once LinkedHashMap supports entry()
-                // https://github.com/contain-rs/linked-hash-map/issues/5
-                if !map.contains_key(self) {
-                    map.insert(self.to_owned(), Value::Null);
-                }
-                map.get_mut(self).unwrap()
+                map.entry(self.to_owned()).or_insert(Value::Null)
             }
             _ => panic!("cannot access key {:?} in JSON {}", self, Type(v)),
         }
