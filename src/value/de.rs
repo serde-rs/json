@@ -817,17 +817,7 @@ impl Value {
         match *self {
             Value::Null => Unexpected::Unit,
             Value::Bool(b) => Unexpected::Bool(b),
-            Value::Number(ref n) => {
-                if let Some(u) = n.as_u64() {
-                    Unexpected::Unsigned(u)
-                } else if let Some(i) = n.as_i64() {
-                    Unexpected::Signed(i)
-                } else if let Some(f) = n.as_f64() {
-                    Unexpected::Float(f)
-                } else {
-                    panic!("unexpected number")
-                }
-            }
+            Value::Number(ref n) => n.unexpected(),
             Value::String(ref s) => Unexpected::Str(s),
             Value::Array(_) => Unexpected::Seq,
             Value::Object(_) => Unexpected::Map,

@@ -8,7 +8,7 @@
 
 use error::Error;
 use num_traits::NumCast;
-use serde::de::{self, Visitor};
+use serde::de::{self, Visitor, Unexpected};
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use std::fmt::{self, Debug, Display};
 use std::i64;
@@ -365,3 +365,15 @@ macro_rules! from_unsigned {
 
 from_signed!(i8 i16 i32 i64 isize);
 from_unsigned!(u8 u16 u32 u64 usize);
+
+impl Number {
+    // Not public API. Should be pub(crate).
+    #[doc(hidden)]
+    pub fn unexpected(&self) -> Unexpected {
+        match self.n {
+            N::PosInt(u) => Unexpected::Unsigned(u),
+            N::NegInt(i) => Unexpected::Signed(i),
+            N::Float(f) => Unexpected::Float(f),
+        }
+    }
+}
