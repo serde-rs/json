@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::i64;
 use std::io;
@@ -461,7 +462,8 @@ impl<'de> MapAccess<'de> for MapDeserializer {
         match self.iter.next() {
             Some((key, value)) => {
                 self.value = Some(value);
-                seed.deserialize(key.into_deserializer()).map(Some)
+                let key_de = MapKeyDeserializer { key: Cow::Owned(key) };
+                seed.deserialize(key_de).map(Some)
             }
             None => Ok(None),
         }
@@ -770,7 +772,8 @@ impl<'de> MapAccess<'de> for MapRefDeserializer<'de> {
         match self.iter.next() {
             Some((key, value)) => {
                 self.value = Some(value);
-                seed.deserialize((&**key).into_deserializer()).map(Some)
+                let key_de = MapKeyDeserializer { key: Cow::Borrowed(&**key) };
+                seed.deserialize(key_de).map(Some)
             }
             None => Ok(None),
         }
@@ -809,6 +812,76 @@ impl<'de> serde::Deserializer<'de> for MapRefDeserializer<'de> {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
         byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct enum identifier ignored_any
+    }
+}
+
+struct MapKeyDeserializer<'de> {
+    key: Cow<'de, str>,
+}
+
+macro_rules! deserialize_integer_key {
+    ($deserialize:ident => $visit:ident) => {
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
+        where
+            V: Visitor<'de>,
+        {
+            let integer = try!(self.key.parse().map_err(serde::de::Error::custom));
+            visitor.$visit(integer)
+        }
+    }
+}
+
+impl<'de> serde::Deserializer<'de> for MapKeyDeserializer<'de> {
+    type Error = Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.key.into_deserializer().deserialize_any(visitor)
+    }
+
+    deserialize_integer_key!(deserialize_i8 => visit_i8);
+    deserialize_integer_key!(deserialize_i16 => visit_i16);
+    deserialize_integer_key!(deserialize_i32 => visit_i32);
+    deserialize_integer_key!(deserialize_i64 => visit_i64);
+    deserialize_integer_key!(deserialize_u8 => visit_u8);
+    deserialize_integer_key!(deserialize_u16 => visit_u16);
+    deserialize_integer_key!(deserialize_u32 => visit_u32);
+    deserialize_integer_key!(deserialize_u64 => visit_u64);
+
+    #[inline]
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        // Map keys cannot be null.
+        visitor.visit_some(self)
+    }
+
+    #[inline]
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    fn deserialize_enum<V>(
+        self,
+        name: &'static str,
+        variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.key.into_deserializer().deserialize_enum(name, variants, visitor)
+    }
+
+    forward_to_deserialize_any! {
+        bool f32 f64 char str string bytes byte_buf unit unit_struct seq tuple
+        tuple_struct map struct identifier ignored_any
     }
 }
 
