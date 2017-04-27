@@ -1659,6 +1659,20 @@ fn test_deny_float_key() {
 }
 
 #[test]
+fn test_borrowed_key() {
+    let map: BTreeMap<&str, ()> = from_str("{\"borrowed\":null}").unwrap();
+    let expected = treemap! { "borrowed" => () };
+    assert_eq!(map, expected);
+
+    #[derive(Deserialize, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    struct NewtypeStr<'a>(&'a str);
+
+    let map: BTreeMap<NewtypeStr, ()> = from_str("{\"borrowed\":null}").unwrap();
+    let expected = treemap! { NewtypeStr("borrowed") => () };
+    assert_eq!(map, expected);
+}
+
+#[test]
 fn test_effectively_string_keys() {
     #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Serialize, Deserialize)]
     enum Enum {
