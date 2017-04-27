@@ -117,7 +117,8 @@ use error::Error;
 pub use map::Map;
 pub use number::Number;
 
-use self::index::Index;
+pub use self::index::Index;
+
 use self::ser::Serializer;
 
 /// Represents any valid JSON value.
