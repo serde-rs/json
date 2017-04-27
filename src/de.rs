@@ -988,8 +988,11 @@ macro_rules! deserialize_integer_key {
             self.de.eat_char();
             self.de.str_buf.clear();
             let string = try!(self.de.read.parse_str(&mut self.de.str_buf));
-            let integer = try!(string.parse().map_err(de::Error::custom));
-            visitor.$visit(integer)
+            match (string.parse(), string) {
+                (Ok(integer), _) => visitor.$visit(integer),
+                (Err(_), Reference::Borrowed(s)) => visitor.visit_borrowed_str(s),
+                (Err(_), Reference::Copied(s)) => visitor.visit_str(s),
+            }
         }
     }
 }

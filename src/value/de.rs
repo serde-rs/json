@@ -825,8 +825,11 @@ macro_rules! deserialize_integer_key {
         where
             V: Visitor<'de>,
         {
-            let integer = try!(self.key.parse().map_err(serde::de::Error::custom));
-            visitor.$visit(integer)
+            match (self.key.parse(), self.key) {
+                (Ok(integer), _) => visitor.$visit(integer),
+                (Err(_), Cow::Borrowed(s)) => visitor.visit_borrowed_str(s),
+                (Err(_), Cow::Owned(s)) => visitor.visit_string(s),
+            }
         }
     }
 }

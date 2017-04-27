@@ -1635,7 +1635,7 @@ fn test_integer_key() {
     let j = r#"{"x":null}"#;
     test_parse_err::<BTreeMap<i32, ()>>(
         &[
-            (j, "invalid digit found in string at line 1 column 4"),
+            (j, "invalid type: string \"x\", expected i32 at line 1 column 4"),
         ],
     );
 }
