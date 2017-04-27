@@ -568,33 +568,6 @@ fn test_write_newtype_struct() {
     test_encode_ok(&[(outer, r#"{"outer":{"inner":123}}"#)]);
 }
 
-#[test]
-fn test_write_map_with_integer_keys_issue_221() {
-    let mut map = BTreeMap::new();
-    map.insert(0, "x"); // map with integer key
-
-    assert_eq!(
-        serde_json::to_value(&map).unwrap(),
-        json!({"0": "x"})
-    );
-
-    test_encode_ok(&[(&map, r#"{"0":"x"}"#)]);
-
-    #[derive(Eq, PartialEq, Ord, PartialOrd)]
-    struct Float;
-    impl Serialize for Float {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            serializer.serialize_f32(1.0)
-        }
-    }
-    let mut map = BTreeMap::new();
-    map.insert(Float, "x"); // map with float key
-    assert!(serde_json::to_value(&map).is_err());
-}
-
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)
 where
     T: Clone + Debug + PartialEq + ser::Serialize + de::DeserializeOwned,
@@ -1505,32 +1478,6 @@ fn test_serialize_rejects_adt_keys() {
 }
 
 #[test]
-fn test_effectively_string_keys() {
-    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
-    enum Enum {
-        Zero,
-        One,
-    }
-    let map = treemap! {
-        Enum::Zero => 0,
-        Enum::One => 1
-    };
-    let expected = r#"{"Zero":0,"One":1}"#;
-    assert_eq!(to_string(&map).unwrap(), expected);
-    assert_eq!(map, from_str(expected).unwrap());
-
-    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Serialize, Deserialize)]
-    struct Wrapper(String);
-    let map = treemap! {
-        Wrapper("zero".to_owned()) => 0,
-        Wrapper("one".to_owned()) => 1
-    };
-    let expected = r#"{"one":1,"zero":0}"#;
-    assert_eq!(to_string(&map).unwrap(), expected);
-    assert_eq!(map, from_str(expected).unwrap());
-}
-
-#[test]
 fn test_bytes_ser() {
     let buf = vec![];
     let bytes = Bytes::new(&buf);
@@ -1675,15 +1622,80 @@ fn test_stack_overflow() {
 }
 
 #[test]
-fn test_allow_ser_integers_as_map_keys() {
+fn test_integer_key() {
+    // map with integer keys
     let map = treemap!(
         1 => 2,
-        2 => 4,
-        -1 => 6,
-        -2 => 8
+        -1 => 6
     );
+    let j = r#"{"-1":6,"1":2}"#;
+    test_encode_ok(&[(&map, j)]);
+    test_parse_ok(vec![(j, map)]);
 
-    assert_eq!(to_string(&map).unwrap(), r#"{"-2":8,"-1":6,"1":2,"2":4}"#);
+    let j = r#"{"x":null}"#;
+    test_parse_err::<BTreeMap<i32, ()>>(
+        &[
+            (j, "invalid type: string \"x\", expected i32 at line 1 column 4"),
+        ],
+    );
+}
+
+#[test]
+fn test_deny_float_key() {
+    #[derive(Eq, PartialEq, Ord, PartialOrd)]
+    struct Float;
+    impl Serialize for Float {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_f32(1.0)
+        }
+    }
+
+    // map with float key
+    let map = treemap!(Float => "x");
+    assert!(serde_json::to_value(&map).is_err());
+}
+
+#[test]
+fn test_borrowed_key() {
+    let map: BTreeMap<&str, ()> = from_str("{\"borrowed\":null}").unwrap();
+    let expected = treemap! { "borrowed" => () };
+    assert_eq!(map, expected);
+
+    #[derive(Deserialize, Debug, Ord, PartialOrd, Eq, PartialEq)]
+    struct NewtypeStr<'a>(&'a str);
+
+    let map: BTreeMap<NewtypeStr, ()> = from_str("{\"borrowed\":null}").unwrap();
+    let expected = treemap! { NewtypeStr("borrowed") => () };
+    assert_eq!(map, expected);
+}
+
+#[test]
+fn test_effectively_string_keys() {
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Serialize, Deserialize)]
+    enum Enum {
+        One,
+        Two,
+    }
+    let map = treemap! {
+        Enum::One => 1,
+        Enum::Two => 2
+    };
+    let expected = r#"{"One":1,"Two":2}"#;
+    test_encode_ok(&[(&map, expected)]);
+    test_parse_ok(vec![(expected, map)]);
+
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Serialize, Deserialize)]
+    struct Wrapper(String);
+    let map = treemap! {
+        Wrapper("zero".to_owned()) => 0,
+        Wrapper("one".to_owned()) => 1
+    };
+    let expected = r#"{"one":1,"zero":0}"#;
+    test_encode_ok(&[(&map, expected)]);
+    test_parse_ok(vec![(expected, map)]);
 }
 
 #[test]

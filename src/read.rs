@@ -7,6 +7,7 @@
 // except according to those terms.
 
 use std::{char, cmp, io, str};
+use std::ops::Deref;
 
 use iter::LineColIterator;
 
@@ -80,6 +81,17 @@ pub struct Position {
 pub enum Reference<'b, 'c, T: ?Sized + 'static> {
     Borrowed(&'b T),
     Copied(&'c T),
+}
+
+impl<'b, 'c, T: ?Sized + 'static> Deref for Reference<'b, 'c, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match *self {
+            Reference::Borrowed(b) => b,
+            Reference::Copied(c) => c,
+        }
+    }
 }
 
 /// JSON input source that reads from a std::io input stream.

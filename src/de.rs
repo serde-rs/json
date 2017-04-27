@@ -852,7 +852,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
         };
 
         match peek {
-            Some(b'"') => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
+            Some(b'"') => seed.deserialize(MapKey { de: &mut *self.de }).map(Some),
             Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
@@ -970,6 +970,105 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for UnitVariantAccess<'a
         V: de::Visitor<'de>,
     {
         Err(de::Error::invalid_type(Unexpected::UnitVariant, &"struct variant"),)
+    }
+}
+
+/// Only deserialize from this after peeking a '"' byte! Otherwise it may
+/// deserialize invalid JSON successfully.
+struct MapKey<'a, R: 'a> {
+    de: &'a mut Deserializer<R>,
+}
+
+macro_rules! deserialize_integer_key {
+    ($deserialize:ident => $visit:ident) => {
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value>
+        where
+            V: de::Visitor<'de>,
+        {
+            self.de.eat_char();
+            self.de.str_buf.clear();
+            let string = try!(self.de.read.parse_str(&mut self.de.str_buf));
+            match (string.parse(), string) {
+                (Ok(integer), _) => visitor.$visit(integer),
+                (Err(_), Reference::Borrowed(s)) => visitor.visit_borrowed_str(s),
+                (Err(_), Reference::Copied(s)) => visitor.visit_str(s),
+            }
+        }
+    }
+}
+
+impl<'de, 'a, R> de::Deserializer<'de> for MapKey<'a, R>
+where
+    R: Read<'de>,
+{
+    type Error = Error;
+
+    #[inline]
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.de.parse_value(visitor)
+    }
+
+    deserialize_integer_key!(deserialize_i8 => visit_i8);
+    deserialize_integer_key!(deserialize_i16 => visit_i16);
+    deserialize_integer_key!(deserialize_i32 => visit_i32);
+    deserialize_integer_key!(deserialize_i64 => visit_i64);
+    deserialize_integer_key!(deserialize_u8 => visit_u8);
+    deserialize_integer_key!(deserialize_u16 => visit_u16);
+    deserialize_integer_key!(deserialize_u32 => visit_u32);
+    deserialize_integer_key!(deserialize_u64 => visit_u64);
+
+    #[inline]
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        // Map keys cannot be null.
+        visitor.visit_some(self)
+    }
+
+    #[inline]
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    #[inline]
+    fn deserialize_enum<V>(
+        self,
+        name: &'static str,
+        variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.de.deserialize_enum(name, variants, visitor)
+    }
+
+    #[inline]
+    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.de.deserialize_bytes(visitor)
+    }
+
+    #[inline]
+    fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.de.deserialize_bytes(visitor)
+    }
+
+    forward_to_deserialize_any! {
+        bool f32 f64 char str string unit unit_struct seq tuple tuple_struct map
+        struct identifier ignored_any
     }
 }
 
