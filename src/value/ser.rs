@@ -8,10 +8,10 @@
 
 use serde::{self, Serialize};
 
-use super::{Value, to_value};
-pub use map::Map;
 use error::{Error, ErrorCode};
-pub use number::Number;
+use map::Map;
+use number::Number;
+use value::{Value, to_value};
 
 impl Serialize for Value {
     #[inline]

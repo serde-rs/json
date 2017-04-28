@@ -27,11 +27,10 @@ use serde::de::{
     Unexpected
 };
 
-use super::Value;
-
 use error::Error;
-pub use map::Map;
-pub use number::Number;
+use map::Map;
+use number::Number;
+use value::Value;
 
 impl<'de> Deserialize<'de> for Value {
     #[inline]
