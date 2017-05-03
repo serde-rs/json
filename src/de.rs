@@ -80,6 +80,25 @@ macro_rules! overflow {
     }
 }
 
+enum Number {
+    F64(f64),
+    U64(u64),
+    I64(i64),
+}
+
+impl Number {
+    fn visit<'de, V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        match self {
+            Number::F64(x) => visitor.visit_f64(x),
+            Number::U64(x) => visitor.visit_u64(x),
+            Number::I64(x) => visitor.visit_i64(x),
+        }
+    }
+}
+
 impl<'de, R: Read<'de>> Deserializer<R> {
     /// The `Deserializer::end` method should be called after a value has been fully deserialized.
     /// This allows the `Deserializer` to validate that the input stream is at the end or that it
@@ -183,9 +202,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             b'-' => {
                 self.eat_char();
-                self.parse_integer(false, visitor)
+                try!(self.parse_integer(false)).visit(visitor)
             }
-            b'0'...b'9' => self.parse_integer(true, visitor),
+            b'0'...b'9' => try!(self.parse_integer(true)).visit(visitor),
             b'"' => {
                 self.eat_char();
                 self.str_buf.clear();
@@ -251,16 +270,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(())
     }
 
-    fn parse_integer<V>(&mut self, pos: bool, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
+    fn parse_integer(&mut self, pos: bool) -> Result<Number> {
         match try!(self.next_char_or_null()) {
             b'0' => {
                 // There can be only one leading '0'.
                 match try!(self.peek_or_null()) {
                     b'0'...b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
-                    _ => self.parse_number(pos, 0, visitor),
+                    _ => self.parse_number(pos, 0),
                 }
             }
             c @ b'1'...b'9' => {
@@ -276,17 +292,17 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             // number as a `u64` until we grow too large. At that point, switch to
                             // parsing the value as a `f64`.
                             if overflow!(res * 10 + digit, u64::MAX) {
-                                return visitor.visit_f64(try!(self.parse_long_integer(
+                                return Ok(Number::F64(try!(self.parse_long_integer(
                                     pos,
                                     res,
                                     1, // res * 10^1
-                                )));
+                                ))));
                             }
 
                             res = res * 10 + digit;
                         }
                         _ => {
-                            return self.parse_number(pos, res, visitor);
+                            return self.parse_number(pos, res);
                         }
                     }
                 }
@@ -322,28 +338,25 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    fn parse_number<V>(&mut self, pos: bool, significand: u64, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        match try!(self.peek_or_null()) {
-            b'.' => visitor.visit_f64(try!(self.parse_decimal(pos, significand, 0))),
-            b'e' | b'E' => visitor.visit_f64(try!(self.parse_exponent(pos, significand, 0))),
+    fn parse_number(&mut self, pos: bool, significand: u64) -> Result<Number> {
+        Ok(match try!(self.peek_or_null()) {
+            b'.' => Number::F64(try!(self.parse_decimal(pos, significand, 0))),
+            b'e' | b'E' => Number::F64(try!(self.parse_exponent(pos, significand, 0))),
             _ => {
                 if pos {
-                    visitor.visit_u64(significand)
+                    Number::U64(significand)
                 } else {
                     let neg = (significand as i64).wrapping_neg();
 
                     // Convert into a float if we underflow.
                     if neg > 0 {
-                        visitor.visit_f64(-(significand as f64))
+                        Number::F64(-(significand as f64))
                     } else {
-                        visitor.visit_i64(neg)
+                        Number::I64(neg)
                     }
                 }
             }
-        }
+        })
     }
 
     fn parse_decimal(
