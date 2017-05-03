@@ -276,12 +276,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             // number as a `u64` until we grow too large. At that point, switch to
                             // parsing the value as a `f64`.
                             if overflow!(res * 10 + digit, u64::MAX) {
-                                return self.parse_long_integer(
+                                return visitor.visit_f64(try!(self.parse_long_integer(
                                     pos,
                                     res,
                                     1, // res * 10^1
-                                    visitor,
-                                );
+                                )));
                             }
 
                             res = res * 10 + digit;
@@ -296,16 +295,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    fn parse_long_integer<V>(
+    fn parse_long_integer(
         &mut self,
         pos: bool,
         significand: u64,
         mut exponent: i32,
-        visitor: V,
-    ) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
+    ) -> Result<f64> {
         loop {
             match try!(self.peek_or_null()) {
                 b'0'...b'9' => {
@@ -315,13 +310,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     exponent += 1;
                 }
                 b'.' => {
-                    return self.parse_decimal(pos, significand, exponent, visitor);
+                    return self.parse_decimal(pos, significand, exponent);
                 }
                 b'e' | b'E' => {
-                    return self.parse_exponent(pos, significand, exponent, visitor);
+                    return self.parse_exponent(pos, significand, exponent);
                 }
                 _ => {
-                    return self.visit_f64_from_parts(pos, significand, exponent, visitor);
+                    return self.f64_from_parts(pos, significand, exponent);
                 }
             }
         }
@@ -332,8 +327,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         V: de::Visitor<'de>,
     {
         match try!(self.peek_or_null()) {
-            b'.' => self.parse_decimal(pos, significand, 0, visitor),
-            b'e' | b'E' => self.parse_exponent(pos, significand, 0, visitor),
+            b'.' => visitor.visit_f64(try!(self.parse_decimal(pos, significand, 0))),
+            b'e' | b'E' => visitor.visit_f64(try!(self.parse_exponent(pos, significand, 0))),
             _ => {
                 if pos {
                     visitor.visit_u64(significand)
@@ -351,16 +346,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    fn parse_decimal<V>(
+    fn parse_decimal(
         &mut self,
         pos: bool,
         mut significand: u64,
         mut exponent: i32,
-        visitor: V,
-    ) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
+    ) -> Result<f64> {
         self.eat_char();
 
         let mut at_least_one_digit = false;
@@ -387,21 +378,17 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         match try!(self.peek_or_null()) {
-            b'e' | b'E' => self.parse_exponent(pos, significand, exponent, visitor),
-            _ => self.visit_f64_from_parts(pos, significand, exponent, visitor),
+            b'e' | b'E' => self.parse_exponent(pos, significand, exponent),
+            _ => self.f64_from_parts(pos, significand, exponent),
         }
     }
 
-    fn parse_exponent<V>(
+    fn parse_exponent(
         &mut self,
         pos: bool,
         significand: u64,
         starting_exp: i32,
-        visitor: V,
-    ) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
+    ) -> Result<f64> {
         self.eat_char();
 
         let pos_exp = match try!(self.peek_or_null()) {
@@ -429,7 +416,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             let digit = (c - b'0') as i32;
 
             if overflow!(exp * 10 + digit, i32::MAX) {
-                return self.parse_exponent_overflow(pos, significand, pos_exp, visitor);
+                return self.parse_exponent_overflow(pos, significand, pos_exp);
             }
 
             exp = exp * 10 + digit;
@@ -441,23 +428,19 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             starting_exp.saturating_sub(exp)
         };
 
-        self.visit_f64_from_parts(pos, significand, final_exp, visitor)
+        self.f64_from_parts(pos, significand, final_exp)
     }
 
     // This cold code should not be inlined into the middle of the hot
     // exponent-parsing loop above.
     #[cold]
     #[inline(never)]
-    fn parse_exponent_overflow<V>(
+    fn parse_exponent_overflow(
         &mut self,
         pos: bool,
         significand: u64,
         pos_exp: bool,
-        visitor: V,
-    ) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
+    ) -> Result<f64> {
         // Error instead of +/- infinity.
         if significand != 0 && pos_exp {
             return Err(self.error(ErrorCode::NumberOutOfRange));
@@ -466,19 +449,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         while let b'0'...b'9' = try!(self.peek_or_null()) {
             self.eat_char();
         }
-        visitor.visit_f64(if pos { 0.0 } else { -0.0 })
+        Ok(if pos { 0.0 } else { -0.0 })
     }
 
-    fn visit_f64_from_parts<V>(
+    fn f64_from_parts(
         &mut self,
         pos: bool,
         significand: u64,
         mut exponent: i32,
-        visitor: V,
-    ) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
+    ) -> Result<f64> {
         let mut f = significand as f64;
         loop {
             match POW10.get(exponent.abs() as usize) {
@@ -505,7 +484,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
             }
         }
-        visitor.visit_f64(if pos { f } else { -f })
+        Ok(if pos { f } else { -f })
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
