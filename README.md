@@ -294,6 +294,16 @@ way. This includes built-in Rust standard library types like `Vec<T>` and
 `HashMap<K, V>`, as well as any structs or enums annotated with
 `#[derive(Serialize)]`.
 
+## Performance
+
+It is fast. You should expect in the ballpark of 500 to 1000 megabytes per
+second deserialization and 600 to 900 megabytes per second serialization,
+depending on the characteristics of your data. This is competitive with the
+fastest C and C++ JSON libraries or even 30% faster for many use cases.
+Benchmarks live in the [serde-rs/json-benchmark] repo.
+
+[serde-rs/json-benchmark]: https://github.com/serde-rs/json-benchmark
+
 ## Getting help
 
 Serde developers live in the #serde channel on
