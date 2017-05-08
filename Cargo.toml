@@ -1,7 +1,7 @@
 [package]
 name = "serde_json"
 version = "1.0.1" # remember to update html_root_url
-authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>"]
+authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "A JSON serialization file format"
 repository = "https://github.com/serde-rs/json"
