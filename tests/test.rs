@@ -1827,3 +1827,9 @@ fn test_borrow() {
     let s: &str = from_slice(b"\"borrowed\"").unwrap();
     assert_eq!("borrowed", s);
 }
+
+#[test]
+fn null_invalid_type() {
+    let err = serde_json::from_str::<String>("null").unwrap_err();
+    assert_eq!(format!("{}", err), String::from("invalid type: null, expected string"));
+}
