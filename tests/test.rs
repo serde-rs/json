@@ -1831,5 +1831,5 @@ fn test_borrow() {
 #[test]
 fn null_invalid_type() {
     let err = serde_json::from_str::<String>("null").unwrap_err();
-    assert_eq!(format!("{}", err), String::from("invalid type: null, expected string"));
+    assert_eq!(format!("{}", err), String::from("invalid type: null, expected a string at line 1 column 4"));
 }
