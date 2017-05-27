@@ -4,5 +4,5 @@ error[E0425]: cannot find value `x` in this scope
 13 |     json!({ "a" : x });
    |                   ^ not found in this scope
 
-error: aborting due to previous error
+error: aborting due to previous error(s)
 
