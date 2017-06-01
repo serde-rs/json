@@ -254,7 +254,7 @@ impl PartialOrd for Number {
             (N::Float(a), N::Float(b)) => a.partial_cmp(&b),
 
             (N::PosInt(_), N::NegInt(_)) => Some(Ordering::Greater),
-            (N::NegInt(_), N::PosInt(_)) => Some(Ordering::Greater),
+            (N::NegInt(_), N::PosInt(_)) => Some(Ordering::Less),
 
             (N::Float(a), N::PosInt(b)) => if b <= (1<<53) {
                 a.partial_cmp(&(b as f64))
