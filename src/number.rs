@@ -10,6 +10,7 @@ use error::Error;
 use num_traits::NumCast;
 use serde::de::{self, Visitor, Unexpected};
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
+use std::cmp::Ordering;
 use std::fmt::{self, Debug, Display};
 use std::i64;
 
@@ -234,6 +235,41 @@ impl fmt::Display for Number {
 impl Debug for Number {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         Debug::fmt(&self.n, formatter)
+    }
+}
+
+impl PartialOrd for Number {
+    fn partial_cmp(&self, other: &Number) -> Option<Ordering> {
+        fn reverse(o: Ordering) -> Ordering {
+            match o {
+                Ordering::Less => Ordering::Greater,
+                Ordering::Equal => Ordering::Equal,
+                Ordering::Greater => Ordering::Less,
+            }
+        }
+
+        match (self.n, other.n) {
+            (N::PosInt(a), N::PosInt(b)) => a.partial_cmp(&b),
+            (N::NegInt(a), N::NegInt(b)) => a.partial_cmp(&b),
+            (N::Float(a), N::Float(b)) => a.partial_cmp(&b),
+
+            (N::PosInt(_), N::NegInt(_)) => Some(Ordering::Greater),
+            (N::NegInt(_), N::PosInt(_)) => Some(Ordering::Greater),
+
+            (N::Float(a), N::PosInt(b)) => if b <= (1<<53) {
+                a.partial_cmp(&(b as f64))
+            } else {
+                None
+            },
+            (N::Float(a), N::NegInt(b)) => if b >= -(1<<53) {
+                a.partial_cmp(&(b as f64))
+            } else {
+                None
+            },
+
+            (N::PosInt(_), N::Float(_)) => other.partial_cmp(self).map(reverse),
+            (N::NegInt(_), N::Float(_)) => other.partial_cmp(self).map(reverse),
+        }
     }
 }
 
