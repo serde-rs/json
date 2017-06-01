@@ -267,8 +267,7 @@ impl PartialOrd for Number {
                 None
             },
 
-            (N::PosInt(_), N::Float(_)) => other.partial_cmp(self).map(reverse),
-            (N::NegInt(_), N::Float(_)) => other.partial_cmp(self).map(reverse),
+            (N::PosInt(_), N::Float(_)) | (N::NegInt(_), N::Float(_)) => other.partial_cmp(self).map(reverse),
         }
     }
 }
