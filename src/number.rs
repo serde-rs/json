@@ -240,14 +240,6 @@ impl Debug for Number {
 
 impl PartialOrd for Number {
     fn partial_cmp(&self, other: &Number) -> Option<Ordering> {
-        fn reverse(o: Ordering) -> Ordering {
-            match o {
-                Ordering::Less => Ordering::Greater,
-                Ordering::Equal => Ordering::Equal,
-                Ordering::Greater => Ordering::Less,
-            }
-        }
-
         match (self.n, other.n) {
             (N::PosInt(a), N::PosInt(b)) => a.partial_cmp(&b),
             (N::NegInt(a), N::NegInt(b)) => a.partial_cmp(&b),
@@ -267,7 +259,7 @@ impl PartialOrd for Number {
                 None
             },
 
-            (N::PosInt(_), N::Float(_)) | (N::NegInt(_), N::Float(_)) => other.partial_cmp(self).map(reverse),
+            (N::PosInt(_), N::Float(_)) | (N::NegInt(_), N::Float(_)) => other.partial_cmp(self).map(Ordering::reverse),
         }
     }
 }
