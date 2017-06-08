@@ -245,7 +245,8 @@ impl Ord for Number {
         match (self.n, other.n) {
             (N::PosInt(a), N::PosInt(b)) => a.cmp(&b),
             (N::NegInt(a), N::NegInt(b)) => a.cmp(&b),
-            (N::Float(a), N::Float(b)) => a.partial_cmp(&b).unwrap(),
+            (N::Float(a), N::Float(b)) => a.partial_cmp(&b)
+                .expect("NaN stored in a Number?"),
 
             (N::PosInt(_), N::NegInt(_)) => Ordering::Greater,
             (N::NegInt(_), N::PosInt(_)) => Ordering::Less,
@@ -257,7 +258,7 @@ impl Ord for Number {
             } else if a.abs() >= 9007199254740992.0 {
                 (a as u64).cmp(&b)
             } else {
-                a.partial_cmp(&(b as f64)).unwrap()
+                a.partial_cmp(&(b as f64)).expect("NaN stored in a Number?")
             },
             (N::Float(a), N::NegInt(b)) => if a >= 0.0 {
                 Ordering::Greater
@@ -266,7 +267,7 @@ impl Ord for Number {
             } else if a <= -9007199254740992.0 {
                 (a as i64).cmp(&b)
             } else {
-                a.partial_cmp(&(b as f64)).unwrap()
+                a.partial_cmp(&(b as f64)).expect("NaN stored in a Number?")
             },
 
             (N::PosInt(_), N::Float(_)) | (N::NegInt(_), N::Float(_)) => other.cmp(self).reverse(),
