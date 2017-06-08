@@ -238,29 +238,45 @@ impl Debug for Number {
     }
 }
 
+impl Eq for Number {}
+
+impl Ord for Number {
+    fn cmp(&self, other: &Number) -> Ordering {
+        match (self.n, other.n) {
+            (N::PosInt(a), N::PosInt(b)) => a.cmp(&b),
+            (N::NegInt(a), N::NegInt(b)) => a.cmp(&b),
+            (N::Float(a), N::Float(b)) => a.partial_cmp(&b).unwrap(),
+
+            (N::PosInt(_), N::NegInt(_)) => Ordering::Greater,
+            (N::NegInt(_), N::PosInt(_)) => Ordering::Less,
+
+            (N::Float(a), N::PosInt(b)) => if a >= 9223372036854775808.0 {
+                Ordering::Greater
+            } else if a < -9223372036854775808.0 {
+                Ordering::Less
+            } else if a.abs() >= 9007199254740992.0 {
+                (a as u64).cmp(&b)
+            } else {
+                a.partial_cmp(&(b as f64)).unwrap()
+            },
+            (N::Float(a), N::NegInt(b)) => if a >= 0.0 {
+                Ordering::Greater
+            } else if a < -9223372036854775808.0 {
+                Ordering::Less
+            } else if a <= -9007199254740992.0 {
+                (a as i64).cmp(&b)
+            } else {
+                a.partial_cmp(&(b as f64)).unwrap()
+            },
+
+            (N::PosInt(_), N::Float(_)) | (N::NegInt(_), N::Float(_)) => other.cmp(self).reverse(),
+        }
+    }
+}
+
 impl PartialOrd for Number {
     fn partial_cmp(&self, other: &Number) -> Option<Ordering> {
-        match (self.n, other.n) {
-            (N::PosInt(a), N::PosInt(b)) => a.partial_cmp(&b),
-            (N::NegInt(a), N::NegInt(b)) => a.partial_cmp(&b),
-            (N::Float(a), N::Float(b)) => a.partial_cmp(&b),
-
-            (N::PosInt(_), N::NegInt(_)) => Some(Ordering::Greater),
-            (N::NegInt(_), N::PosInt(_)) => Some(Ordering::Less),
-
-            (N::Float(a), N::PosInt(b)) => if b <= (1<<53) {
-                a.partial_cmp(&(b as f64))
-            } else {
-                None
-            },
-            (N::Float(a), N::NegInt(b)) => if b >= -(1<<53) {
-                a.partial_cmp(&(b as f64))
-            } else {
-                None
-            },
-
-            (N::PosInt(_), N::Float(_)) | (N::NegInt(_), N::Float(_)) => other.partial_cmp(self).map(Ordering::reverse),
-        }
+        Some(self.cmp(other))
     }
 }
 
