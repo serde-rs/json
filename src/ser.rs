@@ -219,8 +219,9 @@ where
 
     #[inline]
     fn serialize_char(self, value: char) -> Result<()> {
-        try!(format_escaped_char(&mut self.writer, &mut self.formatter, value).map_err(Error::io));
-        Ok(())
+        // A char encoded as UTF-8 takes 4 bytes at most.
+        let mut buf = [0; 4];
+        self.serialize_str(value.encode_utf8(&mut buf))
     }
 
     #[inline]
@@ -1702,28 +1703,6 @@ static ESCAPE: [u8; 256] = [
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // E
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // F
 ];
-
-#[inline]
-fn format_escaped_char<W: ?Sized, F: ?Sized>(
-    wr: &mut W,
-    formatter: &mut F,
-    value: char,
-) -> io::Result<()>
-where
-    W: io::Write,
-    F: Formatter,
-{
-    use std::io::Write;
-    // A char encoded as UTF-8 takes 4 bytes at most.
-    let mut buf = [0; 4];
-    write!(&mut buf[..], "{}", value).expect("write char to 4-byte buffer");
-    // Writing a char successfully always produce valid UTF-8.
-    // Once we do not support Rust <1.15 we will be able to just use
-    // the method `char::encode_utf8`.
-    // See https://github.com/serde-rs/json/issues/270.
-    let slice = unsafe { str::from_utf8_unchecked(&buf[0..value.len_utf8()]) };
-    format_escaped_str(wr, formatter, slice)
-}
 
 /// Serialize the given data structure as JSON into the IO stream.
 ///
