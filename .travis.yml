@@ -2,10 +2,12 @@ sudo: false
 language: rust
 cache: cargo
 
-# run builds for all the trains (and more)
+# Run builds for all the trains (and more).
+# Remember to update the numbers in travis.sh too.
 rust:
   - stable
   - nightly
+  - 1.15.0
   - 1.16.0
   - 1.17.0
   - beta
