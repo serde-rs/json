@@ -1,4 +1,4 @@
-error: no field `s` on type `&'static str`
+error[E0609]: no field `s` on type `&'static str`
   --> $DIR/parse_key.rs:13:16
    |
 13 |     json!({ "".s : true });
