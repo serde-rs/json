@@ -1766,6 +1766,18 @@ fn test_partialeq_string() {
     assert_eq!(String::from("42"), v);
 }
 
+#[test]
+fn test_partialeq_bool() {
+    let v = to_value(true).unwrap();
+    assert_eq!(v, true);
+    assert_eq!(true, v);
+    assert_ne!(v, false);
+    assert_ne!(v, "true");
+    assert_ne!(v, 1);
+    assert_ne!(v, 0);
+}
+
+
 struct FailReader(io::ErrorKind);
 
 impl io::Read for FailReader {
