@@ -367,9 +367,7 @@ from_signed!(i8 i16 i32 i64 isize);
 from_unsigned!(u8 u16 u32 u64 usize);
 
 impl Number {
-    // Not public API. Should be pub(crate).
-    #[doc(hidden)]
-    pub fn unexpected(&self) -> Unexpected {
+    pub(crate) fn unexpected(&self) -> Unexpected {
         match self.n {
             N::PosInt(u) => Unexpected::Unsigned(u),
             N::NegInt(i) => Unexpected::Signed(i),
