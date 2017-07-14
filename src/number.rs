@@ -10,6 +10,7 @@ use error::Error;
 use num_traits::NumCast;
 use serde::de::{self, Visitor, Unexpected};
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
+use std::cmp::Ordering;
 use std::fmt::{self, Debug, Display};
 use std::i64;
 
@@ -234,6 +235,49 @@ impl fmt::Display for Number {
 impl Debug for Number {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         Debug::fmt(&self.n, formatter)
+    }
+}
+
+impl Eq for Number {}
+
+impl Ord for Number {
+    fn cmp(&self, other: &Number) -> Ordering {
+        match (self.n, other.n) {
+            (N::PosInt(a), N::PosInt(b)) => a.cmp(&b),
+            (N::NegInt(a), N::NegInt(b)) => a.cmp(&b),
+            (N::Float(a), N::Float(b)) => a.partial_cmp(&b)
+                .expect("NaN stored in a Number?"),
+
+            (N::PosInt(_), N::NegInt(_)) => Ordering::Greater,
+            (N::NegInt(_), N::PosInt(_)) => Ordering::Less,
+
+            (N::Float(a), N::PosInt(b)) => if a >= 9223372036854775808.0 {
+                Ordering::Greater
+            } else if a < -9223372036854775808.0 {
+                Ordering::Less
+            } else if a.abs() >= 9007199254740992.0 {
+                (a as u64).cmp(&b)
+            } else {
+                a.partial_cmp(&(b as f64)).expect("NaN stored in a Number?")
+            },
+            (N::Float(a), N::NegInt(b)) => if a >= 0.0 {
+                Ordering::Greater
+            } else if a < -9223372036854775808.0 {
+                Ordering::Less
+            } else if a <= -9007199254740992.0 {
+                (a as i64).cmp(&b)
+            } else {
+                a.partial_cmp(&(b as f64)).expect("NaN stored in a Number?")
+            },
+
+            (N::PosInt(_), N::Float(_)) | (N::NegInt(_), N::Float(_)) => other.cmp(self).reverse(),
+        }
+    }
+}
+
+impl PartialOrd for Number {
+    fn partial_cmp(&self, other: &Number) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
