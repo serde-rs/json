@@ -79,4 +79,5 @@ partialeq_numeric! {
     [i8 i16 i32 i64 isize], as_i64, i64
     [u8 u16 u32 u64 usize], as_u64, u64
     [f32 f64], as_f64, f64
+    [bool], as_bool, bool
 }
