@@ -1,4 +1,4 @@
-error: expected expression, found `)`
+error: unexpected end of macro invocation
   --> $DIR/parse_expr.rs:13:5
    |
 13 |     json!({ "a" : ~ });
