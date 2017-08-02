@@ -4,6 +4,7 @@ use crate::map::Map;
 use crate::number::Number;
 use crate::value::{to_value, Value};
 use serde::ser::{Impossible, Serialize};
+use b64_ct::{ToBase64, STANDARD};
 
 #[cfg(feature = "arbitrary_precision")]
 use serde::serde_if_integer128;
@@ -148,8 +149,7 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_bytes(self, value: &[u8]) -> Result<Value> {
-        let vec = value.iter().map(|&b| Value::Number(b.into())).collect();
-        Ok(Value::Array(vec))
+        Ok(Value::String(value.to_base64(STANDARD)))
     }
 
     #[inline]

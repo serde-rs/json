@@ -6,6 +6,7 @@ use crate::lib::num::FpCategory;
 use crate::lib::*;
 use serde::ser::{self, Impossible, Serialize};
 use serde::serde_if_integer128;
+use b64_ct::{ToBase64, STANDARD};
 
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F = CompactFormatter> {
@@ -221,14 +222,10 @@ where
         Ok(())
     }
 
+    /// Serialize a base64-encoded string.
     #[inline]
     fn serialize_bytes(self, value: &[u8]) -> Result<()> {
-        use serde::ser::SerializeSeq;
-        let mut seq = tri!(self.serialize_seq(Some(value.len())));
-        for byte in value {
-            tri!(seq.serialize_element(byte));
-        }
-        seq.end()
+        self.serialize_str(&value.to_base64(STANDARD))
     }
 
     #[inline]
@@ -872,6 +869,10 @@ where
         self.ser.serialize_str(value)
     }
 
+    fn serialize_bytes(self, value: &[u8]) -> Result<()> {
+        self.ser.serialize_bytes(value)
+    }
+
     #[inline]
     fn serialize_unit_variant(
         self,
@@ -1106,10 +1107,6 @@ where
 
     fn serialize_char(self, value: char) -> Result<()> {
         self.ser.serialize_str(&value.to_string())
-    }
-
-    fn serialize_bytes(self, _value: &[u8]) -> Result<()> {
-        Err(key_must_be_a_string())
     }
 
     fn serialize_unit(self) -> Result<()> {
