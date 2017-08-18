@@ -327,6 +327,19 @@ extern crate dtoa;
 #[cfg(feature = "preserve_order")]
 extern crate linked_hash_map;
 
+#[macro_use]
+mod macros;
+
+mod iter;
+mod number;
+mod read;
+
+pub mod de;
+pub mod error;
+pub mod map;
+pub mod ser;
+pub mod value;
+
 #[doc(inline)]
 pub use self::de::{Deserializer, StreamDeserializer, from_reader, from_slice, from_str};
 #[doc(inline)]
@@ -336,16 +349,3 @@ pub use self::ser::{Serializer, to_string, to_string_pretty, to_vec, to_vec_pret
                     to_writer_pretty};
 #[doc(inline)]
 pub use self::value::{Map, Number, Value, from_value, to_value};
-
-#[macro_use]
-mod macros;
-
-pub mod de;
-pub mod error;
-pub mod map;
-pub mod ser;
-pub mod value;
-
-mod iter;
-mod number;
-mod read;

@@ -8,13 +8,13 @@
 
 //! When serializing or deserializing JSON goes wrong.
 
+use serde::de;
+use serde::ser;
+
 use std::error;
 use std::fmt::{self, Debug, Display};
 use std::io;
 use std::result;
-
-use serde::de;
-use serde::ser;
 
 /// This type represents all possible errors that can occur when serializing or
 /// deserializing JSON data.

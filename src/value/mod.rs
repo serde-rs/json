@@ -107,19 +107,18 @@
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
-use std::i64;
-use std::str;
+use serde::ser::{Serialize};
+use serde::de::{DeserializeOwned};
 
-use serde::ser::Serialize;
-use serde::de::DeserializeOwned;
+use std::{i64};
+use std::{str};
 
 use error::Error;
+use self::ser::Serializer;
+
 pub use map::Map;
 pub use number::Number;
-
 pub use self::index::Index;
-
-use self::ser::Serializer;
 
 /// Represents any valid JSON value.
 ///
@@ -512,8 +511,8 @@ impl Value {
     /// // Greater than i64::MAX.
     /// assert!(!v["b"].is_i64());
     ///
-    /// // Numbers with a decimal point are not considered integers.
-    /// assert!(!v["c"].is_i64());
+    /// // Can be converted to an unsigned integer.
+    /// assert!(v["c"].is_i64());
     /// # }
     /// ```
     pub fn is_i64(&self) -> bool {
@@ -540,8 +539,8 @@ impl Value {
     /// // Negative integer.
     /// assert!(!v["b"].is_u64());
     ///
-    /// // Numbers with a decimal point are not considered integers.
-    /// assert!(!v["c"].is_u64());
+    /// // Can be converted to an unsigned integer.
+    /// assert!(v["c"].is_u64());
     /// # }
     /// ```
     pub fn is_u64(&self) -> bool {
@@ -556,9 +555,6 @@ impl Value {
     /// For any Value on which `is_f64` returns true, `as_f64` is guaranteed to
     /// return the floating point value.
     ///
-    /// Currently this function returns true if and only if both `is_i64` and
-    /// `is_u64` return false but this is not a guarantee in the future.
-    ///
     /// ```rust
     /// # #[macro_use]
     /// # extern crate serde_json;
@@ -569,8 +565,8 @@ impl Value {
     /// assert!(v["a"].is_f64());
     ///
     /// // Integers.
-    /// assert!(!v["b"].is_f64());
-    /// assert!(!v["c"].is_f64());
+    /// assert!(v["b"].is_f64());
+    /// assert!(v["c"].is_f64());
     /// # }
     /// ```
     pub fn is_f64(&self) -> bool {
@@ -595,7 +591,7 @@ impl Value {
     ///
     /// assert_eq!(v["a"].as_i64(), Some(64));
     /// assert_eq!(v["b"].as_i64(), None);
-    /// assert_eq!(v["c"].as_i64(), None);
+    /// assert_eq!(v["c"].as_i64(), Some(256));
     /// # }
     /// ```
     pub fn as_i64(&self) -> Option<i64> {
@@ -617,7 +613,7 @@ impl Value {
     ///
     /// assert_eq!(v["a"].as_u64(), Some(64));
     /// assert_eq!(v["b"].as_u64(), None);
-    /// assert_eq!(v["c"].as_u64(), None);
+    /// assert_eq!(v["c"].as_u64(), Some(256));
     /// # }
     /// ```
     pub fn as_u64(&self) -> Option<u64> {

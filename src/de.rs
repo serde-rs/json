@@ -8,15 +8,17 @@
 
 //! Deserialize JSON data to a Rust data structure.
 
+use serde::de::{self, Unexpected, Visitor};
+
 use std::{i32, u64};
 use std::io;
-use std::marker::PhantomData;
-
-use serde::de::{self, Unexpected};
-
-use super::error::{Error, ErrorCode, Result};
+use std::marker::{PhantomData};
 
 use read::{self, Reference};
+use super::error::{Error, ErrorCode, Result};
+
+#[cfg(feature = "arbitrary_precision")]
+use number::{self, NumberDeserializer, SERDE_STRUCT_NAME, SERDE_STRUCT_FIELD_NAME};
 
 pub use read::{Read, IoRead, SliceRead, StrRead};
 
@@ -80,6 +82,7 @@ macro_rules! overflow {
     }
 }
 
+#[derive(Debug)]
 enum Number {
     F64(f64),
     U64(u64),
@@ -89,7 +92,7 @@ enum Number {
 impl Number {
     fn visit<'de, V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         match self {
             Number::F64(x) => visitor.visit_f64(x),
@@ -173,9 +176,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    fn parse_value<V>(&mut self, visitor: V) -> Result<V::Value>
+    fn parse_value<V>(&mut self, visitor: V, expected_value: ExpectedValue) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         let peek = match try!(self.parse_whitespace()) {
             Some(b) => b,
@@ -202,9 +205,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             b'-' => {
                 self.eat_char();
-                try!(self.parse_integer(false)).visit(visitor)
+                self.parse_any_number(visitor, false, expected_value)
             }
-            b'0'...b'9' => try!(self.parse_integer(true)).visit(visitor),
+            b'0'...b'9' => {
+                self.parse_any_number(visitor, true, expected_value)
+            },
             b'"' => {
                 self.eat_char();
                 self.str_buf.clear();
@@ -268,6 +273,62 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         Ok(())
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn parse_any_number<V>(
+        &mut self,
+        visitor: V,
+        pos: bool,
+        _expected_value: ExpectedValue
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        try!(self.parse_integer(pos)).visit(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn parse_any_number<V>(
+        &mut self,
+        visitor: V,
+        pos: bool,
+        expected_value: ExpectedValue
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        if let ExpectedValue::PrimitiveNumber = expected_value {
+            return try!(self.parse_integer(pos)).visit(visitor);
+        }
+
+        let mut buf = String::with_capacity(16);
+        if !pos {
+            buf.push('-');
+        }
+        try!(self.scan_integer(&mut buf));
+
+        match expected_value {
+            ExpectedValue::Default => {
+                visitor.visit_map(NumberDeserializer {
+                    visited: false,
+                    number: buf.into(),
+                })
+            },
+            ExpectedValue::PrimitiveNumber => {
+                unreachable!();
+            },
+            ExpectedValue::String => {
+                visitor.visit_string(buf)
+            },
+            ExpectedValue::Str => {
+                visitor.visit_str(&buf)
+            },
+            ExpectedValue::Struct => {
+                let n = number::Number::from_string_unchecked(buf);
+                Err(de::Error::invalid_type(n.unexpected(), &"struct"),)
+            },
+        }
     }
 
     fn parse_integer(&mut self, pos: bool) -> Result<Number> {
@@ -532,6 +593,111 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
         }
     }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_or_null(&mut self, buf: &mut String) -> Result<u8> {
+        match try!(self.next_char()) {
+            Some(b) => {
+                buf.push(b as char);
+                Ok(b)
+            }
+            None => {
+                Ok(b'\x00')
+            }
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_integer(&mut self, buf: &mut String) -> Result<()> {
+        match try!(self.scan_or_null(buf)) {
+            b'0' => {
+                // There can be only one leading '0'.
+                match try!(self.peek_or_null()) {
+                    b'0'...b'9' => {
+                        Err(self.peek_error(ErrorCode::InvalidNumber))
+                    }
+                    _ => self.scan_number(buf),
+                }
+            }
+            b'1'...b'9' => {
+                loop {
+                    match try!(self.peek_or_null()) {
+                        c @ b'0'...b'9' => {
+                            self.eat_char();
+                            buf.push(c as char);
+                        }
+                        _ => {
+                            return self.scan_number(buf);
+                        }
+                    }
+                }
+            }
+            _ => Err(self.error(ErrorCode::InvalidNumber)),
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_number(&mut self, buf: &mut String) -> Result<()> {
+        match try!(self.peek_or_null()) {
+            b'.' => self.scan_decimal(buf),
+            b'e' | b'E' => self.scan_exponent(buf),
+            _ => Ok(()),
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_decimal(&mut self, buf: &mut String) -> Result<()> {
+        self.eat_char();
+        buf.push('.');
+
+        let mut at_least_one_digit = false;
+        while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+            self.eat_char();
+            buf.push(c as char);
+            at_least_one_digit = true;
+        }
+
+        if !at_least_one_digit {
+            return Err(self.peek_error(ErrorCode::InvalidNumber));
+        }
+
+        match try!(self.peek_or_null()) {
+            b'e' | b'E' => self.scan_exponent(buf),
+            _ => Ok(()),
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn scan_exponent(&mut self, buf: &mut String) -> Result<()> {
+        self.eat_char();
+        buf.push('e');
+
+        match try!(self.peek_or_null()) {
+            b'+' => {
+                self.eat_char();
+            }
+            b'-' => {
+                self.eat_char();
+                buf.push('-');
+            }
+            _ => {}
+        }
+
+        // Make sure a digit follows the exponent place.
+        match try!(self.scan_or_null(buf)) {
+            b'0'...b'9' => {}
+            _ => {
+                return Err(self.error(ErrorCode::InvalidNumber));
+            }
+        }
+
+        while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+            self.eat_char();
+            buf.push(c as char);
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -568,22 +734,55 @@ static POW10: [f64; 309] =
      1e290, 1e291, 1e292, 1e293, 1e294, 1e295, 1e296, 1e297, 1e298, 1e299,
      1e300, 1e301, 1e302, 1e303, 1e304, 1e305, 1e306, 1e307, 1e308];
 
+#[derive(Debug)]
+enum ExpectedValue {
+    Default,
+    #[cfg(feature = "arbitrary_precision")]
+    PrimitiveNumber,
+    #[cfg(feature = "arbitrary_precision")]
+    String,
+    #[cfg(feature = "arbitrary_precision")]
+    Str,
+    #[cfg(feature = "arbitrary_precision")]
+    Struct,
+}
+
+macro_rules! deserialize_number {
+    ($deserialize:ident) => {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value>
+        where
+            V: Visitor<'de>,
+        {
+            self.deserialize_any(visitor)
+        }
+
+        #[cfg(feature = "arbitrary_precision")]
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value>
+        where
+            V: Visitor<'de>,
+        {
+            self.parse_value(visitor, ExpectedValue::PrimitiveNumber)
+        }
+    }
+}
+
 impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
 
     #[inline]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
-        self.parse_value(visitor)
+        self.parse_value(visitor, ExpectedValue::Default)
     }
 
     /// Parses a `null` as a None, and any other values as a `Some(...)`.
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         match try!(self.parse_whitespace()) {
             Some(b'n') => {
@@ -593,15 +792,6 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             }
             _ => visitor.visit_some(self),
         }
-    }
-
-    /// Parses a newtype struct as the underlying value.
-    #[inline]
-    fn deserialize_newtype_struct<V>(self, _name: &str, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        visitor.visit_newtype_struct(self)
     }
 
     /// Parses an enum as an object like `{"$KEY":$VALUE}`, where $VALUE is either a straight
@@ -614,7 +804,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         visitor: V,
     ) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         match try!(self.parse_whitespace()) {
             Some(b'{') => {
@@ -641,6 +831,37 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             Some(_) => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
         }
+    }
+
+    /// Parses a struct as the underlying value.
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_struct<V>(self, _name: &'static str, _fields: &'static [&'static str],
+                             visitor: V) -> Result<V::Value>
+        where V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    /// Parses a struct as the underlying value.
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_struct<V>(self, name: &'static str, fields: &'static [&'static str],
+                             visitor: V) -> Result<V::Value>
+        where V: Visitor<'de>,
+    {
+        self.parse_value(visitor, if name == SERDE_STRUCT_NAME && fields == &[SERDE_STRUCT_FIELD_NAME] {
+            ExpectedValue::Default
+        } else {
+            ExpectedValue::Struct
+        })
+    }
+
+    /// Parses a newtype struct as the underlying value.
+    #[inline]
+    fn deserialize_newtype_struct<V>(self, _name: &str, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
     }
 
     /// Parses a JSON string as bytes. Note that this function does not check
@@ -726,7 +947,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     /// ```
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         match try!(self.parse_whitespace()) {
             Some(b'"') => {
@@ -745,14 +966,56 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     #[inline]
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.deserialize_bytes(visitor)
     }
 
+    deserialize_number!(deserialize_i8);
+    deserialize_number!(deserialize_i16);
+    deserialize_number!(deserialize_i32);
+    deserialize_number!(deserialize_i64);
+    deserialize_number!(deserialize_u8);
+    deserialize_number!(deserialize_u16);
+    deserialize_number!(deserialize_u32);
+    deserialize_number!(deserialize_u64);
+    deserialize_number!(deserialize_f32);
+    deserialize_number!(deserialize_f64);
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_value(visitor, ExpectedValue::String)
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_value(visitor, ExpectedValue::Str)
+    }
+
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string unit
-        unit_struct seq tuple tuple_struct map struct identifier ignored_any
+        bool char unit unit_struct seq tuple tuple_struct map identifier ignored_any
     }
 }
 
@@ -900,14 +1163,14 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for VariantAccess<'a, R>
 
     fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         de::Deserializer::deserialize_any(self.de, visitor)
     }
 
     fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         de::Deserializer::deserialize_any(self.de, visitor)
     }
@@ -952,14 +1215,14 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for UnitVariantAccess<'a
 
     fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         Err(de::Error::invalid_type(Unexpected::UnitVariant, &"tuple variant"),)
     }
 
     fn struct_variant<V>(self, _fields: &'static [&'static str], _visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         Err(de::Error::invalid_type(Unexpected::UnitVariant, &"struct variant"),)
     }
@@ -975,7 +1238,7 @@ macro_rules! deserialize_integer_key {
     ($deserialize:ident => $visit:ident) => {
         fn $deserialize<V>(self, visitor: V) -> Result<V::Value>
         where
-            V: de::Visitor<'de>,
+            V: Visitor<'de>,
         {
             self.de.eat_char();
             self.de.str_buf.clear();
@@ -998,9 +1261,9 @@ where
     #[inline]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
-        self.de.parse_value(visitor)
+        self.de.parse_value(visitor, ExpectedValue::Default)
     }
 
     deserialize_integer_key!(deserialize_i8 => visit_i8);
@@ -1015,7 +1278,7 @@ where
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         // Map keys cannot be null.
         visitor.visit_some(self)
@@ -1024,7 +1287,7 @@ where
     #[inline]
     fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         visitor.visit_newtype_struct(self)
     }
@@ -1037,7 +1300,7 @@ where
         visitor: V,
     ) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.de.deserialize_enum(name, variants, visitor)
     }
@@ -1045,7 +1308,7 @@ where
     #[inline]
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.de.deserialize_bytes(visitor)
     }
@@ -1053,7 +1316,7 @@ where
     #[inline]
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: Visitor<'de>,
     {
         self.de.deserialize_bytes(visitor)
     }
@@ -1164,8 +1427,8 @@ where
     type Item = Result<T>;
 
     fn next(&mut self) -> Option<Result<T>> {
-        // skip whitespaces, if any
-        // this helps with trailing whitespaces, since whitespaces between
+        // Skip whitespaces, if any.
+        // This helps with trailing whitespaces, since whitespaces between
         // values are handled for us.
         match self.de.parse_whitespace() {
             Ok(None) => {

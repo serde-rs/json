@@ -6,11 +6,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{char, cmp, io, str};
-use std::ops::Deref;
+use std::char;
+use std::cmp;
+use std::io;
+use std::ops::{Deref};
+use std::str;
 
-use iter::LineColIterator;
-
+use iter::{LineColIterator};
 use super::error::{Error, ErrorCode, Result};
 
 /// Trait used by the deserializer for iterating over input. This is manually

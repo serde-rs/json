@@ -6,14 +6,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::borrow::Cow;
-use std::fmt;
-use std::i64;
-use std::io;
-use std::slice;
-use std::str;
-use std::vec;
-
 use serde;
 use serde::de::{
     Deserialize,
@@ -27,10 +19,138 @@ use serde::de::{
     Unexpected
 };
 
+use std::{i64};
+use std::borrow::{Cow};
+use std::fmt;
+use std::io;
+use std::slice;
+use std::str;
+use std::vec;
+
 use error::Error;
 use map::Map;
 use number::Number;
 use value::Value;
+
+#[cfg(feature = "arbitrary_precision")]
+use serde::de;
+
+#[cfg(feature = "arbitrary_precision")]
+use number::{NumberDeserializer, NumberFromString, SERDE_STRUCT_NAME, SERDE_STRUCT_FIELD_NAME};
+
+/// Not public API. Should be pub(crate). The deserializer specializes on this
+/// type.
+#[doc(hidden)]
+pub struct ValueVisitor;
+
+impl<'de> Visitor<'de> for ValueVisitor {
+    type Value = Value;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("any valid JSON value")
+    }
+
+    #[inline]
+    fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
+        Ok(Value::Bool(value))
+    }
+
+    #[inline]
+    fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
+        Ok(Value::Number(value.into()))
+    }
+
+    #[inline]
+    fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
+        Ok(Value::Number(value.into()))
+    }
+
+    #[inline]
+    fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
+        Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
+    }
+
+    #[inline]
+    fn visit_str<E>(self, value: &str) -> Result<Value, E>
+    where
+        E: serde::de::Error,
+    {
+        self.visit_string(String::from(value))
+    }
+
+    #[inline]
+    fn visit_string<E>(self, value: String) -> Result<Value, E> {
+        Ok(Value::String(value))
+    }
+
+    #[inline]
+    fn visit_none<E>(self) -> Result<Value, E> {
+        Ok(Value::Null)
+    }
+
+    #[inline]
+    fn visit_some<D>(self, deserializer: D) -> Result<Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Deserialize::deserialize(deserializer)
+    }
+
+    #[inline]
+    fn visit_unit<E>(self) -> Result<Value, E> {
+        Ok(Value::Null)
+    }
+
+    #[inline]
+    fn visit_seq<V>(self, mut visitor: V) -> Result<Value, V::Error>
+    where
+        V: SeqAccess<'de>,
+    {
+        let mut vec = Vec::new();
+        while let Some(elem) = try!(visitor.next_element()) {
+            vec.push(elem);
+        }
+        Ok(Value::Array(vec))
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
+    where
+        V: MapAccess<'de>,
+    {
+        let mut values = Map::new();
+        while let Some((key, value)) = try!(visitor.next_entry()) {
+            values.insert(key, value);
+        }
+        Ok(Value::Object(values))
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
+    where
+        V: MapAccess<'de>,
+    {
+        let mut key = String::new();
+        let number = visitor.next_key_seed(NumberOrObject {
+            key: &mut key,
+        })?;
+        match number {
+            Some(true) => {
+                let number: NumberFromString = visitor.next_value()?;
+                return Ok(Value::Number(number.value))
+            }
+            None => return Ok(Value::Object(Map::new())),
+            Some(false) => {}
+        }
+
+        let mut values = Map::new();
+        values.insert(key, try!(visitor.next_value()));
+        while let Some((key, value)) = try!(visitor.next_entry()) {
+            values.insert(key, value);
+        }
+        Ok(Value::Object(values))
+    }
+}
 
 impl<'de> Deserialize<'de> for Value {
     #[inline]
@@ -38,94 +158,6 @@ impl<'de> Deserialize<'de> for Value {
     where
         D: serde::Deserializer<'de>,
     {
-        struct ValueVisitor;
-
-        impl<'de> Visitor<'de> for ValueVisitor {
-            type Value = Value;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("any valid JSON value")
-            }
-
-            #[inline]
-            fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
-                Ok(Value::Bool(value))
-            }
-
-            #[inline]
-            fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
-                Ok(Value::Number(value.into()))
-            }
-
-            #[inline]
-            fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
-                Ok(Value::Number(value.into()))
-            }
-
-            #[inline]
-            fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
-                Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
-            }
-
-            #[inline]
-            fn visit_str<E>(self, value: &str) -> Result<Value, E>
-            where
-                E: serde::de::Error,
-            {
-                self.visit_string(String::from(value))
-            }
-
-            #[inline]
-            fn visit_string<E>(self, value: String) -> Result<Value, E> {
-                Ok(Value::String(value))
-            }
-
-            #[inline]
-            fn visit_none<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
-            }
-
-            #[inline]
-            fn visit_some<D>(self, deserializer: D) -> Result<Value, D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                Deserialize::deserialize(deserializer)
-            }
-
-            #[inline]
-            fn visit_unit<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
-            }
-
-            #[inline]
-            fn visit_seq<V>(self, mut visitor: V) -> Result<Value, V::Error>
-            where
-                V: SeqAccess<'de>,
-            {
-                let mut vec = Vec::new();
-
-                while let Some(elem) = try!(visitor.next_element()) {
-                    vec.push(elem);
-                }
-
-                Ok(Value::Array(vec))
-            }
-
-            fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
-            where
-                V: MapAccess<'de>,
-            {
-                let mut values = Map::new();
-
-                while let Some((key, value)) = try!(visitor.next_entry()) {
-                    values.insert(key, value);
-                }
-
-                Ok(Value::Object(values))
-            }
-        }
-
         deserializer.deserialize_any(ValueVisitor)
     }
 }
@@ -196,6 +228,29 @@ impl str::FromStr for Value {
     type Err = Error;
     fn from_str(s: &str) -> Result<Value, Error> {
         super::super::de::from_str(s)
+    }
+}
+
+macro_rules! deserialize_value_number {
+    ($deserialize:ident) => {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
+        where
+            V: Visitor<'de>,
+        {
+            self.deserialize_any(visitor)
+        }
+
+        #[cfg(feature = "arbitrary_precision")]
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
+        where
+            V: Visitor<'de>,
+        {
+            match self {
+                Value::Number(n) => n.$deserialize(visitor),
+                _ => self.deserialize_any(visitor),
+            }
+        }
     }
 }
 
@@ -292,6 +347,31 @@ impl<'de> serde::Deserializer<'de> for Value {
         )
     }
 
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_struct<V>(self, _name: &'static str, _fields: &'static [&'static str],
+                             visitor: V) -> Result<V::Value, Error>
+        where V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_struct<V>(self, name: &'static str, fields: &'static [&'static str],
+                             visitor: V) -> Result<V::Value, Error>
+        where V: Visitor<'de>,
+    {
+        if name == SERDE_STRUCT_NAME && fields == &[SERDE_STRUCT_FIELD_NAME] {
+            if let Value::Number(s) = self {
+                return visitor.visit_map(NumberDeserializer {
+                    visited: false,
+                    number: s.to_string().into(),
+                })
+            }
+        }
+
+        self.deserialize_any(visitor)
+    }
+
     #[inline]
     fn deserialize_newtype_struct<V>(
         self,
@@ -304,9 +384,57 @@ impl<'de> serde::Deserializer<'de> for Value {
         visitor.visit_newtype_struct(self)
     }
 
+    deserialize_value_number!(deserialize_i8);
+    deserialize_value_number!(deserialize_i16);
+    deserialize_value_number!(deserialize_i32);
+    deserialize_value_number!(deserialize_i64);
+    deserialize_value_number!(deserialize_u8);
+    deserialize_value_number!(deserialize_u16);
+    deserialize_value_number!(deserialize_u32);
+    deserialize_value_number!(deserialize_u64);
+    deserialize_value_number!(deserialize_f32);
+    deserialize_value_number!(deserialize_f64);
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::Number(n) => n.deserialize_string(visitor),
+            _ => self.deserialize_any(visitor),
+        }
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::Number(n) => n.deserialize_str(visitor),
+            _ => self.deserialize_any(visitor),
+        }
+    }
+
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
-        byte_buf unit unit_struct seq tuple tuple_struct map struct identifier
+        bool char bytes byte_buf unit unit_struct seq tuple tuple_struct map identifier
         ignored_any
     }
 }
@@ -512,6 +640,29 @@ impl<'de> serde::Deserializer<'de> for MapDeserializer {
     }
 }
 
+macro_rules! deserialize_value_ref_number {
+    ($deserialize:ident) => {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
+        where
+            V: Visitor<'de>,
+        {
+            self.deserialize_any(visitor)
+        }
+
+        #[cfg(feature = "arbitrary_precision")]
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
+        where
+            V: Visitor<'de>,
+        {
+            match *self {
+                Value::Number(ref n) => n.$deserialize(visitor),
+                _ => self.deserialize_any(visitor),
+            }
+        }
+    }
+}
+
 impl<'de> serde::Deserializer<'de> for &'de Value {
     type Error = Error;
 
@@ -614,9 +765,57 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         visitor.visit_newtype_struct(self)
     }
 
+    deserialize_value_ref_number!(deserialize_i8);
+    deserialize_value_ref_number!(deserialize_i16);
+    deserialize_value_ref_number!(deserialize_i32);
+    deserialize_value_ref_number!(deserialize_i64);
+    deserialize_value_ref_number!(deserialize_u8);
+    deserialize_value_ref_number!(deserialize_u16);
+    deserialize_value_ref_number!(deserialize_u32);
+    deserialize_value_ref_number!(deserialize_u64);
+    deserialize_value_ref_number!(deserialize_f32);
+    deserialize_value_ref_number!(deserialize_f64);
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        match *self {
+            Value::Number(ref n) => n.deserialize_string(visitor),
+            _ => self.deserialize_any(visitor),
+        }
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        match *self {
+            Value::Number(ref n) => n.deserialize_str(visitor),
+            _ => self.deserialize_any(visitor),
+        }
+    }
+
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
-        byte_buf unit unit_struct seq tuple tuple_struct map struct identifier
+        bool char bytes byte_buf unit unit_struct seq tuple tuple_struct map struct identifier
         ignored_any
     }
 }
@@ -892,6 +1091,53 @@ impl<'de> serde::Deserializer<'de> for MapKeyDeserializer<'de> {
     forward_to_deserialize_any! {
         bool f32 f64 char str string bytes byte_buf unit unit_struct seq tuple
         tuple_struct map struct identifier ignored_any
+    }
+}
+
+#[cfg(feature = "arbitrary_precision")]
+struct NumberOrObject<'a> {
+    key: &'a mut String,
+}
+
+#[cfg(feature = "arbitrary_precision")]
+impl<'a, 'de> DeserializeSeed<'de> for NumberOrObject<'a> {
+    type Value = bool;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+        where D: serde::Deserializer<'de>
+    {
+        deserializer.deserialize_any(self)
+    }
+}
+
+#[cfg(feature = "arbitrary_precision")]
+impl<'a, 'de> Visitor<'de> for NumberOrObject<'a> {
+    type Value = bool;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a string key")
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<bool, E>
+        where E: de::Error,
+    {
+        if s == SERDE_STRUCT_FIELD_NAME {
+            Ok(true)
+        } else {
+            self.key.push_str(s);
+            Ok(false)
+        }
+    }
+
+    fn visit_string<E>(self, s: String) -> Result<bool, E>
+        where E: de::Error,
+    {
+        if s == SERDE_STRUCT_FIELD_NAME {
+            Ok(true)
+        } else {
+            *self.key = s;
+            Ok(false)
+        }
     }
 }
 

@@ -14,13 +14,16 @@
 //! [`BTreeMap`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
 //! [`LinkedHashMap`]: https://docs.rs/linked-hash-map/*/linked_hash_map/struct.LinkedHashMap.html
 
-use serde::{ser, de};
+use serde::de;
+use serde::ser;
+
+use std::borrow::{Borrow};
 use std::fmt::{self, Debug};
-use value::Value;
-use std::hash::Hash;
-use std::iter::FromIterator;
-use std::borrow::Borrow;
+use std::hash::{Hash};
+use std::iter::{FromIterator};
 use std::ops;
+
+use value::{Value};
 
 #[cfg(not(feature = "preserve_order"))]
 use std::collections::{BTreeMap, btree_map};

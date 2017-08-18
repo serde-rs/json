@@ -4,6 +4,9 @@ version = "0.0.0"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 publish = false
 
+[features]
+arbitrary_precision = ["serde_json/arbitrary_precision"]
+
 [workspace]
 
 [dependencies]
