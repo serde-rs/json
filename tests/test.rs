@@ -1611,14 +1611,24 @@ fn test_json_pointer_mut() {
 
 #[test]
 fn test_stack_overflow() {
-    let brackets: String = iter::repeat('[')
-        .take(127)
-        .chain(iter::repeat(']').take(127))
-        .collect();
-    let _: Value = from_str(&brackets).unwrap();
+    // For this test, we need to increase the stack size.
+    std::thread::Builder::new().stack_size(10_000_000).spawn(|| {
+        let brackets: String = iter::repeat('[')
+            .take(1023)
+            .chain(iter::repeat(']')
+            .take(1023))
+            .collect();
+        let _: Value = from_str(&brackets)
+            .expect("Could not build value");
 
-    let brackets: String = iter::repeat('[').take(128).collect();
-    test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 128")],);
+        let brackets: String = iter::repeat('[')
+            .take(1030)
+            .collect();
+        test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 1024")],);
+    })
+        .expect("Could not spawn thread")
+        .join()
+        .expect("Thread error");
 }
 
 #[test]
