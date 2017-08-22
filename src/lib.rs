@@ -326,6 +326,10 @@ extern crate itoa;
 extern crate dtoa;
 #[cfg(feature = "preserve_order")]
 extern crate linked_hash_map;
+#[cfg(feature = "tokio")]
+extern crate futures;
+#[cfg(feature = "tokio")]
+extern crate tokio_io;
 
 #[doc(inline)]
 pub use self::de::{Deserializer, StreamDeserializer, from_reader, from_slice, from_str};
@@ -336,6 +340,10 @@ pub use self::ser::{Serializer, to_string, to_string_pretty, to_vec, to_vec_pret
                     to_writer_pretty};
 #[doc(inline)]
 pub use self::value::{Map, Number, Value, from_value, to_value};
+
+#[cfg(feature = "tokio")]
+#[doc(inline)]
+pub use self::de::from_async_reader;
 
 #[macro_use]
 mod macros;

@@ -21,6 +21,8 @@ num-traits = "0.1.32"
 linked-hash-map = { version = "0.4.1", optional = true }
 itoa = "0.3"
 dtoa = "0.4"
+futures = { version = "0.1.14", optional = true }
+tokio-io = { version = "0.1.2", optional = true }
 
 [dev-dependencies]
 compiletest_rs = "0.2"
@@ -37,3 +39,6 @@ default = []
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
 preserve_order = ["linked-hash-map"]
+
+# Integrate with tokio-io to add serde_json::from_async_reader
+tokio = ["futures", "tokio-io"]
