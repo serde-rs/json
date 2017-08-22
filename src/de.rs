@@ -18,6 +18,9 @@ use super::error::{Error, ErrorCode, Result};
 
 use read::{self, Reference};
 
+#[cfg(feature = "tokio")]
+use futures::{Future, future};
+
 pub use read::{Read, IoRead, SliceRead, StrRead};
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1254,6 +1257,18 @@ where
     T: de::DeserializeOwned,
 {
     from_trait(read::IoRead::new(rdr))
+}
+
+/// Deserialize an instance of type `T` from an asynchronous IO stream of JSON.
+#[cfg(feature = "tokio")]
+pub fn from_async_reader<R, T>(rdr: R) -> Box<Future<Item = (R, T), Error = Error>>
+where
+    R: ::tokio_io::AsyncRead + 'static,
+    T: de::DeserializeOwned + 'static,
+{
+    Box::new(::tokio_io::io::read_to_end(rdr, Vec::new()).map_err(Error::io).and_then(|(rdr, buffer)| {
+        future::done(from_slice(&buffer).map(move |value| (rdr, value)))
+    }))
 }
 
 /// Deserialize an instance of type `T` from bytes of JSON text.
