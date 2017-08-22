@@ -8,16 +8,34 @@
 
 //! Serialize a Rust data structure into JSON data.
 
+use itoa;
+
+use dtoa;
+
+use serde;
+use serde::ser::{self, Impossible};
+
 use std::fmt;
 use std::io;
-use std::num::FpCategory;
+use std::num::{FpCategory};
 use std::str;
 
-use serde::ser::{self, Impossible};
 use super::error::{Error, ErrorCode, Result};
 
-use itoa;
-use dtoa;
+#[cfg(feature = "arbitrary_precision")]
+use serde::{Serialize};
+
+#[cfg(feature = "arbitrary_precision")]
+use number::{SERDE_STRUCT_NAME, SERDE_STRUCT_FIELD_NAME};
+
+fn key_must_be_a_string() -> Error {
+    Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
+}
+
+#[cfg(feature = "arbitrary_precision")]
+fn invalid_number() -> Error {
+    Error::syntax(ErrorCode::InvalidNumber, 0, 0)
+}
 
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F = CompactFormatter> {
@@ -66,6 +84,13 @@ where
     #[inline]
     pub fn into_inner(self) -> W {
         self.writer
+    }
+
+    /// Not public API. Should be pub(crate).
+    #[doc(hidden)]
+    #[inline]
+    pub fn write_number_str(&mut self, data: &str) -> Result<()> {
+        self.formatter.write_number_str(&mut self.writer, data)
     }
 }
 
@@ -333,6 +358,7 @@ where
         value.serialize(self)
     }
 
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         if len == Some(0) {
@@ -360,6 +386,41 @@ where
             );
             Ok(
                 Compound {
+                    ser: self,
+                    state: State::First,
+                },
+            )
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
+        if len == Some(0) {
+            try!(
+                self.formatter
+                    .begin_array(&mut self.writer)
+                    .map_err(Error::io)
+            );
+            try!(
+                self.formatter
+                    .end_array(&mut self.writer)
+                    .map_err(Error::io)
+            );
+            Ok(
+                Compound::Map {
+                    ser: self,
+                    state: State::Empty,
+                },
+            )
+        } else {
+            try!(
+                self.formatter
+                    .begin_array(&mut self.writer)
+                    .map_err(Error::io)
+            );
+            Ok(
+                Compound::Map {
                     ser: self,
                     state: State::First,
                 },
@@ -413,6 +474,7 @@ where
         self.serialize_seq(Some(len))
     }
 
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
         if len == Some(0) {
@@ -447,9 +509,55 @@ where
         }
     }
 
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
+        if len == Some(0) {
+            try!(
+                self.formatter
+                    .begin_object(&mut self.writer)
+                    .map_err(Error::io)
+            );
+            try!(
+                self.formatter
+                    .end_object(&mut self.writer)
+                    .map_err(Error::io)
+            );
+            Ok(
+                Compound::Map {
+                    ser: self,
+                    state: State::Empty,
+                },
+            )
+        } else {
+            try!(
+                self.formatter
+                    .begin_object(&mut self.writer)
+                    .map_err(Error::io)
+            );
+            Ok(
+                Compound::Map {
+                    ser: self,
+                    state: State::First,
+                },
+            )
+        }
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn serialize_struct(self, _name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         self.serialize_map(Some(len))
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
+        if name == SERDE_STRUCT_NAME {
+            Ok(Compound::Number { ser: self })
+        } else {
+            self.serialize_map(Some(len))
+        }
     }
 
     #[inline]
@@ -548,10 +656,23 @@ pub enum State {
     Rest,
 }
 
+#[cfg(not(feature = "arbitrary_precision"))]
 #[doc(hidden)]
 pub struct Compound<'a, W: 'a, F: 'a> {
     ser: &'a mut Serializer<W, F>,
     state: State,
+}
+
+#[cfg(feature = "arbitrary_precision")]
+#[doc(hidden)]
+pub enum Compound<'a, W: 'a, F: 'a> {
+    Map {
+        ser: &'a mut Serializer<W, F>,
+        state: State,
+    },
+    Number {
+        ser: &'a mut Serializer<W, F>,
+    }
 }
 
 impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
@@ -562,6 +683,7 @@ where
     type Ok = ();
     type Error = Error;
 
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<()>
     where
@@ -584,6 +706,33 @@ where
         Ok(())
     }
 
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<()>
+    where
+        T: ser::Serialize,
+    {
+        match *self {
+            Compound::Map { ref mut ser, ref mut state, .. } => {
+                try!(
+                    ser.formatter
+                       .begin_array_value(&mut ser.writer, *state == State::First)
+                       .map_err(Error::io)
+                );
+                *state = State::Rest;
+                try!(value.serialize(&mut **ser));
+                try!(
+                    ser.formatter
+                       .end_array_value(&mut ser.writer)
+                       .map_err(Error::io)
+                );
+                Ok(())
+            },
+            Compound::Number { .. } => panic!(),
+        }
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn end(self) -> Result<()> {
         match self.state {
@@ -598,6 +747,27 @@ where
             }
         }
         Ok(())
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn end(self) -> Result<()> {
+        match self {
+            Compound::Map { ser, state, .. } => {
+                match state {
+                    State::Empty => {}
+                    _ => {
+                        try!(
+                            ser.formatter
+                               .end_array(&mut ser.writer)
+                               .map_err(Error::io)
+                        )
+                    }
+                }
+                Ok(())
+            },
+            Compound::Number { .. } => panic!(),
+        }
     }
 }
 
@@ -661,6 +831,7 @@ where
         ser::SerializeSeq::serialize_element(self, value)
     }
 
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn end(self) -> Result<()> {
         match self.state {
@@ -688,6 +859,37 @@ where
         );
         Ok(())
     }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn end(self) -> Result<()> {
+        match self {
+            Compound::Map { ser, state, .. } => {
+                match state {
+                    State::Empty => {}
+                    _ => {
+                        try!(
+                            ser.formatter
+                               .end_array(&mut ser.writer)
+                               .map_err(Error::io)
+                        )
+                    }
+                }
+                try!(
+                    ser.formatter
+                       .end_object_value(&mut ser.writer)
+                       .map_err(Error::io)
+                );
+                try!(
+                    ser.formatter
+                       .end_object(&mut ser.writer)
+                       .map_err(Error::io)
+                );
+                Ok(())
+            },
+            Compound::Number { .. } => panic!(),
+        }
+    }
 }
 
 impl<'a, W, F> ser::SerializeMap for Compound<'a, W, F>
@@ -698,7 +900,7 @@ where
     type Ok = ();
     type Error = Error;
 
-    #[inline]
+    #[cfg(not(feature = "arbitrary_precision"))]
     fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<()>
     where
         T: ser::Serialize,
@@ -722,6 +924,35 @@ where
         Ok(())
     }
 
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<()>
+    where
+        T: ser::Serialize,
+    {
+        match *self {
+            Compound::Map { ref mut ser, ref mut state, .. } => {
+                try!(
+                    ser.formatter
+                       .begin_object_key(&mut ser.writer, *state == State::First)
+                       .map_err(Error::io)
+                );
+                *state = State::Rest;
+
+                try!(key.serialize(MapKeySerializer { ser: ser }));
+
+                try!(
+                    ser.formatter
+                       .end_object_key(&mut ser.writer)
+                       .map_err(Error::io)
+                );
+                Ok(())
+            },
+            Compound::Number { .. } => panic!(),
+        }
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<()>
     where
@@ -743,6 +974,32 @@ where
         Ok(())
     }
 
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<()>
+    where
+        T: ser::Serialize,
+    {
+        match *self {
+            Compound::Map { ref mut ser, .. } => {
+                try!(
+                    ser.formatter
+                       .begin_object_value(&mut ser.writer)
+                       .map_err(Error::io)
+                );
+                try!(value.serialize(&mut **ser));
+                try!(
+                    ser.formatter
+                       .end_object_value(&mut ser.writer)
+                       .map_err(Error::io)
+                );
+                Ok(())
+            },
+            Compound::Number { .. } => panic!(),
+        }
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn end(self) -> Result<()> {
         match self.state {
@@ -758,6 +1015,27 @@ where
         }
         Ok(())
     }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn end(self) -> Result<()> {
+        match self {
+            Compound::Map { ser, state, .. } => {
+                match state {
+                    State::Empty => {}
+                    _ => {
+                        try!(
+                            ser.formatter
+                               .end_object(&mut ser.writer)
+                               .map_err(Error::io)
+                        )
+                    }
+                }
+                Ok(())
+            },
+            Compound::Number { .. } => panic!(),
+        }
+    }
 }
 
 impl<'a, W, F> ser::SerializeStruct for Compound<'a, W, F>
@@ -768,18 +1046,53 @@ where
     type Ok = ();
     type Error = Error;
 
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
         T: ser::Serialize,
     {
-        try!(ser::SerializeMap::serialize_key(self, key));
-        ser::SerializeMap::serialize_value(self, value)
+        try!(serde::ser::SerializeMap::serialize_key(self, key));
+        try!(serde::ser::SerializeMap::serialize_value(self, value));
+        Ok(())
     }
 
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
+    where
+        T: ser::Serialize,
+    {
+        match *self {
+            Compound::Map { .. } => {
+                try!(serde::ser::SerializeMap::serialize_key(self, key));
+                try!(serde::ser::SerializeMap::serialize_value(self, value));
+                Ok(())
+            },
+            Compound::Number { ref mut ser, .. } => {
+                if key == SERDE_STRUCT_FIELD_NAME {
+                    try!(value.serialize(NumberStrEmitter(&mut *ser)));
+                    Ok(())
+                } else {
+                    Err(invalid_number())
+                }
+            },
+        }
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn end(self) -> Result<()> {
-        ser::SerializeMap::end(self)
+        serde::ser::SerializeMap::end(self)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn end(self) -> Result<()> {
+        match self {
+            Compound::Map { .. } => serde::ser::SerializeMap::end(self),
+            Compound::Number { .. } => Ok(()),
+        }
     }
 }
 
@@ -791,6 +1104,7 @@ where
     type Ok = ();
     type Error = Error;
 
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
@@ -799,6 +1113,19 @@ where
         ser::SerializeStruct::serialize_field(self, key, value)
     }
 
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
+    where
+        T: ser::Serialize,
+    {
+        match *self {
+            Compound::Map { .. } => ser::SerializeStruct::serialize_field(self, key, value),
+            Compound::Number { .. } => panic!(),
+        }
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn end(self) -> Result<()> {
         match self.state {
@@ -826,14 +1153,41 @@ where
         );
         Ok(())
     }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn end(self) -> Result<()> {
+        match self {
+            Compound::Map { ser, state, .. } => {
+                match state {
+                    State::Empty => {}
+                    _ => {
+                        try!(
+                            ser.formatter
+                               .end_object(&mut ser.writer)
+                               .map_err(Error::io)
+                        )
+                    }
+                }
+                try!(
+                    ser.formatter
+                       .end_object_value(&mut ser.writer)
+                       .map_err(Error::io)
+                );
+                try!(
+                    ser.formatter
+                       .end_object(&mut ser.writer)
+                       .map_err(Error::io)
+                );
+                Ok(())
+            },
+            Compound::Number { .. } => panic!(),
+        }
+    }
 }
 
 struct MapKeySerializer<'a, W: 'a, F: 'a> {
     ser: &'a mut Serializer<W, F>,
-}
-
-fn key_must_be_a_string() -> Error {
-    Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
 }
 
 impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
@@ -1148,6 +1502,168 @@ where
     }
 }
 
+#[cfg(feature = "arbitrary_precision")]
+struct NumberStrEmitter<'a, W: 'a + io::Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
+
+#[cfg(feature = "arbitrary_precision")]
+impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W, F> {
+    type Ok = ();
+    type Error = Error;
+
+    type SerializeSeq = Impossible<(), Error>;
+    type SerializeTuple = Impossible<(), Error>;
+    type SerializeTupleStruct = Impossible<(), Error>;
+    type SerializeTupleVariant = Impossible<(), Error>;
+    type SerializeMap = Impossible<(), Error>;
+    type SerializeStruct = Impossible<(), Error>;
+    type SerializeStructVariant = Impossible<(), Error>;
+
+    fn serialize_bool(self, _v: bool) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_i8(self, _v: i8) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_i16(self, _v: i16) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_i32(self, _v: i32) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_i64(self, _v: i64) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_u8(self, _v: u8) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_u16(self, _v: u16) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_u32(self, _v: u32) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_u64(self, _v: u64) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_f32(self, _v: f32) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_f64(self, _v: f64) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_char(self, _v: char) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_str(self, value: &str) -> Result<Self::Ok> {
+        self.0.write_number_str(value)
+    }
+
+    fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_none(self) -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok>
+        where T: Serialize
+    {
+        Err(key_must_be_a_string())
+    }
+
+    fn serialize_unit(self) -> Result<Self::Ok> {
+        Err(key_must_be_a_string())
+    }
+
+    fn serialize_unit_struct(self,
+                             _name: &'static str)
+                             -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_unit_variant(self,
+                              _name: &'static str,
+                              _variant_index: u32,
+                              _variant: &'static str)
+                              -> Result<Self::Ok> {
+        Err(invalid_number())
+    }
+
+    fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, _value: &T)
+                                           -> Result<Self::Ok>
+        where T: Serialize,
+    {
+        Err(invalid_number())
+    }
+
+    fn serialize_newtype_variant<T: ?Sized>(self,
+                                            _name: &'static str,
+                                            _variant_index: u32,
+                                            _variant: &'static str,
+                                            _value: &T)
+                                            -> Result<Self::Ok>
+        where T: Serialize,
+    {
+        Err(invalid_number())
+    }
+
+    fn serialize_seq(self, _len: Option<usize>)
+                     -> Result<Self::SerializeSeq> {
+        Err(invalid_number())
+    }
+
+    fn serialize_tuple(self, _len: usize)
+                       -> Result<Self::SerializeTuple> {
+        Err(invalid_number())
+    }
+
+    fn serialize_tuple_struct(self, _name: &'static str, _len: usize)
+                              -> Result<Self::SerializeTupleStruct> {
+        Err(invalid_number())
+    }
+
+    fn serialize_tuple_variant(self,
+                               _name: &'static str,
+                               _variant_index: u32,
+                               _variant: &'static str,
+                               _len: usize)
+                               -> Result<Self::SerializeTupleVariant> {
+        Err(invalid_number())
+    }
+
+    fn serialize_map(self, _len: Option<usize>)
+                     -> Result<Self::SerializeMap> {
+        Err(invalid_number())
+    }
+
+    fn serialize_struct(self, _name: &'static str, _len: usize)
+                        -> Result<Self::SerializeStruct> {
+        Err(invalid_number())
+    }
+
+    fn serialize_struct_variant(self,
+                                _name: &'static str,
+                                _variant_index: u32,
+                                _variant: &'static str,
+                                _len: usize)
+                                -> Result<Self::SerializeStructVariant> {
+        Err(invalid_number())
+    }
+}
+
 /// Represents a character escape code in a type-safe manner.
 pub enum CharEscape {
     /// An escaped quote `"`
@@ -1302,6 +1818,14 @@ pub trait Formatter {
         W: io::Write,
     {
         dtoa::write(writer, value).map(|_| ())
+    }
+
+    /// Writes a number that has already been rendered to a string.
+    #[inline]
+    fn write_number_str<W: ?Sized>(&mut self, writer: &mut W, value: &str) -> Result<()>
+        where W: io::Write
+    {
+        writer.write_all(value.as_bytes()).map_err(|e| Error::io(e))
     }
 
     /// Called before each series of `write_string_fragment` and

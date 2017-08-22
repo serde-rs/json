@@ -36,6 +36,7 @@ else
     (cd "$DIR/tests/deps" && channel build)
     channel test
     channel test --features preserve_order
+    channel test --features arbitrary_precision
 
     for CHANNEL in stable 1.15.0 1.16.0 1.17.0 beta; do
         channel clean
