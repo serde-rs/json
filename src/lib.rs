@@ -312,6 +312,7 @@
     shadow_unrelated,
     single_match_else,
     stutter,
+    use_self,
 // not practical
     missing_docs_in_private_items,
 ))]
