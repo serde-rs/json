@@ -105,6 +105,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     /// only has trailing whitespace.
     pub fn end(&mut self) -> Result<()> {
         match try!(self.parse_whitespace()) {
+            Some(b',') => Err(self.peek_error(ErrorCode::TrailingComma)),
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
             None => Ok(()),
         }
@@ -517,6 +518,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 Ok(())
             }
+            Some(b',') => {
+                self.eat_char();
+                match self.parse_whitespace() {
+                    Ok(Some(b']')) => Err(self.peek_error(ErrorCode::TrailingComma)),
+                    _ => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+                }
+            }
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingList)),
         }
@@ -528,6 +536,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 Ok(())
             }
+            Some(b',') => Err(self.peek_error(ErrorCode::TrailingComma)),
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
         }
@@ -994,16 +1003,18 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
     where
         T: de::DeserializeSeed<'de>,
     {
-        match try!(self.de.parse_whitespace()) {
+        let peek = match try!(self.de.parse_whitespace()) {
             Some(b']') => {
                 return Ok(None);
             }
             Some(b',') if !self.first => {
                 self.de.eat_char();
+                try!(self.de.parse_whitespace())
             }
-            Some(_) => {
+            Some(b) => {
                 if self.first {
                     self.first = false;
+                    Some(b)
                 } else {
                     return Err(self.de.peek_error(ErrorCode::ExpectedListCommaOrEnd));
                 }
@@ -1011,10 +1022,15 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
             None => {
                 return Err(self.de.peek_error(ErrorCode::EofWhileParsingList));
             }
-        }
+        };
 
-        let value = try!(seed.deserialize(&mut *self.de));
-        Ok(Some(value))
+        match peek {
+            Some(b']') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
+            Some(_) => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
+            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
+        }
+        //let value = try!(seed.deserialize(&mut *self.de));
+        //Ok(Some(value))
     }
 }
 
@@ -1062,7 +1078,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
 
         match peek {
             Some(b'"') => seed.deserialize(MapKey { de: &mut *self.de }).map(Some),
-            Some(b'}') => Err(self.de.peek_error(ErrorCode::TrailingCharacters)),
+            Some(b'}') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
             Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
