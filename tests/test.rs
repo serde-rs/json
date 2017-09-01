@@ -1114,6 +1114,11 @@ fn test_parse_enum_errors() {
             ("{\"Cat\":[0, \"\", 2]}", "trailing characters at line 1 column 14"),
             ("{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",
              "unknown field `foo`, expected `age` or `name` at line 1 column 39"),
+
+            // JSON does not allow trailing commas in data structures
+            ("{\"Cat\":[0, \"Kate\",]}", "trailing characters at line 1 column 18"),
+            ("{\"Cat\":{\"age\": 2, \"name\": \"Kate\",}}",
+             "trailing characters at line 1 column 34"),
         ],
     );
 }
