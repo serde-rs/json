@@ -308,6 +308,7 @@
 // string ser/de uses indexing and slicing
     indexing_slicing,
 // things are often more readable this way
+    cast_lossless,
     shadow_reuse,
     shadow_unrelated,
     single_match_else,
