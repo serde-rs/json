@@ -71,6 +71,11 @@ pub trait Read<'de>: private::Sealed {
         &'s mut self,
         scratch: &'s mut Vec<u8>,
     ) -> Result<Reference<'de, 's, [u8]>>;
+
+    /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
+    /// string until the next quotation mark but discards the data.
+    #[doc(hidden)]
+    fn ignore_str(&mut self) -> Result<()>;
 }
 
 pub struct Position {
@@ -257,6 +262,26 @@ where
         self.parse_str_bytes(scratch, false, |_, bytes| Ok(bytes))
             .map(Reference::Copied)
     }
+
+    fn ignore_str(&mut self) -> Result<()> {
+        loop {
+            let ch = try!(next_or_eof(self));
+            if !ESCAPE[ch as usize] {
+                continue;
+            }
+            match ch {
+                b'"' => {
+                    return Ok(());
+                }
+                b'\\' => {
+                    try!(ignore_escape(self));
+                }
+                _ => {
+                    return error(self, ErrorCode::InvalidUnicodeCodePoint);
+                }
+            }
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -402,6 +427,30 @@ impl<'a> Read<'a> for SliceRead<'a> {
     ) -> Result<Reference<'a, 's, [u8]>> {
         self.parse_str_bytes(scratch, false, |_, bytes| Ok(bytes))
     }
+
+    fn ignore_str(&mut self) -> Result<()> {
+        loop {
+            while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
+                self.index += 1;
+            }
+            if self.index == self.slice.len() {
+                return error(self, ErrorCode::EofWhileParsingString);
+            }
+            match self.slice[self.index] {
+                b'"' => {
+                    self.index += 1;
+                    return Ok(());
+                }
+                b'\\' => {
+                    self.index += 1;
+                    try!(ignore_escape(self));
+                }
+                _ => {
+                    return error(self, ErrorCode::InvalidUnicodeCodePoint);
+                }
+            }
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -460,6 +509,10 @@ impl<'a> Read<'a> for StrRead<'a> {
     ) -> Result<Reference<'a, 's, [u8]>> {
         self.delegate.parse_str_raw(scratch)
     }
+
+    fn ignore_str(&mut self) -> Result<()> {
+        self.delegate.ignore_str()
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -492,14 +545,14 @@ static ESCAPE: [bool; 256] = [
      O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O, // F
 ];
 
-fn next_or_eof<'de, R: Read<'de>>(read: &mut R) -> Result<u8> {
+fn next_or_eof<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<u8> {
     match try!(read.next().map_err(Error::io)) {
         Some(b) => Ok(b),
         None => error(read, ErrorCode::EofWhileParsingString),
     }
 }
 
-fn error<'de, R: Read<'de>, T>(read: &R, reason: ErrorCode) -> Result<T> {
+fn error<'de, R: ?Sized + Read<'de>, T>(read: &R, reason: ErrorCode) -> Result<T> {
     let pos = read.position();
     Err(Error::syntax(reason, pos.line, pos.column))
 }
@@ -546,7 +599,7 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
 
                     let n = (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
 
-                    match char::from_u32(n as u32) {
+                    match char::from_u32(n) {
                         Some(c) => c,
                         None => {
                             return error(read, ErrorCode::InvalidUnicodeCodePoint);
@@ -578,7 +631,54 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
     Ok(())
 }
 
-fn decode_hex_escape<'de, R: Read<'de>>(read: &mut R) -> Result<u16> {
+/// Parses a JSON escape sequence and discards the value. Assumes the previous
+/// byte read was a backslash.
+fn ignore_escape<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<()> {
+    let ch = try!(next_or_eof(read));
+
+    match ch {
+        b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't' => {}
+        b'u' => {
+            let n = match try!(decode_hex_escape(read)) {
+                0xDC00...0xDFFF => {
+                    return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
+                }
+
+                // Non-BMP characters are encoded as a sequence of
+                // two hex escapes, representing UTF-16 surrogates.
+                n1 @ 0xD800...0xDBFF => {
+                    if try!(next_or_eof(read)) != b'\\' {
+                        return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                    }
+                    if try!(next_or_eof(read)) != b'u' {
+                        return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                    }
+
+                    let n2 = try!(decode_hex_escape(read));
+
+                    if n2 < 0xDC00 || n2 > 0xDFFF {
+                        return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
+                    }
+
+                    (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000
+                }
+
+                n => n as u32,
+            };
+
+            if char::from_u32(n).is_none() {
+                return error(read, ErrorCode::InvalidUnicodeCodePoint);
+            }
+        }
+        _ => {
+            return error(read, ErrorCode::InvalidEscape);
+        }
+    }
+
+    Ok(())
+}
+
+fn decode_hex_escape<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<u16> {
     let mut n = 0;
     for _ in 0..4 {
         n = match try!(next_or_eof(read)) {

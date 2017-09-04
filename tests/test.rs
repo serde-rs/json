@@ -34,7 +34,7 @@ use std::iter;
 use std::marker::PhantomData;
 use std::{u8, u16, u32, u64};
 
-use serde::de::{self, Deserialize};
+use serde::de::{self, Deserialize, IgnoredAny};
 use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
@@ -594,6 +594,12 @@ where
         // Make sure we can round trip back to `Value`.
         let json_value2: Value = from_value(json_value.clone()).unwrap();
         assert_eq!(json_value2, json_value);
+
+        // Make sure we can fully ignore.
+        let twoline = s.to_owned() + "\n3735928559";
+        let mut de = Deserializer::from_str(&twoline);
+        IgnoredAny::deserialize(&mut de).unwrap();
+        assert_eq!(0xDEAD_BEEF, u64::deserialize(&mut de).unwrap());
     }
 }
 
