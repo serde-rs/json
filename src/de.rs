@@ -532,6 +532,215 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
         }
     }
+
+    fn ignore_value(&mut self) -> Result<()> {
+        let peek = match try!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        match peek {
+            b'n' => {
+                self.eat_char();
+                self.parse_ident(b"ull")
+            }
+            b't' => {
+                self.eat_char();
+                self.parse_ident(b"rue")
+            }
+            b'f' => {
+                self.eat_char();
+                self.parse_ident(b"alse")
+            }
+            b'-' => {
+                self.eat_char();
+                self.ignore_integer()
+            }
+            b'0'...b'9' => {
+                self.ignore_integer()
+            }
+            b'"' => {
+                self.eat_char();
+                self.read.ignore_str()
+            }
+            b'[' => {
+                self.remaining_depth -= 1;
+                if self.remaining_depth == 0 {
+                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+                }
+
+                self.eat_char();
+                let res = self.ignore_seq();
+                self.remaining_depth += 1;
+                res
+            }
+            b'{' => {
+                self.remaining_depth -= 1;
+                if self.remaining_depth == 0 {
+                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+                }
+
+                self.eat_char();
+                let res = self.ignore_map();
+                self.remaining_depth += 1;
+                res
+            }
+            _ => {
+                Err(self.peek_error(ErrorCode::ExpectedSomeValue))
+            }
+        }
+    }
+
+    fn ignore_integer(&mut self) -> Result<()> {
+        match try!(self.next_char_or_null()) {
+            b'0' => {
+                // There can be only one leading '0'.
+                if let b'0'...b'9' = try!(self.peek_or_null()) {
+                    return Err(self.peek_error(ErrorCode::InvalidNumber));
+                }
+            }
+            b'1'...b'9' => {
+                while let b'0'...b'9' = try!(self.peek_or_null()) {
+                    self.eat_char();
+                }
+            }
+            _ => {
+                return Err(self.error(ErrorCode::InvalidNumber));
+            }
+        }
+
+        match try!(self.peek_or_null()) {
+            b'.' => self.ignore_decimal(),
+            b'e' | b'E' => self.ignore_exponent(),
+            _ => Ok(()),
+        }
+    }
+
+    fn ignore_decimal(&mut self) -> Result<()> {
+        self.eat_char();
+
+        let mut at_least_one_digit = false;
+        while let b'0'...b'9' = try!(self.peek_or_null()) {
+            self.eat_char();
+            at_least_one_digit = true;
+        }
+
+        if !at_least_one_digit {
+            return Err(self.peek_error(ErrorCode::InvalidNumber));
+        }
+
+        match try!(self.peek_or_null()) {
+            b'e' | b'E' => self.ignore_exponent(),
+            _ => Ok(()),
+        }
+    }
+
+    fn ignore_exponent(&mut self) -> Result<()> {
+        self.eat_char();
+
+        match try!(self.peek_or_null()) {
+            b'+' | b'-' => self.eat_char(),
+            _ => {}
+        }
+
+        // Make sure a digit follows the exponent place.
+        match try!(self.next_char_or_null()) {
+            b'0'...b'9' => {}
+            _ => {
+                return Err(self.error(ErrorCode::InvalidNumber));
+            }
+        }
+
+        while let b'0'...b'9' = try!(self.peek_or_null()) {
+            self.eat_char();
+        }
+
+        Ok(())
+    }
+
+    fn ignore_seq(&mut self) -> Result<()> {
+        let mut first = true;
+
+        loop {
+            match try!(self.parse_whitespace()) {
+                Some(b']') => {
+                    self.eat_char();
+                    return Ok(());
+                }
+                Some(b',') if !first => {
+                    self.eat_char();
+                }
+                Some(_) => {
+                    if first {
+                        first = false;
+                    } else {
+                        return Err(self.peek_error(ErrorCode::ExpectedListCommaOrEnd));
+                    }
+                }
+                None => {
+                    return Err(self.peek_error(ErrorCode::EofWhileParsingList));
+                }
+            }
+
+            try!(self.ignore_value());
+        }
+    }
+
+    fn ignore_map(&mut self) -> Result<()> {
+        let mut first = true;
+
+        loop {
+            let peek = match try!(self.parse_whitespace()) {
+                Some(b'}') => {
+                    self.eat_char();
+                    return Ok(());
+                }
+                Some(b',') if !first => {
+                    self.eat_char();
+                    try!(self.parse_whitespace())
+                }
+                Some(b) => {
+                    if first {
+                        first = false;
+                        Some(b)
+                    } else {
+                        return Err(self.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
+                    }
+                }
+                None => {
+                    return Err(self.peek_error(ErrorCode::EofWhileParsingObject));
+                }
+            };
+
+            match peek {
+                Some(b'"') => {
+                    self.eat_char();
+                    try!(self.read.ignore_str());
+                }
+                Some(_) => {
+                    return Err(self.peek_error(ErrorCode::KeyMustBeAString));
+                }
+                None => {
+                    return Err(self.peek_error(ErrorCode::EofWhileParsingObject));
+                }
+            }
+
+            match try!(self.parse_whitespace()) {
+                Some(b':') => {
+                    self.eat_char();
+                    try!(self.ignore_value());
+                }
+                Some(_) => {
+                    return Err(self.peek_error(ErrorCode::ExpectedColon));
+                }
+                None => {
+                    return Err(self.peek_error(ErrorCode::EofWhileParsingObject));
+                }
+            }
+        }
+    }
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -750,9 +959,17 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self.deserialize_bytes(visitor)
     }
 
+    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        try!(self.ignore_value());
+        visitor.visit_unit()
+    }
+
     forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string unit
-        unit_struct seq tuple tuple_struct map struct identifier ignored_any
+        unit_struct seq tuple tuple_struct map struct identifier
     }
 }
 
