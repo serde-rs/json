@@ -321,7 +321,6 @@
 #![deny(missing_docs)]
 
 extern crate num_traits;
-extern crate core;
 #[macro_use]
 extern crate serde;
 extern crate itoa;
