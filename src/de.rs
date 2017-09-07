@@ -26,7 +26,7 @@ pub use read::{Read, IoRead, SliceRead, StrRead};
 pub struct Deserializer<R> {
     read: R,
     str_buf: Vec<u8>,
-    remaining_depth: u8,
+    remaining_depth: usize,
 }
 
 impl<'de, R> Deserializer<R>
@@ -34,7 +34,7 @@ where
     R: read::Read<'de>,
 {
     /// Create a JSON deserializer from one of the possible serde_json input
-    /// sources.
+    /// sources. By default, it has a recursion limit of 255.
     ///
     /// Typically it is more convenient to use one of these methods instead:
     ///
@@ -45,7 +45,7 @@ where
         Deserializer {
             read: read,
             str_buf: Vec::with_capacity(128),
-            remaining_depth: 128,
+            remaining_depth: 255,
         }
     }
 }
