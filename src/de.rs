@@ -1029,8 +1029,6 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
             Some(_) => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
-        //let value = try!(seed.deserialize(&mut *self.de));
-        //Ok(Some(value))
     }
 }
 
