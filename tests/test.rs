@@ -894,7 +894,7 @@ fn test_parse_list() {
             ("[ ", "EOF while parsing a list at line 1 column 2"),
             ("[1", "EOF while parsing a list at line 1 column 2"),
             ("[1,", "EOF while parsing a value at line 1 column 3"),
-            ("[1,]", "expected value at line 1 column 4"),
+            ("[1,]", "trailing comma at line 1 column 4"),
             ("[1 2]", "expected `,` or `]` at line 1 column 4"),
             ("[]a", "trailing characters at line 1 column 3"),
         ],
@@ -1111,9 +1111,14 @@ fn test_parse_enum_errors() {
              "invalid type: map, expected tuple variant Animal::Frog at line 1 column 10"),
             ("{\"Cat\":[]}", "invalid length 0, expected tuple of 2 elements at line 1 column 9"),
             ("{\"Cat\":[0]}", "invalid length 1, expected tuple of 2 elements at line 1 column 10"),
-            ("{\"Cat\":[0, \"\", 2]}", "trailing characters at line 1 column 14"),
+            ("{\"Cat\":[0, \"\", 2]}", "trailing characters at line 1 column 16"),
             ("{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",
              "unknown field `foo`, expected `age` or `name` at line 1 column 39"),
+
+            // JSON does not allow trailing commas in data structures
+            ("{\"Cat\":[0, \"Kate\",]}", "trailing comma at line 1 column 19"),
+            ("{\"Cat\":{\"age\": 2, \"name\": \"Kate\",}}",
+             "trailing comma at line 1 column 34"),
         ],
     );
 }
