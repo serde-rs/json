@@ -6,3 +6,5 @@ error: unexpected end of macro invocation
    |
    = note: this error originates in a macro outside of the current crate
 
+error: aborting due to previous error
+
