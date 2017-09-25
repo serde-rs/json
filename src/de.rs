@@ -105,7 +105,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     /// only has trailing whitespace.
     pub fn end(&mut self) -> Result<()> {
         match try!(self.parse_whitespace()) {
-            Some(b',') => Err(self.peek_error(ErrorCode::TrailingComma)),
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
             None => Ok(()),
         }
