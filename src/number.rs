@@ -235,9 +235,12 @@ impl Number {
     /// Gets a hint on how the number is stored internally.
     ///
     /// ```rust
-    /// assert_eq!(Number::from_f64(256.0).kind(), NumberKind::Float)
-    /// assert_eq!(Number::from(256).kind(), NumberKind::PosInt)
-    /// assert_eq!(Number::from(-256).kind(), NumberKind::NegInt)
+    /// # use serde_json::{Number, NumberKind};
+    /// #
+    /// assert_eq!(Number::from_f64(256.0).unwrap().kind(), NumberKind::Float);
+    /// assert_eq!(Number::from(256).kind(), NumberKind::PosInt);
+    /// assert_eq!(Number::from(-256).kind(), NumberKind::NegInt);
+    /// ```
     pub fn kind(&self) -> NumberKind {
         match self.n {
             N::PosInt(_) => NumberKind::PosInt,
