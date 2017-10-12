@@ -31,6 +31,18 @@ enum N {
     Float(f64),
 }
 
+/// Describes the kind of number we're dealing with
+/// This is a hint about how the number is stored internally
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum NumberKind {
+    /// The number is a positive integer, and can be stored in an u64
+    PosInt,
+    /// The number is a negative integer, and can be stored in an i64
+    NegInt,
+    /// The number is a float, and can be stored in an f64
+    Float,
+}
+
 impl Number {
     /// Returns true if the `Number` is an integer between `i64::MIN` and
     /// `i64::MAX`.
@@ -217,6 +229,20 @@ impl Number {
             Some(Number { n: N::Float(f) })
         } else {
             None
+        }
+    }
+    
+    /// Gets a hint on how the number is stored internally.
+    ///
+    /// ```rust
+    /// assert_eq!(Number::from_f64(256.0).kind(), NumberKind::Float)
+    /// assert_eq!(Number::from(256).kind(), NumberKind::PosInt)
+    /// assert_eq!(Number::from(-256).kind(), NumberKind::NegInt)
+    pub fn kind(&self) -> NumberKind {
+        match self.n {
+            N::PosInt(_) => NumberKind::PosInt,
+            N::NegInt(_) => NumberKind::NegInt,
+            N::Float(_) => NumberKind::Float,
         }
     }
 }

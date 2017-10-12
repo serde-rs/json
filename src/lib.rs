@@ -337,6 +337,8 @@ pub use self::ser::{Serializer, to_string, to_string_pretty, to_vec, to_vec_pret
                     to_writer_pretty};
 #[doc(inline)]
 pub use self::value::{Map, Number, Value, from_value, to_value};
+#[doc(inline)]
+pub use self::number::NumberKind;
 
 #[macro_use]
 mod macros;
