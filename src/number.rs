@@ -31,15 +31,14 @@ enum N {
     Float(f64),
 }
 
-/// Describes the kind of number we're dealing with
-/// This is a hint about how the number is stored internally
+/// Gives a hint to the value of the Number.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum NumberKind {
-    /// The number is a positive integer, and can be stored in an u64
+    /// The number is a positive integer
     PosInt,
-    /// The number is a negative integer, and can be stored in an i64
+    /// The number is a negative integer
     NegInt,
-    /// The number is a float, and can be stored in an f64
+    /// The number is a float
     Float,
 }
 
@@ -232,7 +231,7 @@ impl Number {
         }
     }
     
-    /// Gets a hint on how the number is stored internally.
+    /// Gives a hint to the value of the Number.
     ///
     /// ```rust
     /// # use serde_json::{Number, NumberKind};
