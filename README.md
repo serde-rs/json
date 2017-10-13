@@ -103,6 +103,11 @@ fn untyped_example() -> Result<(), Error> {
     let v: Value = serde_json::from_str(data)?;
 
     // Access parts of the data by indexing with square brackets.
+    // This will result in: `Please call "John Doe" at the number "+44 1234567"`
+    // That's because, the `v: Value` will produce another `Value` object
+    // and it will be surrounded with quotes(`""`)
+    // if you want to avoid this, you can use strongly typed data structures, see next example
+    // or use `v["name"].as_str().unwrap()` of the new `v["name"]: Value` object
     println!("Please call {} at the number {}", v["name"], v["phones"][0]);
 
     Ok(())
@@ -119,7 +124,9 @@ in one of the dozens of places it is used in your code.
 ## Parsing JSON as strongly typed data structures
 
 Serde provides a powerful way of mapping JSON data into Rust data structures
-largely automatically.
+largely automatically. Also a strongly typed data structure ensures that after
+you deserialize the json string and try to access a key of the object of
+type `String`, it will return the typed one instead of a `Value`.
 
 <a href="http://play.integer32.com/?gist=cff572b80d3f078c942a2151e6020adc" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
