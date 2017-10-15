@@ -460,6 +460,16 @@ impl Value {
     ///
     /// // The boolean `false` is not a string.
     /// assert_eq!(v["b"].as_str(), None);
+    ///
+    /// // JSON values are printed in JSON representation, so strings are in quotes.
+    /// //
+    /// //    The value is: "some string"
+    /// println!("The value is: {}", v["a"]);
+    ///
+    /// // Rust strings are printed without quotes.
+    /// //
+    /// //    The value is: some string
+    /// println!("The value is: {}", v["a"].as_str().unwrap());
     /// # }
     /// ```
     pub fn as_str(&self) -> Option<&str> {

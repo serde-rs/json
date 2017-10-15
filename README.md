@@ -103,16 +103,28 @@ fn untyped_example() -> Result<(), Error> {
     let v: Value = serde_json::from_str(data)?;
 
     // Access parts of the data by indexing with square brackets.
-    // This will result in: `Please call "John Doe" at the number "+44 1234567"`
-    // That's because, the `v: Value` will produce another `Value` object
-    // and it will be surrounded with quotes(`""`)
-    // if you want to avoid this, you can use strongly typed data structures, see next example
-    // or use `v["name"].as_str().unwrap()` of the new `v["name"]: Value` object
     println!("Please call {} at the number {}", v["name"], v["phones"][0]);
 
     Ok(())
 }
 ```
+
+The result of square bracket indexing like `v["name"]` is a borrow of the data
+at that index, so the type is `&Value`. A JSON map can be indexed with string
+keys, while a JSON array can be indexed with integer keys. If the type of the
+data is not right for the type with which it is being indexed, or if a map does
+not contain the key being indexed, or if the index into a vector is out of
+bounds, the returned element is `Value::Null`.
+
+When a `Value` is printed, it is printed as a JSON string. So in the code above,
+the output looks like `Please call "John Doe" at the number "+44 1234567"`. The
+quotation marks appear because `v["name"]` is a `&Value` containing a JSON
+string and its JSON representation is `"John Doe"`. Printing as a plain string
+without quotation marks involves converting from a JSON string to a Rust string
+with [`as_str()`] or avoiding the use of `Value` as described in the following
+section.
+
+[`as_str()`]: https://docs.serde.rs/serde_json/enum.Value.html#method.as_str
 
 The `Value` representation is sufficient for very basic tasks but can be tedious
 to work with for anything more significant. Error handling is verbose to
@@ -124,9 +136,7 @@ in one of the dozens of places it is used in your code.
 ## Parsing JSON as strongly typed data structures
 
 Serde provides a powerful way of mapping JSON data into Rust data structures
-largely automatically. Also a strongly typed data structure ensures that after
-you deserialize the json string and try to access a key of the object of
-type `String`, it will return the typed one instead of a `Value`.
+largely automatically.
 
 <a href="http://play.integer32.com/?gist=cff572b80d3f078c942a2151e6020adc" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
