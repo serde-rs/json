@@ -444,7 +444,7 @@ impl<'a> Entry<'a> {
     /// ```
     pub fn or_insert(self, default: Value) -> &'a mut Value {
         match self {
-            Entry::Vacant(entry) => entry.insert(default.into()),
+            Entry::Vacant(entry) => entry.insert(default),
             Entry::Occupied(entry) => entry.into_mut(),
         }
     }
@@ -524,7 +524,7 @@ impl<'a> VacantEntry<'a> {
     /// ```
     #[inline]
     pub fn insert(self, value: Value) -> &'a mut Value {
-        self.vacant.insert(value.into())
+        self.vacant.insert(value)
     }
 }
 
@@ -667,7 +667,7 @@ impl<'a> OccupiedEntry<'a> {
     /// ```
     #[inline]
     pub fn insert(&mut self, value: Value) -> Value {
-        self.occupied.insert(value.into())
+        self.occupied.insert(value)
     }
 
     /// Takes the value of the entry out of the map, and returns it.
