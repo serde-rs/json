@@ -12,11 +12,38 @@ use std::ops;
 use super::Value;
 use map::Map;
 
-/// A type that can be used to index into a `serde_json::Value`. See the `get`
-/// and `get_mut` methods of `Value`.
+/// A type that can be used to index into a `serde_json::Value`.
+///
+/// The [`get`] and [`get_mut`] methods of `Value` accept any type that
+/// implements `Index`, as does the [square-bracket indexing operator]. This
+/// trait is implemented for strings which are used as the index into a JSON
+/// map, and for `usize` which is used as the index into a JSON array.
+///
+/// [`get`]: ../enum.Value.html#method.get
+/// [`get_mut`]: ../enum.Value.html#method.get_mut
+/// [square-bracket indexing operator]: ../enum.Value.html#impl-Index%3CI%3E
 ///
 /// This trait is sealed and cannot be implemented for types outside of
 /// `serde_json`.
+///
+/// # Examples
+///
+/// ```rust
+/// # #[macro_use]
+/// # extern crate serde_json;
+/// #
+/// # fn main() {
+/// let data = json!({ "inner": [1, 2, 3] });
+///
+/// // Data is a JSON map so it can be indexed with a string.
+/// let inner = &data["inner"];
+///
+/// // Inner is a JSON array so it can be indexed with an integer.
+/// let first = &inner[0];
+///
+/// assert_eq!(first, 1);
+/// # }
+/// ```
 pub trait Index: private::Sealed {
     /// Return None if the key is not already in the array or object.
     #[doc(hidden)]
