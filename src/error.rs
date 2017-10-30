@@ -136,6 +136,7 @@ pub enum Category {
     Eof,
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(fallible_impl_from))]
 impl From<Error> for io::Error {
     /// Convert a `serde_json::Error` into an `io::Error`.
     ///
