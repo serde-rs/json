@@ -14,11 +14,11 @@ use serde_json::{from_str, Value};
 fn test_map_order() {
     // Sorted order
     #[cfg(not(feature = "preserve_order"))]
-    const EXPECTED: &'static [&'static str] = &["a", "b", "c"];
+    const EXPECTED: &[&str] = &["a", "b", "c"];
 
     // Insertion order
     #[cfg(feature = "preserve_order")]
-    const EXPECTED: &'static [&'static str] = &["b", "a", "c"];
+    const EXPECTED: &[&str] = &["b", "a", "c"];
 
     let v: Value = from_str(r#"{"b":null,"a":null,"c":null}"#).unwrap();
     let keys: Vec<_> = v.as_object().unwrap().keys().collect();
