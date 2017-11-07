@@ -311,8 +311,11 @@
 
 #![doc(html_root_url = "https://docs.rs/serde_json/1.0.5")]
 #![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
-// Because of "JavaScript"... fixed in Manishearth/rust-clippy#1071
-#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown))]
+// Whitelisted clippy lints
+#![cfg_attr(feature = "cargo-clippy", allow(
+    doc_markdown,
+    needless_pass_by_value,
+))]
 // Whitelisted clippy_pedantic lints
 #![cfg_attr(feature = "cargo-clippy", allow(
 // Deserializer::from_str, into_iter
