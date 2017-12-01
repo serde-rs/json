@@ -1302,9 +1302,8 @@ where
 /// A stream deserializer can be created from any JSON deserializer using the
 /// `Deserializer::into_iter` method.
 ///
-/// The data must consist of JSON arrays and JSON objects optionally separated
-/// by whitespace. A null, boolean, number, or string at the top level are all
-/// errors.
+/// The data can consist of any JSON value. Values need to be a self-delineating value e.g.
+/// arrays, objects, or strings, or be followed by whitespace or a self-delineating value.
 ///
 /// ```rust
 /// extern crate serde_json;
@@ -1312,7 +1311,7 @@ where
 /// use serde_json::{Deserializer, Value};
 ///
 /// fn main() {
-///     let data = "{\"k\": 3}  {}  [0, 1, 2]";
+///     let data = "{\"k\": 3}1\"cool\"\"stuff\" 3{}  [0, 1, 2]";
 ///
 ///     let stream = Deserializer::from_str(data).into_iter::<Value>();
 ///
@@ -1385,6 +1384,18 @@ where
     pub fn byte_offset(&self) -> usize {
         self.offset
     }
+
+    fn peek_end_of_value(&mut self) -> Result<()> {
+        match try!(self.de.peek()) {
+            Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') |
+            Some(b'"') | Some(b'[') | Some(b']') | Some(b'{') |
+            Some(b'}') | Some(b',') | Some(b':') | None => Ok(()),
+            Some(_) => {
+                let pos = self.de.read.peek_position();
+                Err(Error::syntax(ErrorCode::TrailingCharacters, pos.line, pos.column))
+            },
+        }
+    }
 }
 
 impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
@@ -1403,16 +1414,30 @@ where
                 self.offset = self.de.read.byte_offset();
                 None
             }
-            Ok(Some(b'{')) | Ok(Some(b'[')) => {
+            Ok(Some(b)) => {
+                // If the value does not have a clear way to show the end of the value
+                // (like numbers, null, true etc.) we have to look for whitespace or
+                // the beginning of a self-delineated value.
+                let self_delineated_value = match b {
+                    b'[' | b'"' | b'{' => true,
+                    _ => false,
+                };
                 self.offset = self.de.read.byte_offset();
                 let result = de::Deserialize::deserialize(&mut self.de);
-                if result.is_ok() {
-                    self.offset = self.de.read.byte_offset();
-                }
-                Some(result)
+
+                Some(match result {
+                    Ok(value) => {
+                        self.offset = self.de.read.byte_offset();
+                        if self_delineated_value {
+                            Ok(value)
+                        } else {
+                            self.peek_end_of_value().map(|_| value)
+                        }
+                    }
+                    Err(e) => Err(e)
+                })
             }
-            Ok(Some(_)) => Some(Err(self.de.peek_error(ErrorCode::ExpectedObjectOrArray))),
-            Err(e) => Some(Err(e)),
+            Err(e) => Some(Err(e))
         }
     }
 }

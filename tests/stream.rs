@@ -107,15 +107,60 @@ fn test_json_stream_empty() {
 
 #[test]
 fn test_json_stream_primitive() {
-    let data = "{} true";
+    let data = "{} true{}1[]\nfalse\"hey\"2 ";
 
     test_stream!(
         data, Value, |stream| {
             assert_eq!(stream.next().unwrap().unwrap(), json!({}));
             assert_eq!(stream.byte_offset(), 2);
 
+            assert_eq!(stream.next().unwrap().unwrap(), true);
+            assert_eq!(stream.byte_offset(), 7);
+
+            assert_eq!(stream.next().unwrap().unwrap(), json!({}));
+            assert_eq!(stream.byte_offset(), 9);
+
+            assert_eq!(stream.next().unwrap().unwrap(), 1);
+            assert_eq!(stream.byte_offset(), 10);
+
+            assert_eq!(stream.next().unwrap().unwrap(), json!([]));
+            assert_eq!(stream.byte_offset(), 12);
+
+            assert_eq!(stream.next().unwrap().unwrap(), false);
+            assert_eq!(stream.byte_offset(), 18);
+
+            assert_eq!(stream.next().unwrap().unwrap(), "hey");
+            assert_eq!(stream.byte_offset(), 23);
+
+            assert_eq!(stream.next().unwrap().unwrap(), 2);
+            assert_eq!(stream.byte_offset(), 24);
+
+            assert!(stream.next().is_none());
+            assert_eq!(stream.byte_offset(), 25);
+        }
+    );
+}
+
+#[test]
+fn test_json_stream_invalid_literal() {
+    let data = "truefalse";
+
+    test_stream!(
+        data, Value, |stream| {
             let second = stream.next().unwrap().unwrap_err();
-            assert_eq!(second.to_string(), "expected `{` or `[` at line 1 column 4");
+            assert_eq!(second.to_string(), "trailing characters at line 1 column 5");
+        }
+    );
+}
+
+#[test]
+fn test_json_stream_invalid_number() {
+    let data = "1true";
+
+    test_stream!(
+        data, Value, |stream| {
+            let second = stream.next().unwrap().unwrap_err();
+            assert_eq!(second.to_string(), "trailing characters at line 1 column 2");
         }
     );
 }
