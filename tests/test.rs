@@ -1856,3 +1856,14 @@ fn null_invalid_type() {
     let err = serde_json::from_str::<String>("null").unwrap_err();
     assert_eq!(format!("{}", err), String::from("invalid type: null, expected a string at line 1 column 4"));
 }
+
+#[test]
+fn test_number_kind(){
+    assert_eq!(serde_json::Number::from_f64(256.0).unwrap().kind(), serde_json::NumberKind::Float);
+    assert_eq!(serde_json::Number::from_f64(-256.0).unwrap().kind(), serde_json::NumberKind::Float);
+
+    assert_eq!(serde_json::Number::from(256u64).kind(), serde_json::NumberKind::PosInt);
+    assert_eq!(serde_json::Number::from(256i64).kind(), serde_json::NumberKind::PosInt);
+
+    assert_eq!(serde_json::Number::from(-256i64).kind(), serde_json::NumberKind::NegInt);
+}

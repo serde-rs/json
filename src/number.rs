@@ -28,6 +28,17 @@ enum N {
     Float(f64),
 }
 
+/// Gives a hint to the value of the Number.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum NumberKind {
+    /// The number is a positive integer
+    PosInt,
+    /// The number is a negative integer
+    NegInt,
+    /// The number is a float
+    Float,
+}
+
 impl Number {
     /// Returns true if the `Number` is an integer between `i64::MIN` and
     /// `i64::MAX`.
@@ -214,6 +225,23 @@ impl Number {
             Some(Number { n: N::Float(f) })
         } else {
             None
+        }
+    }
+    
+    /// Gives a hint to the value of the Number.
+    ///
+    /// ```rust
+    /// # use serde_json::{Number, NumberKind};
+    /// #
+    /// assert_eq!(Number::from_f64(256.0).unwrap().kind(), NumberKind::Float);
+    /// assert_eq!(Number::from(256).kind(), NumberKind::PosInt);
+    /// assert_eq!(Number::from(-256).kind(), NumberKind::NegInt);
+    /// ```
+    pub fn kind(&self) -> NumberKind {
+        match self.n {
+            N::PosInt(_) => NumberKind::PosInt,
+            N::NegInt(_) => NumberKind::NegInt,
+            N::Float(_) => NumberKind::Float,
         }
     }
 }
