@@ -1236,7 +1236,12 @@ where
     where
         V: de::Visitor<'de>,
     {
-        self.de.parse_value(visitor)
+        self.de.eat_char();
+        self.de.str_buf.clear();
+        match try!(self.de.read.parse_str(&mut self.de.str_buf)) {
+            Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
+            Reference::Copied(s) => visitor.visit_str(s),
+        }
     }
 
     deserialize_integer_key!(deserialize_i8 => visit_i8);
