@@ -147,13 +147,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     /// Error caused by a byte from next_char().
-    fn error(&mut self, reason: ErrorCode) -> Error {
+    fn error(&self, reason: ErrorCode) -> Error {
         let pos = self.read.position();
         Error::syntax(reason, pos.line, pos.column)
     }
 
     /// Error caused by a byte from peek().
-    fn peek_error(&mut self, reason: ErrorCode) -> Error {
+    fn peek_error(&self, reason: ErrorCode) -> Error {
         let pos = self.read.peek_position();
         Error::syntax(reason, pos.line, pos.column)
     }
@@ -256,8 +256,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             // tell whether this should call `error` or `peek_error` so pick the
             // one that seems correct more often. Worst case, the position is
             // off by one character.
-            Err(err) => Err(err.fix_position(|code| self.error(code))),
+            Err(err) => Err(self.fix_position(err)),
         }
+    }
+
+    #[cold]
+    fn fix_position(&self, err: Error) -> Error {
+        err.fix_position(move |code| self.error(code))
     }
 
     fn parse_ident(&mut self, ident: &[u8]) -> Result<()> {
