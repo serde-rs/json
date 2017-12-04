@@ -358,6 +358,19 @@ pub use self::ser::{Serializer, to_string, to_string_pretty, to_vec, to_vec_pret
 #[doc(inline)]
 pub use self::value::{Map, Number, Value, from_value, to_value};
 
+// We only use our own error type; no need for From conversions provided by the
+// standard library's try! macro. This reduces lines of LLVM IR by 4%.
+macro_rules! try {
+    ($e:expr) => {
+        match $e {
+            ::std::result::Result::Ok(val) => val,
+            ::std::result::Result::Err(err) => {
+                return ::std::result::Result::Err(err)
+            }
+        }
+    }
+}
+
 #[macro_use]
 mod macros;
 
