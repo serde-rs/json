@@ -1113,8 +1113,15 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        match try!(self.parse_whitespace()) {
-            Some(b'"') => {
+        let peek = match try!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        let value = match peek {
+            b'"' => {
                 self.eat_char();
                 self.str_buf.clear();
                 match try!(self.read.parse_str_raw(&mut self.str_buf)) {
@@ -1122,9 +1129,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     Reference::Copied(b) => visitor.visit_bytes(b),
                 }
             }
-            _ => self.deserialize_any(visitor),
-        }
+            b'[' => self.deserialize_seq(visitor),
+            _ => Err(self.peek_invalid_type(&visitor)),
+        };
 
+        match value {
+            Ok(value) => Ok(value),
+            Err(err) => Err(self.fix_position(err)),
+        }
     }
 
     #[inline]
