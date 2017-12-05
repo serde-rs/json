@@ -155,12 +155,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     /// Error caused by a byte from next_char().
+    #[cold]
     fn error(&self, reason: ErrorCode) -> Error {
         let pos = self.read.position();
         Error::syntax(reason, pos.line, pos.column)
     }
 
     /// Error caused by a byte from peek().
+    #[cold]
     fn peek_error(&self, reason: ErrorCode) -> Error {
         let pos = self.read.peek_position();
         Error::syntax(reason, pos.line, pos.column)
