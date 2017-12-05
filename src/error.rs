@@ -190,7 +190,7 @@ struct ErrorImpl {
 #[derive(Debug)]
 pub enum ErrorCode {
     /// Catchall for syntax error messages
-    Message(String),
+    Message(Box<str>),
 
     /// Some IO error occurred while serializing or deserializing.
     Io(io::Error),
@@ -388,7 +388,7 @@ impl de::Error for Error {
         Error {
             err: Box::new(
                 ErrorImpl {
-                    code: ErrorCode::Message(msg.to_string()),
+                    code: ErrorCode::Message(msg.to_string().into_boxed_str()),
                     line: 0,
                     column: 0,
                 },
@@ -410,7 +410,7 @@ impl ser::Error for Error {
         Error {
             err: Box::new(
                 ErrorImpl {
-                    code: ErrorCode::Message(msg.to_string()),
+                    code: ErrorCode::Message(msg.to_string().into_boxed_str()),
                     line: 0,
                     column: 0,
                 },
