@@ -205,7 +205,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 if let Err(err) = self.parse_ident(b"alse") {
                     return err;
                 }
-                de::Error::invalid_type(Unexpected::Bool(true), exp)
+                de::Error::invalid_type(Unexpected::Bool(false), exp)
             }
             b'-' => {
                 self.eat_char();
