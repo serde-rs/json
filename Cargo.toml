@@ -23,7 +23,7 @@ itoa = "0.3"
 dtoa = "0.4"
 
 [dev-dependencies]
-compiletest_rs = "0.2"
+compiletest_rs = "0.3"
 serde_bytes = "0.10"
 serde_derive = "1.0"
 
