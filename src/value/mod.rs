@@ -107,6 +107,7 @@
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
+use std::fmt::{self, Debug};
 use std::i64;
 use std::str;
 
@@ -124,7 +125,7 @@ use self::ser::Serializer;
 /// Represents any valid JSON value.
 ///
 /// See the `serde_json::value` module documentation for usage examples.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Value {
     /// Represents a JSON null value.
     ///
@@ -203,6 +204,31 @@ pub enum Value {
     /// # }
     /// ```
     Object(Map<String, Value>),
+}
+
+impl Debug for Value {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Value::Null => {
+                formatter.debug_tuple("Null").finish()
+            }
+            Value::Bool(v) => {
+                formatter.debug_tuple("Bool").field(&v).finish()
+            }
+            Value::Number(ref v) => {
+                Debug::fmt(v, formatter)
+            }
+            Value::String(ref v) => {
+                formatter.debug_tuple("String").field(v).finish()
+            }
+            Value::Array(ref v) => {
+                formatter.debug_tuple("Array").field(v).finish()
+            }
+            Value::Object(ref v) => {
+                formatter.debug_tuple("Object").field(v).finish()
+            }
+        }
+    }
 }
 
 fn parse_index(s: &str) -> Option<usize> {

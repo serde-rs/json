@@ -5,9 +5,9 @@ use serde_json::Number;
 
 #[test]
 fn number() {
-    assert_eq!(format!("{:?}", Number::from(1)), "PosInt(1)");
-    assert_eq!(format!("{:?}", Number::from(-1)), "NegInt(-1)");
-    assert_eq!(format!("{:?}", Number::from_f64(1.0).unwrap()), "Float(1.0)");
+    assert_eq!(format!("{:?}", Number::from(1)), "Number(1)");
+    assert_eq!(format!("{:?}", Number::from(-1)), "Number(-1)");
+    assert_eq!(format!("{:?}", Number::from_f64(1.0).unwrap()), "Number(1.0)");
 }
 
 #[test]
@@ -23,9 +23,9 @@ fn value_bool() {
 
 #[test]
 fn value_number() {
-    assert_eq!(format!("{:?}", json!(1)), "Number(PosInt(1))");
-    assert_eq!(format!("{:?}", json!(-1)), "Number(NegInt(-1))");
-    assert_eq!(format!("{:?}", json!(1.0)), "Number(Float(1.0))");
+    assert_eq!(format!("{:?}", json!(1)), "Number(1)");
+    assert_eq!(format!("{:?}", json!(-1)), "Number(-1)");
+    assert_eq!(format!("{:?}", json!(1.0)), "Number(1.0)");
 }
 
 #[test]

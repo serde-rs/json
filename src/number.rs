@@ -19,7 +19,7 @@ pub struct Number {
     n: N,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 enum N {
     PosInt(u64),
     /// Always less than zero.
@@ -230,7 +230,19 @@ impl fmt::Display for Number {
 
 impl Debug for Number {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.n, formatter)
+        let mut debug = formatter.debug_tuple("Number");
+        match self.n {
+            N::PosInt(i) => {
+                debug.field(&i);
+            }
+            N::NegInt(i) => {
+                debug.field(&i);
+            }
+            N::Float(f) => {
+                debug.field(&f);
+            }
+        }
+        debug.finish()
     }
 }
 
