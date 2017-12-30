@@ -37,7 +37,7 @@ else
     channel test
     channel test --features preserve_order
 
-    for CHANNEL in stable 1.15.0 1.16.0 1.17.0 beta; do
+    for CHANNEL in stable 1.15.0 beta; do
         channel clean
         channel build
         channel build --features preserve_order
