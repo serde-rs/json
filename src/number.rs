@@ -57,7 +57,7 @@ impl Number {
     #[inline]
     pub fn is_i64(&self) -> bool {
         match self.n {
-            N::PosInt(v) => v <= i64::MAX as u64,
+            N::PosInt(v) => v <= i64::max_value() as u64,
             N::NegInt(_) => true,
             N::Float(_) => false,
         }
