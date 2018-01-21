@@ -261,8 +261,6 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
     /// # }
     /// ```
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let vec: Vec<Value> = iter.into_iter().map(|x| x.into()).collect();
-
-        Value::Array(vec)
+        Value::Array(iter.into_iter().map(Into::into).collect())
     }
 }
