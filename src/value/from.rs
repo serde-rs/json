@@ -158,7 +158,7 @@ impl<'a> From<Cow<'a, str>> for Value {
     /// # }
     /// ```
     fn from(f: Cow<'a, str>) -> Self {
-        Value::String(f.to_string())
+        Value::String(f.into_owned())
     }
 }
 
@@ -261,8 +261,6 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
     /// # }
     /// ```
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let vec: Vec<Value> = iter.into_iter().map(|x| x.into()).collect();
-
-        Value::Array(vec)
+        Value::Array(iter.into_iter().map(Into::into).collect())
     }
 }
