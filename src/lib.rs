@@ -336,6 +336,7 @@
     use_self,
 // not practical
     missing_docs_in_private_items,
+    similar_names,
 ))]
 
 #![deny(missing_docs)]
