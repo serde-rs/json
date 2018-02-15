@@ -275,6 +275,8 @@ impl Error {
     }
 
     // Not public API. Should be pub(crate).
+    //
+    // Update `eager_json` crate when this function changes.
     #[doc(hidden)]
     pub fn io(error: io::Error) -> Self {
         Error {
