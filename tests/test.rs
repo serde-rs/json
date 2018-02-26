@@ -858,6 +858,8 @@ fn test_parse_string() {
             ("\"lol", "EOF while parsing a string at line 1 column 4"),
             ("\"lol\"a", "trailing characters at line 1 column 6"),
             ("\"\\uD83C\\uFFFF\"", "lone leading surrogate in hex escape at line 1 column 13"),
+            ("\"\n\"", "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1"),
+            ("\"\x1F\"", "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1"),
         ],
     );
 
@@ -866,6 +868,10 @@ fn test_parse_string() {
             (&[b'"', 159, 146, 150, b'"'], "invalid unicode code point at line 1 column 5"),
             (&[b'"', b'\\', b'n', 159, 146, 150, b'"'],
              "invalid unicode code point at line 1 column 7"),
+            (&[b'"', b'\n',b'"'],
+             "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1"),
+            (&[b'"', b'\x1F', b'"'],
+             "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1"),
         ],
     );
 
