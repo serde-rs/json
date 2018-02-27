@@ -109,9 +109,7 @@ impl Index for str {
     }
     fn index_or_insert<'v>(&self, v: &'v mut Value) -> &'v mut Value {
         if let Value::Null = *v {
-            let mut map = Map::new();
-            map.insert(self.to_owned(), Value::Null);
-            *v = Value::Object(map);
+            *v = Value::Object(Map::new());
         }
         match *v {
             Value::Object(ref mut map) => {
