@@ -337,6 +337,8 @@
 // not practical
     missing_docs_in_private_items,
     similar_names,
+// we support older compilers
+    redundant_field_names,
 ))]
 
 #![deny(missing_docs)]
