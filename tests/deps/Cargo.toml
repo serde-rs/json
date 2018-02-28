@@ -6,5 +6,8 @@ publish = false
 
 [workspace]
 
+[features]
+arbitrary_precision = ["serde_json/arbitrary_precision"]
+
 [dependencies]
 serde_json = { path = "../.." }

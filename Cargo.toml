@@ -37,3 +37,5 @@ default = []
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
 preserve_order = ["linked-hash-map"]
+
+arbitrary_precision = []

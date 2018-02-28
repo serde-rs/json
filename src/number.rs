@@ -7,11 +7,36 @@
 // except according to those terms.
 
 use error::Error;
-use num_traits::NumCast;
+use num_traits::{FromPrimitive, ToPrimitive};
 use serde::de::{self, Visitor, Unexpected};
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use std::fmt::{self, Debug, Display};
 use std::i64;
+
+#[cfg(not(feature = "arbitrary_precision"))]
+use num_traits::{NumCast};
+
+#[cfg(feature = "arbitrary_precision")]
+use dtoa;
+#[cfg(feature = "arbitrary_precision")]
+use itoa;
+#[cfg(feature = "arbitrary_precision")]
+use serde::de::{IntoDeserializer, MapAccess};
+#[cfg(feature = "arbitrary_precision")]
+use std::borrow::{Cow};
+
+#[cfg(feature = "arbitrary_precision")]
+use error::{ErrorCode};
+
+#[cfg(feature = "arbitrary_precision")]
+/// Not public API. Should be pub(crate).
+#[doc(hidden)]
+pub const SERDE_STRUCT_FIELD_NAME: &'static str = "$__serde_private_number";
+
+#[cfg(feature = "arbitrary_precision")]
+/// Not public API. Should be pub(crate).
+#[doc(hidden)]
+pub const SERDE_STRUCT_NAME: &'static str = "$__serde_private_Number";
 
 /// Represents a JSON number, whether integer or floating point.
 #[derive(Clone, PartialEq)]
@@ -19,6 +44,7 @@ pub struct Number {
     n: N,
 }
 
+#[cfg(not(feature = "arbitrary_precision"))]
 #[derive(Copy, Clone, PartialEq)]
 enum N {
     PosInt(u64),
@@ -27,6 +53,9 @@ enum N {
     /// Always finite.
     Float(f64),
 }
+
+#[cfg(feature = "arbitrary_precision")]
+type N = String;
 
 impl Number {
     /// Returns true if the `Number` is an integer between `i64::MIN` and
@@ -54,6 +83,7 @@ impl Number {
     /// assert!(!v["c"].is_i64());
     /// # }
     /// ```
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn is_i64(&self) -> bool {
         match self.n {
@@ -61,6 +91,13 @@ impl Number {
             N::NegInt(_) => true,
             N::Float(_) => false,
         }
+    }
+
+    #[allow(missing_docs)]
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    pub fn is_i64(&self) -> bool {
+        self.as_i64().is_some()
     }
 
     /// Returns true if the `Number` is an integer between zero and `u64::MAX`.
@@ -84,12 +121,20 @@ impl Number {
     /// assert!(!v["c"].is_u64());
     /// # }
     /// ```
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn is_u64(&self) -> bool {
         match self.n {
             N::PosInt(_) => true,
             N::NegInt(_) | N::Float(_) => false,
         }
+    }
+
+    #[allow(missing_docs)]
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    pub fn is_u64(&self) -> bool {
+        self.as_u64().is_some()
     }
 
     /// Returns true if the `Number` can be represented by f64.
@@ -114,12 +159,20 @@ impl Number {
     /// assert!(!v["c"].is_f64());
     /// # }
     /// ```
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn is_f64(&self) -> bool {
         match self.n {
             N::Float(_) => true,
             N::PosInt(_) | N::NegInt(_) => false,
         }
+    }
+
+    #[allow(missing_docs)]
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    pub fn is_f64(&self) -> bool {
+        self.as_f64().is_some()
     }
 
     /// If the `Number` is an integer, represent it as i64 if possible. Returns
@@ -140,6 +193,7 @@ impl Number {
     /// assert_eq!(v["c"].as_i64(), None);
     /// # }
     /// ```
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn as_i64(&self) -> Option<i64> {
         match self.n {
@@ -147,6 +201,13 @@ impl Number {
             N::NegInt(n) => Some(n),
             N::Float(_) => None,
         }
+    }
+
+    #[allow(missing_docs)]
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    pub fn as_i64(&self) -> Option<i64> {
+        self.n.parse().ok()
     }
 
     /// If the `Number` is an integer, represent it as u64 if possible. Returns
@@ -164,6 +225,7 @@ impl Number {
     /// assert_eq!(v["c"].as_u64(), None);
     /// # }
     /// ```
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn as_u64(&self) -> Option<u64> {
         match self.n {
@@ -171,6 +233,13 @@ impl Number {
             N::NegInt(n) => NumCast::from(n),
             N::Float(_) => None,
         }
+    }
+
+    #[allow(missing_docs)]
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    pub fn as_u64(&self) -> Option<u64> {
+        self.n.parse().ok()
     }
 
     /// Represents the number as f64 if possible. Returns None otherwise.
@@ -187,6 +256,7 @@ impl Number {
     /// assert_eq!(v["c"].as_f64(), Some(-64.0));
     /// # }
     /// ```
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn as_f64(&self) -> Option<f64> {
         match self.n {
@@ -194,6 +264,13 @@ impl Number {
             N::NegInt(n) => NumCast::from(n),
             N::Float(n) => Some(n),
         }
+    }
+
+    #[allow(missing_docs)]
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    pub fn as_f64(&self) -> Option<f64> {
+        self.n.parse().ok()
     }
 
     /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not JSON
@@ -208,6 +285,7 @@ impl Number {
     ///
     /// assert!(Number::from_f64(f64::NAN).is_none());
     /// ```
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn from_f64(f: f64) -> Option<Number> {
         if f.is_finite() {
@@ -216,19 +294,47 @@ impl Number {
             None
         }
     }
+
+    #[allow(missing_docs)]
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    pub fn from_f64(f: f64) -> Option<Number> {
+        if f.is_finite() {
+            let mut buf = Vec::new();
+            dtoa::write(&mut buf, f).unwrap();
+            Some(Number { n: String::from_utf8(buf).unwrap() })
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    /// Not public API. Should be pub(crate). The deserializer uses this.
+    #[doc(hidden)]
+    #[inline]
+    pub fn from_string_unchecked(n: String) -> Self {
+        Number { n: n }
+    }
 }
 
 impl fmt::Display for Number {
+    #[cfg(not(feature = "arbitrary_precision"))]
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self.n {
-            N::PosInt(i) => Display::fmt(&i, formatter),
+            N::PosInt(u) => Display::fmt(&u, formatter),
             N::NegInt(i) => Display::fmt(&i, formatter),
             N::Float(f) => Display::fmt(&f, formatter),
         }
     }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&self.n, formatter)
+    }
 }
 
 impl Debug for Number {
+    #[cfg(not(feature = "arbitrary_precision"))]
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let mut debug = formatter.debug_tuple("Number");
         match self.n {
@@ -244,19 +350,38 @@ impl Debug for Number {
         }
         debug.finish()
     }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "Number({})", &self.n)
+    }
 }
 
 impl Serialize for Number {
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match self.n {
-            N::PosInt(i) => serializer.serialize_u64(i),
+            N::PosInt(u) => serializer.serialize_u64(u),
             N::NegInt(i) => serializer.serialize_i64(i),
             N::Float(f) => serializer.serialize_f64(f),
         }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut s = serializer.serialize_struct(SERDE_STRUCT_NAME, 1)?;
+        s.serialize_field(SERDE_STRUCT_FIELD_NAME, &self.n)?;
+        s.end()
     }
 }
 
@@ -272,7 +397,7 @@ impl<'de> Deserialize<'de> for Number {
             type Value = Number;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a number")
+                formatter.write_str("a JSON number")
             }
 
             #[inline]
@@ -292,62 +417,327 @@ impl<'de> Deserialize<'de> for Number {
             {
                 Number::from_f64(value).ok_or_else(|| de::Error::custom("not a JSON number"))
             }
+
+            #[cfg(feature = "arbitrary_precision")]
+            #[inline]
+            fn visit_map<V>(self, mut visitor: V) -> Result<Number, V::Error>
+            where
+                V: de::MapAccess<'de>
+            {
+                let value = visitor.next_key::<NumberKey>()?;
+                if value.is_none() {
+                    return Err(de::Error::custom("number key was not found"))
+                }
+                let v: NumberFromString = visitor.next_value()?;
+                Ok(v.value)
+            }
         }
 
         deserializer.deserialize_any(NumberVisitor)
     }
 }
 
+#[cfg(feature = "arbitrary_precision")]
+struct NumberKey;
+
+#[cfg(feature = "arbitrary_precision")]
+impl<'de> de::Deserialize<'de> for NumberKey {
+    fn deserialize<D>(deserializer: D) -> Result<NumberKey, D::Error>
+    where
+        D: de::Deserializer<'de>
+    {
+        struct FieldVisitor;
+
+        impl<'de> de::Visitor<'de> for FieldVisitor {
+            type Value = ();
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a valid number field")
+            }
+
+            fn visit_str<E>(self, s: &str) -> Result<(), E>
+                where E: de::Error
+            {
+                if s == SERDE_STRUCT_FIELD_NAME {
+                    Ok(())
+                } else {
+                    Err(de::Error::custom("expected field with custom name"))
+                }
+            }
+        }
+
+        deserializer.deserialize_identifier(FieldVisitor)?;
+        Ok(NumberKey)
+    }
+}
+
+#[cfg(feature = "arbitrary_precision")]
+pub struct NumberFromString {
+    pub value: Number,
+}
+
+#[cfg(feature = "arbitrary_precision")]
+impl<'de> de::Deserialize<'de> for NumberFromString {
+    fn deserialize<D>(deserializer: D) -> Result<NumberFromString, D::Error>
+    where
+        D: de::Deserializer<'de>
+    {
+        struct Visitor;
+
+        impl<'de> de::Visitor<'de> for Visitor {
+            type Value = NumberFromString;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("string containing a number")
+            }
+
+            fn visit_string<E>(self, s: String) -> Result<NumberFromString, E>
+            where E: de::Error,
+            {
+                Ok(NumberFromString { value: Number::from_string_unchecked(s) })
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+#[cfg(feature = "arbitrary_precision")]
+fn invalid_number() -> Error {
+    Error::syntax(ErrorCode::InvalidNumber, 0, 0)
+}
+
+macro_rules! deserialize_number {
+    ($deserialize:ident => $visit:ident) => {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
+        where
+            V: Visitor<'de>,
+        {
+            self.deserialize_any(visitor)
+        }
+
+        #[cfg(feature = "arbitrary_precision")]
+        fn $deserialize<V>(self, visitor: V) -> Result<V::Value, Error>
+        where
+            V: de::Visitor<'de>,
+        {
+            visitor.$visit(self.n.parse().map_err(|_| invalid_number())?)
+        }
+    }
+}
+
 impl<'de> Deserializer<'de> for Number {
     type Error = Error;
 
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
     where
         V: Visitor<'de>,
     {
         match self.n {
-            N::PosInt(i) => visitor.visit_u64(i),
+            N::PosInt(u) => visitor.visit_u64(u),
             N::NegInt(i) => visitor.visit_i64(i),
             N::Float(f) => visitor.visit_f64(f),
         }
     }
 
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+        where V: Visitor<'de>
+    {
+        visitor.visit_map(NumberDeserializer {
+            visited: false,
+            number: self.n.into(),
+        })
+    }
+
+    deserialize_number!(deserialize_i8 => visit_i8);
+    deserialize_number!(deserialize_i16 => visit_i16);
+    deserialize_number!(deserialize_i32 => visit_i32);
+    deserialize_number!(deserialize_i64 => visit_i64);
+    deserialize_number!(deserialize_u8 => visit_u8);
+    deserialize_number!(deserialize_u16 => visit_u16);
+    deserialize_number!(deserialize_u32 => visit_u32);
+    deserialize_number!(deserialize_u64 => visit_u64);
+    deserialize_number!(deserialize_f32 => visit_f32);
+    deserialize_number!(deserialize_f64 => visit_f64);
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_str(&self.n)
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_string(self.n)
+    }
+
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
-        byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
+        bool char bytes byte_buf option unit unit_struct newtype_struct seq
+        tuple tuple_struct map struct enum identifier ignored_any
     }
 }
 
-impl<'de, 'a> Deserializer<'de> for &'a Number {
+impl<'de, 'a: 'de> Deserializer<'de> for &'a Number {
     type Error = Error;
 
+    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
     where
         V: Visitor<'de>,
     {
         match self.n {
-            N::PosInt(i) => visitor.visit_u64(i),
+            N::PosInt(u) => visitor.visit_u64(u),
             N::NegInt(i) => visitor.visit_i64(i),
             N::Float(f) => visitor.visit_f64(f),
         }
     }
 
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+        where V: Visitor<'de>
+    {
+        visitor.visit_map(NumberDeserializer {
+            visited: false,
+            number: (&self.n as &str).into(),
+        })
+    }
+
+    deserialize_number!(deserialize_i8 => visit_i8);
+    deserialize_number!(deserialize_i16 => visit_i16);
+    deserialize_number!(deserialize_i32 => visit_i32);
+    deserialize_number!(deserialize_i64 => visit_i64);
+    deserialize_number!(deserialize_u8 => visit_u8);
+    deserialize_number!(deserialize_u16 => visit_u16);
+    deserialize_number!(deserialize_u32 => visit_u32);
+    deserialize_number!(deserialize_u64 => visit_u64);
+    deserialize_number!(deserialize_f32 => visit_f32);
+    deserialize_number!(deserialize_f64 => visit_f64);
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_str(&self.n)
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_str(&self.n)
+    }
+
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
-        byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
+        bool char bytes byte_buf option unit unit_struct newtype_struct seq
+        tuple tuple_struct map struct enum identifier ignored_any
     }
 }
 
+#[cfg(feature = "arbitrary_precision")]
+// Not public API. Should be pub(crate).
+#[doc(hidden)]
+pub struct NumberDeserializer<'a> {
+    pub visited: bool,
+    pub number: Cow<'a, str>,
+}
+
+#[cfg(feature = "arbitrary_precision")]
+impl<'de> MapAccess<'de> for NumberDeserializer<'de> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Error>
+    where
+        K: de::DeserializeSeed<'de>,
+    {
+        if self.visited {
+            return Ok(None)
+        }
+        self.visited = true;
+        seed.deserialize(NumberFieldDeserializer).map(Some)
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Error>
+    where
+        V: de::DeserializeSeed<'de>,
+    {
+        seed.deserialize(self.number.to_owned().into_deserializer())
+    }
+}
+
+#[cfg(feature = "arbitrary_precision")]
+struct NumberFieldDeserializer;
+
+#[cfg(feature = "arbitrary_precision")]
+impl<'de> Deserializer<'de> for NumberFieldDeserializer {
+    type Error = Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_borrowed_str(SERDE_STRUCT_FIELD_NAME)
+    }
+
+    forward_to_deserialize_any! {
+        bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string seq
+        bytes byte_buf map struct option unit newtype_struct
+        ignored_any unit_struct tuple_struct tuple enum identifier
+    }
+}
+
+#[cfg(not(feature = "arbitrary_precision"))]
 macro_rules! from_signed {
-    ($($signed_ty:ident)*) => {
+    ($($ty:ty)*) => {
         $(
-            impl From<$signed_ty> for Number {
+            impl From<$ty> for Number {
                 #[inline]
-                fn from(i: $signed_ty) -> Self {
+                fn from(i: $ty) -> Self {
                     if i < 0 {
                         Number { n: N::NegInt(i as i64) }
                     } else {
@@ -359,12 +749,13 @@ macro_rules! from_signed {
     };
 }
 
+#[cfg(not(feature = "arbitrary_precision"))]
 macro_rules! from_unsigned {
-    ($($unsigned_ty:ident)*) => {
+    ($($ty:ty)*) => {
         $(
-            impl From<$unsigned_ty> for Number {
+            impl From<$ty> for Number {
                 #[inline]
-                fn from(u: $unsigned_ty) -> Self {
+                fn from(u: $ty) -> Self {
                     Number { n: N::PosInt(u as u64) }
                 }
             }
@@ -372,10 +763,87 @@ macro_rules! from_unsigned {
     };
 }
 
+#[cfg(not(feature = "arbitrary_precision"))]
 from_signed!(i8 i16 i32 i64 isize);
+#[cfg(not(feature = "arbitrary_precision"))]
 from_unsigned!(u8 u16 u32 u64 usize);
 
+#[cfg(feature = "arbitrary_precision")]
+macro_rules! from_primitive {
+    ($($ty:ident)*) => {
+        $(
+            impl From<$ty> for Number {
+                #[inline]
+                fn from(primitive: $ty) -> Self {
+                    let mut buf = Vec::new();
+                    itoa::write(&mut buf, primitive).unwrap();
+                    Number { n: String::from_utf8(buf).unwrap() }
+                }
+            }
+        )*
+    };
+}
+
+#[cfg(feature = "arbitrary_precision")]
+from_primitive!(i8 i16 i32 i64 isize u8 u16 u32 u64 usize);
+
+impl FromPrimitive for Number {
+    #[inline]
+    fn from_i64(n: i64) -> Option<Self> {
+        // CHECK
+        let n = {
+            #[cfg(not(feature = "arbitrary_precision"))]
+            {
+                if n < 0 {
+                    N::NegInt(n)
+                } else {
+                    N::PosInt(n as u64)
+                }
+            }
+            #[cfg(feature = "arbitrary_precision")]
+            { n.to_string() }
+        };
+        Some(Number { n })
+    }
+
+    #[inline]
+    fn from_u64(n: u64) -> Option<Self> {
+        // CHECK
+        let n = {
+            #[cfg(not(feature = "arbitrary_precision"))]
+            { N::PosInt(n) }
+            #[cfg(feature = "arbitrary_precision")]
+            { n.to_string() }
+        };
+        Some(Number { n })
+    }
+
+    #[inline]
+    fn from_f64(n: f64) -> Option<Self> {
+        // CHECK
+        Self::from_f64(n)
+    }
+}
+
+impl ToPrimitive for Number {
+    #[inline]
+    fn to_i64(&self) -> Option<i64> {
+        self.as_i64()
+    }
+
+    #[inline]
+    fn to_u64(&self) -> Option<u64> {
+        self.as_u64()
+    }
+
+    #[inline]
+    fn to_f64(&self) -> Option<f64> {
+        self.as_f64()
+    }
+}
+
 impl Number {
+    #[cfg(not(feature = "arbitrary_precision"))]
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
     pub fn unexpected(&self) -> Unexpected {
@@ -384,5 +852,12 @@ impl Number {
             N::NegInt(i) => Unexpected::Signed(i),
             N::Float(f) => Unexpected::Float(f),
         }
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    // Not public API. Should be pub(crate).
+    #[doc(hidden)]
+    pub fn unexpected(&self) -> Unexpected {
+        Unexpected::Other("number")
     }
 }
