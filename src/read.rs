@@ -181,7 +181,7 @@ where
                 }
                 _ => {
                     if validate {
-                        return error(self, ErrorCode::InvalidUnicodeCodePoint);
+                        return error(self, ErrorCode::ControlCharacterWhileParsingString);
                     }
                     scratch.push(ch);
                 }
@@ -277,7 +277,7 @@ where
                     try!(ignore_escape(self));
                 }
                 _ => {
-                    return error(self, ErrorCode::InvalidUnicodeCodePoint);
+                    return error(self, ErrorCode::ControlCharacterWhileParsingString);
                 }
             }
         }
@@ -358,7 +358,7 @@ impl<'a> SliceRead<'a> {
                 }
                 _ => {
                     if validate {
-                        return error(self, ErrorCode::InvalidUnicodeCodePoint);
+                        return error(self, ErrorCode::ControlCharacterWhileParsingString);
                     }
                     self.index += 1;
                 }
@@ -446,7 +446,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
                     try!(ignore_escape(self));
                 }
                 _ => {
-                    return error(self, ErrorCode::InvalidUnicodeCodePoint);
+                    return error(self, ErrorCode::ControlCharacterWhileParsingString);
                 }
             }
         }

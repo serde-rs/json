@@ -73,6 +73,7 @@ impl Error {
             ErrorCode::InvalidNumber |
             ErrorCode::NumberOutOfRange |
             ErrorCode::InvalidUnicodeCodePoint |
+            ErrorCode::ControlCharacterWhileParsingString |
             ErrorCode::KeyMustBeAString |
             ErrorCode::LoneLeadingSurrogateInHexEscape |
             ErrorCode::TrailingComma |
@@ -240,6 +241,9 @@ pub enum ErrorCode {
     /// Invalid unicode code point.
     InvalidUnicodeCodePoint,
 
+    /// Control character found while parsing a string.
+    ControlCharacterWhileParsingString,
+
     /// Object key is not a string.
     KeyMustBeAString,
 
@@ -324,6 +328,9 @@ impl Display for ErrorCode {
             ErrorCode::InvalidNumber => f.write_str("invalid number"),
             ErrorCode::NumberOutOfRange => f.write_str("number out of range"),
             ErrorCode::InvalidUnicodeCodePoint => f.write_str("invalid unicode code point"),
+            ErrorCode::ControlCharacterWhileParsingString => {
+                f.write_str("control character (\\u0000-\\u001F) found while parsing a string")
+            }
             ErrorCode::KeyMustBeAString => f.write_str("key must be a string"),
             ErrorCode::LoneLeadingSurrogateInHexEscape => {
                 f.write_str("lone leading surrogate in hex escape")
