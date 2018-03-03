@@ -83,20 +83,15 @@ impl Number {
     /// assert!(!v["c"].is_i64());
     /// # }
     /// ```
-    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn is_i64(&self) -> bool {
+        #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
             N::PosInt(v) => v <= i64::max_value() as u64,
             N::NegInt(_) => true,
             N::Float(_) => false,
         }
-    }
-
-    #[allow(missing_docs)]
-    #[cfg(feature = "arbitrary_precision")]
-    #[inline]
-    pub fn is_i64(&self) -> bool {
+        #[cfg(feature = "arbitrary_precision")]
         self.as_i64().is_some()
     }
 
@@ -121,19 +116,14 @@ impl Number {
     /// assert!(!v["c"].is_u64());
     /// # }
     /// ```
-    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn is_u64(&self) -> bool {
+        #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
             N::PosInt(_) => true,
             N::NegInt(_) | N::Float(_) => false,
         }
-    }
-
-    #[allow(missing_docs)]
-    #[cfg(feature = "arbitrary_precision")]
-    #[inline]
-    pub fn is_u64(&self) -> bool {
+        #[cfg(feature = "arbitrary_precision")]
         self.as_u64().is_some()
     }
 
@@ -159,25 +149,22 @@ impl Number {
     /// assert!(!v["c"].is_f64());
     /// # }
     /// ```
-    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn is_f64(&self) -> bool {
+        #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
             N::Float(_) => true,
             N::PosInt(_) | N::NegInt(_) => false,
         }
-    }
-
-    #[allow(missing_docs)]
-    #[cfg(feature = "arbitrary_precision")]
-    #[inline]
-    pub fn is_f64(&self) -> bool {
-        for c in self.n.chars() {
-            if c == '.' || c == 'e' || c == 'E' {
-                return true;
+        #[cfg(feature = "arbitrary_precision")]
+        {
+            for c in self.n.chars() {
+                if c == '.' || c == 'e' || c == 'E' {
+                    return true;
+                }
             }
+            false
         }
-        false
     }
 
     /// If the `Number` is an integer, represent it as i64 if possible. Returns
@@ -198,20 +185,15 @@ impl Number {
     /// assert_eq!(v["c"].as_i64(), None);
     /// # }
     /// ```
-    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn as_i64(&self) -> Option<i64> {
+        #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
             N::PosInt(n) => NumCast::from(n),
             N::NegInt(n) => Some(n),
             N::Float(_) => None,
         }
-    }
-
-    #[allow(missing_docs)]
-    #[cfg(feature = "arbitrary_precision")]
-    #[inline]
-    pub fn as_i64(&self) -> Option<i64> {
+        #[cfg(feature = "arbitrary_precision")]
         self.n.parse().ok()
     }
 
@@ -230,20 +212,15 @@ impl Number {
     /// assert_eq!(v["c"].as_u64(), None);
     /// # }
     /// ```
-    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn as_u64(&self) -> Option<u64> {
+        #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
             N::PosInt(n) => Some(n),
             N::NegInt(n) => NumCast::from(n),
             N::Float(_) => None,
         }
-    }
-
-    #[allow(missing_docs)]
-    #[cfg(feature = "arbitrary_precision")]
-    #[inline]
-    pub fn as_u64(&self) -> Option<u64> {
+        #[cfg(feature = "arbitrary_precision")]
         self.n.parse().ok()
     }
 
@@ -261,20 +238,15 @@ impl Number {
     /// assert_eq!(v["c"].as_f64(), Some(-64.0));
     /// # }
     /// ```
-    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn as_f64(&self) -> Option<f64> {
+        #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
             N::PosInt(n) => NumCast::from(n),
             N::NegInt(n) => NumCast::from(n),
             N::Float(n) => Some(n),
         }
-    }
-
-    #[allow(missing_docs)]
-    #[cfg(feature = "arbitrary_precision")]
-    #[inline]
-    pub fn as_f64(&self) -> Option<f64> {
+        #[cfg(feature = "arbitrary_precision")]
         self.n.parse().ok()
     }
 
@@ -290,24 +262,20 @@ impl Number {
     ///
     /// assert!(Number::from_f64(f64::NAN).is_none());
     /// ```
-    #[cfg(not(feature = "arbitrary_precision"))]
     #[inline]
     pub fn from_f64(f: f64) -> Option<Number> {
         if f.is_finite() {
-            Some(Number { n: N::Float(f) })
-        } else {
-            None
-        }
-    }
-
-    #[allow(missing_docs)]
-    #[cfg(feature = "arbitrary_precision")]
-    #[inline]
-    pub fn from_f64(f: f64) -> Option<Number> {
-        if f.is_finite() {
-            let mut buf = Vec::new();
-            dtoa::write(&mut buf, f).unwrap();
-            Some(Number { n: String::from_utf8(buf).unwrap() })
+            let n = {
+                #[cfg(not(feature = "arbitrary_precision"))]
+                { N::Float(f) }
+                #[cfg(feature = "arbitrary_precision")]
+                {
+                    let mut buf = Vec::new();
+                    dtoa::write(&mut buf, f).ok()?;
+                    String::from_utf8(buf).ok()?
+                }
+            };
+            Some(Number { n })
         } else {
             None
         }
@@ -736,66 +704,9 @@ impl<'de> Deserializer<'de> for NumberFieldDeserializer {
     }
 }
 
-#[cfg(not(feature = "arbitrary_precision"))]
-macro_rules! from_signed {
-    ($($ty:ty)*) => {
-        $(
-            impl From<$ty> for Number {
-                #[inline]
-                fn from(i: $ty) -> Self {
-                    if i < 0 {
-                        Number { n: N::NegInt(i as i64) }
-                    } else {
-                        Number { n: N::PosInt(i as u64) }
-                    }
-                }
-            }
-        )*
-    };
-}
-
-#[cfg(not(feature = "arbitrary_precision"))]
-macro_rules! from_unsigned {
-    ($($ty:ty)*) => {
-        $(
-            impl From<$ty> for Number {
-                #[inline]
-                fn from(u: $ty) -> Self {
-                    Number { n: N::PosInt(u as u64) }
-                }
-            }
-        )*
-    };
-}
-
-#[cfg(not(feature = "arbitrary_precision"))]
-from_signed!(i8 i16 i32 i64 isize);
-#[cfg(not(feature = "arbitrary_precision"))]
-from_unsigned!(u8 u16 u32 u64 usize);
-
-#[cfg(feature = "arbitrary_precision")]
-macro_rules! from_primitive {
-    ($($ty:ident)*) => {
-        $(
-            impl From<$ty> for Number {
-                #[inline]
-                fn from(primitive: $ty) -> Self {
-                    let mut buf = Vec::new();
-                    itoa::write(&mut buf, primitive).unwrap();
-                    Number { n: String::from_utf8(buf).unwrap() }
-                }
-            }
-        )*
-    };
-}
-
-#[cfg(feature = "arbitrary_precision")]
-from_primitive!(i8 i16 i32 i64 isize u8 u16 u32 u64 usize);
-
 impl FromPrimitive for Number {
     #[inline]
     fn from_i64(n: i64) -> Option<Self> {
-        // CHECK
         let n = {
             #[cfg(not(feature = "arbitrary_precision"))]
             {
@@ -806,26 +717,32 @@ impl FromPrimitive for Number {
                 }
             }
             #[cfg(feature = "arbitrary_precision")]
-            { n.to_string() }
+            {
+                let mut buf = Vec::new();
+                itoa::write(&mut buf, n).ok()?;
+                String::from_utf8(buf).ok()?
+            }
         };
         Some(Number { n })
     }
 
     #[inline]
     fn from_u64(n: u64) -> Option<Self> {
-        // CHECK
         let n = {
             #[cfg(not(feature = "arbitrary_precision"))]
             { N::PosInt(n) }
             #[cfg(feature = "arbitrary_precision")]
-            { n.to_string() }
+            {
+                let mut buf = Vec::new();
+                itoa::write(&mut buf, n).ok()?;
+                String::from_utf8(buf).ok()?
+            }
         };
         Some(Number { n })
     }
 
     #[inline]
     fn from_f64(n: f64) -> Option<Self> {
-        // CHECK
         Self::from_f64(n)
     }
 }
@@ -845,6 +762,36 @@ impl ToPrimitive for Number {
     fn to_f64(&self) -> Option<f64> {
         self.as_f64()
     }
+}
+
+macro_rules! impl_number_from {
+    {
+        $($ty:ty => $from_prim_method:ident,)*
+    } => {
+        $(
+            impl From<$ty> for Number {
+                #[inline]
+                fn from(n: $ty) -> Self {
+                    Self::$from_prim_method(n).unwrap()
+                }
+            }
+        )*
+    };
+}
+
+impl_number_from! {
+    i8 => from_i8,
+    i16 => from_i16,
+    i32 => from_i32,
+    i64 => from_i64,
+    isize => from_isize,
+    u8 => from_u8,
+    u16 => from_u16,
+    u32 => from_u32,
+    u64 => from_u64,
+    usize => from_usize,
+    f32 => from_f32,
+    f64 => from_f64,
 }
 
 impl Number {
