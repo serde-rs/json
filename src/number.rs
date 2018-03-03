@@ -172,7 +172,12 @@ impl Number {
     #[cfg(feature = "arbitrary_precision")]
     #[inline]
     pub fn is_f64(&self) -> bool {
-        self.as_f64().is_some()
+        for c in self.n.chars() {
+            if c == '.' || c == 'e' || c == 'E' {
+                return true;
+            }
+        }
+        false
     }
 
     /// If the `Number` is an integer, represent it as i64 if possible. Returns
