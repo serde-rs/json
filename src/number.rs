@@ -275,7 +275,7 @@ impl Number {
                     String::from_utf8(buf).ok()?
                 }
             };
-            Some(Number { n })
+            Some(Number { n: n })
         } else {
             None
         }
@@ -723,7 +723,7 @@ impl FromPrimitive for Number {
                 String::from_utf8(buf).ok()?
             }
         };
-        Some(Number { n })
+        Some(Number { n: n })
     }
 
     #[inline]
@@ -738,7 +738,7 @@ impl FromPrimitive for Number {
                 String::from_utf8(buf).ok()?
             }
         };
-        Some(Number { n })
+        Some(Number { n: n })
     }
 
     #[inline]
