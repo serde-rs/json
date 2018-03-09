@@ -1551,7 +1551,7 @@ pub trait Formatter {
     fn write_number_str<W: ?Sized>(&mut self, writer: &mut W, value: &str) -> Result<()>
         where W: io::Write
     {
-        writer.write_all(value.as_bytes()).map_err(|e| Error::io(e))
+        writer.write_all(value.as_bytes()).map_err(Error::io)
     }
 
     /// Called before each series of `write_string_fragment` and

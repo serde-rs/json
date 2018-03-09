@@ -160,7 +160,8 @@ impl Number {
         {
             for c in self.n.chars() {
                 if c == '.' || c == 'e' || c == 'E' {
-                    return true;
+                    return self.n.parse::<f64>().ok()
+                        .map_or(false, |f| f.is_finite());
                 }
             }
             false
@@ -271,8 +272,8 @@ impl Number {
                 #[cfg(feature = "arbitrary_precision")]
                 {
                     let mut buf = Vec::new();
-                    dtoa::write(&mut buf, f).ok()?;
-                    String::from_utf8(buf).ok()?
+                    dtoa::write(&mut buf, f).unwrap();
+                    String::from_utf8(buf).unwrap()
                 }
             };
             Some(Number { n: n })
@@ -538,41 +539,10 @@ impl<'de> Deserializer<'de> for Number {
     deserialize_number!(deserialize_f32 => visit_f32);
     deserialize_number!(deserialize_f64 => visit_f64);
 
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        self.deserialize_any(visitor)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: de::Visitor<'de>,
-    {
-        visitor.visit_str(&self.n)
-    }
-
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        self.deserialize_any(visitor)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: de::Visitor<'de>,
-    {
-        visitor.visit_string(self.n)
-    }
-
     forward_to_deserialize_any! {
-        bool char bytes byte_buf option unit unit_struct newtype_struct seq
-        tuple tuple_struct map struct enum identifier ignored_any
+        bool char str string bytes byte_buf option unit unit_struct
+        newtype_struct seq tuple tuple_struct map struct enum identifier
+        ignored_any
     }
 }
 
@@ -719,8 +689,8 @@ impl FromPrimitive for Number {
             #[cfg(feature = "arbitrary_precision")]
             {
                 let mut buf = Vec::new();
-                itoa::write(&mut buf, n).ok()?;
-                String::from_utf8(buf).ok()?
+                itoa::write(&mut buf, n).unwrap();
+                String::from_utf8(buf).unwrap()
             }
         };
         Some(Number { n: n })
@@ -734,8 +704,8 @@ impl FromPrimitive for Number {
             #[cfg(feature = "arbitrary_precision")]
             {
                 let mut buf = Vec::new();
-                itoa::write(&mut buf, n).ok()?;
-                String::from_utf8(buf).ok()?
+                itoa::write(&mut buf, n).unwrap();
+                String::from_utf8(buf).unwrap()
             }
         };
         Some(Number { n: n })
