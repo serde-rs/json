@@ -22,8 +22,6 @@ use dtoa;
 use itoa;
 #[cfg(feature = "arbitrary_precision")]
 use serde::de::{IntoDeserializer, MapAccess};
-#[cfg(feature = "arbitrary_precision")]
-use std::borrow::{Cow};
 
 #[cfg(feature = "arbitrary_precision")]
 use error::{ErrorCode};
@@ -546,7 +544,7 @@ impl<'de> Deserializer<'de> for Number {
     }
 }
 
-impl<'de, 'a: 'de> Deserializer<'de> for &'a Number {
+impl<'de, 'a> Deserializer<'de> for &'a Number {
     type Error = Error;
 
     #[cfg(not(feature = "arbitrary_precision"))]
@@ -569,7 +567,7 @@ impl<'de, 'a: 'de> Deserializer<'de> for &'a Number {
     {
         visitor.visit_map(NumberDeserializer {
             visited: false,
-            number: (&self.n as &str).into(),
+            number: self.n.clone().into(),
         })
     }
 
@@ -625,13 +623,13 @@ impl<'de, 'a: 'de> Deserializer<'de> for &'a Number {
 #[cfg(feature = "arbitrary_precision")]
 // Not public API. Should be pub(crate).
 #[doc(hidden)]
-pub struct NumberDeserializer<'a> {
+pub struct NumberDeserializer {
     pub visited: bool,
-    pub number: Cow<'a, str>,
+    pub number: Option<String>,
 }
 
 #[cfg(feature = "arbitrary_precision")]
-impl<'de> MapAccess<'de> for NumberDeserializer<'de> {
+impl<'de> MapAccess<'de> for NumberDeserializer {
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Error>
@@ -649,7 +647,7 @@ impl<'de> MapAccess<'de> for NumberDeserializer<'de> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        seed.deserialize(self.number.to_owned().into_deserializer())
+        seed.deserialize(self.number.to_owned().take().unwrap().into_deserializer())
     }
 }
 
