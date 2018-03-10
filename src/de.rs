@@ -103,7 +103,6 @@ impl Number {
             #[cfg(feature = "arbitrary_precision")]
             Number::String(x) => {
                 visitor.visit_map(NumberDeserializer {
-                    visited: false,
                     number: x.into(),
                 })
             },

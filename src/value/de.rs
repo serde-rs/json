@@ -389,7 +389,6 @@ impl<'de> serde::Deserializer<'de> for Value {
         if name == SERDE_STRUCT_NAME && fields == &[SERDE_STRUCT_FIELD_NAME] {
             if let Value::Number(s) = self {
                 return visitor.visit_map(NumberDeserializer {
-                    visited: false,
                     number: s.to_string().into(),
                 })
             }

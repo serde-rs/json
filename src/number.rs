@@ -510,7 +510,6 @@ macro_rules! deserialize_any {
             }
 
             visitor.visit_map(NumberDeserializer {
-                visited: false,
                 number: Some(self.$($num_string)*),
             })
         }
@@ -595,7 +594,6 @@ impl<'de, 'a> Deserializer<'de> for &'a Number {
 // Not public API. Should be pub(crate).
 #[doc(hidden)]
 pub struct NumberDeserializer {
-    pub visited: bool,
     pub number: Option<String>,
 }
 
@@ -607,10 +605,9 @@ impl<'de> MapAccess<'de> for NumberDeserializer {
     where
         K: de::DeserializeSeed<'de>,
     {
-        if self.visited {
+        if self.number.is_none() {
             return Ok(None)
         }
-        self.visited = true;
         seed.deserialize(NumberFieldDeserializer).map(Some)
     }
 
@@ -618,7 +615,7 @@ impl<'de> MapAccess<'de> for NumberDeserializer {
     where
         V: de::DeserializeSeed<'de>,
     {
-        seed.deserialize(self.number.to_owned().take().unwrap().into_deserializer())
+        seed.deserialize(self.number.take().unwrap().into_deserializer())
     }
 }
 
