@@ -21,7 +21,7 @@ use read::{self, Reference};
 pub use read::{Read, IoRead, SliceRead, StrRead};
 
 #[cfg(feature = "arbitrary_precision")]
-use number::{NumberDeserializer, SERDE_STRUCT_NAME, SERDE_STRUCT_FIELD_NAME};
+use number::NumberDeserializer;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -198,7 +198,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cold]
-    fn peek_invalid_type(&mut self, exp: &Expected, prim: bool) -> Error {
+    fn peek_invalid_type(&mut self, exp: &Expected) -> Error {
         let err = match self.peek_or_null().unwrap_or(b'\x00') {
             b'n' => {
                 self.eat_char();
@@ -223,13 +223,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             b'-' => {
                 self.eat_char();
-                match self.parse_any_number(false, prim) {
+                match self.parse_any_number(false, false) {
                     Ok(n) => n.invalid_type(exp),
                     Err(err) => return err,
                 }
             }
             b'0'...b'9' => {
-                match self.parse_any_number(true, prim) {
+                match self.parse_any_number(true, false) {
                     Ok(n) => n.invalid_type(exp),
                     Err(err) => return err,
                 }
@@ -254,7 +254,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.fix_position(err)
     }
 
-    fn deserialize_number<V>(&mut self, visitor: V, prim: bool) -> Result<V::Value>
+    fn deserialize_prim_number<V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -268,10 +268,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let value = match peek {
             b'-' => {
                 self.eat_char();
-                try!(self.parse_any_number(false, prim)).visit(visitor)
+                try!(self.parse_any_number(false, true)).visit(visitor)
             }
-            b'0'...b'9' => try!(self.parse_any_number(true, prim)).visit(visitor),
-            _ => Err(self.peek_invalid_type(&visitor, false)),
+            b'0'...b'9' => try!(self.parse_any_number(true, true)).visit(visitor),
+            _ => Err(self.peek_invalid_type(&visitor)),
         };
 
         match value {
@@ -946,20 +946,11 @@ static POW10: [f64; 309] =
 
 macro_rules! deserialize_prim_number {
     ($method:ident) => {
-        #[cfg(not(feature = "arbitrary_precision"))]
         fn $method<V>(self, visitor: V) -> Result<V::Value>
         where
             V: de::Visitor<'de>,
         {
-            self.deserialize_number(visitor, false)
-        }
-
-        #[cfg(feature = "arbitrary_precision")]
-        fn $method<V>(self, visitor: V) -> Result<V::Value>
-        where
-            V: de::Visitor<'de>,
-        {
-            self.deserialize_number(visitor, true)
+            self.deserialize_prim_number(visitor)
         }
     }
 }
@@ -1078,7 +1069,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 try!(self.parse_ident(b"alse"));
                 visitor.visit_bool(false)
             }
-            _ => Err(self.peek_invalid_type(&visitor, false)),
+            _ => Err(self.peek_invalid_type(&visitor)),
         };
 
         match value {
@@ -1125,7 +1116,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     Reference::Copied(s) => visitor.visit_str(s),
                 }
             }
-            _ => Err(self.peek_invalid_type(&visitor, false)),
+            _ => Err(self.peek_invalid_type(&visitor)),
         };
 
         match value {
@@ -1243,7 +1234,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'[' => self.deserialize_seq(visitor),
-            _ => Err(self.peek_invalid_type(&visitor, false)),
+            _ => Err(self.peek_invalid_type(&visitor)),
         };
 
         match value {
@@ -1293,7 +1284,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 try!(self.parse_ident(b"ull"));
                 visitor.visit_unit()
             }
-            _ => Err(self.peek_invalid_type(&visitor, false)),
+            _ => Err(self.peek_invalid_type(&visitor)),
         };
 
         match value {
@@ -1350,7 +1341,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     (Err(err), _) | (_, Err(err)) => Err(err),
                 }
             }
-            _ => Err(self.peek_invalid_type(&visitor, false)),
+            _ => Err(self.peek_invalid_type(&visitor)),
         };
 
         match value {
@@ -1410,7 +1401,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     (Err(err), _) | (_, Err(err)) => Err(err),
                 }
             }
-            _ => Err(self.peek_invalid_type(&visitor, false)),
+            _ => Err(self.peek_invalid_type(&visitor)),
         };
 
         match value {
@@ -1421,23 +1412,13 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
     fn deserialize_struct<V>(
         self,
-        name: &'static str,
-        fields: &'static [&'static str],
+        _name: &'static str,
+        _fields: &'static [&'static str],
         visitor: V
     ) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
-        #[cfg(feature = "arbitrary_precision")]
-        {
-            if name == SERDE_STRUCT_NAME && fields == &[SERDE_STRUCT_FIELD_NAME] {
-                return self.deserialize_number(visitor, false);
-            }
-        }
-
-        let _ = name;
-        let _ = fields;
-
         let peek = match try!(self.parse_whitespace()) {
             Some(b) => b,
             None => {
@@ -1478,7 +1459,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     (Err(err), _) | (_, Err(err)) => Err(err),
                 }
             }
-            _ => Err(self.peek_invalid_type(&visitor, false)),
+            _ => Err(self.peek_invalid_type(&visitor)),
         };
 
         match value {
