@@ -306,44 +306,6 @@ impl<'de> serde::Deserializer<'de> for Value {
     deserialize_prim_number!(deserialize_f32);
     deserialize_prim_number!(deserialize_f64);
 
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        self.deserialize_any(visitor)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        match self {
-            Value::Number(n) => n.deserialize_str(visitor),
-            _ => self.deserialize_any(visitor),
-        }
-    }
-
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        self.deserialize_any(visitor)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        match self {
-            Value::Number(n) => n.deserialize_string(visitor),
-            _ => self.deserialize_any(visitor),
-        }
-    }
-
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Error>
     where
@@ -437,8 +399,8 @@ impl<'de> serde::Deserializer<'de> for Value {
     }
 
     forward_to_deserialize_any! {
-        bool char bytes byte_buf unit unit_struct seq tuple tuple_struct map
-        identifier ignored_any
+        bool char str string bytes byte_buf unit unit_struct seq tuple
+        tuple_struct map identifier ignored_any
     }
 }
 
@@ -714,44 +676,6 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     deserialize_value_ref_number!(deserialize_f32);
     deserialize_value_ref_number!(deserialize_f64);
 
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        self.deserialize_any(visitor)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        match *self {
-            Value::Number(ref n) => n.deserialize_str(visitor),
-            _ => self.deserialize_any(visitor),
-        }
-    }
-
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        self.deserialize_any(visitor)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        match *self {
-            Value::Number(ref n) => n.deserialize_string(visitor),
-            _ => self.deserialize_any(visitor),
-        }
-    }
-
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Error>
     where
         V: Visitor<'de>,
@@ -818,8 +742,8 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     }
 
     forward_to_deserialize_any! {
-        bool char bytes byte_buf unit unit_struct seq tuple tuple_struct map
-        struct identifier ignored_any
+        bool char str string bytes byte_buf unit unit_struct seq tuple
+        tuple_struct map struct identifier ignored_any
     }
 }
 
