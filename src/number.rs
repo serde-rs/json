@@ -479,6 +479,52 @@ fn invalid_number() -> Error {
     Error::syntax(ErrorCode::InvalidNumber, 0, 0)
 }
 
+macro_rules! deserialize_any {
+    (@expand [$($num_string:tt)*]) => {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        #[inline]
+        fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+        where
+            V: Visitor<'de>,
+        {
+            match self.n {
+                N::PosInt(u) => visitor.visit_u64(u),
+                N::NegInt(i) => visitor.visit_i64(i),
+                N::Float(f) => visitor.visit_f64(f),
+            }
+        }
+
+        #[cfg(feature = "arbitrary_precision")]
+        #[inline]
+        fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+            where V: Visitor<'de>
+        {
+            if let Some(u) = self.as_u64() {
+                return visitor.visit_u64(u);
+            } else if let Some(i) = self.as_i64() {
+                return visitor.visit_i64(i);
+            } else if let Some(f) = self.as_f64() {
+                if f.to_string() == self.n {
+                    return visitor.visit_f64(f);
+                }
+            }
+
+            visitor.visit_map(NumberDeserializer {
+                visited: false,
+                number: Some(self.$($num_string)*),
+            })
+        }
+    };
+
+    (owned) => {
+        deserialize_any!(@expand [n]);
+    };
+
+    (ref) => {
+        deserialize_any!(@expand [n.clone()]);
+    };
+}
+
 macro_rules! deserialize_number {
     ($deserialize:ident => $visit:ident) => {
         #[cfg(not(feature = "arbitrary_precision"))]
@@ -502,29 +548,7 @@ macro_rules! deserialize_number {
 impl<'de> Deserializer<'de> for Number {
     type Error = Error;
 
-    #[cfg(not(feature = "arbitrary_precision"))]
-    #[inline]
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        match self.n {
-            N::PosInt(u) => visitor.visit_u64(u),
-            N::NegInt(i) => visitor.visit_i64(i),
-            N::Float(f) => visitor.visit_f64(f),
-        }
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    #[inline]
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
-        where V: Visitor<'de>
-    {
-        visitor.visit_map(NumberDeserializer {
-            visited: false,
-            number: self.n.into(),
-        })
-    }
+    deserialize_any!(owned);
 
     deserialize_number!(deserialize_i8 => visit_i8);
     deserialize_number!(deserialize_i16 => visit_i16);
@@ -547,29 +571,7 @@ impl<'de> Deserializer<'de> for Number {
 impl<'de, 'a> Deserializer<'de> for &'a Number {
     type Error = Error;
 
-    #[cfg(not(feature = "arbitrary_precision"))]
-    #[inline]
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        match self.n {
-            N::PosInt(u) => visitor.visit_u64(u),
-            N::NegInt(i) => visitor.visit_i64(i),
-            N::Float(f) => visitor.visit_f64(f),
-        }
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    #[inline]
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
-        where V: Visitor<'de>
-    {
-        visitor.visit_map(NumberDeserializer {
-            visited: false,
-            number: self.n.clone().into(),
-        })
-    }
+    deserialize_any!(ref);
 
     deserialize_number!(deserialize_i8 => visit_i8);
     deserialize_number!(deserialize_i16 => visit_i16);

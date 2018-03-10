@@ -568,6 +568,19 @@ fn test_write_newtype_struct() {
     test_encode_ok(&[(outer, r#"{"outer":{"inner":123}}"#)]);
 }
 
+#[test]
+fn test_deserialize_number_to_untagged_enum() {
+    use serde_json::Number;
+
+    #[derive(Eq, PartialEq, Deserialize, Debug)]
+    #[serde(untagged)]
+    enum E {
+        N(i64),
+    }
+
+    assert_eq!(E::N(0), E::deserialize(Number::from(0)).unwrap());
+}
+
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)
 where
     T: Clone + Debug + PartialEq + ser::Serialize + de::DeserializeOwned,
