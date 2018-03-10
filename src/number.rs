@@ -398,7 +398,7 @@ impl<'de> Deserialize<'de> for Number {
             {
                 let value = visitor.next_key::<NumberKey>()?;
                 if value.is_none() {
-                    return Err(de::Error::custom("number key was not found"))
+                    return Err(de::Error::invalid_type(Unexpected::Map, &self));
                 }
                 let v: NumberFromString = visitor.next_value()?;
                 Ok(v.value)
@@ -582,41 +582,10 @@ impl<'de, 'a> Deserializer<'de> for &'a Number {
     deserialize_number!(deserialize_f32 => visit_f32);
     deserialize_number!(deserialize_f64 => visit_f64);
 
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: de::Visitor<'de>,
-    {
-        self.deserialize_any(visitor)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: de::Visitor<'de>,
-    {
-        visitor.visit_str(&self.n)
-    }
-
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: de::Visitor<'de>,
-    {
-        self.deserialize_any(visitor)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: de::Visitor<'de>,
-    {
-        visitor.visit_str(&self.n)
-    }
-
     forward_to_deserialize_any! {
-        bool char bytes byte_buf option unit unit_struct newtype_struct seq
-        tuple tuple_struct map struct enum identifier ignored_any
+        bool char str string bytes byte_buf option unit unit_struct
+        newtype_struct seq tuple tuple_struct map struct enum identifier
+        ignored_any
     }
 }
 
