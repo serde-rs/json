@@ -610,7 +610,7 @@ where
                 Ok(())
             },
             #[cfg(feature = "arbitrary_precision")]
-            Compound::Number { .. } => panic!(),
+            Compound::Number { .. } => unreachable!(),
         }
     }
 
@@ -631,7 +631,7 @@ where
                 Ok(())
             },
             #[cfg(feature = "arbitrary_precision")]
-            Compound::Number { .. } => panic!(),
+            Compound::Number { .. } => unreachable!(),
         }
     }
 }
@@ -723,7 +723,7 @@ where
                 Ok(())
             },
             #[cfg(feature = "arbitrary_precision")]
-            Compound::Number { .. } => panic!(),
+            Compound::Number { .. } => unreachable!(),
         }
     }
 }
@@ -760,7 +760,7 @@ where
                 Ok(())
             },
             #[cfg(feature = "arbitrary_precision")]
-            Compound::Number { .. } => panic!(),
+            Compound::Number { .. } => unreachable!(),
         }
     }
 
@@ -785,7 +785,7 @@ where
                 Ok(())
             },
             #[cfg(feature = "arbitrary_precision")]
-            Compound::Number { .. } => panic!(),
+            Compound::Number { .. } => unreachable!(),
         }
     }
 
@@ -806,7 +806,7 @@ where
                 Ok(())
             },
             #[cfg(feature = "arbitrary_precision")]
-            Compound::Number { .. } => panic!(),
+            Compound::Number { .. } => unreachable!(),
         }
     }
 }
@@ -867,7 +867,7 @@ where
         match *self {
             Compound::Map { .. } => ser::SerializeStruct::serialize_field(self, key, value),
             #[cfg(feature = "arbitrary_precision")]
-            Compound::Number { .. } => panic!(),
+            Compound::Number { .. } => unreachable!(),
         }
     }
 
@@ -898,7 +898,7 @@ where
                 Ok(())
             },
             #[cfg(feature = "arbitrary_precision")]
-            Compound::Number { .. } => panic!(),
+            Compound::Number { .. } => unreachable!(),
         }
     }
 }

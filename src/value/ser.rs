@@ -383,7 +383,7 @@ impl serde::ser::SerializeMap for SerializeMap {
                 Ok(())
             },
             #[cfg(feature = "arbitrary_precision")]
-            SerializeMap::Number { .. } => panic!(),
+            SerializeMap::Number { .. } => unreachable!(),
         }
     }
 
@@ -401,7 +401,7 @@ impl serde::ser::SerializeMap for SerializeMap {
                 Ok(())
             },
             #[cfg(feature = "arbitrary_precision")]
-            SerializeMap::Number { .. } => panic!(),
+            SerializeMap::Number { .. } => unreachable!(),
         }
     }
 
@@ -409,7 +409,7 @@ impl serde::ser::SerializeMap for SerializeMap {
         match self {
             SerializeMap::Map { map, .. } => Ok(Value::Object(map)),
             #[cfg(feature = "arbitrary_precision")]
-            SerializeMap::Number { .. } => panic!(),
+            SerializeMap::Number { .. } => unreachable!(),
         }
     }
 }
