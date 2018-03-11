@@ -621,7 +621,7 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
     type Ok = Value;
     type Error = Error;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Error>
     where
         T: Serialize,
     {
@@ -725,11 +725,11 @@ impl<'a> ser::Serializer for NumberValueEmitter<'a> {
     where
         T: Serialize,
     {
-        Err(key_must_be_a_string())
+        Err(invalid_number())
     }
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
-        Err(key_must_be_a_string())
+        Err(invalid_number())
     }
 
     fn serialize_unit_struct(self,
