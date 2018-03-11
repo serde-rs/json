@@ -36,7 +36,7 @@ use value::Value;
 use serde::de;
 
 #[cfg(feature = "arbitrary_precision")]
-use number::{NumberDeserializer, NumberFromString, SERDE_STRUCT_NAME, SERDE_STRUCT_FIELD_NAME};
+use number::{NumberFromString, SERDE_STRUCT_FIELD_NAME};
 
 impl<'de> Deserialize<'de> for Value {
     #[inline]
@@ -373,33 +373,9 @@ impl<'de> serde::Deserializer<'de> for Value {
         visitor.visit_newtype_struct(self)
     }
 
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn deserialize_struct<V>(self, _name: &'static str, _fields: &'static [&'static str],
-                             visitor: V) -> Result<V::Value, Error>
-        where V: Visitor<'de>,
-    {
-        self.deserialize_any(visitor)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn deserialize_struct<V>(self, name: &'static str, fields: &'static [&'static str],
-                             visitor: V) -> Result<V::Value, Error>
-        where V: Visitor<'de>,
-    {
-        if name == SERDE_STRUCT_NAME && fields == &[SERDE_STRUCT_FIELD_NAME] {
-            if let Value::Number(s) = self {
-                return visitor.visit_map(NumberDeserializer {
-                    number: s.to_string().into(),
-                })
-            }
-        }
-
-        self.deserialize_any(visitor)
-    }
-
     forward_to_deserialize_any! {
         bool char str string bytes byte_buf unit unit_struct seq tuple
-        tuple_struct map identifier ignored_any
+        tuple_struct map struct identifier ignored_any
     }
 }
 
