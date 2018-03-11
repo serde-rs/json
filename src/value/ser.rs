@@ -268,21 +268,15 @@ impl serde::Serializer for Serializer {
     }
 }
 
-/// Not public API. Should be pub(crate).
-#[doc(hidden)]
 pub struct SerializeVec {
     vec: Vec<Value>,
 }
 
-/// Not public API. Should be pub(crate).
-#[doc(hidden)]
 pub struct SerializeTupleVariant {
     name: String,
     vec: Vec<Value>,
 }
 
-/// Not public API. Should be pub(crate).
-#[doc(hidden)]
 pub enum SerializeMap {
     Map {
         map: Map<String, Value>,
@@ -294,8 +288,6 @@ pub enum SerializeMap {
     },
 }
 
-/// Not public API. Should be pub(crate).
-#[doc(hidden)]
 pub struct SerializeStructVariant {
     name: String,
     map: Map<String, Value>,
