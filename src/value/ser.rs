@@ -222,10 +222,12 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Error> {
-        Ok(SerializeMap::Map {
-            map: Map::new(),
-            next_key: None,
-        })
+        Ok(
+            SerializeMap::Map {
+                map: Map::new(),
+                next_key: None,
+            },
+        )
     }
 
     #[cfg(not(feature = "arbitrary_precision"))]

@@ -222,13 +222,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             b'-' => {
                 self.eat_char();
-                match self.parse_any_number(false, false) {
+                match self.parse_any_number(false) {
                     Ok(n) => n.invalid_type(exp),
                     Err(err) => return err,
                 }
             }
             b'0'...b'9' => {
-                match self.parse_any_number(true, false) {
+                match self.parse_any_number(true) {
                     Ok(n) => n.invalid_type(exp),
                     Err(err) => return err,
                 }
@@ -267,9 +267,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let value = match peek {
             b'-' => {
                 self.eat_char();
-                try!(self.parse_any_number(false, true)).visit(visitor)
+                try!(self.parse_integer(false)).visit(visitor)
             }
-            b'0'...b'9' => try!(self.parse_any_number(true, true)).visit(visitor),
+            b'0'...b'9' => try!(self.parse_integer(true)).visit(visitor),
             _ => Err(self.peek_invalid_type(&visitor)),
         };
 
@@ -292,35 +292,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         Ok(())
-    }
-
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn parse_any_number(
-        &mut self,
-        pos: bool,
-        _prim: bool
-    ) -> Result<Number>
-    {
-        self.parse_integer(pos)
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
-    fn parse_any_number(
-        &mut self,
-        pos: bool,
-        prim: bool
-    ) -> Result<Number>
-    {
-        if prim {
-            self.parse_integer(pos)
-        } else {
-            let mut buf = String::with_capacity(16);
-            if !pos {
-                buf.push('-');
-            }
-            self.scan_integer(&mut buf)?;
-            Ok(Number::String(buf))
-        }
     }
 
     fn parse_integer(&mut self, pos: bool) -> Result<Number> {
@@ -516,6 +487,23 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             self.eat_char();
         }
         Ok(if pos { 0.0 } else { -0.0 })
+    }
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    fn parse_any_number(&mut self, pos: bool) -> Result<Number>
+    {
+        self.parse_integer(pos)
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    fn parse_any_number(&mut self, pos: bool) -> Result<Number>
+    {
+        let mut buf = String::with_capacity(16);
+        if !pos {
+            buf.push('-');
+        }
+        self.scan_integer(&mut buf)?;
+        Ok(Number::String(buf))
     }
 
     #[cfg(feature = "arbitrary_precision")]
@@ -987,10 +975,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             }
             b'-' => {
                 self.eat_char();
-                try!(self.parse_any_number(false, false)).visit(visitor)
+                try!(self.parse_any_number(false)).visit(visitor)
             }
             b'0'...b'9' => {
-                try!(self.parse_any_number(true, false)).visit(visitor)
+                try!(self.parse_any_number(true)).visit(visitor)
             }
             b'"' => {
                 self.eat_char();
