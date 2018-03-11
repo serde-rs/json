@@ -588,7 +588,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
     type Ok = Value;
     type Error = Error;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Error>
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
         T: Serialize,
     {
@@ -600,7 +600,8 @@ impl serde::ser::SerializeStruct for SerializeMap {
             #[cfg(feature = "arbitrary_precision")]
             SerializeMap::Number { ref mut out_value } => {
                 if key == SERDE_STRUCT_FIELD_NAME {
-                    value.serialize(NumberValueEmitter(&mut *out_value))
+                    *out_value = Some(value.serialize(NumberValueEmitter)?);
+                    Ok(())
                 } else {
                     Err(invalid_number())
                 }
@@ -621,7 +622,7 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
     type Ok = Value;
     type Error = Error;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Error>
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
         T: Serialize,
     {
@@ -629,7 +630,7 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
         Ok(())
     }
 
-    fn end(self) -> Result<Value, Error> {
+    fn end(self) -> Result<Self::Ok, Self::Error> {
         let mut object = Map::new();
 
         object.insert(self.name, Value::Object(self.map));
@@ -639,7 +640,7 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
 }
 
 #[cfg(feature = "arbitrary_precision")]
-struct NumberValueEmitter<'a>(&'a mut Option<Value>);
+struct NumberValueEmitter;
 
 #[cfg(feature = "arbitrary_precision")]
 fn invalid_number() -> Error {
@@ -647,17 +648,17 @@ fn invalid_number() -> Error {
 }
 
 #[cfg(feature = "arbitrary_precision")]
-impl<'a> ser::Serializer for NumberValueEmitter<'a> {
-    type Ok = ();
+impl ser::Serializer for NumberValueEmitter {
+    type Ok = Value;
     type Error = Error;
 
-    type SerializeSeq = Impossible<(), Error>;
-    type SerializeTuple = Impossible<(), Error>;
-    type SerializeTupleStruct = Impossible<(), Error>;
-    type SerializeTupleVariant = Impossible<(), Error>;
-    type SerializeMap = Impossible<(), Error>;
-    type SerializeStruct = Impossible<(), Error>;
-    type SerializeStructVariant = Impossible<(), Error>;
+    type SerializeSeq = Impossible<Value, Error>;
+    type SerializeTuple = Impossible<Value, Error>;
+    type SerializeTupleStruct = Impossible<Value, Error>;
+    type SerializeTupleVariant = Impossible<Value, Error>;
+    type SerializeMap = Impossible<Value, Error>;
+    type SerializeStruct = Impossible<Value, Error>;
+    type SerializeStructVariant = Impossible<Value, Error>;
 
     fn serialize_bool(self, _v: bool) -> Result<Self::Ok, Self::Error> {
         Err(invalid_number())
@@ -709,8 +710,7 @@ impl<'a> ser::Serializer for NumberValueEmitter<'a> {
 
     fn serialize_str(self, value: &str) -> Result<Self::Ok, Self::Error> {
         let n = Number::from_string_unchecked(value.to_owned());
-        *self.0 = Some(Value::Number(n));
-        Ok(())
+        Ok(Value::Number(n))
     }
 
     fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok, Self::Error> {
