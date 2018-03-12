@@ -7,7 +7,6 @@
 // except according to those terms.
 
 use error::Error;
-use num_traits::{FromPrimitive, ToPrimitive};
 use serde::de::{self, Visitor, Unexpected};
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use std::fmt::{self, Debug, Display};
@@ -640,95 +639,64 @@ impl<'de> Deserializer<'de> for NumberFieldDeserializer {
     }
 }
 
-impl FromPrimitive for Number {
-    #[inline]
-    fn from_i64(n: i64) -> Option<Self> {
-        let n = {
-            #[cfg(not(feature = "arbitrary_precision"))]
-            {
-                if n < 0 {
-                    N::NegInt(n)
-                } else {
-                    N::PosInt(n as u64)
-                }
-            }
-            #[cfg(feature = "arbitrary_precision")]
-            {
-                let mut buf = Vec::new();
-                itoa::write(&mut buf, n).unwrap();
-                String::from_utf8(buf).unwrap()
-            }
-        };
-        Some(Number { n: n })
-    }
-
-    #[inline]
-    fn from_u64(n: u64) -> Option<Self> {
-        let n = {
-            #[cfg(not(feature = "arbitrary_precision"))]
-            { N::PosInt(n) }
-            #[cfg(feature = "arbitrary_precision")]
-            {
-                let mut buf = Vec::new();
-                itoa::write(&mut buf, n).unwrap();
-                String::from_utf8(buf).unwrap()
-            }
-        };
-        Some(Number { n: n })
-    }
-
-    #[inline]
-    fn from_f64(n: f64) -> Option<Self> {
-        Self::from_f64(n)
-    }
-}
-
-impl ToPrimitive for Number {
-    #[inline]
-    fn to_i64(&self) -> Option<i64> {
-        self.as_i64()
-    }
-
-    #[inline]
-    fn to_u64(&self) -> Option<u64> {
-        self.as_u64()
-    }
-
-    #[inline]
-    fn to_f64(&self) -> Option<f64> {
-        self.as_f64()
-    }
-}
-
-macro_rules! impl_number_from {
-    {
-        $($ty:ty => $from_prim_method:ident,)*
-    } => {
+macro_rules! impl_from_unsigned {
+    (
+        $($ty:ty),*
+    ) => {
         $(
             impl From<$ty> for Number {
                 #[inline]
-                fn from(n: $ty) -> Self {
-                    Self::$from_prim_method(n).unwrap()
+                fn from(u: $ty) -> Self {
+                    let n = {
+                        #[cfg(not(feature = "arbitrary_precision"))]
+                        { N::PosInt(u) }
+                        #[cfg(feature = "arbitrary_precision")]
+                        {
+                            let mut buf = Vec::new();
+                            itoa::write(&mut buf, u).unwrap();
+                            String::from_utf8(buf).unwrap()
+                        }
+                    };
+                    Self { n: n }
                 }
             }
         )*
     };
 }
 
-impl_number_from! {
-    i8 => from_i8,
-    i16 => from_i16,
-    i32 => from_i32,
-    i64 => from_i64,
-    isize => from_isize,
-    u8 => from_u8,
-    u16 => from_u16,
-    u32 => from_u32,
-    u64 => from_u64,
-    usize => from_usize,
-    f32 => from_f32,
-    f64 => from_f64,
+macro_rules! impl_from_signed {
+    (
+        $($ty:ty),*
+    ) => {
+        $(
+            impl From<$ty> for Number {
+                #[inline]
+                fn from(i: $ty) -> Self {
+                    let n = {
+                        #[cfg(not(feature = "arbitrary_precision"))]
+                        {
+                            if i < 0 {
+                                N::NegInt(i)
+                            } else {
+                                N::PosInt(i as u64)
+                            }
+                        }
+                        #[cfg(feature = "arbitrary_precision")]
+                        {
+                            let mut buf = Vec::new();
+                            itoa::write(&mut buf, i).unwrap();
+                            String::from_utf8(buf).unwrap()
+                        }
+                    };
+                    Self { n: n }
+                }
+            }
+        )*
+    };
 }
+
+impl_from_unsigned!(u8, u16, u32, u64, usize);
+impl_from_signed!(i8, i16, i32, i64, isize);
 
 impl Number {
     #[cfg(not(feature = "arbitrary_precision"))]
