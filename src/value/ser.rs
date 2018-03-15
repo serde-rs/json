@@ -427,11 +427,6 @@ impl serde::Serializer for MapKeySerializer {
     type SerializeStructVariant = Impossible<String, Error>;
 
     #[inline]
-    fn serialize_str(self, value: &str) -> Result<Self::Ok, Self::Error> {
-        Ok(value.to_owned())
-    }
-
-    #[inline]
     fn serialize_unit_variant(
         self,
         _name: &'static str,
@@ -496,8 +491,18 @@ impl serde::Serializer for MapKeySerializer {
         Err(key_must_be_a_string())
     }
 
-    fn serialize_char(self, _value: char) -> Result<Self::Ok, Self::Error> {
-        Err(key_must_be_a_string())
+    #[inline]
+    fn serialize_char(self, value: char) -> Result<Self::Ok, Self::Error> {
+        Ok({
+            let mut s = String::new();
+            s.push(value);
+            s
+        })
+    }
+
+    #[inline]
+    fn serialize_str(self, value: &str) -> Result<Self::Ok, Self::Error> {
+        Ok(value.to_owned())
     }
 
     fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok, Self::Error> {

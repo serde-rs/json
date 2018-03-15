@@ -39,8 +39,9 @@ use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
 
-use serde_json::{Deserializer, Value, from_reader, from_slice, from_str, from_value,
-                 to_string, to_string_pretty, to_value, to_vec, to_writer};
+use serde_json::{Deserializer, Number, Value, from_reader, from_slice, from_str,
+                 from_value, to_string, to_string_pretty, to_value, to_vec,
+                 to_writer};
 
 macro_rules! treemap {
     () => {
@@ -822,7 +823,7 @@ fn test_parse_f64() {
 
     if cfg!(not(feature = "arbitrary_precision")) {
         test_parse_ok(vec![
-            // In arbitrary precision this parses as Number{"3.00"}
+            // With arbitrary-precision enabled, this parses as Number{"3.00"}
             // but the float is Number{"3.0"}
             ("3.00", 3.0f64),
             ("0.4e5", 0.4e5),
@@ -870,6 +871,28 @@ fn test_parse_f64() {
                000000000000000000e-10", 1e308),
         ]);
     }
+}
+
+#[test]
+fn test_serialize_char() {
+    let value = json!(({
+        let mut map = BTreeMap::new();
+        map.insert('c', ());
+        map
+    }));
+    assert_eq!(&Value::Null, value.get("c").unwrap());
+}
+
+#[cfg(feature = "arbitrary_precision")]
+#[test]
+fn test_parse_arbitrary_precision_number() {
+    // test_parse_ok(vec![
+    //     ("1e999", "1e500".into::<Number>()),
+    //     ("-1e999", "-1e999".into::<Number>()),
+    //     ("1e-999", "1e-999".into::<Number>()),
+    //     ("2.3e999", "2.3e999".into::<Number>()),
+    //     ("-2.3e999", "-2.3e999".into::<Number>()),
+    // ]);
 }
 
 #[test]
