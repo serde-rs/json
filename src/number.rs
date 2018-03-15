@@ -649,7 +649,7 @@ macro_rules! impl_from_unsigned {
                 fn from(u: $ty) -> Self {
                     let n = {
                         #[cfg(not(feature = "arbitrary_precision"))]
-                        { N::PosInt(u) }
+                        { N::PosInt(u as u64) }
                         #[cfg(feature = "arbitrary_precision")]
                         {
                             let mut buf = Vec::new();
@@ -676,7 +676,7 @@ macro_rules! impl_from_signed {
                         #[cfg(not(feature = "arbitrary_precision"))]
                         {
                             if i < 0 {
-                                N::NegInt(i)
+                                N::NegInt(i as i64)
                             } else {
                                 N::PosInt(i as u64)
                             }
