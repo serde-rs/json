@@ -83,7 +83,9 @@ macro_rules! overflow {
     }
 }
 
-enum Number {
+// Not public API. Should be pub(crate).
+#[doc(hidden)]
+pub enum Number {
     F64(f64),
     U64(u64),
     I64(i64),
@@ -487,6 +489,38 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             self.eat_char();
         }
         Ok(if pos { 0.0 } else { -0.0 })
+    }
+
+    // Not public API. Should be pub(crate).
+    #[doc(hidden)]
+    pub fn parse_any_signed_number(&mut self) -> Result<Number> {
+        let peek = match try!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        let value = match peek {
+            b'-' => {
+                self.eat_char();
+                self.parse_any_number(false)
+            }
+            b'0'...b'9' => {
+                self.parse_any_number(true)
+            }
+            _ => Err(self.peek_error(ErrorCode::InvalidNumber)),
+        };
+
+        match value {
+            Ok(value) => Ok(value),
+            // The de::Error impl creates errors with unknown line and column.
+            // Fill in the position here by looking at the current index in the
+            // input. There is no way to tell whether this should call `error`
+            // or `peek_error` so pick the one that seems correct more often.
+            // Worst case, the position is off by one character.
+            Err(err) => Err(self.fix_position(err)),
+        }
     }
 
     #[cfg(not(feature = "arbitrary_precision"))]

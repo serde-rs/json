@@ -11,6 +11,7 @@ use serde::de::{self, Visitor, Unexpected};
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use std::fmt::{self, Debug, Display};
 use std::i64;
+use std::str::FromStr;
 
 #[cfg(not(feature = "arbitrary_precision"))]
 use num_traits::{NumCast};
@@ -278,14 +279,6 @@ impl Number {
             None
         }
     }
-
-    #[cfg(feature = "arbitrary_precision")]
-    /// Not public API. Should be pub(crate). The deserializer uses this.
-    #[doc(hidden)]
-    #[inline]
-    pub fn from_string_unchecked(n: String) -> Self {
-        Number { n: n }
-    }
 }
 
 impl fmt::Display for Number {
@@ -465,7 +458,8 @@ impl<'de> de::Deserialize<'de> for NumberFromString {
             fn visit_string<E>(self, s: String) -> Result<NumberFromString, E>
             where E: de::Error,
             {
-                Ok(NumberFromString { value: Number::from_string_unchecked(s) })
+                let n = try!(s.parse().map_err(|_| E::invalid_type(, Expected::)));
+                Ok(NumberFromString { value: n })
             }
         }
 
@@ -639,6 +633,30 @@ impl<'de> Deserializer<'de> for NumberFieldDeserializer {
     }
 }
 
+impl FromStr for Number {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        super::de::Deserializer::from_str(s).parse_any_signed_number().map(|n| n.into())
+    }
+}
+
+impl From<super::de::Number> for Number {
+    fn from(value: super::de::Number) -> Self {
+        let n = match value {
+            #[cfg(not(feature = "arbitrary_precision"))]
+            super::de::Number::F64(f) => N::Float(f),
+            #[cfg(not(feature = "arbitrary_precision"))]
+            super::de::Number::U64(u) => N::PosInt(u),
+            #[cfg(not(feature = "arbitrary_precision"))]
+            super::de::Number::I64(i) => N::NegInt(i),
+            #[cfg(feature = "arbitrary_precision")]
+            super::de::Number::String(s) => s,
+        };
+        Number { n: n }
+    }
+}
+
 macro_rules! impl_from_unsigned {
     (
         $($ty:ty),*
@@ -657,7 +675,7 @@ macro_rules! impl_from_unsigned {
                             String::from_utf8(buf).unwrap()
                         }
                     };
-                    Self { n: n }
+                    Number { n: n }
                 }
             }
         )*
@@ -688,7 +706,7 @@ macro_rules! impl_from_signed {
                             String::from_utf8(buf).unwrap()
                         }
                     };
-                    Self { n: n }
+                    Number { n: n }
                 }
             }
         )*

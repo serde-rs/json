@@ -883,6 +883,20 @@ fn test_serialize_char() {
     assert_eq!(&Value::Null, value.get("c").unwrap());
 }
 
+#[test]
+fn test_malicious_number() {
+    #[derive(Serialize)]
+    #[serde(rename = "$__serde_private_Number")]
+    struct S {
+        #[serde(rename = "$__serde_private_number")]
+        f: &'static str,
+    }
+
+    serde_json::to_value(&S { f: "not a number" }).unwrap();
+    // let actual = $name::<$($ty),*>($arg).unwrap_err().to_string();
+    // assert_eq!(actual, $expected, "unexpected {} error", stringify!($name));
+}
+
 #[cfg(feature = "arbitrary_precision")]
 #[test]
 fn test_parse_arbitrary_precision_number() {

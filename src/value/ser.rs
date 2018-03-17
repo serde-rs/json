@@ -714,7 +714,7 @@ impl ser::Serializer for NumberValueEmitter {
     }
 
     fn serialize_str(self, value: &str) -> Result<Self::Ok, Self::Error> {
-        let n = Number::from_string_unchecked(value.to_owned());
+        let n = try!(value.to_owned().parse());
         Ok(Value::Number(n))
     }
 
