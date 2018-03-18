@@ -593,7 +593,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
     type Ok = Value;
     type Error = Error;
 
-    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<(), Error>
     where
         T: Serialize,
     {
@@ -614,7 +614,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
         }
     }
 
-    fn end(self) -> Result<Self::Ok, Self::Error> {
+    fn end(self) -> Result<Value, Error> {
         match self {
             SerializeMap::Map { .. } => serde::ser::SerializeMap::end(self),
             #[cfg(feature = "arbitrary_precision")]
@@ -631,11 +631,12 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
     where
         T: Serialize,
     {
-        self.map.insert(String::from(key), try!(to_value(&value)));
+        self.map
+            .insert(String::from(key), try!(to_value(&value)));
         Ok(())
     }
 
-    fn end(self) -> Result<Self::Ok, Self::Error> {
+    fn end(self) -> Result<Value, Error> {
         let mut object = Map::new();
 
         object.insert(self.name, Value::Object(self.map));

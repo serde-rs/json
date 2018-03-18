@@ -361,20 +361,24 @@ where
                     .end_array(&mut self.writer)
                     .map_err(Error::io)
             );
-            Ok(Compound::Map {
-                ser: self,
-                state: State::Empty,
-            })
+            Ok(
+                Compound::Map {
+                    ser: self,
+                    state: State::Empty,
+                }
+            )
         } else {
             try!(
                 self.formatter
                     .begin_array(&mut self.writer)
                     .map_err(Error::io)
             );
-            Ok(Compound::Map {
-                ser: self,
-                state: State::First,
-            })
+            Ok(
+                Compound::Map {
+                    ser: self,
+                    state: State::First,
+                }
+            )
         }
     }
 
@@ -437,20 +441,24 @@ where
                     .end_object(&mut self.writer)
                     .map_err(Error::io)
             );
-            Ok(Compound::Map {
-                ser: self,
-                state: State::Empty,
-            })
+            Ok(
+                Compound::Map {
+                    ser: self,
+                    state: State::Empty,
+                }
+            )
         } else {
             try!(
                 self.formatter
                     .begin_object(&mut self.writer)
                     .map_err(Error::io)
             );
-            Ok(Compound::Map {
-                ser: self,
-                state: State::First,
-            })
+            Ok(
+                Compound::Map {
+                    ser: self,
+                    state: State::First,
+                }
+            )
         }
     }
 
