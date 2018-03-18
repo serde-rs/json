@@ -458,7 +458,7 @@ impl<'de> de::Deserialize<'de> for NumberFromString {
             fn visit_string<E>(self, s: String) -> Result<NumberFromString, E>
             where E: de::Error,
             {
-                let n = try!(s.parse().map_err(|_| E::invalid_type(, Expected::)));
+                let n = try!(s.parse().map_err(de::Error::custom));
                 Ok(NumberFromString { value: n })
             }
         }
@@ -644,12 +644,24 @@ impl FromStr for Number {
 impl From<super::de::Number> for Number {
     fn from(value: super::de::Number) -> Self {
         let n = match value {
-            #[cfg(not(feature = "arbitrary_precision"))]
-            super::de::Number::F64(f) => N::Float(f),
-            #[cfg(not(feature = "arbitrary_precision"))]
-            super::de::Number::U64(u) => N::PosInt(u),
-            #[cfg(not(feature = "arbitrary_precision"))]
-            super::de::Number::I64(i) => N::NegInt(i),
+            super::de::Number::F64(f) => {
+                #[cfg(not(feature = "arbitrary_precision"))]
+                { N::Float(f) }
+                #[cfg(feature = "arbitrary_precision")]
+                { f.to_string() }
+            },
+            super::de::Number::U64(u) => {
+                #[cfg(not(feature = "arbitrary_precision"))]
+                { N::PosInt(u) }
+                #[cfg(feature = "arbitrary_precision")]
+                { u.to_string() }
+            },
+            super::de::Number::I64(i) => {
+                #[cfg(not(feature = "arbitrary_precision"))]
+                { N::NegInt(i) }
+                #[cfg(feature = "arbitrary_precision")]
+                { i.to_string() }
+            },
             #[cfg(feature = "arbitrary_precision")]
             super::de::Number::String(s) => s,
         };

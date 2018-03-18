@@ -883,6 +883,7 @@ fn test_serialize_char() {
     assert_eq!(&Value::Null, value.get("c").unwrap());
 }
 
+#[cfg(feature = "arbitrary_precision")]
 #[test]
 fn test_malicious_number() {
     #[derive(Serialize)]
@@ -892,9 +893,8 @@ fn test_malicious_number() {
         f: &'static str,
     }
 
-    serde_json::to_value(&S { f: "not a number" }).unwrap();
-    // let actual = $name::<$($ty),*>($arg).unwrap_err().to_string();
-    // assert_eq!(actual, $expected, "unexpected {} error", stringify!($name));
+    let actual = serde_json::to_value(&S { f: "not a number" }).unwrap_err().to_string();
+    assert_eq!(actual, "invalid number at line 1 column 1");
 }
 
 #[cfg(feature = "arbitrary_precision")]
