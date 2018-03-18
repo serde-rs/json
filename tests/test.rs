@@ -58,6 +58,13 @@ macro_rules! treemap {
     };
 }
 
+#[cfg(feature = "arbitrary_precision")]
+macro_rules! number {
+    ($s:expr) => {
+        $s.parse::<Number>().unwrap()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 enum Animal {
@@ -571,8 +578,6 @@ fn test_write_newtype_struct() {
 
 #[test]
 fn test_deserialize_number_to_untagged_enum() {
-    use serde_json::Number;
-
     #[derive(Eq, PartialEq, Deserialize, Debug)]
     #[serde(untagged)]
     enum E {
@@ -900,13 +905,13 @@ fn test_malicious_number() {
 #[cfg(feature = "arbitrary_precision")]
 #[test]
 fn test_parse_arbitrary_precision_number() {
-    // test_parse_ok(vec![
-    //     ("1e999", "1e500".into::<Number>()),
-    //     ("-1e999", "-1e999".into::<Number>()),
-    //     ("1e-999", "1e-999".into::<Number>()),
-    //     ("2.3e999", "2.3e999".into::<Number>()),
-    //     ("-2.3e999", "-2.3e999".into::<Number>()),
-    // ]);
+    test_parse_ok(vec![
+        ("1e999", number!("1e999")),
+        ("-1e999", number!("-1e999")),
+        ("1e-999", number!("1e-999")),
+        ("2.3e999", number!("2.3e999")),
+        ("-2.3e999", number!("-2.3e999")),
+    ]);
 }
 
 #[test]
