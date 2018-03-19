@@ -455,7 +455,7 @@ impl<'de> de::Deserialize<'de> for NumberFromString {
                 formatter.write_str("string containing a number")
             }
 
-            fn visit_string<E>(self, s: String) -> Result<NumberFromString, E>
+            fn visit_str<E>(self, s: &str) -> Result<NumberFromString, E>
             where E: de::Error,
             {
                 let n = try!(s.parse().map_err(de::Error::custom));
