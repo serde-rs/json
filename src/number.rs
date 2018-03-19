@@ -279,6 +279,14 @@ impl Number {
             None
         }
     }
+
+    #[cfg(feature = "arbitrary_precision")]
+    /// Not public API. Only tests use this.
+    #[doc(hidden)]
+    #[inline]
+    pub fn from_string_unchecked(n: String) -> Self {
+        Number { n: n }
+    }
 }
 
 impl fmt::Display for Number {
