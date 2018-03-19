@@ -916,6 +916,15 @@ fn test_parse_number() {
         ("0.4", Number::from_f64(0.4).unwrap()),
     ]);
 
+    test_fromstr_parse_err::<Number>(
+        &[
+            (" 1.0", "invalid number at line 1 column 1"),
+            ("1.0 ", "invalid number at line 1 column 4"),
+            ("\t1.0", "invalid number at line 1 column 1"),
+            ("1.0\t", "invalid number at line 1 column 4"),
+        ]
+    );
+
     #[cfg(feature = "arbitrary_precision")]
     test_parse_ok(vec![
         ("1e999", Number::from_string_unchecked("1e999".to_owned())),

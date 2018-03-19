@@ -494,7 +494,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
     pub fn parse_any_signed_number(&mut self) -> Result<Number> {
-        let peek = match try!(self.parse_whitespace()) {
+        let peek = match try!(self.peek()) {
             Some(b) => b,
             None => {
                 return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
@@ -510,6 +510,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.parse_any_number(true)
             }
             _ => Err(self.peek_error(ErrorCode::InvalidNumber)),
+        };
+
+        let value = match try!(self.peek()) {
+            Some(_) => Err(self.peek_error(ErrorCode::InvalidNumber)),
+            None => value,
         };
 
         match value {
