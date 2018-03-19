@@ -19,7 +19,7 @@ appveyor = { repository = "serde-rs/json" }
 serde = "1.0"
 num-traits = { version = "0.2", default-features = false }
 linked-hash-map = { version = "0.5", optional = true }
-itoa = "0.3"
+itoa = "0.4"
 dtoa = "0.4"
 
 [dev-dependencies]
