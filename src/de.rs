@@ -281,13 +281,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(())
     }
 
-    fn parse_integer(&mut self, pos: bool) -> Result<Number> {
+    fn parse_integer(&mut self, positive: bool) -> Result<Number> {
         match try!(self.next_char_or_null()) {
             b'0' => {
                 // There can be only one leading '0'.
                 match try!(self.peek_or_null()) {
                     b'0'...b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
-                    _ => self.parse_number(pos, 0),
+                    _ => self.parse_number(positive, 0),
                 }
             }
             c @ b'1'...b'9' => {
@@ -304,7 +304,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             // parsing the value as a `f64`.
                             if overflow!(res * 10 + digit, u64::max_value()) {
                                 return Ok(Number::F64(try!(self.parse_long_integer(
-                                    pos,
+                                    positive,
                                     res,
                                     1, // res * 10^1
                                 ))));
@@ -313,7 +313,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             res = res * 10 + digit;
                         }
                         _ => {
-                            return self.parse_number(pos, res);
+                            return self.parse_number(positive, res);
                         }
                     }
                 }
@@ -324,7 +324,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     fn parse_long_integer(
         &mut self,
-        pos: bool,
+        positive: bool,
         significand: u64,
         mut exponent: i32,
     ) -> Result<f64> {
@@ -337,24 +337,24 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     exponent += 1;
                 }
                 b'.' => {
-                    return self.parse_decimal(pos, significand, exponent);
+                    return self.parse_decimal(positive, significand, exponent);
                 }
                 b'e' | b'E' => {
-                    return self.parse_exponent(pos, significand, exponent);
+                    return self.parse_exponent(positive, significand, exponent);
                 }
                 _ => {
-                    return self.f64_from_parts(pos, significand, exponent);
+                    return self.f64_from_parts(positive, significand, exponent);
                 }
             }
         }
     }
 
-    fn parse_number(&mut self, pos: bool, significand: u64) -> Result<Number> {
+    fn parse_number(&mut self, positive: bool, significand: u64) -> Result<Number> {
         Ok(match try!(self.peek_or_null()) {
-            b'.' => Number::F64(try!(self.parse_decimal(pos, significand, 0))),
-            b'e' | b'E' => Number::F64(try!(self.parse_exponent(pos, significand, 0))),
+            b'.' => Number::F64(try!(self.parse_decimal(positive, significand, 0))),
+            b'e' | b'E' => Number::F64(try!(self.parse_exponent(positive, significand, 0))),
             _ => {
-                if pos {
+                if positive {
                     Number::U64(significand)
                 } else {
                     let neg = (significand as i64).wrapping_neg();
@@ -372,7 +372,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     fn parse_decimal(
         &mut self,
-        pos: bool,
+        positive: bool,
         mut significand: u64,
         mut exponent: i32,
     ) -> Result<f64> {
@@ -402,14 +402,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         match try!(self.peek_or_null()) {
-            b'e' | b'E' => self.parse_exponent(pos, significand, exponent),
-            _ => self.f64_from_parts(pos, significand, exponent),
+            b'e' | b'E' => self.parse_exponent(positive, significand, exponent),
+            _ => self.f64_from_parts(positive, significand, exponent),
         }
     }
 
     fn parse_exponent(
         &mut self,
-        pos: bool,
+        positive: bool,
         significand: u64,
         starting_exp: i32,
     ) -> Result<f64> {
@@ -440,7 +440,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             let digit = (c - b'0') as i32;
 
             if overflow!(exp * 10 + digit, i32::max_value()) {
-                return self.parse_exponent_overflow(pos, significand, pos_exp);
+                return self.parse_exponent_overflow(positive, significand, pos_exp);
             }
 
             exp = exp * 10 + digit;
@@ -452,7 +452,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             starting_exp.saturating_sub(exp)
         };
 
-        self.f64_from_parts(pos, significand, final_exp)
+        self.f64_from_parts(positive, significand, final_exp)
     }
 
     // This cold code should not be inlined into the middle of the hot
@@ -461,7 +461,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     #[inline(never)]
     fn parse_exponent_overflow(
         &mut self,
-        pos: bool,
+        positive: bool,
         significand: u64,
         pos_exp: bool,
     ) -> Result<f64> {
@@ -473,12 +473,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         while let b'0'...b'9' = try!(self.peek_or_null()) {
             self.eat_char();
         }
-        Ok(if pos { 0.0 } else { -0.0 })
+        Ok(if positive { 0.0 } else { -0.0 })
     }
 
     fn f64_from_parts(
         &mut self,
-        pos: bool,
+        positive: bool,
         significand: u64,
         mut exponent: i32,
     ) -> Result<f64> {
@@ -508,7 +508,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
             }
         }
-        Ok(if pos { f } else { -f })
+        Ok(if positive { f } else { -f })
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
