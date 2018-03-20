@@ -42,15 +42,6 @@ where
     }
 }
 
-impl<W: io::Write, F: Formatter> Serializer<W, F> {
-    #[inline]
-    /// Not public API. Should be pub(crate).
-    #[doc(hidden)]
-    pub fn write_number_str(&mut self, data: &str) -> Result<()> {
-        self.formatter.write_number_str(&mut self.writer, data)
-    }
-}
-
 impl<'a, W> Serializer<W, PrettyFormatter<'a>>
 where
     W: io::Write,
@@ -1301,7 +1292,9 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
     }
 
     fn serialize_str(self, value: &str) -> Result<Self::Ok> {
-        self.0.write_number_str(value)
+        let NumberStrEmitter(serializer) = self;
+        serializer.formatter.write_number_str(&mut serializer.writer, value)
+            .map_err(Error::io)
     }
 
     fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok> {
@@ -1315,11 +1308,11 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
     fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok>
         where T: Serialize
     {
-        Err(key_must_be_a_string())
+        Err(invalid_number())
     }
 
     fn serialize_unit(self) -> Result<Self::Ok> {
-        Err(key_must_be_a_string())
+        Err(invalid_number())
     }
 
     fn serialize_unit_struct(self,
@@ -1556,10 +1549,10 @@ pub trait Formatter {
 
     /// Writes a number that has already been rendered to a string.
     #[inline]
-    fn write_number_str<W: ?Sized>(&mut self, writer: &mut W, value: &str) -> Result<()>
+    fn write_number_str<W: ?Sized>(&mut self, writer: &mut W, value: &str) -> io::Result<()>
         where W: io::Write
     {
-        writer.write_all(value.as_bytes()).map_err(Error::io)
+        writer.write_all(value.as_bytes())
     }
 
     /// Called before each series of `write_string_fragment` and
