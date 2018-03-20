@@ -415,7 +415,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     ) -> Result<f64> {
         self.eat_char();
 
-        let pos_exp = match try!(self.peek_or_null()) {
+        let positive_exp = match try!(self.peek_or_null()) {
             b'+' => {
                 self.eat_char();
                 true
@@ -440,13 +440,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             let digit = (c - b'0') as i32;
 
             if overflow!(exp * 10 + digit, i32::max_value()) {
-                return self.parse_exponent_overflow(positive, significand, pos_exp);
+                return self.parse_exponent_overflow(positive, significand, positive_exp);
             }
 
             exp = exp * 10 + digit;
         }
 
-        let final_exp = if pos_exp {
+        let final_exp = if positive_exp {
             starting_exp.saturating_add(exp)
         } else {
             starting_exp.saturating_sub(exp)
@@ -463,10 +463,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         &mut self,
         positive: bool,
         significand: u64,
-        pos_exp: bool,
+        positive_exp: bool,
     ) -> Result<f64> {
         // Error instead of +/- infinity.
-        if significand != 0 && pos_exp {
+        if significand != 0 && positive_exp {
             return Err(self.error(ErrorCode::NumberOutOfRange));
         }
 
