@@ -32,6 +32,8 @@ use std::{i8, i16, i32, i64};
 use std::io;
 use std::iter;
 use std::marker::PhantomData;
+use std::str::FromStr;
+use std::string::ToString;
 use std::{u8, u16, u32, u64};
 
 use serde::de::{self, Deserialize, IgnoredAny};
@@ -39,8 +41,9 @@ use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
 
-use serde_json::{Deserializer, Value, from_reader, from_slice, from_str, from_value,
-                 to_string, to_string_pretty, to_value, to_vec, to_writer};
+use serde_json::{Deserializer, Number, Value, from_reader, from_slice, from_str,
+                 from_value, to_string, to_string_pretty, to_value, to_vec,
+                 to_writer};
 
 macro_rules! treemap {
     () => {
@@ -568,6 +571,17 @@ fn test_write_newtype_struct() {
     test_encode_ok(&[(outer, r#"{"outer":{"inner":123}}"#)]);
 }
 
+#[test]
+fn test_deserialize_number_to_untagged_enum() {
+    #[derive(Eq, PartialEq, Deserialize, Debug)]
+    #[serde(untagged)]
+    enum E {
+        N(i64),
+    }
+
+    assert_eq!(E::N(0), E::deserialize(Number::from(0)).unwrap());
+}
+
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)
 where
     T: Clone + Debug + PartialEq + ser::Serialize + de::DeserializeOwned,
@@ -644,6 +658,16 @@ where
     }
 }
 
+fn test_fromstr_parse_err<T>(errors: &[(&str, &'static str)])
+where
+    T: Debug + PartialEq + FromStr, <T as FromStr>::Err: ToString
+{
+    for &(s, err) in errors {
+        let actual = s.parse::<T>().unwrap_err().to_string();
+        assert_eq!(actual, err, "unexpected parsing error");
+    }
+}
+
 #[test]
 fn test_parse_null() {
     test_parse_err::<()>(
@@ -689,7 +713,11 @@ fn test_parse_char() {
     test_parse_err::<char>(
         &[
             ("\"ab\"", "invalid value: string \"ab\", expected a character at line 1 column 4"),
-            ("10", "invalid type: integer `10`, expected a character at line 1 column 2"),
+            ("10", if cfg!(feature = "arbitrary_precision") {
+                "invalid type: number, expected a character at line 1 column 2"
+            } else {
+                "invalid type: integer `10`, expected a character at line 1 column 2"
+            }),
         ],
     );
 
@@ -795,14 +823,19 @@ fn test_parse_negative_zero() {
 
 #[test]
 fn test_parse_f64() {
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("0.0", 0.0f64),
         ("3.0", 3.0f64),
-        ("3.00", 3.0f64),
         ("3.1", 3.1),
         ("-1.2", -1.2),
         ("0.4", 0.4),
+    ]);
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    test_parse_ok(vec![
+        // With arbitrary-precision enabled, this parses as Number{"3.00"}
+        // but the float is Number{"3.0"}
+        ("3.00", 3.0f64),
         ("0.4e5", 0.4e5),
         ("0.4e+5", 0.4e5),
         ("0.4e15", 0.4e15),
@@ -814,9 +847,9 @@ fn test_parse_f64() {
         ("0.00e00", 0.0),
         ("0.00e+00", 0.0),
         ("0.00e-00", 0.0),
-        (&format!("{:?}", (i64::MIN as f64) - 1.0), (i64::MIN as f64) - 1.0),
-        (&format!("{:?}", (u64::MAX as f64) + 1.0), (u64::MAX as f64) + 1.0),
-        (&format!("{:?}", f64::EPSILON), f64::EPSILON),
+        (&format!("{}", (i64::MIN as f64) - 1.0), (i64::MIN as f64) - 1.0),
+        (&format!("{}", (u64::MAX as f64) + 1.0), (u64::MAX as f64) + 1.0),
+        (&format!("{}", f64::EPSILON), f64::EPSILON),
         ("0.0000000000000000000000000000000000000000000000000123e50", 1.23),
         ("100e-777777777777777777777777777", 0.0),
         ("1010101010101010101010101010101010101010", 10101010101010101010e20),
@@ -846,8 +879,60 @@ fn test_parse_f64() {
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000000000000000000000000000000000000000000000\
            000000000000000000e-10", 1e308),
-    ],
+    ]);
+}
+
+#[test]
+fn test_serialize_char() {
+    let value = json!(({
+        let mut map = BTreeMap::new();
+        map.insert('c', ());
+        map
+    }));
+    assert_eq!(&Value::Null, value.get("c").unwrap());
+}
+
+#[cfg(feature = "arbitrary_precision")]
+#[test]
+fn test_malicious_number() {
+    #[derive(Serialize)]
+    #[serde(rename = "$__serde_private_Number")]
+    struct S {
+        #[serde(rename = "$__serde_private_number")]
+        f: &'static str,
+    }
+
+    let actual = serde_json::to_value(&S { f: "not a number" }).unwrap_err().to_string();
+    assert_eq!(actual, "invalid number at line 1 column 1");
+}
+
+#[test]
+fn test_parse_number() {
+    test_parse_ok(vec![
+        ("0.0", Number::from_f64(0.0f64).unwrap()),
+        ("3.0", Number::from_f64(3.0f64).unwrap()),
+        ("3.1", Number::from_f64(3.1).unwrap()),
+        ("-1.2", Number::from_f64(-1.2).unwrap()),
+        ("0.4", Number::from_f64(0.4).unwrap()),
+    ]);
+
+    test_fromstr_parse_err::<Number>(
+        &[
+            (" 1.0", "invalid number at line 1 column 1"),
+            ("1.0 ", "invalid number at line 1 column 4"),
+            ("\t1.0", "invalid number at line 1 column 1"),
+            ("1.0\t", "invalid number at line 1 column 4"),
+        ]
     );
+
+    #[cfg(feature = "arbitrary_precision")]
+    test_parse_ok(vec![
+        ("1e999", Number::from_string_unchecked("1e999".to_owned())),
+        ("-1e999", Number::from_string_unchecked("-1e999".to_owned())),
+        ("1e-999", Number::from_string_unchecked("1e-999".to_owned())),
+        ("2.3e999", Number::from_string_unchecked("2.3e999".to_owned())),
+        ("-2.3e999", Number::from_string_unchecked("-2.3e999".to_owned())),
+    ]);
 }
 
 #[test]
@@ -1020,7 +1105,11 @@ fn test_parse_object() {
 fn test_parse_struct() {
     test_parse_err::<Outer>(
         &[
-            ("5", "invalid type: integer `5`, expected struct Outer at line 1 column 1"),
+            ("5", if cfg!(feature = "arbitrary_precision") {
+                "invalid type: number, expected struct Outer at line 1 column 1"
+            } else {
+                "invalid type: integer `5`, expected struct Outer at line 1 column 1"
+            }),
             ("\"hello\"", "invalid type: string \"hello\", expected struct Outer at line 1 column 7"),
             ("{\"inner\": true}",
              "invalid type: boolean `true`, expected a sequence at line 1 column 14"),
@@ -1060,8 +1149,7 @@ fn test_parse_struct() {
                 [ null, 2, [\"abc\", \"xyz\"] ]
             ]
         ]",
-    )
-            .unwrap();
+    ).unwrap();
 
     assert_eq!(
         v,
