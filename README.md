@@ -329,6 +329,13 @@ good resource with generally faster response time but less specific knowledge
 about Serde. If IRC is not your thing, we are happy to respond to [GitHub
 issues](https://github.com/serde-rs/json/issues/new) as well.
 
+## No-std support
+
+This crate currently requires the Rust standard library. For JSON support in
+Serde without a standard library, please see the [`serde-json-core`] crate.
+
+[`serde-json-core`]: https://japaric.github.io/serde-json-core/serde_json_core/
+
 ## License
 
 Serde JSON is licensed under either of

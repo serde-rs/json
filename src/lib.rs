@@ -300,6 +300,11 @@
 //! `HashMap<K, V>`, as well as any structs or enums annotated with
 //! `#[derive(Serialize)]`.
 //!
+//! # No-std support
+//!
+//! This crate currently requires the Rust standard library. For JSON support in
+//! Serde without a standard library, please see the [`serde-json-core`] crate.
+//!
 //! [value]: https://docs.serde.rs/serde_json/value/enum.Value.html
 //! [from_str]: https://docs.serde.rs/serde_json/de/fn.from_str.html
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
@@ -308,6 +313,7 @@
 //! [to_vec]: https://docs.serde.rs/serde_json/ser/fn.to_vec.html
 //! [to_writer]: https://docs.serde.rs/serde_json/ser/fn.to_writer.html
 //! [macro]: https://docs.serde.rs/serde_json/macro.json.html
+//! [`serde-json-core`]: https://japaric.github.io/serde-json-core/serde_json_core/
 
 #![doc(html_root_url = "https://docs.rs/serde_json/1.0.13")]
 #![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
