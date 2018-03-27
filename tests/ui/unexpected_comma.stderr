@@ -4,3 +4,5 @@ error: expected expression, found `,`
 13 |     json!({ "a" , "b": true });
    |                 ^ expected expression
 
+error: aborting due to previous error
+
