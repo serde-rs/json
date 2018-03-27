@@ -58,28 +58,28 @@ impl Error {
         match self.err.code {
             ErrorCode::Message(_) => Category::Data,
             ErrorCode::Io(_) => Category::Io,
-            ErrorCode::EofWhileParsingList |
-            ErrorCode::EofWhileParsingObject |
-            ErrorCode::EofWhileParsingString |
-            ErrorCode::EofWhileParsingValue => Category::Eof,
-            ErrorCode::ExpectedColon |
-            ErrorCode::ExpectedListCommaOrEnd |
-            ErrorCode::ExpectedObjectCommaOrEnd |
-            ErrorCode::ExpectedObjectOrArray |
-            ErrorCode::ExpectedSomeIdent |
-            ErrorCode::ExpectedSomeValue |
-            ErrorCode::ExpectedSomeString |
-            ErrorCode::InvalidEscape |
-            ErrorCode::InvalidNumber |
-            ErrorCode::NumberOutOfRange |
-            ErrorCode::InvalidUnicodeCodePoint |
-            ErrorCode::ControlCharacterWhileParsingString |
-            ErrorCode::KeyMustBeAString |
-            ErrorCode::LoneLeadingSurrogateInHexEscape |
-            ErrorCode::TrailingComma |
-            ErrorCode::TrailingCharacters |
-            ErrorCode::UnexpectedEndOfHexEscape |
-            ErrorCode::RecursionLimitExceeded => Category::Syntax,
+            ErrorCode::EofWhileParsingList
+            | ErrorCode::EofWhileParsingObject
+            | ErrorCode::EofWhileParsingString
+            | ErrorCode::EofWhileParsingValue => Category::Eof,
+            ErrorCode::ExpectedColon
+            | ErrorCode::ExpectedListCommaOrEnd
+            | ErrorCode::ExpectedObjectCommaOrEnd
+            | ErrorCode::ExpectedObjectOrArray
+            | ErrorCode::ExpectedSomeIdent
+            | ErrorCode::ExpectedSomeValue
+            | ErrorCode::ExpectedSomeString
+            | ErrorCode::InvalidEscape
+            | ErrorCode::InvalidNumber
+            | ErrorCode::NumberOutOfRange
+            | ErrorCode::InvalidUnicodeCodePoint
+            | ErrorCode::ControlCharacterWhileParsingString
+            | ErrorCode::KeyMustBeAString
+            | ErrorCode::LoneLeadingSurrogateInHexEscape
+            | ErrorCode::TrailingComma
+            | ErrorCode::TrailingCharacters
+            | ErrorCode::UnexpectedEndOfHexEscape
+            | ErrorCode::RecursionLimitExceeded => Category::Syntax,
         }
     }
 
@@ -268,13 +268,11 @@ impl Error {
     #[doc(hidden)]
     pub fn syntax(code: ErrorCode, line: usize, column: usize) -> Self {
         Error {
-            err: Box::new(
-                ErrorImpl {
-                    code: code,
-                    line: line,
-                    column: column,
-                },
-            ),
+            err: Box::new(ErrorImpl {
+                code: code,
+                line: line,
+                column: column,
+            }),
         }
     }
 
@@ -284,13 +282,11 @@ impl Error {
     #[doc(hidden)]
     pub fn io(error: io::Error) -> Self {
         Error {
-            err: Box::new(
-                ErrorImpl {
-                    code: ErrorCode::Io(error),
-                    line: 0,
-                    column: 0,
-                },
-            ),
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::Io(error),
+                line: 0,
+                column: 0,
+            }),
         }
     }
 
@@ -376,9 +372,7 @@ impl Display for ErrorImpl {
             write!(
                 f,
                 "{} at line {} column {}",
-                self.code,
-                self.line,
-                self.column
+                self.code, self.line, self.column
             )
         }
     }
@@ -395,13 +389,11 @@ impl Debug for Error {
 impl de::Error for Error {
     fn custom<T: Display>(msg: T) -> Error {
         Error {
-            err: Box::new(
-                ErrorImpl {
-                    code: ErrorCode::Message(msg.to_string().into_boxed_str()),
-                    line: 0,
-                    column: 0,
-                },
-            ),
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::Message(msg.to_string().into_boxed_str()),
+                line: 0,
+                column: 0,
+            }),
         }
     }
 
@@ -417,13 +409,11 @@ impl de::Error for Error {
 impl ser::Error for Error {
     fn custom<T: Display>(msg: T) -> Error {
         Error {
-            err: Box::new(
-                ErrorImpl {
-                    code: ErrorCode::Message(msg.to_string().into_boxed_str()),
-                    line: 0,
-                    column: 0,
-                },
-            ),
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::Message(msg.to_string().into_boxed_str()),
+                line: 0,
+                column: 0,
+            }),
         }
     }
 }

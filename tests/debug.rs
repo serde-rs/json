@@ -7,7 +7,10 @@ use serde_json::Number;
 fn number() {
     assert_eq!(format!("{:?}", Number::from(1)), "Number(1)");
     assert_eq!(format!("{:?}", Number::from(-1)), "Number(-1)");
-    assert_eq!(format!("{:?}", Number::from_f64(1.0).unwrap()), "Number(1.0)");
+    assert_eq!(
+        format!("{:?}", Number::from_f64(1.0).unwrap()),
+        "Number(1.0)"
+    );
 }
 
 #[test]

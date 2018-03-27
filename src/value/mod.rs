@@ -210,24 +210,12 @@ pub enum Value {
 impl Debug for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Value::Null => {
-                formatter.debug_tuple("Null").finish()
-            }
-            Value::Bool(v) => {
-                formatter.debug_tuple("Bool").field(&v).finish()
-            }
-            Value::Number(ref v) => {
-                Debug::fmt(v, formatter)
-            }
-            Value::String(ref v) => {
-                formatter.debug_tuple("String").field(v).finish()
-            }
-            Value::Array(ref v) => {
-                formatter.debug_tuple("Array").field(v).finish()
-            }
-            Value::Object(ref v) => {
-                formatter.debug_tuple("Object").field(v).finish()
-            }
+            Value::Null => formatter.debug_tuple("Null").finish(),
+            Value::Bool(v) => formatter.debug_tuple("Bool").field(&v).finish(),
+            Value::Number(ref v) => Debug::fmt(v, formatter),
+            Value::String(ref v) => formatter.debug_tuple("String").field(v).finish(),
+            Value::Array(ref v) => formatter.debug_tuple("Array").field(v).finish(),
+            Value::Object(ref v) => formatter.debug_tuple("Object").field(v).finish(),
         }
     }
 }

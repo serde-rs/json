@@ -14,7 +14,7 @@
 //! [`BTreeMap`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
 //! [`LinkedHashMap`]: https://docs.rs/linked-hash-map/*/linked_hash_map/struct.LinkedHashMap.html
 
-use serde::{ser, de};
+use serde::{de, ser};
 use std::fmt::{self, Debug};
 use value::Value;
 use std::hash::Hash;
@@ -23,7 +23,7 @@ use std::borrow::Borrow;
 use std::ops;
 
 #[cfg(not(feature = "preserve_order"))]
-use std::collections::{BTreeMap, btree_map};
+use std::collections::{btree_map, BTreeMap};
 
 #[cfg(feature = "preserve_order")]
 use linked_hash_map::{self, LinkedHashMap};
@@ -42,7 +42,9 @@ impl Map<String, Value> {
     /// Makes a new empty Map.
     #[inline]
     pub fn new() -> Self {
-        Map { map: MapImpl::new() }
+        Map {
+            map: MapImpl::new(),
+        }
     }
 
     #[cfg(not(feature = "preserve_order"))]
@@ -51,14 +53,18 @@ impl Map<String, Value> {
     pub fn with_capacity(capacity: usize) -> Self {
         // does not support with_capacity
         let _ = capacity;
-        Map { map: BTreeMap::new() }
+        Map {
+            map: BTreeMap::new(),
+        }
     }
 
     #[cfg(feature = "preserve_order")]
     /// Makes a new empty Map with the given initial capacity.
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        Map { map: LinkedHashMap::with_capacity(capacity) }
+        Map {
+            map: LinkedHashMap::with_capacity(capacity),
+        }
     }
 
     /// Clears the map, removing all values.
@@ -164,39 +170,51 @@ impl Map<String, Value> {
     /// Gets an iterator over the entries of the map.
     #[inline]
     pub fn iter(&self) -> Iter {
-        Iter { iter: self.map.iter() }
+        Iter {
+            iter: self.map.iter(),
+        }
     }
 
     /// Gets a mutable iterator over the entries of the map.
     #[inline]
     pub fn iter_mut(&mut self) -> IterMut {
-        IterMut { iter: self.map.iter_mut() }
+        IterMut {
+            iter: self.map.iter_mut(),
+        }
     }
 
     /// Gets an iterator over the keys of the map.
     #[inline]
     pub fn keys(&self) -> Keys {
-        Keys { iter: self.map.keys() }
+        Keys {
+            iter: self.map.keys(),
+        }
     }
 
     /// Gets an iterator over the values of the map.
     #[inline]
     pub fn values(&self) -> Values {
-        Values { iter: self.map.values() }
+        Values {
+            iter: self.map.values(),
+        }
     }
 }
 
 impl Default for Map<String, Value> {
     #[inline]
     fn default() -> Self {
-        Map { map: MapImpl::new() }
+        Map {
+            map: MapImpl::new(),
+        }
     }
 }
 
 impl Clone for Map<String, Value> {
     #[inline]
     fn clone(&self) -> Self {
-        Map { map: self.map.clone() }
+        Map {
+            map: self.map.clone(),
+        }
     }
 }
 
@@ -329,7 +347,9 @@ impl FromIterator<(String, Value)> for Map<String, Value> {
     where
         T: IntoIterator<Item = (String, Value)>,
     {
-        Map { map: FromIterator::from_iter(iter) }
+        Map {
+            map: FromIterator::from_iter(iter),
+        }
     }
 }
 
@@ -705,7 +725,9 @@ impl<'a> IntoIterator for &'a Map<String, Value> {
     type IntoIter = Iter<'a>;
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        Iter { iter: self.map.iter() }
+        Iter {
+            iter: self.map.iter(),
+        }
     }
 }
 
@@ -728,7 +750,9 @@ impl<'a> IntoIterator for &'a mut Map<String, Value> {
     type IntoIter = IterMut<'a>;
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        IterMut { iter: self.map.iter_mut() }
+        IterMut {
+            iter: self.map.iter_mut(),
+        }
     }
 }
 
@@ -751,7 +775,9 @@ impl IntoIterator for Map<String, Value> {
     type IntoIter = IntoIter;
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter { iter: self.map.into_iter() }
+        IntoIter {
+            iter: self.map.into_iter(),
+        }
     }
 }
 

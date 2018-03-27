@@ -7,9 +7,7 @@
 // except according to those terms.
 
 #![cfg(not(feature = "preserve_order"))]
-
 #![cfg_attr(feature = "cargo-clippy", allow(float_cmp, unreadable_literal))]
-
 #![cfg_attr(feature = "trace-macros", feature(trace_macros))]
 #[cfg(feature = "trace-macros")]
 trace_macros!(true);
@@ -28,22 +26,21 @@ mod macros;
 use std::collections::BTreeMap;
 use std::{f32, f64};
 use std::fmt::{self, Debug};
-use std::{i8, i16, i32, i64};
+use std::{i16, i32, i64, i8};
 use std::io;
 use std::iter;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::string::ToString;
-use std::{u8, u16, u32, u64};
+use std::{u16, u32, u64, u8};
 
 use serde::de::{self, Deserialize, IgnoredAny};
 use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
 
-use serde_json::{Deserializer, Number, Value, from_reader, from_slice, from_str,
-                 from_value, to_string, to_string_pretty, to_value, to_vec,
-                 to_writer};
+use serde_json::{from_reader, from_slice, from_str, from_value, to_string, to_string_pretty,
+                 to_value, to_vec, to_writer, Deserializer, Number, Value};
 
 macro_rules! treemap {
     () => {
@@ -204,78 +201,83 @@ fn test_write_char() {
 
 #[test]
 fn test_write_list() {
-    test_encode_ok(
-        &[
-            (vec![], "[]"),
-            (vec![true], "[true]"),
-            (vec![true, false], "[true,false]"),
-        ],
-    );
+    test_encode_ok(&[
+        (vec![], "[]"),
+        (vec![true], "[true]"),
+        (vec![true, false], "[true,false]"),
+    ]);
 
-    test_encode_ok(
-        &[
-            (vec![vec![], vec![], vec![]], "[[],[],[]]"),
-            (vec![vec![1, 2, 3], vec![], vec![]], "[[1,2,3],[],[]]"),
-            (vec![vec![], vec![1, 2, 3], vec![]], "[[],[1,2,3],[]]"),
-            (vec![vec![], vec![], vec![1, 2, 3]], "[[],[],[1,2,3]]"),
-        ],
-    );
+    test_encode_ok(&[
+        (vec![vec![], vec![], vec![]], "[[],[],[]]"),
+        (vec![vec![1, 2, 3], vec![], vec![]], "[[1,2,3],[],[]]"),
+        (vec![vec![], vec![1, 2, 3], vec![]], "[[],[1,2,3],[]]"),
+        (vec![vec![], vec![], vec![1, 2, 3]], "[[],[],[1,2,3]]"),
+    ]);
 
-    test_pretty_encode_ok(
-        &[
-            (vec![vec![], vec![], vec![]], pretty_str!([[], [], []])),
-            (vec![vec![1, 2, 3], vec![], vec![]], pretty_str!([[1, 2, 3], [], []])),
-            (vec![vec![], vec![1, 2, 3], vec![]], pretty_str!([[], [1, 2, 3], []])),
-            (vec![vec![], vec![], vec![1, 2, 3]], pretty_str!([[], [], [1, 2, 3]])),
-        ],
-    );
+    test_pretty_encode_ok(&[
+        (vec![vec![], vec![], vec![]], pretty_str!([[], [], []])),
+        (
+            vec![vec![1, 2, 3], vec![], vec![]],
+            pretty_str!([[1, 2, 3], [], []]),
+        ),
+        (
+            vec![vec![], vec![1, 2, 3], vec![]],
+            pretty_str!([[], [1, 2, 3], []]),
+        ),
+        (
+            vec![vec![], vec![], vec![1, 2, 3]],
+            pretty_str!([[], [], [1, 2, 3]]),
+        ),
+    ]);
 
-    test_pretty_encode_ok(
-        &[
-            (vec![], "[]"),
-            (vec![true], pretty_str!([true])),
-            (vec![true, false], pretty_str!([true, false])),
-        ],
-    );
+    test_pretty_encode_ok(&[
+        (vec![], "[]"),
+        (vec![true], pretty_str!([true])),
+        (vec![true, false], pretty_str!([true, false])),
+    ]);
 
     let long_test_list = json!([false, null, ["foo\nbar", 3.5]]);
 
-    test_encode_ok(
-        &[
-            (long_test_list.clone(), json_str!([false, null, ["foo\nbar", 3.5]])),
-        ],
-    );
+    test_encode_ok(&[
+        (
+            long_test_list.clone(),
+            json_str!([false, null, ["foo\nbar", 3.5]]),
+        ),
+    ]);
 
-    test_pretty_encode_ok(
-        &[
-            (long_test_list, pretty_str!([false, null, ["foo\nbar", 3.5]])),
-        ],
-    );
+    test_pretty_encode_ok(&[
+        (
+            long_test_list,
+            pretty_str!([false, null, ["foo\nbar", 3.5]]),
+        ),
+    ]);
 }
 
 #[test]
 fn test_write_object() {
-    test_encode_ok(
-        &[
-            (treemap!(), "{}"),
-            (treemap!("a".to_string() => true), "{\"a\":true}"),
-            (treemap!(
+    test_encode_ok(&[
+        (treemap!(), "{}"),
+        (treemap!("a".to_string() => true), "{\"a\":true}"),
+        (
+            treemap!(
                 "a".to_string() => true,
                 "b".to_string() => false
             ),
-             "{\"a\":true,\"b\":false}"),
-        ],
-    );
+            "{\"a\":true,\"b\":false}",
+        ),
+    ]);
 
-    test_encode_ok(
-        &[
-            (treemap![
+    test_encode_ok(&[
+        (
+            treemap![
                 "a".to_string() => treemap![],
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-             "{\"a\":{},\"b\":{},\"c\":{}}"),
-            (treemap![
+            "{\"a\":{},\"b\":{},\"c\":{}}",
+        ),
+        (
+            treemap![
                 "a".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
                     "b".to_string() => treemap![],
@@ -284,8 +286,10 @@ fn test_write_object() {
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-             "{\"a\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"b\":{},\"c\":{}}"),
-            (treemap![
+            "{\"a\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"b\":{},\"c\":{}}",
+        ),
+        (
+            treemap![
                 "a".to_string() => treemap![],
                 "b".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
@@ -294,8 +298,10 @@ fn test_write_object() {
                 ],
                 "c".to_string() => treemap![]
             ],
-             "{\"a\":{},\"b\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"c\":{}}"),
-            (treemap![
+            "{\"a\":{},\"b\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"c\":{}}",
+        ),
+        (
+            treemap![
                 "a".to_string() => treemap![],
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![
@@ -304,23 +310,25 @@ fn test_write_object() {
                     "c".to_string() => treemap![]
                 ]
             ],
-             "{\"a\":{},\"b\":{},\"c\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}}}"),
-        ],
-    );
+            "{\"a\":{},\"b\":{},\"c\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}}}",
+        ),
+    ]);
 
-    test_pretty_encode_ok(
-        &[
-            (treemap![
+    test_pretty_encode_ok(&[
+        (
+            treemap![
                 "a".to_string() => treemap![],
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-             pretty_str!({
+            pretty_str!({
                 "a": {},
                 "b": {},
                 "c": {}
-            })),
-            (treemap![
+            }),
+        ),
+        (
+            treemap![
                 "a".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
                     "b".to_string() => treemap![],
@@ -329,7 +337,7 @@ fn test_write_object() {
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![]
             ],
-             pretty_str!({
+            pretty_str!({
                 "a": {
                     "a": {
                         "a": [
@@ -343,8 +351,10 @@ fn test_write_object() {
                 },
                 "b": {},
                 "c": {}
-            })),
-            (treemap![
+            }),
+        ),
+        (
+            treemap![
                 "a".to_string() => treemap![],
                 "b".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
@@ -353,7 +363,7 @@ fn test_write_object() {
                 ],
                 "c".to_string() => treemap![]
             ],
-             pretty_str!({
+            pretty_str!({
                 "a": {},
                 "b": {
                     "a": {
@@ -367,8 +377,10 @@ fn test_write_object() {
                     "c": {}
                 },
                 "c": {}
-            })),
-            (treemap![
+            }),
+        ),
+        (
+            treemap![
                 "a".to_string() => treemap![],
                 "b".to_string() => treemap![],
                 "c".to_string() => treemap![
@@ -377,7 +389,7 @@ fn test_write_object() {
                     "c".to_string() => treemap![]
                 ]
             ],
-             pretty_str!({
+            pretty_str!({
                 "a": {},
                 "b": {},
                 "c": {
@@ -391,27 +403,29 @@ fn test_write_object() {
                     "b": {},
                     "c": {}
                 }
-            })),
-        ],
-    );
+            }),
+        ),
+    ]);
 
-    test_pretty_encode_ok(
-        &[
-            (treemap!(), "{}"),
-            (treemap!("a".to_string() => true),
-             pretty_str!({
+    test_pretty_encode_ok(&[
+        (treemap!(), "{}"),
+        (
+            treemap!("a".to_string() => true),
+            pretty_str!({
                 "a": true
-            })),
-            (treemap!(
+            }),
+        ),
+        (
+            treemap!(
                 "a".to_string() => true,
                 "b".to_string() => false
             ),
-             pretty_str!( {
+            pretty_str!( {
                 "a": true,
                 "b": false
-            })),
-        ],
-    );
+            }),
+        ),
+    ]);
 
     let complex_obj = json!({
         "b": [
@@ -420,10 +434,10 @@ fn test_write_object() {
         ]
     });
 
-    test_encode_ok(
-        &[
-            (complex_obj.clone(),
-             json_str!({
+    test_encode_ok(&[
+        (
+            complex_obj.clone(),
+            json_str!({
                 "b": [
                     {
                         "c": (r#""\f\u001f\r""#)
@@ -432,14 +446,14 @@ fn test_write_object() {
                         "d": ""
                     }
                 ]
-            })),
-        ],
-    );
+            }),
+        ),
+    ]);
 
-    test_pretty_encode_ok(
-        &[
-            (complex_obj.clone(),
-             pretty_str!({
+    test_pretty_encode_ok(&[
+        (
+            complex_obj.clone(),
+            pretty_str!({
                 "b": [
                     {
                         "c": (r#""\f\u001f\r""#)
@@ -448,79 +462,76 @@ fn test_write_object() {
                         "d": ""
                     }
                 ]
-            })),
-        ],
-    );
+            }),
+        ),
+    ]);
 }
 
 #[test]
 fn test_write_tuple() {
     test_encode_ok(&[((5,), "[5]")]);
 
-    test_pretty_encode_ok(
-        &[
-            ((5,),
-             pretty_str!([
-                5
-            ])),
-        ],
-    );
+    test_pretty_encode_ok(&[((5,), pretty_str!([5]))]);
 
     test_encode_ok(&[((5, (6, "abc")), "[5,[6,\"abc\"]]")]);
 
-    test_pretty_encode_ok(
-        &[
-            ((5, (6, "abc")),
-             pretty_str!([
-                5,
-                [
-                    6,
-                    "abc"
-                ]
-            ])),
-        ],
-    );
+    test_pretty_encode_ok(&[((5, (6, "abc")), pretty_str!([5, [6, "abc"]]))]);
 }
 
 #[test]
 fn test_write_enum() {
-    test_encode_ok(
-        &[
-            (Animal::Dog, "\"Dog\""),
-            (Animal::Frog("Henry".to_string(), vec![]), "{\"Frog\":[\"Henry\",[]]}"),
-            (Animal::Frog("Henry".to_string(), vec![349]), "{\"Frog\":[\"Henry\",[349]]}"),
-            (Animal::Frog("Henry".to_string(), vec![349, 102]), "{\"Frog\":[\"Henry\",[349,102]]}"),
-            (Animal::Cat {
-                 age: 5,
-                 name: "Kate".to_string(),
-             },
-             "{\"Cat\":{\"age\":5,\"name\":\"Kate\"}}"),
-            (Animal::AntHive(vec!["Bob".to_string(), "Stuart".to_string()]),
-             "{\"AntHive\":[\"Bob\",\"Stuart\"]}"),
-        ],
-    );
+    test_encode_ok(&[
+        (Animal::Dog, "\"Dog\""),
+        (
+            Animal::Frog("Henry".to_string(), vec![]),
+            "{\"Frog\":[\"Henry\",[]]}",
+        ),
+        (
+            Animal::Frog("Henry".to_string(), vec![349]),
+            "{\"Frog\":[\"Henry\",[349]]}",
+        ),
+        (
+            Animal::Frog("Henry".to_string(), vec![349, 102]),
+            "{\"Frog\":[\"Henry\",[349,102]]}",
+        ),
+        (
+            Animal::Cat {
+                age: 5,
+                name: "Kate".to_string(),
+            },
+            "{\"Cat\":{\"age\":5,\"name\":\"Kate\"}}",
+        ),
+        (
+            Animal::AntHive(vec!["Bob".to_string(), "Stuart".to_string()]),
+            "{\"AntHive\":[\"Bob\",\"Stuart\"]}",
+        ),
+    ]);
 
-    test_pretty_encode_ok(
-        &[
-            (Animal::Dog, "\"Dog\""),
-            (Animal::Frog("Henry".to_string(), vec![]),
-             pretty_str!({
+    test_pretty_encode_ok(&[
+        (Animal::Dog, "\"Dog\""),
+        (
+            Animal::Frog("Henry".to_string(), vec![]),
+            pretty_str!({
                 "Frog": [
                     "Henry",
                     []
                 ]
-            })),
-            (Animal::Frog("Henry".to_string(), vec![349]),
-             pretty_str!({
+            }),
+        ),
+        (
+            Animal::Frog("Henry".to_string(), vec![349]),
+            pretty_str!({
                 "Frog": [
                     "Henry",
                     [
                         349
                     ]
                 ]
-            })),
-            (Animal::Frog("Henry".to_string(), vec![349, 102]),
-             pretty_str!({
+            }),
+        ),
+        (
+            Animal::Frog("Henry".to_string(), vec![349, 102]),
+            pretty_str!({
                 "Frog": [
                     "Henry",
                     [
@@ -528,34 +539,26 @@ fn test_write_enum() {
                       102
                     ]
                 ]
-            })),
-        ],
-    );
+            }),
+        ),
+    ]);
 }
 
 #[test]
 fn test_write_option() {
     test_encode_ok(&[(None, "null"), (Some("jodhpurs"), "\"jodhpurs\"")]);
 
-    test_encode_ok(
-        &[
-            (None, "null"),
-            (Some(vec!["foo", "bar"]), "[\"foo\",\"bar\"]"),
-        ],
-    );
+    test_encode_ok(&[
+        (None, "null"),
+        (Some(vec!["foo", "bar"]), "[\"foo\",\"bar\"]"),
+    ]);
 
     test_pretty_encode_ok(&[(None, "null"), (Some("jodhpurs"), "\"jodhpurs\"")]);
 
-    test_pretty_encode_ok(
-        &[
-            (None, "null"),
-            (Some(vec!["foo", "bar"]),
-             pretty_str!([
-                "foo",
-                "bar"
-            ])),
-        ],
-    );
+    test_pretty_encode_ok(&[
+        (None, "null"),
+        (Some(vec!["foo", "bar"]), pretty_str!(["foo", "bar"])),
+    ]);
 }
 
 #[test]
@@ -660,7 +663,8 @@ where
 
 fn test_fromstr_parse_err<T>(errors: &[(&str, &'static str)])
 where
-    T: Debug + PartialEq + FromStr, <T as FromStr>::Err: ToString
+    T: Debug + PartialEq + FromStr,
+    <T as FromStr>::Err: ToString,
 {
     for &(s, err) in errors {
         let actual = s.parse::<T>().unwrap_err().to_string();
@@ -670,59 +674,52 @@ where
 
 #[test]
 fn test_parse_null() {
-    test_parse_err::<()>(
-        &[
-            ("n", "expected ident at line 1 column 1"),
-            ("nul", "expected ident at line 1 column 3"),
-            ("nulla", "trailing characters at line 1 column 5"),
-        ],
-    );
+    test_parse_err::<()>(&[
+        ("n", "expected ident at line 1 column 1"),
+        ("nul", "expected ident at line 1 column 3"),
+        ("nulla", "trailing characters at line 1 column 5"),
+    ]);
 
-    test_parse_ok(
-        vec![
-        ("null", ()),
-    ],
-    );
+    test_parse_ok(vec![("null", ())]);
 }
 
 #[test]
 fn test_parse_bool() {
-    test_parse_err::<bool>(
-        &[
-            ("t", "expected ident at line 1 column 1"),
-            ("truz", "expected ident at line 1 column 4"),
-            ("f", "expected ident at line 1 column 1"),
-            ("faz", "expected ident at line 1 column 3"),
-            ("truea", "trailing characters at line 1 column 5"),
-            ("falsea", "trailing characters at line 1 column 6"),
-        ],
-    );
+    test_parse_err::<bool>(&[
+        ("t", "expected ident at line 1 column 1"),
+        ("truz", "expected ident at line 1 column 4"),
+        ("f", "expected ident at line 1 column 1"),
+        ("faz", "expected ident at line 1 column 3"),
+        ("truea", "trailing characters at line 1 column 5"),
+        ("falsea", "trailing characters at line 1 column 6"),
+    ]);
 
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("true", true),
         (" true ", true),
         ("false", false),
         (" false ", false),
-    ],
-    );
+    ]);
 }
 
 #[test]
 fn test_parse_char() {
-    test_parse_err::<char>(
-        &[
-            ("\"ab\"", "invalid value: string \"ab\", expected a character at line 1 column 4"),
-            ("10", if cfg!(feature = "arbitrary_precision") {
+    test_parse_err::<char>(&[
+        (
+            "\"ab\"",
+            "invalid value: string \"ab\", expected a character at line 1 column 4",
+        ),
+        (
+            "10",
+            if cfg!(feature = "arbitrary_precision") {
                 "invalid type: number, expected a character at line 1 column 2"
             } else {
                 "invalid type: integer `10`, expected a character at line 1 column 2"
-            }),
-        ],
-    );
+            },
+        ),
+    ]);
 
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("\"n\"", 'n'),
         ("\"\\\"\"", '"'),
         ("\"\\\\\"", '\\'),
@@ -735,76 +732,81 @@ fn test_parse_char() {
         ("\"\\u000b\"", '\x0B'),
         ("\"\\u000B\"", '\x0B'),
         ("\"\u{3A3}\"", '\u{3A3}'),
-    ],
-    );
+    ]);
 }
 
 #[test]
 fn test_parse_number_errors() {
-    test_parse_err::<f64>(
-        &[
-            ("+", "expected value at line 1 column 1"),
-            (".", "expected value at line 1 column 1"),
-            ("-", "invalid number at line 1 column 1"),
-            ("00", "invalid number at line 1 column 2"),
-            ("0x80", "trailing characters at line 1 column 2"),
-            ("\\0", "expected value at line 1 column 1"),
-            ("1.", "invalid number at line 1 column 2"),
-            ("1.a", "invalid number at line 1 column 3"),
-            ("1.e1", "invalid number at line 1 column 3"),
-            ("1e", "invalid number at line 1 column 2"),
-            ("1e+", "invalid number at line 1 column 3"),
-            ("1a", "trailing characters at line 1 column 2"),
-            ("100e777777777777777777777777777", "number out of range at line 1 column 14"),
-            ("-100e777777777777777777777777777", "number out of range at line 1 column 15"),
-            ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000", // 1e309
-             "number out of range at line 1 column 310"),
-            ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           .0e9", // 1e309
-             "number out of range at line 1 column 305"),
-            ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           e9", // 1e309
-             "number out of range at line 1 column 303"),
-        ],
-    );
+    test_parse_err::<f64>(&[
+        ("+", "expected value at line 1 column 1"),
+        (".", "expected value at line 1 column 1"),
+        ("-", "invalid number at line 1 column 1"),
+        ("00", "invalid number at line 1 column 2"),
+        ("0x80", "trailing characters at line 1 column 2"),
+        ("\\0", "expected value at line 1 column 1"),
+        ("1.", "invalid number at line 1 column 2"),
+        ("1.a", "invalid number at line 1 column 3"),
+        ("1.e1", "invalid number at line 1 column 3"),
+        ("1e", "invalid number at line 1 column 2"),
+        ("1e+", "invalid number at line 1 column 3"),
+        ("1a", "trailing characters at line 1 column 2"),
+        (
+            "100e777777777777777777777777777",
+            "number out of range at line 1 column 14",
+        ),
+        (
+            "-100e777777777777777777777777777",
+            "number out of range at line 1 column 15",
+        ),
+        (
+            "1000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000", // 1e309
+            "number out of range at line 1 column 310",
+        ),
+        (
+            "1000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             .0e9", // 1e309
+            "number out of range at line 1 column 305",
+        ),
+        (
+            "1000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             e9", // 1e309
+            "number out of range at line 1 column 303",
+        ),
+    ]);
 }
 
 #[test]
 fn test_parse_i64() {
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("-2", -2),
         ("-1234", -1234),
         (" -1234 ", -1234),
         (&i64::MIN.to_string(), i64::MIN),
         (&i64::MAX.to_string(), i64::MAX),
-    ],
-    );
+    ]);
 }
 
 #[test]
 fn test_parse_u64() {
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("0", 0u64),
         ("3", 3u64),
         ("1234", 1234),
         (&u64::MAX.to_string(), u64::MAX),
-    ],
-    );
+    ]);
 }
 
 #[test]
@@ -816,8 +818,11 @@ fn test_parse_negative_zero() {
         "-1e-400",
         "-1e-4000000000000000000000000000000000000000000000000",
     ] {
-        assert!(from_str::<f64>(negative_zero).unwrap().is_sign_negative(),
-            "should have been negative: {:?}", negative_zero);
+        assert!(
+            from_str::<f64>(negative_zero).unwrap().is_sign_negative(),
+            "should have been negative: {:?}",
+            negative_zero
+        );
     }
 }
 
@@ -847,48 +852,77 @@ fn test_parse_f64() {
         ("0.00e00", 0.0),
         ("0.00e+00", 0.0),
         ("0.00e-00", 0.0),
-        (&format!("{}", (i64::MIN as f64) - 1.0), (i64::MIN as f64) - 1.0),
-        (&format!("{}", (u64::MAX as f64) + 1.0), (u64::MAX as f64) + 1.0),
+        (
+            &format!("{}", (i64::MIN as f64) - 1.0),
+            (i64::MIN as f64) - 1.0,
+        ),
+        (
+            &format!("{}", (u64::MAX as f64) + 1.0),
+            (u64::MAX as f64) + 1.0,
+        ),
         (&format!("{}", f64::EPSILON), f64::EPSILON),
-        ("0.0000000000000000000000000000000000000000000000000123e50", 1.23),
+        (
+            "0.0000000000000000000000000000000000000000000000000123e50",
+            1.23,
+        ),
         ("100e-777777777777777777777777777", 0.0),
-        ("1010101010101010101010101010101010101010", 10101010101010101010e20),
-        ("0.1010101010101010101010101010101010101010", 0.1010101010101010101),
+        (
+            "1010101010101010101010101010101010101010",
+            10101010101010101010e20,
+        ),
+        (
+            "0.1010101010101010101010101010101010101010",
+            0.1010101010101010101,
+        ),
         ("0e1000000000000000000000000000000000000000000000", 0.0),
-        ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           00000000", 1e308),
-        ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           .0e8", 1e308),
-        ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           e8", 1e308),
-        ("1000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000000000000000000000000000000000000000000000\
-           000000000000000000e-10", 1e308),
+        (
+            "1000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             00000000",
+            1e308,
+        ),
+        (
+            "1000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             .0e8",
+            1e308,
+        ),
+        (
+            "1000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             e8",
+            1e308,
+        ),
+        (
+            "1000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000000000000000000000000000000000000000000000\
+             000000000000000000e-10",
+            1e308,
+        ),
     ]);
 }
 
 #[test]
 fn test_serialize_char() {
-    let value = json!(({
-        let mut map = BTreeMap::new();
-        map.insert('c', ());
-        map
-    }));
+    let value = json!(
+        ({
+            let mut map = BTreeMap::new();
+            map.insert('c', ());
+            map
+        })
+    );
     assert_eq!(&Value::Null, value.get("c").unwrap());
 }
 
@@ -902,7 +936,9 @@ fn test_malicious_number() {
         f: &'static str,
     }
 
-    let actual = serde_json::to_value(&S { f: "not a number" }).unwrap_err().to_string();
+    let actual = serde_json::to_value(&S { f: "not a number" })
+        .unwrap_err()
+        .to_string();
     assert_eq!(actual, "invalid number at line 1 column 1");
 }
 
@@ -916,52 +952,69 @@ fn test_parse_number() {
         ("0.4", Number::from_f64(0.4).unwrap()),
     ]);
 
-    test_fromstr_parse_err::<Number>(
-        &[
-            (" 1.0", "invalid number at line 1 column 1"),
-            ("1.0 ", "invalid number at line 1 column 4"),
-            ("\t1.0", "invalid number at line 1 column 1"),
-            ("1.0\t", "invalid number at line 1 column 4"),
-        ]
-    );
+    test_fromstr_parse_err::<Number>(&[
+        (" 1.0", "invalid number at line 1 column 1"),
+        ("1.0 ", "invalid number at line 1 column 4"),
+        ("\t1.0", "invalid number at line 1 column 1"),
+        ("1.0\t", "invalid number at line 1 column 4"),
+    ]);
 
     #[cfg(feature = "arbitrary_precision")]
     test_parse_ok(vec![
         ("1e999", Number::from_string_unchecked("1e999".to_owned())),
         ("-1e999", Number::from_string_unchecked("-1e999".to_owned())),
         ("1e-999", Number::from_string_unchecked("1e-999".to_owned())),
-        ("2.3e999", Number::from_string_unchecked("2.3e999".to_owned())),
-        ("-2.3e999", Number::from_string_unchecked("-2.3e999".to_owned())),
+        (
+            "2.3e999",
+            Number::from_string_unchecked("2.3e999".to_owned()),
+        ),
+        (
+            "-2.3e999",
+            Number::from_string_unchecked("-2.3e999".to_owned()),
+        ),
     ]);
 }
 
 #[test]
 fn test_parse_string() {
-    test_parse_err::<String>(
-        &[
-            ("\"", "EOF while parsing a string at line 1 column 1"),
-            ("\"lol", "EOF while parsing a string at line 1 column 4"),
-            ("\"lol\"a", "trailing characters at line 1 column 6"),
-            ("\"\\uD83C\\uFFFF\"", "lone leading surrogate in hex escape at line 1 column 13"),
-            ("\"\n\"", "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1"),
-            ("\"\x1F\"", "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1"),
-        ],
-    );
+    test_parse_err::<String>(&[
+        ("\"", "EOF while parsing a string at line 1 column 1"),
+        ("\"lol", "EOF while parsing a string at line 1 column 4"),
+        ("\"lol\"a", "trailing characters at line 1 column 6"),
+        (
+            "\"\\uD83C\\uFFFF\"",
+            "lone leading surrogate in hex escape at line 1 column 13",
+        ),
+        (
+            "\"\n\"",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+        ),
+        (
+            "\"\x1F\"",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+        ),
+    ]);
 
-    test_parse_slice_err::<String>(
-        &[
-            (&[b'"', 159, 146, 150, b'"'], "invalid unicode code point at line 1 column 5"),
-            (&[b'"', b'\\', b'n', 159, 146, 150, b'"'],
-             "invalid unicode code point at line 1 column 7"),
-            (&[b'"', b'\n',b'"'],
-             "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1"),
-            (&[b'"', b'\x1F', b'"'],
-             "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1"),
-        ],
-    );
+    test_parse_slice_err::<String>(&[
+        (
+            &[b'"', 159, 146, 150, b'"'],
+            "invalid unicode code point at line 1 column 5",
+        ),
+        (
+            &[b'"', b'\\', b'n', 159, 146, 150, b'"'],
+            "invalid unicode code point at line 1 column 7",
+        ),
+        (
+            &[b'"', b'\n', b'"'],
+            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+        ),
+        (
+            &[b'"', b'\x1F', b'"'],
+            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+        ),
+    ]);
 
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("\"\"", "".to_string()),
         ("\"foo\"", "foo".to_string()),
         (" \"foo\" ", "foo".to_string()),
@@ -973,121 +1026,76 @@ fn test_parse_string() {
         ("\"\\u12ab\"", "\u{12ab}".to_string()),
         ("\"\\uAB12\"", "\u{AB12}".to_string()),
         ("\"\\uD83C\\uDF95\"", "\u{1F395}".to_string()),
-    ],
-    );
+    ]);
 }
 
 #[test]
 fn test_parse_list() {
-    test_parse_err::<Vec<f64>>(
-        &[
-            ("[", "EOF while parsing a list at line 1 column 1"),
-            ("[ ", "EOF while parsing a list at line 1 column 2"),
-            ("[1", "EOF while parsing a list at line 1 column 2"),
-            ("[1,", "EOF while parsing a value at line 1 column 3"),
-            ("[1,]", "trailing comma at line 1 column 4"),
-            ("[1 2]", "expected `,` or `]` at line 1 column 4"),
-            ("[]a", "trailing characters at line 1 column 3"),
-        ],
-    );
+    test_parse_err::<Vec<f64>>(&[
+        ("[", "EOF while parsing a list at line 1 column 1"),
+        ("[ ", "EOF while parsing a list at line 1 column 2"),
+        ("[1", "EOF while parsing a list at line 1 column 2"),
+        ("[1,", "EOF while parsing a value at line 1 column 3"),
+        ("[1,]", "trailing comma at line 1 column 4"),
+        ("[1 2]", "expected `,` or `]` at line 1 column 4"),
+        ("[]a", "trailing characters at line 1 column 3"),
+    ]);
 
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("[]", vec![]),
         ("[ ]", vec![]),
         ("[null]", vec![()]),
         (" [ null ] ", vec![()]),
-    ],
-    );
+    ]);
 
-    test_parse_ok(
-        vec![
-        ("[true]", vec![true]),
-    ],
-    );
+    test_parse_ok(vec![("[true]", vec![true])]);
 
-    test_parse_ok(
-        vec![
-        ("[3,1]", vec![3u64, 1]),
-        (" [ 3 , 1 ] ", vec![3, 1]),
-    ],
-    );
+    test_parse_ok(vec![("[3,1]", vec![3u64, 1]), (" [ 3 , 1 ] ", vec![3, 1])]);
 
-    test_parse_ok(
-        vec![
-        ("[[3], [1, 2]]", vec![vec![3u64], vec![1, 2]]),
-    ],
-    );
+    test_parse_ok(vec![("[[3], [1, 2]]", vec![vec![3u64], vec![1, 2]])]);
 
-    test_parse_ok(
-        vec![
-        ("[1]", (1u64,)),
-    ],
-    );
+    test_parse_ok(vec![("[1]", (1u64,))]);
 
-    test_parse_ok(
-        vec![
-        ("[1, 2]", (1u64, 2u64)),
-    ],
-    );
+    test_parse_ok(vec![("[1, 2]", (1u64, 2u64))]);
 
-    test_parse_ok(
-        vec![
-        ("[1, 2, 3]", (1u64, 2u64, 3u64)),
-    ],
-    );
+    test_parse_ok(vec![("[1, 2, 3]", (1u64, 2u64, 3u64))]);
 
-    test_parse_ok(
-        vec![
-        ("[1, [2, 3]]", (1u64, (2u64, 3u64))),
-    ],
-    );
+    test_parse_ok(vec![("[1, [2, 3]]", (1u64, (2u64, 3u64)))]);
 }
 
 #[test]
 fn test_parse_object() {
-    test_parse_err::<BTreeMap<String, u32>>(
-        &[
-            ("{", "EOF while parsing an object at line 1 column 1"),
-            ("{ ", "EOF while parsing an object at line 1 column 2"),
-            ("{1", "key must be a string at line 1 column 2"),
-            ("{ \"a\"", "EOF while parsing an object at line 1 column 5"),
-            ("{\"a\"", "EOF while parsing an object at line 1 column 4"),
-            ("{\"a\" ", "EOF while parsing an object at line 1 column 5"),
-            ("{\"a\" 1", "expected `:` at line 1 column 6"),
-            ("{\"a\":", "EOF while parsing a value at line 1 column 5"),
-            ("{\"a\":1", "EOF while parsing an object at line 1 column 6"),
-            ("{\"a\":1 1", "expected `,` or `}` at line 1 column 8"),
-            ("{\"a\":1,", "EOF while parsing a value at line 1 column 7"),
-            ("{}a", "trailing characters at line 1 column 3"),
-        ],
-    );
+    test_parse_err::<BTreeMap<String, u32>>(&[
+        ("{", "EOF while parsing an object at line 1 column 1"),
+        ("{ ", "EOF while parsing an object at line 1 column 2"),
+        ("{1", "key must be a string at line 1 column 2"),
+        ("{ \"a\"", "EOF while parsing an object at line 1 column 5"),
+        ("{\"a\"", "EOF while parsing an object at line 1 column 4"),
+        ("{\"a\" ", "EOF while parsing an object at line 1 column 5"),
+        ("{\"a\" 1", "expected `:` at line 1 column 6"),
+        ("{\"a\":", "EOF while parsing a value at line 1 column 5"),
+        ("{\"a\":1", "EOF while parsing an object at line 1 column 6"),
+        ("{\"a\":1 1", "expected `,` or `}` at line 1 column 8"),
+        ("{\"a\":1,", "EOF while parsing a value at line 1 column 7"),
+        ("{}a", "trailing characters at line 1 column 3"),
+    ]);
 
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("{}", treemap!()),
         ("{ }", treemap!()),
-        (
-            "{\"a\":3}",
-            treemap!("a".to_string() => 3u64)
-        ),
-        (
-            "{ \"a\" : 3 }",
-            treemap!("a".to_string() => 3)
-        ),
+        ("{\"a\":3}", treemap!("a".to_string() => 3u64)),
+        ("{ \"a\" : 3 }", treemap!("a".to_string() => 3)),
         (
             "{\"a\":3,\"b\":4}",
-            treemap!("a".to_string() => 3, "b".to_string() => 4)
+            treemap!("a".to_string() => 3, "b".to_string() => 4),
         ),
         (
             " { \"a\" : 3 , \"b\" : 4 } ",
             treemap!("a".to_string() => 3, "b".to_string() => 4),
         ),
-    ],
-    );
+    ]);
 
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         (
             "{\"a\": {\"b\": 3, \"c\": 4}}",
             treemap!(
@@ -1097,36 +1105,41 @@ fn test_parse_object() {
                 )
             ),
         ),
-    ],
-    );
+    ]);
 }
 
 #[test]
 fn test_parse_struct() {
-    test_parse_err::<Outer>(
-        &[
-            ("5", if cfg!(feature = "arbitrary_precision") {
+    test_parse_err::<Outer>(&[
+        (
+            "5",
+            if cfg!(feature = "arbitrary_precision") {
                 "invalid type: number, expected struct Outer at line 1 column 1"
             } else {
                 "invalid type: integer `5`, expected struct Outer at line 1 column 1"
-            }),
-            ("\"hello\"", "invalid type: string \"hello\", expected struct Outer at line 1 column 7"),
-            ("{\"inner\": true}",
-             "invalid type: boolean `true`, expected a sequence at line 1 column 14"),
-            ("{}", "missing field `inner` at line 1 column 2"),
-            (r#"{"inner": [{"b": 42, "c": []}]}"#, "missing field `a` at line 1 column 29"),
-        ],
-    );
+            },
+        ),
+        (
+            "\"hello\"",
+            "invalid type: string \"hello\", expected struct Outer at line 1 column 7",
+        ),
+        (
+            "{\"inner\": true}",
+            "invalid type: boolean `true`, expected a sequence at line 1 column 14",
+        ),
+        ("{}", "missing field `inner` at line 1 column 2"),
+        (
+            r#"{"inner": [{"b": 42, "c": []}]}"#,
+            "missing field `a` at line 1 column 29",
+        ),
+    ]);
 
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         (
             "{
                 \"inner\": []
             }",
-            Outer {
-                inner: vec![]
-            },
+            Outer { inner: vec![] },
         ),
         (
             "{
@@ -1136,12 +1149,15 @@ fn test_parse_struct() {
             }",
             Outer {
                 inner: vec![
-                    Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }
-                ]
+                    Inner {
+                        a: (),
+                        b: 2,
+                        c: vec!["abc".to_string(), "xyz".to_string()],
+                    },
+                ],
             },
         ),
-    ],
-    );
+    ]);
 
     let v: Outer = from_str(
         "[
@@ -1155,7 +1171,11 @@ fn test_parse_struct() {
         v,
         Outer {
             inner: vec![
-                Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }
+                Inner {
+                    a: (),
+                    b: 2,
+                    c: vec!["abc".to_string(), "xyz".to_string()],
+                },
             ],
         }
     );
@@ -1163,12 +1183,10 @@ fn test_parse_struct() {
 
 #[test]
 fn test_parse_option() {
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("null", None::<String>),
         ("\"jodhpurs\"", Some("jodhpurs".to_string())),
-    ],
-    );
+    ]);
 
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
     struct Foo {
@@ -1178,12 +1196,10 @@ fn test_parse_option() {
     let value: Foo = from_str("{}").unwrap();
     assert_eq!(value, Foo { x: None });
 
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("{\"x\": null}", Foo { x: None }),
         ("{\"x\": 5}", Foo { x: Some(5) }),
-    ],
-    );
+    ]);
 }
 
 #[test]
@@ -1219,8 +1235,7 @@ fn test_parse_enum_errors() {
 
 #[test]
 fn test_parse_enum() {
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("\"Dog\"", Animal::Dog),
         (" \"Dog\" ", Animal::Dog),
         (
@@ -1233,28 +1248,30 @@ fn test_parse_enum() {
         ),
         (
             "{\"Cat\": {\"age\": 5, \"name\": \"Kate\"}}",
-            Animal::Cat { age: 5, name: "Kate".to_string() },
+            Animal::Cat {
+                age: 5,
+                name: "Kate".to_string(),
+            },
         ),
         (
             " { \"Cat\" : { \"age\" : 5 , \"name\" : \"Kate\" } } ",
-            Animal::Cat { age: 5, name: "Kate".to_string() },
+            Animal::Cat {
+                age: 5,
+                name: "Kate".to_string(),
+            },
         ),
         (
             " { \"AntHive\" : [\"Bob\", \"Stuart\"] } ",
             Animal::AntHive(vec!["Bob".to_string(), "Stuart".to_string()]),
         ),
-    ],
-    );
+    ]);
 
-    test_parse_unusual_ok(
-        vec![
+    test_parse_unusual_ok(vec![
         ("{\"Dog\":null}", Animal::Dog),
         (" { \"Dog\" : null } ", Animal::Dog),
-    ],
-    );
+    ]);
 
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         (
             concat!(
                 "{",
@@ -1265,31 +1282,29 @@ fn test_parse_enum() {
             treemap!(
                 "a".to_string() => Animal::Dog,
                 "b".to_string() => Animal::Frog("Henry".to_string(), vec![])
-            )
+            ),
         ),
-    ],
-    );
+    ]);
 }
 
 #[test]
 fn test_parse_trailing_whitespace() {
-    test_parse_ok(
-        vec![
+    test_parse_ok(vec![
         ("[1, 2] ", vec![1u64, 2]),
         ("[1, 2]\n", vec![1, 2]),
         ("[1, 2]\t", vec![1, 2]),
         ("[1, 2]\t \n", vec![1, 2]),
-    ],
-    );
+    ]);
 }
 
 #[test]
 fn test_multiline_errors() {
-    test_parse_err::<BTreeMap<String, String>>(
-        &[
-            ("{\n  \"foo\":\n \"bar\"", "EOF while parsing an object at line 3 column 6"),
-        ],
-    );
+    test_parse_err::<BTreeMap<String, String>>(&[
+        (
+            "{\n  \"foo\":\n \"bar\"",
+            "EOF while parsing an object at line 3 column 6",
+        ),
+    ]);
 }
 
 #[test]
@@ -1326,7 +1341,7 @@ fn test_missing_nonoption_field() {
 fn test_missing_renamed_field() {
     #[derive(Debug, PartialEq, Deserialize)]
     struct Foo {
-        #[serde(rename="y")]
+        #[serde(rename = "y")]
         x: Option<u32>,
     }
 
@@ -1411,7 +1426,9 @@ fn test_serialize_seq_with_no_len() {
         where
             D: de::Deserializer<'de>,
         {
-            deserializer.deserialize_map(Visitor { marker: PhantomData })
+            deserializer.deserialize_map(Visitor {
+                marker: PhantomData,
+            })
         }
     }
 
@@ -1423,10 +1440,7 @@ fn test_serialize_seq_with_no_len() {
     test_encode_ok(&[(vec.clone(), "[[],[]]")]);
 
     let s = to_string_pretty(&vec).unwrap();
-    let expected = pretty_str!([
-        [],
-        []
-    ]);
+    let expected = pretty_str!([[], []]);
     assert_eq!(s, expected);
 }
 
@@ -1502,7 +1516,9 @@ fn test_serialize_map_with_no_len() {
         where
             D: de::Deserializer<'de>,
         {
-            deserializer.deserialize_map(Visitor { marker: PhantomData })
+            deserializer.deserialize_map(Visitor {
+                marker: PhantomData,
+            })
         }
     }
 
@@ -1534,23 +1550,25 @@ fn test_deserialize_from_stream() {
 
     let l = net::TcpListener::bind("localhost:20000").unwrap();
 
-    thread::spawn(
-        || {
-            let l = l;
-            for stream in l.incoming() {
-                let mut stream = stream.unwrap();
-                let read_stream = stream.try_clone().unwrap();
+    thread::spawn(|| {
+        let l = l;
+        for stream in l.incoming() {
+            let mut stream = stream.unwrap();
+            let read_stream = stream.try_clone().unwrap();
 
-                let mut de = Deserializer::from_reader(read_stream);
-                let request = Message::deserialize(&mut de).unwrap();
-                let response = Message { message: request.message };
-                to_writer(&mut stream, &response).unwrap();
-            }
-        },
-    );
+            let mut de = Deserializer::from_reader(read_stream);
+            let request = Message::deserialize(&mut de).unwrap();
+            let response = Message {
+                message: request.message,
+            };
+            to_writer(&mut stream, &response).unwrap();
+        }
+    });
 
     let mut stream = net::TcpStream::connect("localhost:20000").unwrap();
-    let request = Message { message: "hi there".to_string() };
+    let request = Message {
+        message: "hi there".to_string(),
+    };
     to_writer(&mut stream, &request).unwrap();
 
     let mut de = Deserializer::from_reader(stream);
@@ -1637,8 +1655,7 @@ fn test_json_pointer() {
         " ": 7,
         "m~n": 8
     }"#,
-    )
-            .unwrap();
+    ).unwrap();
     assert_eq!(data.pointer("").unwrap(), &data);
     assert_eq!(data.pointer("/foo").unwrap(), &json!(["bar", "baz"]));
     assert_eq!(data.pointer("/foo/0").unwrap(), &json!("bar"));
@@ -1676,8 +1693,7 @@ fn test_json_pointer_mut() {
         " ": 7,
         "m~n": 8
     }"#,
-    )
-            .unwrap();
+    ).unwrap();
 
     // Basic pointer checks
     assert_eq!(data.pointer_mut("/foo").unwrap(), &json!(["bar", "baz"]));
@@ -1705,7 +1721,12 @@ fn test_json_pointer_mut() {
     assert_eq!(data.pointer("/foo/0").unwrap(), &json!("buzz"));
 
     // Example of ownership stealing
-    assert_eq!(data.pointer_mut("/a~1b").map(|m| mem::replace(m, json!(null))).unwrap(), 1);
+    assert_eq!(
+        data.pointer_mut("/a~1b")
+            .map(|m| mem::replace(m, json!(null)))
+            .unwrap(),
+        1
+    );
     assert_eq!(data.pointer("/a~1b").unwrap(), &json!(null));
 
     // Need to compare against a clone so we don't anger the borrow checker
@@ -1723,7 +1744,7 @@ fn test_stack_overflow() {
     let _: Value = from_str(&brackets).unwrap();
 
     let brackets: String = iter::repeat('[').take(128).collect();
-    test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 128")],);
+    test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 128")]);
 }
 
 #[test]
@@ -1738,11 +1759,12 @@ fn test_integer_key() {
     test_parse_ok(vec![(j, map)]);
 
     let j = r#"{"x":null}"#;
-    test_parse_err::<BTreeMap<i32, ()>>(
-        &[
-            (j, "invalid type: string \"x\", expected i32 at line 1 column 4"),
-        ],
-    );
+    test_parse_err::<BTreeMap<i32, ()>>(&[
+        (
+            j,
+            "invalid type: string \"x\", expected i32 at line 1 column 4",
+        ),
+    ]);
 }
 
 #[test]
@@ -1882,7 +1904,6 @@ fn test_partialeq_bool() {
     assert_ne!(v, 0);
 }
 
-
 struct FailReader(io::ErrorKind);
 
 impl io::Read for FailReader {
@@ -1909,11 +1930,31 @@ fn test_category() {
     assert!(from_str::<Vec<usize>>("[0").unwrap_err().is_eof());
     assert!(from_str::<Vec<usize>>("[0,").unwrap_err().is_eof());
 
-    assert!(from_str::<BTreeMap<String, usize>>("{").unwrap_err().is_eof());
-    assert!(from_str::<BTreeMap<String, usize>>("{\"k\"").unwrap_err().is_eof());
-    assert!(from_str::<BTreeMap<String, usize>>("{\"k\":").unwrap_err().is_eof());
-    assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0").unwrap_err().is_eof());
-    assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0,").unwrap_err().is_eof());
+    assert!(
+        from_str::<BTreeMap<String, usize>>("{")
+            .unwrap_err()
+            .is_eof()
+    );
+    assert!(
+        from_str::<BTreeMap<String, usize>>("{\"k\"")
+            .unwrap_err()
+            .is_eof()
+    );
+    assert!(
+        from_str::<BTreeMap<String, usize>>("{\"k\":")
+            .unwrap_err()
+            .is_eof()
+    );
+    assert!(
+        from_str::<BTreeMap<String, usize>>("{\"k\":0")
+            .unwrap_err()
+            .is_eof()
+    );
+    assert!(
+        from_str::<BTreeMap<String, usize>>("{\"k\":0,")
+            .unwrap_err()
+            .is_eof()
+    );
 
     let fail = FailReader(io::ErrorKind::NotConnected);
     assert!(from_reader::<_, String>(fail).unwrap_err().is_io());
@@ -1927,7 +1968,10 @@ fn test_into_io_error() {
         from_str::<T>(j).unwrap_err().into()
     }
 
-    assert_eq!(io_error::<String>("\"\\u").kind(), io::ErrorKind::UnexpectedEof);
+    assert_eq!(
+        io_error::<String>("\"\\u").kind(),
+        io::ErrorKind::UnexpectedEof
+    );
     assert_eq!(io_error::<String>("0").kind(), io::ErrorKind::InvalidData);
     assert_eq!(io_error::<String>("]").kind(), io::ErrorKind::InvalidData);
 
@@ -1948,5 +1992,8 @@ fn test_borrow() {
 #[test]
 fn null_invalid_type() {
     let err = serde_json::from_str::<String>("null").unwrap_err();
-    assert_eq!(format!("{}", err), String::from("invalid type: null, expected a string at line 1 column 4"));
+    assert_eq!(
+        format!("{}", err),
+        String::from("invalid type: null, expected a string at line 1 column 4")
+    );
 }

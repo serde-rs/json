@@ -318,10 +318,7 @@
 #![doc(html_root_url = "https://docs.rs/serde_json/1.0.13")]
 #![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
 // Whitelisted clippy lints
-#![cfg_attr(feature = "cargo-clippy", allow(
-    doc_markdown,
-    needless_pass_by_value,
-))]
+#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown, needless_pass_by_value))]
 // Whitelisted clippy_pedantic lints
 #![cfg_attr(feature = "cargo-clippy", allow(
 // Deserializer::from_str, into_iter
@@ -346,26 +343,25 @@
 // we support older compilers
     redundant_field_names,
 ))]
-
 #![deny(missing_docs)]
 
 extern crate num_traits;
 #[macro_use]
 extern crate serde;
-extern crate itoa;
 extern crate dtoa;
+extern crate itoa;
 #[cfg(feature = "preserve_order")]
 extern crate linked_hash_map;
 
 #[doc(inline)]
-pub use self::de::{Deserializer, StreamDeserializer, from_reader, from_slice, from_str};
+pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
 pub use self::error::{Error, Result};
 #[doc(inline)]
-pub use self::ser::{Serializer, to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer,
-                    to_writer_pretty};
+pub use self::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer,
+                    to_writer_pretty, Serializer};
 #[doc(inline)]
-pub use self::value::{Map, Number, Value, from_value, to_value};
+pub use self::value::{from_value, to_value, Map, Number, Value};
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
@@ -373,11 +369,9 @@ macro_rules! try {
     ($e:expr) => {
         match $e {
             ::std::result::Result::Ok(val) => val,
-            ::std::result::Result::Err(err) => {
-                return ::std::result::Result::Err(err)
-            }
+            ::std::result::Result::Err(err) => return ::std::result::Result::Err(err),
         }
-    }
+    };
 }
 
 #[macro_use]

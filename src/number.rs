@@ -7,14 +7,14 @@
 // except according to those terms.
 
 use error::Error;
-use serde::de::{self, Visitor, Unexpected};
-use serde::{Serialize, Serializer, Deserialize, Deserializer};
+use serde::de::{self, Unexpected, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{self, Debug, Display};
 use std::i64;
 use std::str::FromStr;
 
 #[cfg(not(feature = "arbitrary_precision"))]
-use num_traits::{NumCast};
+use num_traits::NumCast;
 
 #[cfg(feature = "arbitrary_precision")]
 use dtoa;
@@ -24,7 +24,7 @@ use itoa;
 use serde::de::{IntoDeserializer, MapAccess};
 
 #[cfg(feature = "arbitrary_precision")]
-use error::{ErrorCode};
+use error::ErrorCode;
 
 #[cfg(feature = "arbitrary_precision")]
 /// Not public API. Should be pub(crate).
@@ -158,8 +158,7 @@ impl Number {
         {
             for c in self.n.chars() {
                 if c == '.' || c == 'e' || c == 'E' {
-                    return self.n.parse::<f64>().ok()
-                        .map_or(false, |f| f.is_finite());
+                    return self.n.parse::<f64>().ok().map_or(false, |f| f.is_finite());
                 }
             }
             false
@@ -266,7 +265,9 @@ impl Number {
         if f.is_finite() {
             let n = {
                 #[cfg(not(feature = "arbitrary_precision"))]
-                { N::Float(f) }
+                {
+                    N::Float(f)
+                }
                 #[cfg(feature = "arbitrary_precision")]
                 {
                     let mut buf = Vec::new();
@@ -394,7 +395,7 @@ impl<'de> Deserialize<'de> for Number {
             #[inline]
             fn visit_map<V>(self, mut visitor: V) -> Result<Number, V::Error>
             where
-                V: de::MapAccess<'de>
+                V: de::MapAccess<'de>,
             {
                 let value = visitor.next_key::<NumberKey>()?;
                 if value.is_none() {
@@ -416,7 +417,7 @@ struct NumberKey;
 impl<'de> de::Deserialize<'de> for NumberKey {
     fn deserialize<D>(deserializer: D) -> Result<NumberKey, D::Error>
     where
-        D: de::Deserializer<'de>
+        D: de::Deserializer<'de>,
     {
         struct FieldVisitor;
 
@@ -428,7 +429,8 @@ impl<'de> de::Deserialize<'de> for NumberKey {
             }
 
             fn visit_str<E>(self, s: &str) -> Result<(), E>
-                where E: de::Error
+            where
+                E: de::Error,
             {
                 if s == SERDE_STRUCT_FIELD_NAME {
                     Ok(())
@@ -452,7 +454,7 @@ pub struct NumberFromString {
 impl<'de> de::Deserialize<'de> for NumberFromString {
     fn deserialize<D>(deserializer: D) -> Result<NumberFromString, D::Error>
     where
-        D: de::Deserializer<'de>
+        D: de::Deserializer<'de>,
     {
         struct Visitor;
 
@@ -464,7 +466,8 @@ impl<'de> de::Deserialize<'de> for NumberFromString {
             }
 
             fn visit_str<E>(self, s: &str) -> Result<NumberFromString, E>
-            where E: de::Error,
+            where
+                E: de::Error,
             {
                 let n = try!(s.parse().map_err(de::Error::custom));
                 Ok(NumberFromString { value: n })
@@ -607,7 +610,7 @@ impl<'de> MapAccess<'de> for NumberDeserializer {
         K: de::DeserializeSeed<'de>,
     {
         if self.number.is_none() {
-            return Ok(None)
+            return Ok(None);
         }
         seed.deserialize(NumberFieldDeserializer).map(Some)
     }
@@ -645,7 +648,9 @@ impl FromStr for Number {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        super::de::Deserializer::from_str(s).parse_any_signed_number().map(|n| n.into())
+        super::de::Deserializer::from_str(s)
+            .parse_any_signed_number()
+            .map(|n| n.into())
     }
 }
 
@@ -654,22 +659,34 @@ impl From<super::de::Number> for Number {
         let n = match value {
             super::de::Number::F64(f) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
-                { N::Float(f) }
+                {
+                    N::Float(f)
+                }
                 #[cfg(feature = "arbitrary_precision")]
-                { f.to_string() }
-            },
+                {
+                    f.to_string()
+                }
+            }
             super::de::Number::U64(u) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
-                { N::PosInt(u) }
+                {
+                    N::PosInt(u)
+                }
                 #[cfg(feature = "arbitrary_precision")]
-                { u.to_string() }
-            },
+                {
+                    u.to_string()
+                }
+            }
             super::de::Number::I64(i) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
-                { N::NegInt(i) }
+                {
+                    N::NegInt(i)
+                }
                 #[cfg(feature = "arbitrary_precision")]
-                { i.to_string() }
-            },
+                {
+                    i.to_string()
+                }
+            }
             #[cfg(feature = "arbitrary_precision")]
             super::de::Number::String(s) => s,
         };
