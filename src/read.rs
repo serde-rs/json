@@ -198,13 +198,11 @@ where
     fn next(&mut self) -> io::Result<Option<u8>> {
         match self.ch.take() {
             Some(ch) => Ok(Some(ch)),
-            None => {
-                match self.iter.next() {
-                    Some(Err(err)) => Err(err),
-                    Some(Ok(ch)) => Ok(Some(ch)),
-                    None => Ok(None),
-                }
-            }
+            None => match self.iter.next() {
+                Some(Err(err)) => Err(err),
+                Some(Ok(ch)) => Ok(Some(ch)),
+                None => Ok(None),
+            },
         }
     }
 
@@ -212,16 +210,14 @@ where
     fn peek(&mut self) -> io::Result<Option<u8>> {
         match self.ch {
             Some(ch) => Ok(Some(ch)),
-            None => {
-                match self.iter.next() {
-                    Some(Err(err)) => Err(err),
-                    Some(Ok(ch)) => {
-                        self.ch = Some(ch);
-                        Ok(self.ch)
-                    }
-                    None => Ok(None),
+            None => match self.iter.next() {
+                Some(Err(err)) => Err(err),
+                Some(Ok(ch)) => {
+                    self.ch = Some(ch);
+                    Ok(self.ch)
                 }
-            }
+                None => Ok(None),
+            },
         }
     }
 
@@ -374,28 +370,24 @@ impl<'a> Read<'a> for SliceRead<'a> {
     fn next(&mut self) -> io::Result<Option<u8>> {
         // `Ok(self.slice.get(self.index).map(|ch| { self.index += 1; *ch }))`
         // is about 10% slower.
-        Ok(
-            if self.index < self.slice.len() {
-                let ch = self.slice[self.index];
-                self.index += 1;
-                Some(ch)
-            } else {
-                None
-            },
-        )
+        Ok(if self.index < self.slice.len() {
+            let ch = self.slice[self.index];
+            self.index += 1;
+            Some(ch)
+        } else {
+            None
+        })
     }
 
     #[inline]
     fn peek(&mut self) -> io::Result<Option<u8>> {
         // `Ok(self.slice.get(self.index).map(|ch| *ch))` is about 10% slower
         // for some reason.
-        Ok(
-            if self.index < self.slice.len() {
-                Some(self.slice[self.index])
-            } else {
-                None
-            },
-        )
+        Ok(if self.index < self.slice.len() {
+            Some(self.slice[self.index])
+        } else {
+            None
+        })
     }
 
     #[inline]
@@ -458,7 +450,9 @@ impl<'a> Read<'a> for SliceRead<'a> {
 impl<'a> StrRead<'a> {
     /// Create a JSON input source to read from a UTF-8 string.
     pub fn new(s: &'a str) -> Self {
-        StrRead { delegate: SliceRead::new(s.as_bytes()) }
+        StrRead {
+            delegate: SliceRead::new(s.as_bytes()),
+        }
     }
 }
 
@@ -493,14 +487,11 @@ impl<'a> Read<'a> for StrRead<'a> {
     }
 
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
-        self.delegate
-            .parse_str_bytes(
-                scratch, true, |_, bytes| {
-                    // The input is assumed to be valid UTF-8 and the \u-escapes are
-                    // checked along the way, so don't need to check here.
-                    Ok(unsafe { str::from_utf8_unchecked(bytes) })
-                }
-            )
+        self.delegate.parse_str_bytes(scratch, true, |_, bytes| {
+            // The input is assumed to be valid UTF-8 and the \u-escapes are
+            // checked along the way, so don't need to check here.
+            Ok(unsafe { str::from_utf8_unchecked(bytes) })
+        })
     }
 
     fn parse_str_raw<'s>(
@@ -607,14 +598,12 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
                     }
                 }
 
-                n => {
-                    match char::from_u32(n as u32) {
-                        Some(c) => c,
-                        None => {
-                            return error(read, ErrorCode::InvalidUnicodeCodePoint);
-                        }
+                n => match char::from_u32(n as u32) {
+                    Some(c) => c,
+                    None => {
+                        return error(read, ErrorCode::InvalidUnicodeCodePoint);
                     }
-                }
+                },
             };
 
             // FIXME: this allocation is required in order to be compatible with stable

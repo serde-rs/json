@@ -18,7 +18,7 @@ use super::error::{Error, ErrorCode, Result};
 
 use read::{self, Reference};
 
-pub use read::{Read, IoRead, SliceRead, StrRead};
+pub use read::{IoRead, Read, SliceRead, StrRead};
 
 #[cfg(feature = "arbitrary_precision")]
 use number::NumberDeserializer;
@@ -80,7 +80,7 @@ impl<'a> Deserializer<read::StrRead<'a>> {
 macro_rules! overflow {
     ($a:ident * 10 + $b:ident, $c:expr) => {
         $a >= $c / 10 && ($a > $c / 10 || $b > $c % 10)
-    }
+    };
 }
 
 // Not public API. Should be pub(crate).
@@ -103,11 +103,7 @@ impl Number {
             Number::U64(x) => visitor.visit_u64(x),
             Number::I64(x) => visitor.visit_i64(x),
             #[cfg(feature = "arbitrary_precision")]
-            Number::String(x) => {
-                visitor.visit_map(NumberDeserializer {
-                    number: x.into(),
-                })
-            },
+            Number::String(x) => visitor.visit_map(NumberDeserializer { number: x.into() }),
         }
     }
 
@@ -229,12 +225,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     Err(err) => return err,
                 }
             }
-            b'0'...b'9' => {
-                match self.parse_any_number(true) {
-                    Ok(n) => n.invalid_type(exp),
-                    Err(err) => return err,
-                }
-            }
+            b'0'...b'9' => match self.parse_any_number(true) {
+                Ok(n) => n.invalid_type(exp),
+                Err(err) => return err,
+            },
             b'"' => {
                 self.eat_char();
                 self.str_buf.clear();
@@ -243,12 +237,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     Err(err) => return err,
                 }
             }
-            b'[' => {
-                de::Error::invalid_type(Unexpected::Seq, exp)
-            }
-            b'{' => {
-                de::Error::invalid_type(Unexpected::Map, exp)
-            }
+            b'[' => de::Error::invalid_type(Unexpected::Seq, exp),
+            b'{' => de::Error::invalid_type(Unexpected::Map, exp),
             _ => self.peek_error(ErrorCode::ExpectedSomeValue),
         };
 
@@ -506,9 +496,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 self.parse_any_number(false)
             }
-            b'0'...b'9' => {
-                self.parse_any_number(true)
-            }
+            b'0'...b'9' => self.parse_any_number(true),
             _ => Err(self.peek_error(ErrorCode::InvalidNumber)),
         };
 
@@ -529,14 +517,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(not(feature = "arbitrary_precision"))]
-    fn parse_any_number(&mut self, pos: bool) -> Result<Number>
-    {
+    fn parse_any_number(&mut self, pos: bool) -> Result<Number> {
         self.parse_integer(pos)
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    fn parse_any_number(&mut self, pos: bool) -> Result<Number>
-    {
+    fn parse_any_number(&mut self, pos: bool) -> Result<Number> {
         let mut buf = String::with_capacity(16);
         if !pos {
             buf.push('-');
@@ -552,9 +538,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 buf.push(b as char);
                 Ok(b)
             }
-            None => {
-                Ok(b'\x00')
-            }
+            None => Ok(b'\x00'),
         }
     }
 
@@ -564,25 +548,21 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             b'0' => {
                 // There can be only one leading '0'.
                 match try!(self.peek_or_null()) {
-                    b'0'...b'9' => {
-                        Err(self.peek_error(ErrorCode::InvalidNumber))
-                    }
+                    b'0'...b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
                     _ => self.scan_number(buf),
                 }
             }
-            b'1'...b'9' => {
-                loop {
-                    match try!(self.peek_or_null()) {
-                        c @ b'0'...b'9' => {
-                            self.eat_char();
-                            buf.push(c as char);
-                        }
-                        _ => {
-                            return self.scan_number(buf);
-                        }
+            b'1'...b'9' => loop {
+                match try!(self.peek_or_null()) {
+                    c @ b'0'...b'9' => {
+                        self.eat_char();
+                        buf.push(c as char);
+                    }
+                    _ => {
+                        return self.scan_number(buf);
                     }
                 }
-            }
+            },
             _ => Err(self.error(ErrorCode::InvalidNumber)),
         }
     }
@@ -751,9 +731,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 self.ignore_integer()
             }
-            b'0'...b'9' => {
-                self.ignore_integer()
-            }
+            b'0'...b'9' => self.ignore_integer(),
             b'"' => {
                 self.eat_char();
                 self.read.ignore_str()
@@ -780,9 +758,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.remaining_depth += 1;
                 res
             }
-            _ => {
-                Err(self.peek_error(ErrorCode::ExpectedSomeValue))
-            }
+            _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
         }
     }
 
@@ -794,11 +770,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     return Err(self.peek_error(ErrorCode::InvalidNumber));
                 }
             }
-            b'1'...b'9' => {
-                while let b'0'...b'9' = try!(self.peek_or_null()) {
-                    self.eat_char();
-                }
-            }
+            b'1'...b'9' => while let b'0'...b'9' = try!(self.peek_or_null()) {
+                self.eat_char();
+            },
             _ => {
                 return Err(self.error(ErrorCode::InvalidNumber));
             }
@@ -1016,9 +990,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 self.eat_char();
                 try!(self.parse_any_number(false)).visit(visitor)
             }
-            b'0'...b'9' => {
-                try!(self.parse_any_number(true)).visit(visitor)
-            }
+            b'0'...b'9' => try!(self.parse_any_number(true)).visit(visitor),
             b'"' => {
                 self.eat_char();
                 self.str_buf.clear();
@@ -1319,11 +1291,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
-    fn deserialize_unit_struct<V>(
-        self,
-        _name: &'static str,
-        visitor: V
-    ) -> Result<V::Value>
+    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -1376,11 +1344,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
-    fn deserialize_tuple<V>(
-        self,
-        _len: usize,
-        visitor: V
-    ) -> Result<V::Value>
+    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -1391,7 +1355,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self,
         _name: &'static str,
         _len: usize,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
@@ -1440,7 +1404,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self,
         _name: &'static str,
         _fields: &'static [&'static str],
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
@@ -1533,10 +1497,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
-    fn deserialize_identifier<V>(
-        self,
-        visitor: V
-    ) -> Result<V::Value>
+    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
@@ -1749,21 +1710,30 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for UnitVariantAccess<'a
     where
         T: de::DeserializeSeed<'de>,
     {
-        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"newtype variant"),)
+        Err(de::Error::invalid_type(
+            Unexpected::UnitVariant,
+            &"newtype variant",
+        ))
     }
 
     fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
-        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"tuple variant"),)
+        Err(de::Error::invalid_type(
+            Unexpected::UnitVariant,
+            &"tuple variant",
+        ))
     }
 
     fn struct_variant<V>(self, _fields: &'static [&'static str], _visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
-        Err(de::Error::invalid_type(Unexpected::UnitVariant, &"struct variant"),)
+        Err(de::Error::invalid_type(
+            Unexpected::UnitVariant,
+            &"struct variant",
+        ))
     }
 }
 
@@ -1963,13 +1933,16 @@ where
 
     fn peek_end_of_value(&mut self) -> Result<()> {
         match try!(self.de.peek()) {
-            Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') |
-            Some(b'"') | Some(b'[') | Some(b']') | Some(b'{') |
-            Some(b'}') | Some(b',') | Some(b':') | None => Ok(()),
+            Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b'"') | Some(b'[')
+            | Some(b']') | Some(b'{') | Some(b'}') | Some(b',') | Some(b':') | None => Ok(()),
             Some(_) => {
                 let pos = self.de.read.peek_position();
-                Err(Error::syntax(ErrorCode::TrailingCharacters, pos.line, pos.column))
-            },
+                Err(Error::syntax(
+                    ErrorCode::TrailingCharacters,
+                    pos.line,
+                    pos.column,
+                ))
+            }
         }
     }
 }
@@ -2010,10 +1983,10 @@ where
                             self.peek_end_of_value().map(|_| value)
                         }
                     }
-                    Err(e) => Err(e)
+                    Err(e) => Err(e),
                 })
             }
-            Err(e) => Some(Err(e))
+            Err(e) => Some(Err(e)),
         }
     }
 }
