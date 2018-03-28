@@ -4,7 +4,7 @@
 [travis]: https://travis-ci.org/serde-rs/json
 [Latest Version]: https://img.shields.io/crates/v/serde_json.svg
 [crates.io]: https://crates.io/crates/serde\_json
-[Rustc Version 1.15+]: https://img.shields.io/badge/rustc-1.15+-bc71d0.svg
+[Rustc Version 1.15+]: https://img.shields.io/badge/rustc-1.15+-lightgray.svg
 [rustc]: https://blog.rust-lang.org/2017/02/02/Rust-1.15.html
 
 **Serde is a framework for *ser*ializing and *de*serializing Rust data structures efficiently and generically.**
