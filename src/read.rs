@@ -292,19 +292,19 @@ impl<'a> SliceRead<'a> {
     }
 
     fn position_of_index(&self, i: usize) -> Position {
-        let mut pos = Position { line: 1, column: 0 };
+        let mut position = Position { line: 1, column: 0 };
         for ch in &self.slice[..i] {
             match *ch {
                 b'\n' => {
-                    pos.line += 1;
-                    pos.column = 0;
+                    position.line += 1;
+                    position.column = 0;
                 }
                 _ => {
-                    pos.column += 1;
+                    position.column += 1;
                 }
             }
         }
-        pos
+        position
     }
 
     /// The big optimization here over IoRead is that if the string contains no
@@ -544,8 +544,8 @@ fn next_or_eof<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<u8> {
 }
 
 fn error<'de, R: ?Sized + Read<'de>, T>(read: &R, reason: ErrorCode) -> Result<T> {
-    let pos = read.position();
-    Err(Error::syntax(reason, pos.line, pos.column))
+    let position = read.position();
+    Err(Error::syntax(reason, position.line, position.column))
 }
 
 fn as_str<'de, 's, R: Read<'de>>(read: &R, slice: &'s [u8]) -> Result<&'s str> {

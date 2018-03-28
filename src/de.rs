@@ -168,15 +168,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     /// Error caused by a byte from next_char().
     #[cold]
     fn error(&self, reason: ErrorCode) -> Error {
-        let pos = self.read.position();
-        Error::syntax(reason, pos.line, pos.column)
+        let position = self.read.position();
+        Error::syntax(reason, position.line, position.column)
     }
 
     /// Error caused by a byte from peek().
     #[cold]
     fn peek_error(&self, reason: ErrorCode) -> Error {
-        let pos = self.read.peek_position();
-        Error::syntax(reason, pos.line, pos.column)
+        let position = self.read.peek_position();
+        Error::syntax(reason, position.line, position.column)
     }
 
     /// Returns the first non-whitespace byte without consuming it, or `None` if
@@ -1936,11 +1936,11 @@ where
             Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b'"') | Some(b'[')
             | Some(b']') | Some(b'{') | Some(b'}') | Some(b',') | Some(b':') | None => Ok(()),
             Some(_) => {
-                let pos = self.de.read.peek_position();
+                let position = self.de.read.peek_position();
                 Err(Error::syntax(
                     ErrorCode::TrailingCharacters,
-                    pos.line,
-                    pos.column,
+                    position.line,
+                    position.column,
                 ))
             }
         }
