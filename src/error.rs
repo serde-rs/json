@@ -179,7 +179,6 @@ impl From<Error> for io::Error {
     }
 }
 
-#[derive(Debug)]
 struct ErrorImpl {
     code: ErrorCode,
     line: usize,
@@ -188,7 +187,6 @@ struct ErrorImpl {
 
 // Not public API. Should be pub(crate).
 #[doc(hidden)]
-#[derive(Debug)]
 pub enum ErrorCode {
     /// Catchall for syntax error messages
     Message(Box<str>),
@@ -382,7 +380,13 @@ impl Display for ErrorImpl {
 // end up seeing this representation because it is what unwrap() shows.
 impl Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&*self.err, f)
+        write!(
+            f,
+            "Error({:?}, line: {}, column: {})",
+            self.err.code.to_string(),
+            self.err.line,
+            self.err.column
+        )
     }
 }
 

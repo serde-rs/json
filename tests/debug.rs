@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate serde_json;
 
-use serde_json::Number;
+use serde_json::{Number, Value};
 
 #[test]
 fn number() {
@@ -44,4 +44,11 @@ fn value_array() {
 #[test]
 fn value_object() {
     assert_eq!(format!("{:?}", json!({})), "Object({})");
+}
+
+#[test]
+fn error() {
+    let err = serde_json::from_str::<Value>("{0}").unwrap_err();
+    let expected = "Error(\"key must be a string\", line: 1, column: 2)";
+    assert_eq!(format!("{:?}", err), expected);
 }
