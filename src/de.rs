@@ -517,14 +517,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(not(feature = "arbitrary_precision"))]
-    fn parse_any_number(&mut self, pos: bool) -> Result<Number> {
-        self.parse_integer(pos)
+    fn parse_any_number(&mut self, positive: bool) -> Result<Number> {
+        self.parse_integer(positive)
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    fn parse_any_number(&mut self, pos: bool) -> Result<Number> {
+    fn parse_any_number(&mut self, positive: bool) -> Result<Number> {
         let mut buf = String::with_capacity(16);
-        if !pos {
+        if !positive {
             buf.push('-');
         }
         self.scan_integer(&mut buf)?;
