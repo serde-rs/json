@@ -38,9 +38,7 @@ default = []
 # while preserving the order of map keys in the input.
 preserve_order = ["linked-hash-map"]
 
-# Use `String` to represent numbers internally, thus allowing the serialization
-# and deserialization of numbers of arbitrary size/precision, instead of just
-# the primitive integers and floats.
-# This feature does not provide provide the ability to do arithmetic on
-# arbitrary-precision numbers; this is left to the discretion of the consumer.
+# Use an arbitrary precision number representation for serde_json::Number. This
+# allows JSON numbers of arbitrary size/precision to be read into a Number and
+# written back to a JSON string without loss of precision.
 arbitrary_precision = []
