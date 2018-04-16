@@ -15,8 +15,8 @@ use std::str;
 use std::vec;
 
 use serde;
-use serde::de::{Deserialize, DeserializeSeed, EnumAccess, IntoDeserializer, MapAccess, SeqAccess,
-                Unexpected, VariantAccess, Visitor};
+use serde::de::{Deserialize, DeserializeSeed, EnumAccess, Expected, IntoDeserializer, MapAccess,
+                SeqAccess, Unexpected, VariantAccess, Visitor};
 
 use error::Error;
 use map::Map;
@@ -230,7 +230,10 @@ macro_rules! deserialize_prim_number {
         where
             V: Visitor<'de>,
         {
-            self.deserialize_any(visitor)
+            match self {
+                Value::Number(n) => n.deserialize_any(visitor),
+                _ => Err(self.invalid_type(&visitor)),
+            }
         }
 
         #[cfg(feature = "arbitrary_precision")]
@@ -243,6 +246,42 @@ macro_rules! deserialize_prim_number {
                 _ => self.deserialize_any(visitor),
             }
         }
+    }
+}
+
+fn visit_array<'de, V>(array: Vec<Value>, visitor: V) -> Result<V::Value, Error>
+where
+    V: Visitor<'de>,
+{
+    let len = array.len();
+    let mut deserializer = SeqDeserializer::new(array);
+    let seq = try!(visitor.visit_seq(&mut deserializer));
+    let remaining = deserializer.iter.len();
+    if remaining == 0 {
+        Ok(seq)
+    } else {
+        Err(serde::de::Error::invalid_length(
+            len,
+            &"fewer elements in array",
+        ))
+    }
+}
+
+fn visit_object<'de, V>(object: Map<String, Value>, visitor: V) -> Result<V::Value, Error>
+where
+    V: Visitor<'de>,
+{
+    let len = object.len();
+    let mut deserializer = MapDeserializer::new(object);
+    let map = try!(visitor.visit_map(&mut deserializer));
+    let remaining = deserializer.iter.len();
+    if remaining == 0 {
+        Ok(map)
+    } else {
+        Err(serde::de::Error::invalid_length(
+            len,
+            &"fewer elements in map",
+        ))
     }
 }
 
@@ -259,34 +298,8 @@ impl<'de> serde::Deserializer<'de> for Value {
             Value::Bool(v) => visitor.visit_bool(v),
             Value::Number(n) => n.deserialize_any(visitor),
             Value::String(v) => visitor.visit_string(v),
-            Value::Array(v) => {
-                let len = v.len();
-                let mut deserializer = SeqDeserializer::new(v);
-                let seq = try!(visitor.visit_seq(&mut deserializer));
-                let remaining = deserializer.iter.len();
-                if remaining == 0 {
-                    Ok(seq)
-                } else {
-                    Err(serde::de::Error::invalid_length(
-                        len,
-                        &"fewer elements in array",
-                    ))
-                }
-            }
-            Value::Object(v) => {
-                let len = v.len();
-                let mut deserializer = MapDeserializer::new(v);
-                let map = try!(visitor.visit_map(&mut deserializer));
-                let remaining = deserializer.iter.len();
-                if remaining == 0 {
-                    Ok(map)
-                } else {
-                    Err(serde::de::Error::invalid_length(
-                        len,
-                        &"fewer elements in map",
-                    ))
-                }
-            }
+            Value::Array(v) => visit_array(v, visitor),
+            Value::Object(v) => visit_object(v, visitor),
         }
     }
 
@@ -370,9 +383,156 @@ impl<'de> serde::Deserializer<'de> for Value {
         visitor.visit_newtype_struct(self)
     }
 
-    forward_to_deserialize_any! {
-        bool char str string bytes byte_buf unit unit_struct seq tuple
-        tuple_struct map struct identifier ignored_any
+    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::Bool(v) => visitor.visit_bool(v),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_string(visitor)
+    }
+
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_string(visitor)
+    }
+
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::String(v) => visitor.visit_string(v),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_byte_buf(visitor)
+    }
+
+    fn deserialize_byte_buf<V>(
+        self,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::String(v) => visitor.visit_string(v),
+            Value::Array(v) => visit_array(v, visitor),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::Null => visitor.visit_unit(),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_unit_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_unit(visitor)
+    }
+
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::Array(v) => visit_array(v, visitor),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_tuple<V>(
+        self,
+        _len: usize,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_seq(visitor)
+    }
+
+    fn deserialize_tuple_struct<V>(
+        self,
+        _name: &'static str,
+        _len: usize,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_seq(visitor)
+    }
+
+    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::Object(v) => visit_object(v, visitor),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_struct<V>(
+        self,
+        _name: &'static str,
+        _fields: &'static [&'static str],
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_map(visitor)
+    }
+
+    fn deserialize_identifier<V>(
+        self,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_string(visitor)
+    }
+
+    fn deserialize_ignored_any<V>(
+        self,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        drop(self);
+        visitor.visit_unit()
     }
 }
 
@@ -1100,6 +1260,14 @@ impl<'a, 'de> Visitor<'de> for NumberOrObject<'a> {
 }
 
 impl Value {
+    #[cold]
+    fn invalid_type<E>(self, exp: &Expected) -> E
+    where
+        E: serde::de::Error,
+    {
+        serde::de::Error::invalid_type(self.unexpected(), exp)
+    }
+
     fn unexpected(&self) -> Unexpected {
         match *self {
             Value::Null => Unexpected::Unit,
