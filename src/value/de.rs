@@ -766,7 +766,10 @@ macro_rules! deserialize_value_ref_number {
         where
             V: Visitor<'de>,
         {
-            self.deserialize_any(visitor)
+            match *self {
+                Value::Number(ref n) => n.deserialize_any(visitor),
+                _ => Err(self.invalid_type(&visitor)),
+            }
         }
 
         #[cfg(feature = "arbitrary_precision")]
@@ -782,6 +785,42 @@ macro_rules! deserialize_value_ref_number {
     }
 }
 
+fn visit_array_ref<'de, V>(array: &'de [Value], visitor: V) -> Result<V::Value, Error>
+where
+    V: Visitor<'de>,
+{
+    let len = array.len();
+    let mut deserializer = SeqRefDeserializer::new(array);
+    let seq = try!(visitor.visit_seq(&mut deserializer));
+    let remaining = deserializer.iter.len();
+    if remaining == 0 {
+        Ok(seq)
+    } else {
+        Err(serde::de::Error::invalid_length(
+            len,
+            &"fewer elements in array",
+        ))
+    }
+}
+
+fn visit_object_ref<'de, V>(object: &'de Map<String, Value>, visitor: V) -> Result<V::Value, Error>
+where
+    V: Visitor<'de>,
+{
+    let len = object.len();
+    let mut deserializer = MapRefDeserializer::new(object);
+    let map = try!(visitor.visit_map(&mut deserializer));
+    let remaining = deserializer.iter.len();
+    if remaining == 0 {
+        Ok(map)
+    } else {
+        Err(serde::de::Error::invalid_length(
+            len,
+            &"fewer elements in map",
+        ))
+    }
+}
+
 impl<'de> serde::Deserializer<'de> for &'de Value {
     type Error = Error;
 
@@ -794,34 +833,8 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             Value::Bool(v) => visitor.visit_bool(v),
             Value::Number(ref n) => n.deserialize_any(visitor),
             Value::String(ref v) => visitor.visit_borrowed_str(v),
-            Value::Array(ref v) => {
-                let len = v.len();
-                let mut deserializer = SeqRefDeserializer::new(v);
-                let seq = try!(visitor.visit_seq(&mut deserializer));
-                let remaining = deserializer.iter.len();
-                if remaining == 0 {
-                    Ok(seq)
-                } else {
-                    Err(serde::de::Error::invalid_length(
-                        len,
-                        &"fewer elements in array",
-                    ))
-                }
-            }
-            Value::Object(ref v) => {
-                let len = v.len();
-                let mut deserializer = MapRefDeserializer::new(v);
-                let map = try!(visitor.visit_map(&mut deserializer));
-                let remaining = deserializer.iter.len();
-                if remaining == 0 {
-                    Ok(map)
-                } else {
-                    Err(serde::de::Error::invalid_length(
-                        len,
-                        &"fewer elements in map",
-                    ))
-                }
-            }
+            Value::Array(ref v) => visit_array_ref(v, visitor),
+            Value::Object(ref v) => visit_object_ref(v, visitor),
         }
     }
 
@@ -903,9 +916,155 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         visitor.visit_newtype_struct(self)
     }
 
-    forward_to_deserialize_any! {
-        bool char str string bytes byte_buf unit unit_struct seq tuple
-        tuple_struct map struct identifier ignored_any
+    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match *self {
+            Value::Bool(v) => visitor.visit_bool(v),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(visitor)
+    }
+
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match self {
+            Value::String(ref v) => visitor.visit_borrowed_str(v),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(visitor)
+    }
+
+    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match *self {
+            Value::String(ref v) => visitor.visit_borrowed_str(v),
+            Value::Array(ref v) => visit_array_ref(v, visitor),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_byte_buf<V>(
+        self,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_bytes(visitor)
+    }
+
+    fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match *self {
+            Value::Null => visitor.visit_unit(),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_unit_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_unit(visitor)
+    }
+
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match *self {
+            Value::Array(ref v) => visit_array_ref(v, visitor),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_tuple<V>(
+        self,
+        _len: usize,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_seq(visitor)
+    }
+
+    fn deserialize_tuple_struct<V>(
+        self,
+        _name: &'static str,
+        _len: usize,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_seq(visitor)
+    }
+
+    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        match *self {
+            Value::Object(ref v) => visit_object_ref(v, visitor),
+            _ => Err(self.invalid_type(&visitor)),
+        }
+    }
+
+    fn deserialize_struct<V>(
+        self,
+        _name: &'static str,
+        _fields: &'static [&'static str],
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_map(visitor)
+    }
+
+    fn deserialize_identifier<V>(
+        self,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(visitor)
+    }
+
+    fn deserialize_ignored_any<V>(
+        self,
+        visitor: V
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_unit()
     }
 }
 
@@ -1261,7 +1420,7 @@ impl<'a, 'de> Visitor<'de> for NumberOrObject<'a> {
 
 impl Value {
     #[cold]
-    fn invalid_type<E>(self, exp: &Expected) -> E
+    fn invalid_type<E>(&self, exp: &Expected) -> E
     where
         E: serde::de::Error,
     {
