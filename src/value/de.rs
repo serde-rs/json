@@ -928,7 +928,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     where
         V: Visitor<'de>,
     {
-        match self {
+        match *self {
             Value::String(ref v) => visitor.visit_borrowed_str(v),
             _ => Err(self.invalid_type(&visitor)),
         }
