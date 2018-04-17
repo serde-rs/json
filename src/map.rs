@@ -15,12 +15,12 @@
 //! [`LinkedHashMap`]: https://docs.rs/linked-hash-map/*/linked_hash_map/struct.LinkedHashMap.html
 
 use serde::{de, ser};
+use std::borrow::Borrow;
 use std::fmt::{self, Debug};
-use value::Value;
 use std::hash::Hash;
 use std::iter::FromIterator;
-use std::borrow::Borrow;
 use std::ops;
+use value::Value;
 
 #[cfg(not(feature = "preserve_order"))]
 use std::collections::{btree_map, BTreeMap};
@@ -144,10 +144,10 @@ impl Map<String, Value> {
     where
         S: Into<String>,
     {
-        #[cfg(not(feature = "preserve_order"))]
-        use std::collections::btree_map::Entry as EntryImpl;
         #[cfg(feature = "preserve_order")]
         use linked_hash_map::Entry as EntryImpl;
+        #[cfg(not(feature = "preserve_order"))]
+        use std::collections::btree_map::Entry as EntryImpl;
 
         match self.map.entry(key.into()) {
             EntryImpl::Vacant(vacant) => Entry::Vacant(VacantEntry { vacant: vacant }),

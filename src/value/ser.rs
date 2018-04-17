@@ -6,8 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use serde::{self, Serialize};
 use serde::ser::Impossible;
+use serde::{self, Serialize};
 
 use error::{Error, ErrorCode};
 use map::Map;

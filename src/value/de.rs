@@ -424,10 +424,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         self.deserialize_byte_buf(visitor)
     }
 
-    fn deserialize_byte_buf<V>(
-        self,
-        visitor: V
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -451,7 +448,7 @@ impl<'de> serde::Deserializer<'de> for Value {
     fn deserialize_unit_struct<V>(
         self,
         _name: &'static str,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
@@ -469,11 +466,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_tuple<V>(
-        self,
-        _len: usize,
-        visitor: V
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -484,7 +477,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         self,
         _name: &'static str,
         _len: usize,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
@@ -506,7 +499,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         self,
         _name: &'static str,
         _fields: &'static [&'static str],
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
@@ -518,20 +511,14 @@ impl<'de> serde::Deserializer<'de> for Value {
         }
     }
 
-    fn deserialize_identifier<V>(
-        self,
-        visitor: V
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
         self.deserialize_string(visitor)
     }
 
-    fn deserialize_ignored_any<V>(
-        self,
-        visitor: V
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -965,10 +952,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         }
     }
 
-    fn deserialize_byte_buf<V>(
-        self,
-        visitor: V
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -988,7 +972,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     fn deserialize_unit_struct<V>(
         self,
         _name: &'static str,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
@@ -1006,11 +990,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         }
     }
 
-    fn deserialize_tuple<V>(
-        self,
-        _len: usize,
-        visitor: V
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -1021,7 +1001,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         self,
         _name: &'static str,
         _len: usize,
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
@@ -1043,7 +1023,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         self,
         _name: &'static str,
         _fields: &'static [&'static str],
-        visitor: V
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
@@ -1055,20 +1035,14 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         }
     }
 
-    fn deserialize_identifier<V>(
-        self,
-        visitor: V
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
         self.deserialize_str(visitor)
     }
 
-    fn deserialize_ignored_any<V>(
-        self,
-        visitor: V
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {

@@ -24,14 +24,14 @@ extern crate serde_json;
 mod macros;
 
 use std::collections::BTreeMap;
-use std::{f32, f64};
 use std::fmt::{self, Debug};
-use std::{i16, i32, i64, i8};
 use std::io;
 use std::iter;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::string::ToString;
+use std::{f32, f64};
+use std::{i16, i32, i64, i8};
 use std::{u16, u32, u64, u8};
 
 use serde::de::{self, Deserialize, IgnoredAny};
@@ -238,19 +238,15 @@ fn test_write_list() {
 
     let long_test_list = json!([false, null, ["foo\nbar", 3.5]]);
 
-    test_encode_ok(&[
-        (
-            long_test_list.clone(),
-            json_str!([false, null, ["foo\nbar", 3.5]]),
-        ),
-    ]);
+    test_encode_ok(&[(
+        long_test_list.clone(),
+        json_str!([false, null, ["foo\nbar", 3.5]]),
+    )]);
 
-    test_pretty_encode_ok(&[
-        (
-            long_test_list,
-            pretty_str!([false, null, ["foo\nbar", 3.5]]),
-        ),
-    ]);
+    test_pretty_encode_ok(&[(
+        long_test_list,
+        pretty_str!([false, null, ["foo\nbar", 3.5]]),
+    )]);
 }
 
 #[test]
@@ -434,37 +430,33 @@ fn test_write_object() {
         ]
     });
 
-    test_encode_ok(&[
-        (
-            complex_obj.clone(),
-            json_str!({
-                "b": [
-                    {
-                        "c": (r#""\f\u001f\r""#)
-                    },
-                    {
-                        "d": ""
-                    }
-                ]
-            }),
-        ),
-    ]);
+    test_encode_ok(&[(
+        complex_obj.clone(),
+        json_str!({
+            "b": [
+                {
+                    "c": (r#""\f\u001f\r""#)
+                },
+                {
+                    "d": ""
+                }
+            ]
+        }),
+    )]);
 
-    test_pretty_encode_ok(&[
-        (
-            complex_obj.clone(),
-            pretty_str!({
-                "b": [
-                    {
-                        "c": (r#""\f\u001f\r""#)
-                    },
-                    {
-                        "d": ""
-                    }
-                ]
-            }),
-        ),
-    ]);
+    test_pretty_encode_ok(&[(
+        complex_obj.clone(),
+        pretty_str!({
+            "b": [
+                {
+                    "c": (r#""\f\u001f\r""#)
+                },
+                {
+                    "d": ""
+                }
+            ]
+        }),
+    )]);
 }
 
 #[test]
@@ -1095,17 +1087,15 @@ fn test_parse_object() {
         ),
     ]);
 
-    test_parse_ok(vec![
-        (
-            "{\"a\": {\"b\": 3, \"c\": 4}}",
-            treemap!(
-                "a".to_string() => treemap!(
-                    "b".to_string() => 3u64,
-                    "c".to_string() => 4
-                )
-            ),
+    test_parse_ok(vec![(
+        "{\"a\": {\"b\": 3, \"c\": 4}}",
+        treemap!(
+            "a".to_string() => treemap!(
+                "b".to_string() => 3u64,
+                "c".to_string() => 4
+            )
         ),
-    ]);
+    )]);
 }
 
 #[test]
@@ -1148,13 +1138,11 @@ fn test_parse_struct() {
                 ]
             }",
             Outer {
-                inner: vec![
-                    Inner {
-                        a: (),
-                        b: 2,
-                        c: vec!["abc".to_string(), "xyz".to_string()],
-                    },
-                ],
+                inner: vec![Inner {
+                    a: (),
+                    b: 2,
+                    c: vec!["abc".to_string(), "xyz".to_string()],
+                }],
             },
         ),
     ]);
@@ -1170,13 +1158,11 @@ fn test_parse_struct() {
     assert_eq!(
         v,
         Outer {
-            inner: vec![
-                Inner {
-                    a: (),
-                    b: 2,
-                    c: vec!["abc".to_string(), "xyz".to_string()],
-                },
-            ],
+            inner: vec![Inner {
+                a: (),
+                b: 2,
+                c: vec!["abc".to_string(), "xyz".to_string()],
+            }],
         }
     );
 
@@ -1275,20 +1261,18 @@ fn test_parse_enum() {
         (" { \"Dog\" : null } ", Animal::Dog),
     ]);
 
-    test_parse_ok(vec![
-        (
-            concat!(
-                "{",
-                "  \"a\": \"Dog\",",
-                "  \"b\": {\"Frog\":[\"Henry\", []]}",
-                "}"
-            ),
-            treemap!(
-                "a".to_string() => Animal::Dog,
-                "b".to_string() => Animal::Frog("Henry".to_string(), vec![])
-            ),
+    test_parse_ok(vec![(
+        concat!(
+            "{",
+            "  \"a\": \"Dog\",",
+            "  \"b\": {\"Frog\":[\"Henry\", []]}",
+            "}"
         ),
-    ]);
+        treemap!(
+            "a".to_string() => Animal::Dog,
+            "b".to_string() => Animal::Frog("Henry".to_string(), vec![])
+        ),
+    )]);
 }
 
 #[test]
@@ -1303,12 +1287,10 @@ fn test_parse_trailing_whitespace() {
 
 #[test]
 fn test_multiline_errors() {
-    test_parse_err::<BTreeMap<String, String>>(&[
-        (
-            "{\n  \"foo\":\n \"bar\"",
-            "EOF while parsing an object at line 3 column 6",
-        ),
-    ]);
+    test_parse_err::<BTreeMap<String, String>>(&[(
+        "{\n  \"foo\":\n \"bar\"",
+        "EOF while parsing an object at line 3 column 6",
+    )]);
 }
 
 #[test]
@@ -1543,9 +1525,9 @@ fn test_serialize_map_with_no_len() {
 
 #[test]
 fn test_deserialize_from_stream() {
+    use serde::Deserialize;
     use std::net;
     use std::thread;
-    use serde::Deserialize;
 
     #[derive(Debug, PartialEq, Serialize, Deserialize)]
     struct Message {
@@ -1763,12 +1745,10 @@ fn test_integer_key() {
     test_parse_ok(vec![(j, map)]);
 
     let j = r#"{"x":null}"#;
-    test_parse_err::<BTreeMap<i32, ()>>(&[
-        (
-            j,
-            "invalid type: string \"x\", expected i32 at line 1 column 4",
-        ),
-    ]);
+    test_parse_err::<BTreeMap<i32, ()>>(&[(
+        j,
+        "invalid type: string \"x\", expected i32 at line 1 column 4",
+    )]);
 }
 
 #[test]

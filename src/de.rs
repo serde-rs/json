@@ -8,9 +8,9 @@
 
 //! Deserialize JSON data to a Rust data structure.
 
-use std::{i32, u64};
 use std::io;
 use std::marker::PhantomData;
+use std::{i32, u64};
 
 use serde::de::{self, Expected, Unexpected};
 

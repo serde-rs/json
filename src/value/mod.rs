@@ -112,8 +112,8 @@ use std::i64;
 use std::mem;
 use std::str;
 
-use serde::ser::Serialize;
 use serde::de::DeserializeOwned;
+use serde::ser::Serialize;
 
 use error::Error;
 pub use map::Map;
@@ -948,11 +948,11 @@ impl Default for Value {
     }
 }
 
+mod de;
+mod from;
 mod index;
 mod partial_eq;
-mod from;
 mod ser;
-mod de;
 
 /// Convert a `T` into `serde_json::Value` which is an enum that can represent
 /// any valid JSON data.

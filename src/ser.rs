@@ -13,11 +13,11 @@ use std::io;
 use std::num::FpCategory;
 use std::str;
 
-use serde::ser::{self, Impossible};
 use super::error::{Error, ErrorCode, Result};
+use serde::ser::{self, Impossible};
 
-use itoa;
 use dtoa;
+use itoa;
 
 #[cfg(feature = "arbitrary_precision")]
 use serde::Serialize;
