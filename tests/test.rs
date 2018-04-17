@@ -1179,6 +1179,10 @@ fn test_parse_struct() {
             ],
         }
     );
+
+    let j = json!([null, 2, []]);
+    Inner::deserialize(&j).unwrap();
+    Inner::deserialize(j).unwrap();
 }
 
 #[test]

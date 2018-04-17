@@ -511,7 +511,11 @@ impl<'de> serde::Deserializer<'de> for Value {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_map(visitor)
+        match self {
+            Value::Array(v) => visit_array(v, visitor),
+            Value::Object(v) => visit_object(v, visitor),
+            _ => Err(self.invalid_type(&visitor)),
+        }
     }
 
     fn deserialize_identifier<V>(
@@ -1044,7 +1048,11 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_map(visitor)
+        match *self {
+            Value::Array(ref v) => visit_array_ref(v, visitor),
+            Value::Object(ref v) => visit_object_ref(v, visitor),
+            _ => Err(self.invalid_type(&visitor)),
+        }
     }
 
     fn deserialize_identifier<V>(
