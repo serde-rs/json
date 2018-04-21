@@ -19,6 +19,8 @@ use itoa;
 #[cfg(feature = "arbitrary_precision")]
 use serde::de::{IntoDeserializer, MapAccess};
 
+use de::ParserNumber;
+
 #[cfg(feature = "arbitrary_precision")]
 use error::ErrorCode;
 
@@ -643,10 +645,10 @@ impl<'de> Deserializer<'de> for NumberFieldDeserializer {
     }
 }
 
-impl From<super::de::Number> for Number {
-    fn from(value: super::de::Number) -> Self {
+impl From<ParserNumber> for Number {
+    fn from(value: ParserNumber) -> Self {
         let n = match value {
-            super::de::Number::F64(f) => {
+            ParserNumber::F64(f) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
                 {
                     N::Float(f)
@@ -656,7 +658,7 @@ impl From<super::de::Number> for Number {
                     f.to_string()
                 }
             }
-            super::de::Number::U64(u) => {
+            ParserNumber::U64(u) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
                 {
                     N::PosInt(u)
@@ -666,7 +668,7 @@ impl From<super::de::Number> for Number {
                     u.to_string()
                 }
             }
-            super::de::Number::I64(i) => {
+            ParserNumber::I64(i) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
                 {
                     N::NegInt(i)
@@ -677,7 +679,7 @@ impl From<super::de::Number> for Number {
                 }
             }
             #[cfg(feature = "arbitrary_precision")]
-            super::de::Number::String(s) => s,
+            ParserNumber::String(s) => s,
         };
         Number { n: n }
     }
