@@ -198,6 +198,15 @@ impl Map<String, Value> {
             iter: self.map.values(),
         }
     }
+
+    /// Gets an iterator over mutable values of the map.
+    #[inline]
+    pub fn values_mut(&mut self) -> ValuesMut {
+        ValuesMut {
+            // Currently linked-hash-map does not have a values_mut.
+            iter: self.map.iter_mut(),
+        }
+    }
 }
 
 impl Default for Map<String, Value> {
@@ -820,3 +829,36 @@ type ValuesImpl<'a> = btree_map::Values<'a, String, Value>;
 type ValuesImpl<'a> = linked_hash_map::Values<'a, String, Value>;
 
 delegate_iterator!((Values<'a>) => &'a Value);
+
+//////////////////////////////////////////////////////////////////////////////
+
+/// A mutable iterator over a serde_json::Map's values.
+pub struct ValuesMut<'a> {
+    iter: IterMutImpl<'a>,
+}
+
+impl<'a> Iterator for ValuesMut<'a> {
+    type Item = &'a mut Value;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(|(_, v)| v)
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<'a> DoubleEndedIterator for ValuesMut<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back().map(|(_, v)| v)
+    }
+}
+
+impl<'a> ExactSizeIterator for ValuesMut<'a> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
