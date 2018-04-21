@@ -748,6 +748,7 @@ impl Number {
     #[cfg(not(feature = "arbitrary_precision"))]
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
+    #[cold]
     pub fn unexpected(&self) -> Unexpected {
         match self.n {
             N::PosInt(u) => Unexpected::Unsigned(u),
@@ -759,6 +760,7 @@ impl Number {
     #[cfg(feature = "arbitrary_precision")]
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
+    #[cold]
     pub fn unexpected(&self) -> Unexpected {
         Unexpected::Other("number")
     }

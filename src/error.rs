@@ -264,6 +264,7 @@ pub enum ErrorCode {
 impl Error {
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
+    #[cold]
     pub fn syntax(code: ErrorCode, line: usize, column: usize) -> Self {
         Error {
             err: Box::new(ErrorImpl {
@@ -278,6 +279,7 @@ impl Error {
     //
     // Update `eager_json` crate when this function changes.
     #[doc(hidden)]
+    #[cold]
     pub fn io(error: io::Error) -> Self {
         Error {
             err: Box::new(ErrorImpl {
@@ -290,6 +292,7 @@ impl Error {
 
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
+    #[cold]
     pub fn fix_position<F>(self, f: F) -> Self
     where
         F: FnOnce(ErrorCode) -> Error,
@@ -391,6 +394,7 @@ impl Debug for Error {
 }
 
 impl de::Error for Error {
+    #[cold]
     fn custom<T: Display>(msg: T) -> Error {
         Error {
             err: Box::new(ErrorImpl {
@@ -401,6 +405,7 @@ impl de::Error for Error {
         }
     }
 
+    #[cold]
     fn invalid_type(unexp: de::Unexpected, exp: &de::Expected) -> Self {
         if let de::Unexpected::Unit = unexp {
             Error::custom(format_args!("invalid type: null, expected {}", exp))
@@ -411,6 +416,7 @@ impl de::Error for Error {
 }
 
 impl ser::Error for Error {
+    #[cold]
     fn custom<T: Display>(msg: T) -> Error {
         Error {
             err: Box::new(ErrorImpl {

@@ -1409,6 +1409,7 @@ impl Value {
         serde::de::Error::invalid_type(self.unexpected(), exp)
     }
 
+    #[cold]
     fn unexpected(&self) -> Unexpected {
         match *self {
             Value::Null => Unexpected::Unit,
