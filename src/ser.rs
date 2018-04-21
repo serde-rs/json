@@ -1436,7 +1436,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(|_| ())
+        itoa::write(writer, value).map(drop)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -1445,7 +1445,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(|_| ())
+        itoa::write(writer, value).map(drop)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -1454,7 +1454,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(|_| ())
+        itoa::write(writer, value).map(drop)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -1463,7 +1463,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(|_| ())
+        itoa::write(writer, value).map(drop)
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -1472,7 +1472,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(|_| ())
+        itoa::write(writer, value).map(drop)
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -1481,7 +1481,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(|_| ())
+        itoa::write(writer, value).map(drop)
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -1490,7 +1490,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(|_| ())
+        itoa::write(writer, value).map(drop)
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -1499,7 +1499,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(|_| ())
+        itoa::write(writer, value).map(drop)
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
@@ -1508,7 +1508,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        dtoa::write(writer, value).map(|_| ())
+        dtoa::write(writer, value).map(drop)
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
@@ -1517,7 +1517,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        dtoa::write(writer, value).map(|_| ())
+        dtoa::write(writer, value).map(drop)
     }
 
     /// Writes a number that has already been rendered to a string.
