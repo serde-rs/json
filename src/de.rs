@@ -11,6 +11,8 @@
 use std::io;
 use std::marker::PhantomData;
 use std::{i32, u64};
+use std::result;
+use std::str::FromStr;
 
 use serde::de::{self, Expected, Unexpected};
 
@@ -481,9 +483,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(if positive { 0.0 } else { -0.0 })
     }
 
-    // Not public API. Should be pub(crate).
-    #[doc(hidden)]
-    pub fn parse_any_signed_number(&mut self) -> Result<Number> {
+    fn parse_any_signed_number(&mut self) -> Result<Number> {
         let peek = match try!(self.peek()) {
             Some(b) => b,
             None => {
@@ -907,6 +907,16 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
             }
         }
+    }
+}
+
+impl FromStr for super::Number {
+    type Err = Error;
+
+    fn from_str(s: &str) -> result::Result<Self, Self::Err> {
+        Deserializer::from_str(s)
+            .parse_any_signed_number()
+            .map(|n| n.into())
     }
 }
 

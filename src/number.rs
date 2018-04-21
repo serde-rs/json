@@ -11,7 +11,6 @@ use serde::de::{self, Unexpected, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{self, Debug, Display};
 use std::i64;
-use std::str::FromStr;
 
 #[cfg(feature = "arbitrary_precision")]
 use dtoa;
@@ -641,16 +640,6 @@ impl<'de> Deserializer<'de> for NumberFieldDeserializer {
         bool u8 u16 u32 u64 i8 i16 i32 i64 f32 f64 char str string seq
         bytes byte_buf map struct option unit newtype_struct
         ignored_any unit_struct tuple_struct tuple enum identifier
-    }
-}
-
-impl FromStr for Number {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        super::de::Deserializer::from_str(s)
-            .parse_any_signed_number()
-            .map(|n| n.into())
     }
 }
 
