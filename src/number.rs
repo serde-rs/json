@@ -13,9 +13,6 @@ use std::fmt::{self, Debug, Display};
 use std::i64;
 use std::str::FromStr;
 
-#[cfg(not(feature = "arbitrary_precision"))]
-use num_traits::NumCast;
-
 #[cfg(feature = "arbitrary_precision")]
 use dtoa;
 #[cfg(feature = "arbitrary_precision")]
@@ -187,7 +184,11 @@ impl Number {
     pub fn as_i64(&self) -> Option<i64> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
-            N::PosInt(n) => NumCast::from(n),
+            N::PosInt(n) => if n <= i64::max_value() as u64 {
+                Some(n as i64)
+            } else {
+                None
+            },
             N::NegInt(n) => Some(n),
             N::Float(_) => None,
         }
@@ -215,8 +216,7 @@ impl Number {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
             N::PosInt(n) => Some(n),
-            N::NegInt(n) => NumCast::from(n),
-            N::Float(_) => None,
+            N::NegInt(_) | N::Float(_) => None,
         }
         #[cfg(feature = "arbitrary_precision")]
         self.n.parse().ok()
@@ -240,8 +240,8 @@ impl Number {
     pub fn as_f64(&self) -> Option<f64> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
-            N::PosInt(n) => NumCast::from(n),
-            N::NegInt(n) => NumCast::from(n),
+            N::PosInt(n) => Some(n as f64),
+            N::NegInt(n) => Some(n as f64),
             N::Float(n) => Some(n),
         }
         #[cfg(feature = "arbitrary_precision")]
