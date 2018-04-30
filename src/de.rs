@@ -10,9 +10,9 @@
 
 use std::io;
 use std::marker::PhantomData;
-use std::{i32, u64};
 use std::result;
 use std::str::FromStr;
+use std::{i32, u64};
 
 use serde::de::{self, Expected, Unexpected};
 
