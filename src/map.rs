@@ -230,7 +230,11 @@ impl Clone for Map<String, Value> {
 impl PartialEq for Map<String, Value> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.map.eq(&other.map)
+        if self.len() != other.len() {
+            return false;
+        }
+
+        self.iter().all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
     }
 }
 
