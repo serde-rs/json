@@ -606,11 +606,7 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
                 },
             };
 
-            // FIXME: this allocation is required in order to be compatible with stable
-            // rust, which doesn't support encoding a `char` into a stack buffer.
-            let mut buf = String::new();
-            buf.push(c);
-            scratch.extend(buf.bytes());
+            scratch.extend_from_slice(c.encode_utf8(&mut [0u8; 4]).as_bytes());
         }
         _ => {
             return error(read, ErrorCode::InvalidEscape);
