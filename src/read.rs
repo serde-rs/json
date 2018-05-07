@@ -606,7 +606,7 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
                 },
             };
 
-            scratch.extend_from_slice(c.encode_utf8(&mut [0u8; 4]).as_bytes());
+            scratch.extend_from_slice(c.encode_utf8(&mut [0_u8; 4]).as_bytes());
         }
         _ => {
             return error(read, ErrorCode::InvalidEscape);
