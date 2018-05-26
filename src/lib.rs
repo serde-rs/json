@@ -357,8 +357,9 @@ pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeseri
 #[doc(inline)]
 pub use self::error::{Error, Result};
 #[doc(inline)]
-pub use self::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer,
-                    to_writer_pretty, Serializer};
+pub use self::ser::{
+    to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer, to_writer_pretty, Serializer,
+};
 #[doc(inline)]
 pub use self::value::{from_value, to_value, Map, Number, Value};
 

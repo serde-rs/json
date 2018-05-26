@@ -235,7 +235,8 @@ impl PartialEq for Map<String, Value> {
                 return false;
             }
 
-            self.iter().all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
+            self.iter()
+                .all(|(key, value)| other.get(key).map_or(false, |v| *value == *v))
         } else {
             self.map.eq(&other.map)
         }

@@ -15,8 +15,10 @@ use std::str;
 use std::vec;
 
 use serde;
-use serde::de::{Deserialize, DeserializeSeed, EnumAccess, Expected, IntoDeserializer, MapAccess,
-                SeqAccess, Unexpected, VariantAccess, Visitor};
+use serde::de::{
+    Deserialize, DeserializeSeed, EnumAccess, Expected, IntoDeserializer, MapAccess, SeqAccess,
+    Unexpected, VariantAccess, Visitor,
+};
 
 use error::Error;
 use map::Map;

@@ -39,8 +39,10 @@ use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
 
-use serde_json::{from_reader, from_slice, from_str, from_value, to_string, to_string_pretty,
-                 to_value, to_vec, to_writer, Deserializer, Number, Value};
+use serde_json::{
+    from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
+    to_writer, Deserializer, Number, Value,
+};
 
 macro_rules! treemap {
     () => {
