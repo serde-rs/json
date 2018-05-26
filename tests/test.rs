@@ -1983,3 +1983,40 @@ fn null_invalid_type() {
         String::from("invalid type: null, expected a string at line 1 column 4")
     );
 }
+
+#[test]
+fn test_integer128() {
+    let signed = &[i128::min_value(), -1, 0, 1, i128::max_value()];
+    let unsigned = &[0, 1, u128::max_value()];
+
+    for integer128 in signed {
+        let expected = integer128.to_string();
+        assert_eq!(to_string(integer128).unwrap(), expected);
+        assert_eq!(from_str::<i128>(&expected).unwrap(), *integer128);
+    }
+
+    for integer128 in unsigned {
+        let expected = integer128.to_string();
+        assert_eq!(to_string(integer128).unwrap(), expected);
+        assert_eq!(from_str::<u128>(&expected).unwrap(), *integer128);
+    }
+
+    test_parse_err::<i128>(&[
+        (
+            "-170141183460469231731687303715884105729",
+            "number out of range at line 1 column 40",
+        ),
+        (
+            "170141183460469231731687303715884105728",
+            "number out of range at line 1 column 39",
+        ),
+    ]);
+
+    test_parse_err::<u128>(&[
+        ("-1", "number out of range at line 1 column 1"),
+        (
+            "340282366920938463463374607431768211456",
+            "number out of range at line 1 column 39",
+        ),
+    ]);
+}

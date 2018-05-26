@@ -316,6 +316,11 @@ impl<'de> serde::Deserializer<'de> for Value {
     deserialize_prim_number!(deserialize_f32);
     deserialize_prim_number!(deserialize_f64);
 
+    serde_if_integer128! {
+        deserialize_prim_number!(deserialize_i128);
+        deserialize_prim_number!(deserialize_u128);
+    }
+
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Error>
     where
@@ -656,8 +661,8 @@ impl<'de> serde::Deserializer<'de> for SeqDeserializer {
     }
 
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
-        byte_buf option unit unit_struct newtype_struct seq tuple
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct enum identifier ignored_any
     }
 }
@@ -746,8 +751,8 @@ impl<'de> serde::Deserializer<'de> for MapDeserializer {
     }
 
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
-        byte_buf option unit unit_struct newtype_struct seq tuple
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct enum identifier ignored_any
     }
 }
@@ -841,6 +846,11 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     deserialize_value_ref_number!(deserialize_u64);
     deserialize_value_ref_number!(deserialize_f32);
     deserialize_value_ref_number!(deserialize_f64);
+
+    serde_if_integer128! {
+        deserialize_prim_number!(deserialize_i128);
+        deserialize_prim_number!(deserialize_u128);
+    }
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Error>
     where
@@ -1177,8 +1187,8 @@ impl<'de> serde::Deserializer<'de> for SeqRefDeserializer<'de> {
     }
 
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
-        byte_buf option unit unit_struct newtype_struct seq tuple
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct enum identifier ignored_any
     }
 }
@@ -1267,8 +1277,8 @@ impl<'de> serde::Deserializer<'de> for MapRefDeserializer<'de> {
     }
 
     forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
-        byte_buf option unit unit_struct newtype_struct seq tuple
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct enum identifier ignored_any
     }
 }
@@ -1310,6 +1320,11 @@ impl<'de> serde::Deserializer<'de> for MapKeyDeserializer<'de> {
     deserialize_integer_key!(deserialize_u16 => visit_u16);
     deserialize_integer_key!(deserialize_u32 => visit_u32);
     deserialize_integer_key!(deserialize_u64 => visit_u64);
+
+    serde_if_integer128! {
+        deserialize_integer_key!(deserialize_i128 => visit_i128);
+        deserialize_integer_key!(deserialize_u128 => visit_u128);
+    }
 
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Error>

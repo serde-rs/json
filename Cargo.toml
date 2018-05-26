@@ -16,7 +16,7 @@ travis-ci = { repository = "serde-rs/json" }
 appveyor = { repository = "serde-rs/json" }
 
 [dependencies]
-serde = "1.0"
+serde = "1.0.60"
 linked-hash-map = { version = "0.5", optional = true }
 itoa = "0.4"
 dtoa = "0.4"
