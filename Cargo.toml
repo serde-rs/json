@@ -17,7 +17,7 @@ appveyor = { repository = "serde-rs/json" }
 
 [dependencies]
 serde = "1.0.60"
-linked-hash-map = { version = "0.5", optional = true }
+indexmap = { version = "1.0", optional = true }
 itoa = "0.4"
 dtoa = "0.4"
 
@@ -32,10 +32,10 @@ serde_derive = "1.0"
 [features]
 default = []
 
-# Use LinkedHashMap rather than BTreeMap as the map type of serde_json::Value.
+# Use IndexMap rather than BTreeMap as the map type of serde_json::Value.
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
-preserve_order = ["linked-hash-map"]
+preserve_order = ["indexmap"]
 
 # Use an arbitrary precision number representation for serde_json::Number. This
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
