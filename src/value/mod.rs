@@ -191,7 +191,7 @@ pub enum Value {
     /// Represents a JSON object.
     ///
     /// By default the map is backed by a BTreeMap. Enable the `preserve_order`
-    /// feature of serde_json to use LinkedHashMap instead, which preserves
+    /// feature of serde_json to use IndexMap instead, which preserves
     /// entries in the order they are inserted into the map. In particular, this
     /// allows JSON data to be deserialized into a Value and serialized to a
     /// string while retaining the order of map keys in the input.

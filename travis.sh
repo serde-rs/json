@@ -38,10 +38,16 @@ else
     channel test --features preserve_order
     channel test --features arbitrary_precision
 
-    for CHANNEL in stable 1.15.0 beta; do
+    for CHANNEL in stable 1.18.0 beta; do
         channel clean
         channel build
         channel build --features preserve_order
         channel build --features arbitrary_precision
     done
+
+    # preserve_order is not supported on 1.15.0
+    CHANNEL=1.15.0
+    channel clean
+    channel build
+    channel build --features arbitrary_precision
 fi

@@ -348,9 +348,9 @@
 #[macro_use]
 extern crate serde;
 extern crate dtoa;
-extern crate itoa;
 #[cfg(feature = "preserve_order")]
-extern crate linked_hash_map;
+extern crate indexmap;
+extern crate itoa;
 
 #[doc(inline)]
 pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
