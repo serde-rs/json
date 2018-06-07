@@ -8,6 +8,7 @@ rust:
   - stable
   - nightly
   - 1.15.0
+  - 1.18.0
   - beta
 
 matrix:

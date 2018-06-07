@@ -32,7 +32,7 @@ serde_derive = "1.0"
 [features]
 default = []
 
-# Use IndexMap rather than BTreeMap as the map type of serde_json::Value.
+# Use a different representation for the map type of serde_json::Value.
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
 preserve_order = ["indexmap"]
