@@ -340,10 +340,8 @@ impl<'a> SliceRead<'a> {
                         return result(self, borrowed).map(Reference::Borrowed);
                     } else {
                         scratch.extend_from_slice(&self.slice[start..self.index]);
-                        // "as &[u8]" is required for rustc 1.8.0
-                        let copied = scratch as &[u8];
                         self.index += 1;
-                        return result(self, copied).map(Reference::Copied);
+                        return result(self, scratch).map(Reference::Copied);
                     }
                 }
                 b'\\' => {
