@@ -9,7 +9,6 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::i64;
-use std::io;
 use std::slice;
 use std::str;
 use std::vec;
@@ -153,68 +152,6 @@ impl<'de> Deserialize<'de> for Value {
         }
 
         deserializer.deserialize_any(ValueVisitor)
-    }
-}
-
-struct WriterFormatter<'a, 'b: 'a> {
-    inner: &'a mut fmt::Formatter<'b>,
-}
-
-impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        fn io_error<E>(_: E) -> io::Error {
-            // Value does not matter because fmt::Debug and fmt::Display impls
-            // below just map it to fmt::Error
-            io::Error::new(io::ErrorKind::Other, "fmt error")
-        }
-        let s = try!(str::from_utf8(buf).map_err(io_error));
-        try!(self.inner.write_str(s).map_err(io_error));
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-impl fmt::Display for Value {
-    /// Display a JSON value as a string.
-    ///
-    /// ```rust
-    /// # #[macro_use]
-    /// # extern crate serde_json;
-    /// #
-    /// # fn main() {
-    /// let json = json!({ "city": "London", "street": "10 Downing Street" });
-    ///
-    /// // Compact format:
-    /// //
-    /// // {"city":"London","street":"10 Downing Street"}
-    /// let compact = format!("{}", json);
-    /// assert_eq!(compact,
-    ///     "{\"city\":\"London\",\"street\":\"10 Downing Street\"}");
-    ///
-    /// // Pretty format:
-    /// //
-    /// // {
-    /// //   "city": "London",
-    /// //   "street": "10 Downing Street"
-    /// // }
-    /// let pretty = format!("{:#}", json);
-    /// assert_eq!(pretty,
-    ///     "{\n  \"city\": \"London\",\n  \"street\": \"10 Downing Street\"\n}");
-    /// # }
-    /// ```
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let alternate = f.alternate();
-        let mut wr = WriterFormatter { inner: f };
-        if alternate {
-            // {:#}
-            super::super::ser::to_writer_pretty(&mut wr, self).map_err(|_| fmt::Error)
-        } else {
-            // {}
-            super::super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
-        }
     }
 }
 
