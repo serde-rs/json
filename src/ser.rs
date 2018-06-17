@@ -1140,8 +1140,8 @@ where
         Err(key_must_be_a_string())
     }
 
-    fn serialize_char(self, _value: char) -> Result<()> {
-        Err(key_must_be_a_string())
+    fn serialize_char(self, value: char) -> Result<()> {
+        self.ser.serialize_str(&value.to_string())
     }
 
     fn serialize_bytes(self, _value: &[u8]) -> Result<()> {
