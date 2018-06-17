@@ -108,7 +108,6 @@
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
 use std::fmt::{self, Debug};
-use std::i64;
 use std::io;
 use std::mem;
 use std::str;
@@ -589,10 +588,8 @@ impl Value {
     /// # #[macro_use]
     /// # extern crate serde_json;
     /// #
-    /// # use std::i64;
-    /// #
     /// # fn main() {
-    /// let big = i64::MAX as u64 + 10;
+    /// let big = i64::max_value() as u64 + 10;
     /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
     ///
     /// assert!(v["a"].is_i64());
@@ -675,10 +672,8 @@ impl Value {
     /// # #[macro_use]
     /// # extern crate serde_json;
     /// #
-    /// # use std::i64;
-    /// #
     /// # fn main() {
-    /// let big = i64::MAX as u64 + 10;
+    /// let big = i64::max_value() as u64 + 10;
     /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
     ///
     /// assert_eq!(v["a"].as_i64(), Some(64));

@@ -8,7 +8,6 @@
 
 use std::borrow::Cow;
 use std::fmt;
-use std::i64;
 use std::slice;
 use std::str;
 use std::vec;
