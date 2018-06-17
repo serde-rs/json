@@ -146,11 +146,7 @@ where
     }
 }
 
-impl<R> private::Sealed for IoRead<R>
-where
-    R: io::Read,
-{
-}
+impl<R> private::Sealed for IoRead<R> where R: io::Read {}
 
 impl<R> IoRead<R>
 where

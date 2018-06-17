@@ -312,12 +312,7 @@ fn test_write_object() {
         ),
     ]);
 
-    test_encode_ok(&[
-        (
-            treemap!['c' => ()],
-            "{\"c\":null}",
-        ),
-    ]);
+    test_encode_ok(&[(treemap!['c' => ()], "{\"c\":null}")]);
 
     test_pretty_encode_ok(&[
         (
@@ -1106,10 +1101,7 @@ fn test_parse_object() {
         ),
     )]);
 
-    test_parse_ok(vec![(
-        "{\"c\":null}",
-        treemap!('c' => ()),
-    )]);
+    test_parse_ok(vec![("{\"c\":null}", treemap!('c' => ()))]);
 }
 
 #[test]
