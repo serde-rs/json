@@ -141,6 +141,11 @@ macro_rules! json_internal {
         json_internal!(@array [$($elems,)*] $($rest)*)
     };
 
+    // Unexpected token after most recent element.
+    (@array [$($elems:expr),*] $unexpected:tt $($rest:tt)*) => {
+        json_unexpected!($unexpected)
+    };
+
     //////////////////////////////////////////////////////////////////////////
     // TT muncher for parsing the inside of an object {...}. Each entry is
     // inserted into the given map variable.
@@ -158,6 +163,11 @@ macro_rules! json_internal {
     (@object $object:ident [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
         $object.insert(($($key)+).into(), $value);
         json_internal!(@object $object () ($($rest)*) ($($rest)*));
+    };
+
+    // Current entry followed by unexpected token.
+    (@object $object:ident [$($key:tt)+] ($value:expr) $unexpected:tt $($rest:tt)*) => {
+        json_unexpected!($unexpected);
     };
 
     // Insert the last entry without trailing comma.

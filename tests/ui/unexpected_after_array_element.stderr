@@ -1,0 +1,8 @@
+error: no rules expected the token `=>`
+  --> $DIR/unexpected_after_array_element.rs:13:18
+   |
+13 |     json!([ true => ]);
+   |                  ^^
+
+error: aborting due to previous error
+
