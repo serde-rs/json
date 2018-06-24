@@ -308,9 +308,16 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn parse_ident(&mut self, ident: &[u8]) -> Result<()> {
-        for c in ident {
-            if Some(*c) != try!(self.next_char()) {
-                return Err(self.error(ErrorCode::ExpectedSomeIdent));
+        for expected in ident {
+            match try!(self.next_char()) {
+                None => {
+                    return Err(self.error(ErrorCode::EofWhileParsingValue));
+                }
+                Some(next) => {
+                    if next != *expected {
+                        return Err(self.error(ErrorCode::ExpectedSomeIdent));
+                    }
+                }
             }
         }
 
