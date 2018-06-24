@@ -1,8 +1,8 @@
-error: expected expression, found `,`
+error: no rules expected the token `,`
   --> $DIR/unexpected_comma.rs:13:17
    |
 13 |     json!({ "a" , "b": true });
-   |                 ^ expected expression
+   |                 ^
 
 error: aborting due to previous error
 

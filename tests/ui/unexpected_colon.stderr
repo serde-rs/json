@@ -1,8 +1,8 @@
-error: expected expression, found `:`
+error: no rules expected the token `:`
   --> $DIR/unexpected_colon.rs:13:13
    |
 13 |     json!({ : true });
-   |             ^ expected expression
+   |             ^
 
 error: aborting due to previous error
 

@@ -216,13 +216,13 @@ macro_rules! json_internal {
     // Misplaced colon. Trigger a reasonable error message.
     (@object $object:ident () (: $($rest:tt)*) ($colon:tt $($copy:tt)*)) => {
         // Takes no arguments so "no rules expected the token `:`".
-        unimplemented!($colon);
+        json_unexpected!($colon);
     };
 
     // Found a comma inside a key. Trigger a reasonable error message.
     (@object $object:ident ($($key:tt)*) (, $($rest:tt)*) ($comma:tt $($copy:tt)*)) => {
         // Takes no arguments so "no rules expected the token `,`".
-        unimplemented!($comma);
+        json_unexpected!($comma);
     };
 
     // Key is fully parenthesized. This avoids clippy double_parens false
@@ -279,4 +279,10 @@ macro_rules! json_internal {
     ($other:expr) => {
         $crate::to_value(&$other).unwrap()
     };
+}
+
+#[macro_export]
+#[doc(hidden)]
+macro_rules! json_unexpected {
+    () => {};
 }
