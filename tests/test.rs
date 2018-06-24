@@ -613,6 +613,15 @@ where
         let mut de = Deserializer::from_str(&twoline);
         IgnoredAny::deserialize(&mut de).unwrap();
         assert_eq!(0xDEAD_BEEF, u64::deserialize(&mut de).unwrap());
+
+        // Make sure every prefix is an EOF error, except that a prefix of a
+        // number may be a valid number.
+        if !json_value.is_number() {
+            for (i, _) in s.trim_right().char_indices() {
+                assert!(from_str::<Value>(&s[..i]).unwrap_err().is_eof());
+                assert!(from_str::<IgnoredAny>(&s[..i]).unwrap_err().is_eof());
+            }
+        }
     }
 }
 
@@ -671,8 +680,8 @@ where
 #[test]
 fn test_parse_null() {
     test_parse_err::<()>(&[
-        ("n", "expected ident at line 1 column 1"),
-        ("nul", "expected ident at line 1 column 3"),
+        ("n", "EOF while parsing a value at line 1 column 1"),
+        ("nul", "EOF while parsing a value at line 1 column 3"),
         ("nulla", "trailing characters at line 1 column 5"),
     ]);
 
@@ -682,9 +691,9 @@ fn test_parse_null() {
 #[test]
 fn test_parse_bool() {
     test_parse_err::<bool>(&[
-        ("t", "expected ident at line 1 column 1"),
+        ("t", "EOF while parsing a value at line 1 column 1"),
         ("truz", "expected ident at line 1 column 4"),
-        ("f", "expected ident at line 1 column 1"),
+        ("f", "EOF while parsing a value at line 1 column 1"),
         ("faz", "expected ident at line 1 column 3"),
         ("truea", "trailing characters at line 1 column 5"),
         ("falsea", "trailing characters at line 1 column 6"),
