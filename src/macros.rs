@@ -66,7 +66,7 @@
 /// ]);
 /// # }
 /// ```
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! json {
     // Hide distracting implementation details from the generated rustdoc.
     ($($json:tt)+) => {
@@ -81,7 +81,7 @@ macro_rules! json {
 //
 // Changes are fine as long as `json_internal!` does not call any new helper
 // macros and can still be invoked as `json_internal!($($json)+)`.
-#[macro_export]
+#[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! json_internal {
     //////////////////////////////////////////////////////////////////////////
@@ -93,12 +93,12 @@ macro_rules! json_internal {
 
     // Done with trailing comma.
     (@array [$($elems:expr,)*]) => {
-        vec![$($elems,)*]
+        json_internal_vec![$($elems,)*]
     };
 
     // Done without trailing comma.
     (@array [$($elems:expr),*]) => {
-        vec![$($elems),*]
+        json_internal_vec![$($elems),*]
     };
 
     // Next element is `null`.
@@ -265,7 +265,7 @@ macro_rules! json_internal {
     };
 
     ([]) => {
-        $crate::Value::Array(vec![])
+        $crate::Value::Array(json_internal_vec![])
     };
 
     ([ $($tt:tt)+ ]) => {
@@ -288,6 +288,17 @@ macro_rules! json_internal {
     // Must be below every other rule.
     ($other:expr) => {
         $crate::to_value(&$other).unwrap()
+    };
+}
+
+// The json_internal macro above cannot invoke vec directly because it uses
+// local_inner_macros. A vec invocation there would resolve to $crate::vec.
+// Instead invoke vec here outside of local_inner_macros.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! json_internal_vec {
+    ($($content:tt)*) => {
+        vec![$($content)*]
     };
 }
 
