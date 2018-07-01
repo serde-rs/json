@@ -66,7 +66,7 @@
 /// ]);
 /// # }
 /// ```
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! json {
     // Hide distracting implementation details from the generated rustdoc.
     ($($json:tt)+) => {
@@ -81,7 +81,7 @@ macro_rules! json {
 //
 // Changes are fine as long as `json_internal!` does not call any new helper
 // macros and can still be invoked as `json_internal!($($json)+)`.
-#[macro_export]
+#[macro_export(local_inner_macros)]
 #[doc(hidden)]
 macro_rules! json_internal {
     //////////////////////////////////////////////////////////////////////////
