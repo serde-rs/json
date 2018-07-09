@@ -15,6 +15,8 @@ extern crate serde_json;
 
 use serde_json::{Deserializer, Value};
 
+// Rustfmt issue https://github.com/rust-lang-nursery/rustfmt/issues/2740
+#[cfg_attr(rustfmt, rustfmt_skip)]
 macro_rules! test_stream {
     ($data:expr, $ty:ty, |$stream:ident| $test:block) => {
         {
