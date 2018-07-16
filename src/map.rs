@@ -117,8 +117,7 @@ impl Map<String, Value> {
     /// If the map did not have this key present, `None` is returned.
     ///
     /// If the map did have this key present, the value is updated, and the old
-    /// value is returned. The key is not updated, though; this matters for
-    /// types that can be `==` without being identical.
+    /// value is returned.
     #[inline]
     pub fn insert(&mut self, k: String, v: Value) -> Option<Value> {
         self.map.insert(k, v)
