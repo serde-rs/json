@@ -1847,6 +1847,9 @@ fn test_json_macro() {
         (<Result<&str, ()> as Clone>::clone(&Ok("")).unwrap()): "ok",
         (<Result<(), &str> as Clone>::clone(&Err("")).unwrap_err()): "err"
     });
+
+    #[deny(unused_results)]
+    let _ = json!({ "architecture": [true, null] });
 }
 
 #[test]

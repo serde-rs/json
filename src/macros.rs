@@ -161,7 +161,7 @@ macro_rules! json_internal {
 
     // Insert the current entry followed by trailing comma.
     (@object $object:ident [$($key:tt)+] ($value:expr) , $($rest:tt)*) => {
-        $object.insert(($($key)+).into(), $value);
+        let _ = $object.insert(($($key)+).into(), $value);
         json_internal!(@object $object () ($($rest)*) ($($rest)*));
     };
 
@@ -172,7 +172,7 @@ macro_rules! json_internal {
 
     // Insert the last entry without trailing comma.
     (@object $object:ident [$($key:tt)+] ($value:expr)) => {
-        $object.insert(($($key)+).into(), $value);
+        let _ = $object.insert(($($key)+).into(), $value);
     };
 
     // Next value is `null`.
