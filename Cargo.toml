@@ -19,7 +19,7 @@ appveyor = { repository = "serde-rs/json" }
 serde = "1.0.60"
 indexmap = { version = "1.0", optional = true }
 itoa = "0.4"
-dtoa = "0.4"
+ryu = "0.2"
 
 [dev-dependencies]
 compiletest_rs = "0.3"
