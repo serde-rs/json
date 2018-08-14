@@ -16,8 +16,8 @@ use std::str;
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible};
 
-use dtoa;
 use itoa;
+use ryu;
 
 #[cfg(feature = "arbitrary_precision")]
 use serde::Serialize;
@@ -1554,7 +1554,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        dtoa::write(writer, value).map(drop)
+        let mut buffer = ryu::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
@@ -1563,7 +1565,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        dtoa::write(writer, value).map(drop)
+        let mut buffer = ryu::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes a number that has already been rendered to a string.

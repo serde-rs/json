@@ -12,7 +12,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{self, Debug, Display};
 
 #[cfg(feature = "arbitrary_precision")]
-use dtoa;
+use ryu;
 #[cfg(feature = "arbitrary_precision")]
 use itoa;
 #[cfg(feature = "arbitrary_precision")]
@@ -266,9 +266,7 @@ impl Number {
                 }
                 #[cfg(feature = "arbitrary_precision")]
                 {
-                    let mut buf = Vec::new();
-                    dtoa::write(&mut buf, f).unwrap();
-                    String::from_utf8(buf).unwrap()
+                    ryu::Buffer::new().format(f).to_owned()
                 }
             };
             Some(Number { n: n })
