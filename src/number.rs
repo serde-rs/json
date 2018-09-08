@@ -12,9 +12,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{self, Debug, Display};
 
 #[cfg(feature = "arbitrary_precision")]
-use ryu;
-#[cfg(feature = "arbitrary_precision")]
 use itoa;
+#[cfg(feature = "arbitrary_precision")]
+use ryu;
 #[cfg(feature = "arbitrary_precision")]
 use serde::de::{IntoDeserializer, MapAccess};
 
