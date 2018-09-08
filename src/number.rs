@@ -701,9 +701,7 @@ macro_rules! impl_from_unsigned {
                         { N::PosInt(u as u64) }
                         #[cfg(feature = "arbitrary_precision")]
                         {
-                            let mut buf = Vec::new();
-                            itoa::write(&mut buf, u).unwrap();
-                            String::from_utf8(buf).unwrap()
+                            itoa::Buffer::new().format(u).to_owned()
                         }
                     };
                     Number { n: n }
@@ -732,9 +730,7 @@ macro_rules! impl_from_signed {
                         }
                         #[cfg(feature = "arbitrary_precision")]
                         {
-                            let mut buf = Vec::new();
-                            itoa::write(&mut buf, i).unwrap();
-                            String::from_utf8(buf).unwrap()
+                            itoa::Buffer::new().format(i).to_owned()
                         }
                     };
                     Number { n: n }
