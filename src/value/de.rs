@@ -1301,7 +1301,7 @@ impl<'de> DeserializeSeed<'de> for KeyClassifier {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_any(self)
+        deserializer.deserialize_str(self)
     }
 }
 
