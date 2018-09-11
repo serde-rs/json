@@ -23,11 +23,10 @@ use map::Map;
 use number::Number;
 use value::Value;
 
-#[cfg(feature = "arbitrary_precision")]
 use serde::de;
 
 #[cfg(feature = "arbitrary_precision")]
-use number::{NumberFromString, SERDE_STRUCT_FIELD_NAME};
+use number::NumberFromString;
 
 impl<'de> Deserialize<'de> for Value {
     #[inline]
@@ -109,44 +108,28 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(Value::Array(vec))
             }
 
-            #[cfg(not(feature = "arbitrary_precision"))]
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
             where
                 V: MapAccess<'de>,
             {
-                let mut values = Map::new();
-
-                while let Some((key, value)) = try!(visitor.next_entry()) {
-                    values.insert(key, value);
-                }
-
-                Ok(Value::Object(values))
-            }
-
-            #[cfg(feature = "arbitrary_precision")]
-            fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
-            where
-                V: MapAccess<'de>,
-            {
-                let mut key = String::new();
-                let number = visitor.next_key_seed(NumberOrObject { key: &mut key })?;
-                match number {
-                    Some(true) => {
+                match visitor.next_key_seed(KeyClassifier)? {
+                    #[cfg(feature = "arbitrary_precision")]
+                    Some(KeyClass::Number) => {
                         let number: NumberFromString = visitor.next_value()?;
                         return Ok(Value::Number(number.value));
                     }
+                    Some(KeyClass::Map(first_key)) => {
+                        let mut values = Map::new();
+
+                        values.insert(first_key, try!(visitor.next_value()));
+                        while let Some((key, value)) = try!(visitor.next_entry()) {
+                            values.insert(key, value);
+                        }
+
+                        Ok(Value::Object(values))
+                    }
                     None => return Ok(Value::Object(Map::new())),
-                    Some(false) => {}
                 }
-
-                let mut values = Map::new();
-
-                values.insert(key, try!(visitor.next_value()));
-                while let Some((key, value)) = try!(visitor.next_entry()) {
-                    values.insert(key, value);
-                }
-
-                Ok(Value::Object(values))
             }
         }
 
@@ -1303,14 +1286,16 @@ impl<'de> serde::Deserializer<'de> for MapKeyDeserializer<'de> {
     }
 }
 
-#[cfg(feature = "arbitrary_precision")]
-struct NumberOrObject<'a> {
-    key: &'a mut String,
+struct KeyClassifier;
+
+enum KeyClass {
+    Map(String),
+    #[cfg(feature = "arbitrary_precision")]
+    Number,
 }
 
-#[cfg(feature = "arbitrary_precision")]
-impl<'a, 'de> DeserializeSeed<'de> for NumberOrObject<'a> {
-    type Value = bool;
+impl<'de> DeserializeSeed<'de> for KeyClassifier {
+    type Value = KeyClass;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -1320,35 +1305,32 @@ impl<'a, 'de> DeserializeSeed<'de> for NumberOrObject<'a> {
     }
 }
 
-#[cfg(feature = "arbitrary_precision")]
-impl<'a, 'de> Visitor<'de> for NumberOrObject<'a> {
-    type Value = bool;
+impl<'de> Visitor<'de> for KeyClassifier {
+    type Value = KeyClass;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a string key")
     }
 
-    fn visit_str<E>(self, s: &str) -> Result<bool, E>
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        if s == SERDE_STRUCT_FIELD_NAME {
-            Ok(true)
-        } else {
-            self.key.push_str(s);
-            Ok(false)
+        match s {
+            #[cfg(feature = "arbitrary_precision")]
+            ::number::SERDE_STRUCT_FIELD_NAME => Ok(KeyClass::Number),
+            _ => Ok(KeyClass::Map(s.to_owned())),
         }
     }
 
-    fn visit_string<E>(self, s: String) -> Result<bool, E>
+    fn visit_string<E>(self, s: String) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        if s == SERDE_STRUCT_FIELD_NAME {
-            Ok(true)
-        } else {
-            *self.key = s;
-            Ok(false)
+        match s.as_str() {
+            #[cfg(feature = "arbitrary_precision")]
+            ::number::SERDE_STRUCT_FIELD_NAME => Ok(KeyClass::Number),
+            _ => Ok(KeyClass::Map(s)),
         }
     }
 }

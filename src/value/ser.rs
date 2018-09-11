@@ -17,9 +17,6 @@ use value::{to_value, Value};
 #[cfg(feature = "arbitrary_precision")]
 use serde::ser;
 
-#[cfg(feature = "arbitrary_precision")]
-use number::{SERDE_STRUCT_FIELD_NAME, SERDE_STRUCT_NAME};
-
 impl Serialize for Value {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -228,25 +225,15 @@ impl serde::Serializer for Serializer {
         })
     }
 
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn serialize_struct(
-        self,
-        _name: &'static str,
-        len: usize,
-    ) -> Result<Self::SerializeStruct, Error> {
-        self.serialize_map(Some(len))
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
     fn serialize_struct(
         self,
         name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStruct, Error> {
-        if name == SERDE_STRUCT_NAME {
-            Ok(SerializeMap::Number { out_value: None })
-        } else {
-            self.serialize_map(Some(len))
+        match name {
+            #[cfg(feature = "arbitrary_precision")]
+            ::number::SERDE_STRUCT_NAME => Ok(SerializeMap::Number { out_value: None }),
+            _ => self.serialize_map(Some(len)),
         }
     }
 
@@ -605,7 +592,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
             }
             #[cfg(feature = "arbitrary_precision")]
             SerializeMap::Number { ref mut out_value } => {
-                if key == SERDE_STRUCT_FIELD_NAME {
+                if key == ::number::SERDE_STRUCT_FIELD_NAME {
                     *out_value = Some(value.serialize(NumberValueEmitter)?);
                     Ok(())
                 } else {
