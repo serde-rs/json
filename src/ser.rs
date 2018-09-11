@@ -22,9 +22,6 @@ use ryu;
 #[cfg(feature = "arbitrary_precision")]
 use serde::Serialize;
 
-#[cfg(feature = "arbitrary_precision")]
-use number::{SERDE_STRUCT_FIELD_NAME, SERDE_STRUCT_NAME};
-
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F = CompactFormatter> {
     writer: W,
@@ -461,19 +458,12 @@ where
         }
     }
 
-    #[cfg(not(feature = "arbitrary_precision"))]
-    #[inline]
-    fn serialize_struct(self, _name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
-        self.serialize_map(Some(len))
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
     #[inline]
     fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
-        if name == SERDE_STRUCT_NAME {
-            Ok(Compound::Number { ser: self })
-        } else {
-            self.serialize_map(Some(len))
+        match name {
+            #[cfg(feature = "arbitrary_precision")]
+            ::number::SERDE_STRUCT_NAME => Ok(Compound::Number { ser: self }),
+            _ => self.serialize_map(Some(len)),
         }
     }
 
@@ -820,7 +810,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { ref mut ser, .. } => {
-                if key == SERDE_STRUCT_FIELD_NAME {
+                if key == ::number::SERDE_STRUCT_FIELD_NAME {
                     try!(value.serialize(NumberStrEmitter(&mut *ser)));
                     Ok(())
                 } else {
