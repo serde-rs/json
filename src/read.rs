@@ -6,6 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Cow;
 use std::ops::Deref;
 use std::{char, cmp, io, str};
 
@@ -76,6 +77,13 @@ pub trait Read<'de>: private::Sealed {
     /// string until the next quotation mark but discards the data.
     #[doc(hidden)]
     fn ignore_str(&mut self) -> Result<()>;
+
+    /// Switch raw buffering mode on/off. When switching off, returns a copy-on-write
+    /// buffer with the captured data.
+    ///
+    /// This is used to deserialize `RawValue`.
+    #[doc(hidden)]
+    fn toggle_raw_buffering(&mut self) -> Option<Cow<'de, [u8]>>;
 }
 
 pub struct Position {
@@ -107,6 +115,7 @@ where
     iter: LineColIterator<io::Bytes<R>>,
     /// Temporary storage of peeked byte.
     ch: Option<u8>,
+    raw_buffer: Option<Vec<u8>>,
 }
 
 /// JSON input source that reads from a slice of bytes.
@@ -117,6 +126,7 @@ pub struct SliceRead<'a> {
     slice: &'a [u8],
     /// Index of the *next* byte that will be returned by next() or peek().
     index: usize,
+    raw_buffering_start_index: Option<usize>,
 }
 
 /// JSON input source that reads from a UTF-8 string.
@@ -142,6 +152,7 @@ where
         IoRead {
             iter: LineColIterator::new(reader.bytes()),
             ch: None,
+            raw_buffer: None,
         }
     }
 }
@@ -193,10 +204,20 @@ where
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
         match self.ch.take() {
-            Some(ch) => Ok(Some(ch)),
+            Some(ch) => {
+                if let Some(ref mut buf) = self.raw_buffer {
+                    buf.push(ch);
+                }
+                Ok(Some(ch))
+            }
             None => match self.iter.next() {
                 Some(Err(err)) => Err(err),
-                Some(Ok(ch)) => Ok(Some(ch)),
+                Some(Ok(ch)) => {
+                    if let Some(ref mut buf) = self.raw_buffer {
+                        buf.push(ch);
+                    }
+                    Ok(Some(ch))
+                }
                 None => Ok(None),
             },
         }
@@ -219,7 +240,11 @@ where
 
     #[inline]
     fn discard(&mut self) {
-        self.ch = None;
+        if let Some(ch) = self.ch.take() {
+            if let Some(ref mut buf) = self.raw_buffer {
+                buf.push(ch);
+            }
+        }
     }
 
     fn position(&self) -> Position {
@@ -274,6 +299,15 @@ where
             }
         }
     }
+
+    fn toggle_raw_buffering(&mut self) -> Option<Cow<'de, [u8]>> {
+        if let Some(buffer) = self.raw_buffer.take() {
+            Some(Cow::Owned(buffer))
+        } else {
+            self.raw_buffer = Some(Vec::new());
+            None
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -284,6 +318,7 @@ impl<'a> SliceRead<'a> {
         SliceRead {
             slice: slice,
             index: 0,
+            raw_buffering_start_index: None,
         }
     }
 
@@ -437,6 +472,15 @@ impl<'a> Read<'a> for SliceRead<'a> {
             }
         }
     }
+
+    fn toggle_raw_buffering(&mut self) -> Option<Cow<'a, [u8]>> {
+        if let Some(start_index) = self.raw_buffering_start_index.take() {
+            Some(Cow::Borrowed(&self.slice[start_index..self.index]))
+        } else {
+            self.raw_buffering_start_index = Some(self.index);
+            None
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -497,6 +541,10 @@ impl<'a> Read<'a> for StrRead<'a> {
 
     fn ignore_str(&mut self) -> Result<()> {
         self.delegate.ignore_str()
+    }
+
+    fn toggle_raw_buffering(&mut self) -> Option<Cow<'a, [u8]>> {
+        self.delegate.toggle_raw_buffering()
     }
 }
 

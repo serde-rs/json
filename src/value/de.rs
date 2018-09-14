@@ -300,12 +300,16 @@ impl<'de> serde::Deserializer<'de> for Value {
     #[inline]
     fn deserialize_newtype_struct<V>(
         self,
-        _name: &'static str,
+        name: &'static str,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
+        if name == ::raw::SERDE_STRUCT_NAME {
+            return visitor.visit_string(self.to_string());
+        }
+
         visitor.visit_newtype_struct(self)
     }
 

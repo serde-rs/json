@@ -8,6 +8,7 @@
 
 //! Deserialize JSON data to a Rust data structure.
 
+use std::borrow::Cow;
 use std::io;
 use std::marker::PhantomData;
 use std::result;
@@ -946,6 +947,22 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
         }
     }
+
+    fn deserialize_raw_value<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        if let None = try!(self.parse_whitespace()) {
+            return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+        }
+
+        self.read.toggle_raw_buffering();
+        de::Deserializer::deserialize_any(&mut *self, de::IgnoredAny)?;
+        match self.read.toggle_raw_buffering().unwrap() {
+            Cow::Owned(byte_buf) => visitor.visit_byte_buf(byte_buf),
+            Cow::Borrowed(bytes) => visitor.visit_borrowed_bytes(bytes),
+        }
+    }
 }
 
 impl FromStr for Number {
@@ -1412,10 +1429,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
     /// Parses a newtype struct as the underlying value.
     #[inline]
-    fn deserialize_newtype_struct<V>(self, _name: &str, visitor: V) -> Result<V::Value>
+    fn deserialize_newtype_struct<V>(self, name: &str, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
+        if name == ::raw::SERDE_STRUCT_NAME {
+            return self.deserialize_raw_value(visitor);
+        }
+
         visitor.visit_newtype_struct(self)
     }
 

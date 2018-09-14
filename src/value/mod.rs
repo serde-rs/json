@@ -118,6 +118,7 @@ use serde::ser::Serialize;
 use error::Error;
 pub use map::Map;
 pub use number::Number;
+pub use raw::RawValue;
 
 pub use self::index::Index;
 

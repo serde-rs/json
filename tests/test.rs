@@ -44,7 +44,7 @@ use serde_bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
-    to_writer, Deserializer, Number, Value,
+    to_writer, Deserializer, Number, RawValue, Value,
 };
 
 macro_rules! treemap {
@@ -2038,4 +2038,53 @@ fn test_integer128() {
             "number out of range at line 1 column 39",
         ),
     ]);
+}
+
+#[test]
+fn test_raw_value() {
+    #[derive(Serialize, Deserialize)]
+    struct Wrapper<'a> {
+        a: i8,
+        #[serde(borrow)]
+        b: RawValue<'a>,
+        c: i8,
+    };
+
+    let wrapper_from_str =
+        serde_json::from_str::<Wrapper>(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
+    assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.as_ref());
+
+    let wrapper_from_reader = serde_json::from_reader::<_, Wrapper<'static>>(
+        br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref(),
+    ).unwrap();
+    assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.as_ref());
+
+    let wrapper_from_value =
+        serde_json::from_value::<Wrapper<'static>>(json!({"a": 1, "b": {"foo": 2}, "c": 3}))
+            .unwrap();
+    assert_eq!(r#"{"foo":2}"#, wrapper_from_value.b.as_ref());
+
+    let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
+    assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_string);
+
+    let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
+    assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
+
+    let array_from_str =
+        serde_json::from_str::<Vec<RawValue>>(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+    assert_eq!(r#""a""#, array_from_str[0].as_ref());
+    assert_eq!(r#"42"#, array_from_str[1].as_ref());
+    assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].as_ref());
+    assert_eq!(r#"null"#, array_from_str[3].as_ref());
+
+    let array_from_reader = serde_json::from_reader::<_, Vec<RawValue<'static>>>(
+        br#"["a", 42, {"foo": "bar"}, null]"#.as_ref(),
+    ).unwrap();
+    assert_eq!(r#""a""#, array_from_reader[0].as_ref());
+    assert_eq!(r#"42"#, array_from_reader[1].as_ref());
+    assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].as_ref());
+    assert_eq!(r#"null"#, array_from_reader[3].as_ref());
+
+    let array_to_string = serde_json::to_string(&array_from_str).unwrap();
+    assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
 }
