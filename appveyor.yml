@@ -13,5 +13,21 @@ install:
 
 build: false
 
-test_script:
-  - sh -c 'PATH=`rustc --print sysroot`/bin:$PATH ./travis.sh'
+for:
+  - matrix:
+      only:
+        - APPVEYOR_RUST_CHANNEL: stable
+    test_script:
+      - cargo build
+      - cargo build --features preserve_order
+      - cargo build --features arbitrary_precision
+
+  - matrix:
+      only:
+        - APPVEYOR_RUST_CHANNEL: nightly
+    test_script:
+      - cargo build
+      - cargo build --manifest-path tests/deps/Cargo.toml
+      - cargo test
+      - cargo test --features preserve_order
+      - cargo test --features arbitrary_precision

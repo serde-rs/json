@@ -1,19 +1,32 @@
-sudo: false
 language: rust
-cache: cargo
-
-# Run builds for all the trains (and more).
-# Remember to update the numbers in travis.sh too.
-rust:
-  - stable
-  - nightly
-  - 1.15.0
-  - 1.18.0
-  - beta
 
 matrix:
   include:
     - rust: nightly
-      env: CLIPPY=true
+      script:
+        - cargo build
+        - cargo build --manifest-path tests/deps/Cargo.toml
+        - cargo test
+        - cargo test --features preserve_order
+        - cargo test --features arbitrary_precision
 
-script: ./travis.sh
+    - rust: 1.15.0
+      script:
+        # preserve_order is not supported on 1.15.0
+        - cargo build
+        - cargo build --features arbitrary_precision
+
+    - rust: stable
+    - rust: beta
+    - rust: 1.18.0
+
+    - rust: nightly
+      env: CLIPPY
+      script:
+        - rustup component add clippy-preview || travis_terminate 0
+        - cargo clippy -- -Dclippy
+
+script:
+  - cargo build
+  - cargo build --features preserve_order
+  - cargo build --features arbitrary_precision
