@@ -8,7 +8,6 @@
 
 //! Deserialize JSON data to a Rust data structure.
 
-use std::borrow::Cow;
 use std::io;
 use std::marker::PhantomData;
 use std::result;
@@ -952,16 +951,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        if let None = try!(self.parse_whitespace()) {
-            return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-        }
-
-        self.read.toggle_raw_buffering();
-        de::Deserializer::deserialize_any(&mut *self, de::IgnoredAny)?;
-        match self.read.toggle_raw_buffering().unwrap() {
-            Cow::Owned(byte_buf) => visitor.visit_byte_buf(byte_buf),
-            Cow::Borrowed(bytes) => visitor.visit_borrowed_bytes(bytes),
-        }
+        self.parse_whitespace()?;
+        self.read.begin_raw_buffering();
+        self.ignore_value()?;
+        self.read.end_raw_buffering(visitor)
     }
 }
 

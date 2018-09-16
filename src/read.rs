@@ -6,9 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::borrow::Cow;
 use std::ops::Deref;
 use std::{char, cmp, io, str};
+
+use serde::de::Visitor;
 
 use iter::LineColIterator;
 
@@ -78,12 +79,18 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn ignore_str(&mut self) -> Result<()>;
 
-    /// Switch raw buffering mode on/off. When switching off, returns a copy-on-write
-    /// buffer with the captured data.
+    /// Switch raw buffering mode on.
     ///
-    /// This is used to deserialize `RawValue`.
+    /// This is used when deserializing `RawValue`.
     #[doc(hidden)]
-    fn toggle_raw_buffering(&mut self) -> Option<Cow<'de, [u8]>>;
+    fn begin_raw_buffering(&mut self);
+
+    /// Switch raw buffering mode off and provides the raw buffered data to the
+    /// given visitor.
+    #[doc(hidden)]
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>;
 }
 
 pub struct Position {
@@ -126,7 +133,7 @@ pub struct SliceRead<'a> {
     slice: &'a [u8],
     /// Index of the *next* byte that will be returned by next() or peek().
     index: usize,
-    raw_buffering_start_index: Option<usize>,
+    raw_buffering_start_index: usize,
 }
 
 /// JSON input source that reads from a UTF-8 string.
@@ -300,13 +307,16 @@ where
         }
     }
 
-    fn toggle_raw_buffering(&mut self) -> Option<Cow<'de, [u8]>> {
-        if let Some(buffer) = self.raw_buffer.take() {
-            Some(Cow::Owned(buffer))
-        } else {
-            self.raw_buffer = Some(Vec::new());
-            None
-        }
+    fn begin_raw_buffering(&mut self) {
+        self.raw_buffer = Some(Vec::new());
+    }
+
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        let raw = self.raw_buffer.take().unwrap();
+        visitor.visit_byte_buf(raw)
     }
 }
 
@@ -318,7 +328,7 @@ impl<'a> SliceRead<'a> {
         SliceRead {
             slice: slice,
             index: 0,
-            raw_buffering_start_index: None,
+            raw_buffering_start_index: 0,
         }
     }
 
@@ -473,13 +483,16 @@ impl<'a> Read<'a> for SliceRead<'a> {
         }
     }
 
-    fn toggle_raw_buffering(&mut self) -> Option<Cow<'a, [u8]>> {
-        if let Some(start_index) = self.raw_buffering_start_index.take() {
-            Some(Cow::Borrowed(&self.slice[start_index..self.index]))
-        } else {
-            self.raw_buffering_start_index = Some(self.index);
-            None
-        }
+    fn begin_raw_buffering(&mut self) {
+        self.raw_buffering_start_index = self.index;
+    }
+
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'a>,
+    {
+        let raw = &self.slice[self.raw_buffering_start_index..self.index];
+        visitor.visit_borrowed_bytes(raw)
     }
 }
 
@@ -543,8 +556,15 @@ impl<'a> Read<'a> for StrRead<'a> {
         self.delegate.ignore_str()
     }
 
-    fn toggle_raw_buffering(&mut self) -> Option<Cow<'a, [u8]>> {
-        self.delegate.toggle_raw_buffering()
+    fn begin_raw_buffering(&mut self) {
+        self.delegate.begin_raw_buffering()
+    }
+
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'a>,
+    {
+        self.delegate.end_raw_buffering(visitor)
     }
 }
 
