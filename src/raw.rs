@@ -62,29 +62,18 @@ where
                 write!(formatter, "a deserializable RawValue")
             }
 
+            fn visit_borrowed_str<E>(self, s: &'de str) -> Result<Self::Value, E>
+            where
+                E: ::serde::de::Error,
+            {
+                Ok(RawValue(Cow::Borrowed(s)))
+            }
+
             fn visit_string<E>(self, s: String) -> Result<Self::Value, E>
             where
                 E: ::serde::de::Error,
             {
                 Ok(RawValue(Cow::Owned(s)))
-            }
-
-            fn visit_byte_buf<E>(self, b: Vec<u8>) -> Result<Self::Value, E>
-            where
-                E: ::serde::de::Error,
-            {
-                String::from_utf8(b)
-                    .map(|s| RawValue(Cow::Owned(s)))
-                    .map_err(|err| ::serde::de::Error::custom(err))
-            }
-
-            fn visit_borrowed_bytes<E>(self, b: &'de [u8]) -> Result<Self::Value, E>
-            where
-                E: ::serde::de::Error,
-            {
-                ::std::str::from_utf8(b)
-                    .map(|s| RawValue(Cow::Borrowed(s)))
-                    .map_err(|err| ::serde::de::Error::custom(err))
             }
         }
 
