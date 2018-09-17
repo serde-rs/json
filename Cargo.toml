@@ -41,3 +41,6 @@ preserve_order = ["indexmap"]
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
 # written back to a JSON string without loss of precision.
 arbitrary_precision = []
+
+# Provide a RawValue type that can hold unprocessed JSON during deserialization.
+raw_value = []

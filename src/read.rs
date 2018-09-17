@@ -9,11 +9,14 @@
 use std::ops::Deref;
 use std::{char, cmp, io, str};
 
+#[cfg(feature = "raw_value")]
 use serde::de::Visitor;
 
 use iter::LineColIterator;
 
 use error::{Error, ErrorCode, Result};
+
+#[cfg(feature = "raw_value")]
 use raw::{BorrowedRawDeserializer, OwnedRawDeserializer};
 
 /// Trait used by the deserializer for iterating over input. This is manually
@@ -83,11 +86,13 @@ pub trait Read<'de>: private::Sealed {
     /// Switch raw buffering mode on.
     ///
     /// This is used when deserializing `RawValue`.
+    #[cfg(feature = "raw_value")]
     #[doc(hidden)]
     fn begin_raw_buffering(&mut self);
 
     /// Switch raw buffering mode off and provides the raw buffered data to the
     /// given visitor.
+    #[cfg(feature = "raw_value")]
     #[doc(hidden)]
     fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
     where
@@ -123,6 +128,7 @@ where
     iter: LineColIterator<io::Bytes<R>>,
     /// Temporary storage of peeked byte.
     ch: Option<u8>,
+    #[cfg(feature = "raw_value")]
     raw_buffer: Option<Vec<u8>>,
 }
 
@@ -134,6 +140,7 @@ pub struct SliceRead<'a> {
     slice: &'a [u8],
     /// Index of the *next* byte that will be returned by next() or peek().
     index: usize,
+    #[cfg(feature = "raw_value")]
     raw_buffering_start_index: usize,
 }
 
@@ -142,6 +149,7 @@ pub struct SliceRead<'a> {
 // Able to elide UTF-8 checks by assuming that the input is valid UTF-8.
 pub struct StrRead<'a> {
     delegate: SliceRead<'a>,
+    #[cfg(feature = "raw_value")]
     data: &'a str,
 }
 
@@ -161,6 +169,7 @@ where
         IoRead {
             iter: LineColIterator::new(reader.bytes()),
             ch: None,
+            #[cfg(feature = "raw_value")]
             raw_buffer: None,
         }
     }
@@ -214,16 +223,22 @@ where
     fn next(&mut self) -> io::Result<Option<u8>> {
         match self.ch.take() {
             Some(ch) => {
-                if let Some(ref mut buf) = self.raw_buffer {
-                    buf.push(ch);
+                #[cfg(feature = "raw_value")]
+                {
+                    if let Some(ref mut buf) = self.raw_buffer {
+                        buf.push(ch);
+                    }
                 }
                 Ok(Some(ch))
             }
             None => match self.iter.next() {
                 Some(Err(err)) => Err(err),
                 Some(Ok(ch)) => {
-                    if let Some(ref mut buf) = self.raw_buffer {
-                        buf.push(ch);
+                    #[cfg(feature = "raw_value")]
+                    {
+                        if let Some(ref mut buf) = self.raw_buffer {
+                            buf.push(ch);
+                        }
                     }
                     Ok(Some(ch))
                 }
@@ -247,7 +262,13 @@ where
         }
     }
 
+    #[cfg(not(feature = "raw_value"))]
     #[inline]
+    fn discard(&mut self) {
+        self.ch = None;
+    }
+
+    #[cfg(feature = "raw_value")]
     fn discard(&mut self) {
         if let Some(ch) = self.ch.take() {
             if let Some(ref mut buf) = self.raw_buffer {
@@ -309,10 +330,12 @@ where
         }
     }
 
+    #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
         self.raw_buffer = Some(Vec::new());
     }
 
+    #[cfg(feature = "raw_value")]
     fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
@@ -331,6 +354,7 @@ impl<'a> SliceRead<'a> {
         SliceRead {
             slice: slice,
             index: 0,
+            #[cfg(feature = "raw_value")]
             raw_buffering_start_index: 0,
         }
     }
@@ -486,10 +510,12 @@ impl<'a> Read<'a> for SliceRead<'a> {
         }
     }
 
+    #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
         self.raw_buffering_start_index = self.index;
     }
 
+    #[cfg(feature = "raw_value")]
     fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'a>,
@@ -507,6 +533,7 @@ impl<'a> StrRead<'a> {
     pub fn new(s: &'a str) -> Self {
         StrRead {
             delegate: SliceRead::new(s.as_bytes()),
+            #[cfg(feature = "raw_value")]
             data: s,
         }
     }
@@ -561,10 +588,12 @@ impl<'a> Read<'a> for StrRead<'a> {
         self.delegate.ignore_str()
     }
 
+    #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
         self.delegate.begin_raw_buffering()
     }
 
+    #[cfg(feature = "raw_value")]
     fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'a>,

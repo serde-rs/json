@@ -230,6 +230,7 @@ impl serde::Serializer for Serializer {
         match name {
             #[cfg(feature = "arbitrary_precision")]
             ::number::SERDE_STRUCT_NAME => Ok(SerializeMap::Number { out_value: None }),
+            #[cfg(feature = "raw_value")]
             ::raw::SERDE_STRUCT_NAME => Ok(SerializeMap::RawValue { out_value: None }),
             _ => self.serialize_map(Some(len)),
         }
@@ -265,6 +266,7 @@ pub enum SerializeMap {
     },
     #[cfg(feature = "arbitrary_precision")]
     Number { out_value: Option<Value> },
+    #[cfg(feature = "raw_value")]
     RawValue { out_value: Option<Value> },
 }
 
@@ -360,6 +362,7 @@ impl serde::ser::SerializeMap for SerializeMap {
             }
             #[cfg(feature = "arbitrary_precision")]
             SerializeMap::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             SerializeMap::RawValue { .. } => unreachable!(),
         }
     }
@@ -382,6 +385,7 @@ impl serde::ser::SerializeMap for SerializeMap {
             }
             #[cfg(feature = "arbitrary_precision")]
             SerializeMap::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             SerializeMap::RawValue { .. } => unreachable!(),
         }
     }
@@ -391,6 +395,7 @@ impl serde::ser::SerializeMap for SerializeMap {
             SerializeMap::Map { map, .. } => Ok(Value::Object(map)),
             #[cfg(feature = "arbitrary_precision")]
             SerializeMap::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             SerializeMap::RawValue { .. } => unreachable!(),
         }
     }
@@ -601,6 +606,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
                     Err(invalid_number())
                 }
             }
+            #[cfg(feature = "raw_value")]
             SerializeMap::RawValue { ref mut out_value } => {
                 if key == ::raw::SERDE_STRUCT_FIELD_NAME {
                     *out_value = Some(value.serialize(RawValueEmitter)?);
@@ -619,6 +625,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
             SerializeMap::Number { out_value, .. } => {
                 Ok(out_value.expect("number value was not emitted"))
             }
+            #[cfg(feature = "raw_value")]
             SerializeMap::RawValue { out_value, .. } => {
                 Ok(out_value.expect("raw value was not emitted"))
             }
@@ -826,12 +833,15 @@ impl ser::Serializer for NumberValueEmitter {
     }
 }
 
+#[cfg(feature = "raw_value")]
 struct RawValueEmitter;
 
+#[cfg(feature = "raw_value")]
 fn invalid_raw_value() -> Error {
     Error::syntax(ErrorCode::ExpectedSomeValue, 0, 0)
 }
 
+#[cfg(feature = "raw_value")]
 impl ser::Serializer for RawValueEmitter {
     type Ok = Value;
     type Error = Error;

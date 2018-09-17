@@ -947,6 +947,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[cfg(feature = "raw_value")]
     fn deserialize_raw_value<V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
@@ -1426,10 +1427,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        if name == ::raw::SERDE_STRUCT_NAME {
-            return self.deserialize_raw_value(visitor);
+        #[cfg(feature = "raw_value")]
+        {
+            if name == ::raw::SERDE_STRUCT_NAME {
+                return self.deserialize_raw_value(visitor);
+            }
         }
 
+        let _ = name;
         visitor.visit_newtype_struct(self)
     }
 

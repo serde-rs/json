@@ -364,7 +364,11 @@ pub use self::ser::{
     to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer, to_writer_pretty, Serializer,
 };
 #[doc(inline)]
-pub use self::value::{from_value, to_value, Map, Number, RawValue, Value};
+pub use self::value::{from_value, to_value, Map, Number, Value};
+
+#[cfg(feature = "raw_value")]
+#[doc(inline)]
+pub use self::value::RawValue;
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
@@ -388,5 +392,7 @@ pub mod value;
 
 mod iter;
 mod number;
-mod raw;
 mod read;
+
+#[cfg(feature = "raw_value")]
+mod raw;

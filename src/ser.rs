@@ -460,6 +460,7 @@ where
         match name {
             #[cfg(feature = "arbitrary_precision")]
             ::number::SERDE_STRUCT_NAME => Ok(Compound::Number { ser: self }),
+            #[cfg(feature = "raw_value")]
             ::raw::SERDE_STRUCT_NAME => Ok(Compound::RawValue { ser: self }),
             _ => self.serialize_map(Some(len)),
         }
@@ -571,6 +572,7 @@ pub enum Compound<'a, W: 'a, F: 'a> {
     },
     #[cfg(feature = "arbitrary_precision")]
     Number { ser: &'a mut Serializer<W, F> },
+    #[cfg(feature = "raw_value")]
     RawValue { ser: &'a mut Serializer<W, F> },
 }
 
@@ -608,6 +610,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
         }
     }
@@ -624,6 +627,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
         }
     }
@@ -707,6 +711,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
         }
     }
@@ -748,6 +753,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
         }
     }
@@ -774,6 +780,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
         }
     }
@@ -790,6 +797,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
         }
     }
@@ -822,6 +830,7 @@ where
                     Err(invalid_number())
                 }
             }
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { ref mut ser, .. } => {
                 if key == ::raw::SERDE_STRUCT_FIELD_NAME {
                     try!(value.serialize(RawValueStrEmitter(&mut *ser)));
@@ -839,6 +848,7 @@ where
             Compound::Map { .. } => ser::SerializeMap::end(self),
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => Ok(()),
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => Ok(()),
         }
     }
@@ -861,6 +871,7 @@ where
             Compound::Map { .. } => ser::SerializeStruct::serialize_field(self, key, value),
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
         }
     }
@@ -883,6 +894,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
         }
     }
@@ -897,6 +909,7 @@ fn invalid_number() -> Error {
     Error::syntax(ErrorCode::InvalidNumber, 0, 0)
 }
 
+#[cfg(feature = "raw_value")]
 fn invalid_raw_value() -> Error {
     Error::syntax(ErrorCode::ExpectedSomeValue, 0, 0)
 }
@@ -1420,8 +1433,10 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
     }
 }
 
+#[cfg(feature = "raw_value")]
 struct RawValueStrEmitter<'a, W: 'a + io::Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
 
+#[cfg(feature = "raw_value")]
 impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, W, F> {
     type Ok = ();
     type Error = Error;

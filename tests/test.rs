@@ -44,7 +44,7 @@ use serde_bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
-    to_writer, Deserializer, Number, RawValue, Value,
+    to_writer, Deserializer, Number, Value,
 };
 
 macro_rules! treemap {
@@ -2040,8 +2040,11 @@ fn test_integer128() {
     ]);
 }
 
+#[cfg(feature = "raw_value")]
 #[test]
 fn test_raw_value() {
+    use serde_json::RawValue;
+
     #[derive(Serialize, Deserialize)]
     struct Wrapper<'a> {
         a: i8,
