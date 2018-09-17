@@ -285,7 +285,7 @@ where
     #[inline]
     fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         value.serialize(self)
     }
@@ -299,7 +299,7 @@ where
         value: &T,
     ) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         try!(
             self.formatter
@@ -344,7 +344,7 @@ where
     #[inline]
     fn serialize_some<T: ?Sized>(self, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         value.serialize(self)
     }
@@ -587,7 +587,7 @@ where
     #[inline]
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         match *self {
             Compound::Map {
@@ -644,7 +644,7 @@ where
     #[inline]
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         ser::SerializeSeq::serialize_element(self, value)
     }
@@ -666,7 +666,7 @@ where
     #[inline]
     fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         ser::SerializeSeq::serialize_element(self, value)
     }
@@ -688,7 +688,7 @@ where
     #[inline]
     fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         ser::SerializeSeq::serialize_element(self, value)
     }
@@ -728,7 +728,7 @@ where
     #[inline]
     fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         match *self {
             Compound::Map {
@@ -761,7 +761,7 @@ where
     #[inline]
     fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         match *self {
             Compound::Map { ref mut ser, .. } => {
@@ -814,7 +814,7 @@ where
     #[inline]
     fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         match *self {
             Compound::Map { .. } => {
@@ -865,7 +865,7 @@ where
     #[inline]
     fn serialize_field<T: ?Sized>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         match *self {
             Compound::Map { .. } => ser::SerializeStruct::serialize_field(self, key, value),
@@ -944,7 +944,7 @@ where
     #[inline]
     fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         value.serialize(self)
     }
@@ -1187,7 +1187,7 @@ where
         _value: &T,
     ) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         Err(key_must_be_a_string())
     }
@@ -1198,7 +1198,7 @@ where
 
     fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<()>
     where
-        T: ser::Serialize,
+        T: Serialize,
     {
         Err(key_must_be_a_string())
     }
@@ -2207,7 +2207,7 @@ static ESCAPE: [u8; 256] = [
 pub fn to_writer<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
 where
     W: io::Write,
-    T: ser::Serialize,
+    T: Serialize,
 {
     let mut ser = Serializer::new(writer);
     try!(value.serialize(&mut ser));
@@ -2225,7 +2225,7 @@ where
 pub fn to_writer_pretty<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
 where
     W: io::Write,
-    T: ser::Serialize,
+    T: Serialize,
 {
     let mut ser = Serializer::pretty(writer);
     try!(value.serialize(&mut ser));
@@ -2241,7 +2241,7 @@ where
 #[inline]
 pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
 where
-    T: ser::Serialize,
+    T: Serialize,
 {
     let mut writer = Vec::with_capacity(128);
     try!(to_writer(&mut writer, value));
@@ -2257,7 +2257,7 @@ where
 #[inline]
 pub fn to_vec_pretty<T: ?Sized>(value: &T) -> Result<Vec<u8>>
 where
-    T: ser::Serialize,
+    T: Serialize,
 {
     let mut writer = Vec::with_capacity(128);
     try!(to_writer_pretty(&mut writer, value));
@@ -2273,7 +2273,7 @@ where
 #[inline]
 pub fn to_string<T: ?Sized>(value: &T) -> Result<String>
 where
-    T: ser::Serialize,
+    T: Serialize,
 {
     let vec = try!(to_vec(value));
     let string = unsafe {
@@ -2292,7 +2292,7 @@ where
 #[inline]
 pub fn to_string_pretty<T: ?Sized>(value: &T) -> Result<String>
 where
-    T: ser::Serialize,
+    T: Serialize,
 {
     let vec = try!(to_vec_pretty(value));
     let string = unsafe {

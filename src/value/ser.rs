@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use serde::ser::{self, Impossible};
+use serde::ser::Impossible;
 use serde::{self, Serialize};
 
 use error::{Error, ErrorCode};
@@ -663,7 +663,7 @@ fn invalid_number() -> Error {
 }
 
 #[cfg(feature = "arbitrary_precision")]
-impl ser::Serializer for NumberValueEmitter {
+impl serde::ser::Serializer for NumberValueEmitter {
     type Ok = Value;
     type Error = Error;
 
@@ -842,7 +842,7 @@ fn invalid_raw_value() -> Error {
 }
 
 #[cfg(feature = "raw_value")]
-impl ser::Serializer for RawValueEmitter {
+impl serde::ser::Serializer for RawValueEmitter {
     type Ok = Value;
     type Error = Error;
 
