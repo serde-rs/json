@@ -19,26 +19,28 @@ use error::Error;
 /// as it relies on the original input buffer.
 
 #[derive(Clone)]
-pub struct RawValue<'a>(Cow<'a, str>);
+pub struct RawValue<'a> {
+    cow: Cow<'a, str>,
+}
 
 impl<'a> Debug for RawValue<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter
             .debug_tuple("RawValue")
-            .field(&format_args!("{}", self.0))
+            .field(&format_args!("{}", self.cow))
             .finish()
     }
 }
 
 impl<'a> AsRef<str> for RawValue<'a> {
     fn as_ref(&self) -> &str {
-        &self.0
+        &self.cow
     }
 }
 
 impl<'a> fmt::Display for RawValue<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.cow)
     }
 }
 
@@ -52,7 +54,7 @@ impl<'a> Serialize for RawValue<'a> {
         S: Serializer,
     {
         let mut s = serializer.serialize_struct(SERDE_STRUCT_NAME, 1)?;
-        s.serialize_field(SERDE_STRUCT_FIELD_NAME, &self.0)?;
+        s.serialize_field(SERDE_STRUCT_FIELD_NAME, &self.cow)?;
         s.end()
     }
 }
@@ -145,14 +147,14 @@ impl<'de> Visitor<'de> for RawValueFromString {
     where
         E: de::Error,
     {
-        Ok(RawValue(Cow::Borrowed(s)))
+        Ok(RawValue { cow: Cow::Borrowed(s) })
     }
 
     fn visit_string<E>(self, s: String) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        Ok(RawValue(Cow::Owned(s)))
+        Ok(RawValue { cow: Cow::Owned(s) })
     }
 }
 
