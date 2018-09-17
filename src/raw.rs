@@ -1,5 +1,7 @@
-use std::borrow::Cow;
-use std::fmt::{self, Debug};
+use std::borrow::Borrow;
+use std::fmt::{self, Debug, Display};
+use std::mem;
+use std::ops::Deref;
 
 use serde::ser::{Serialize, Serializer, SerializeStruct};
 use serde::de::{self, Deserialize, Deserializer, DeserializeSeed, IntoDeserializer, MapAccess, Unexpected, Visitor};
@@ -17,49 +19,148 @@ use error::Error;
 ///
 /// When deserializing, this type can not be used with the `#[serde(flatten)]` attribute,
 /// as it relies on the original input buffer.
-
-#[derive(Clone)]
-pub struct RawValue<'a> {
-    cow: Cow<'a, str>,
+#[repr(C)]
+pub struct RawSlice {
+    borrowed: str,
 }
 
-impl<'a> Debug for RawValue<'a> {
+///
+pub struct RawValue {
+    owned: Box<RawSlice>,
+}
+
+impl RawSlice {
+    fn from_inner(borrowed: &str) -> &Self {
+        unsafe { mem::transmute::<&str, &RawSlice>(borrowed) }
+    }
+}
+
+impl RawValue {
+    fn from_inner(owned: Box<str>) -> Self {
+        RawValue {
+            owned: unsafe { mem::transmute::<Box<str>, Box<RawSlice>>(owned) },
+        }
+    }
+}
+
+impl Clone for RawValue {
+    fn clone(&self) -> Self {
+        self.owned.to_owned()
+    }
+}
+
+impl Deref for RawValue {
+    type Target = RawSlice;
+
+    fn deref(&self) -> &Self::Target {
+        &self.owned
+    }
+}
+
+impl Borrow<RawSlice> for RawValue {
+    fn borrow(&self) -> &RawSlice {
+        &self.owned
+    }
+}
+
+impl ToOwned for RawSlice {
+    type Owned = RawValue;
+
+    fn to_owned(&self) -> Self::Owned {
+        RawValue::from_inner(self.borrowed.to_owned().into_boxed_str())
+    }
+}
+
+impl Debug for RawSlice {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter
-            .debug_tuple("RawValue")
-            .field(&format_args!("{}", self.cow))
+            .debug_tuple("RawSlice")
+            .field(&format_args!("{}", &self.borrowed))
             .finish()
     }
 }
 
-impl<'a> AsRef<str> for RawValue<'a> {
-    fn as_ref(&self) -> &str {
-        &self.cow
+impl Debug for RawValue {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter
+            .debug_tuple("RawValue")
+            .field(&format_args!("{}", &self.owned.borrowed))
+            .finish()
     }
 }
 
-impl<'a> fmt::Display for RawValue<'a> {
+impl RawSlice {
+    ///
+    pub fn as_ref(&self) -> &str {
+        &self.borrowed
+    }
+}
+
+impl Display for RawSlice {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&self.cow)
+        f.write_str(&self.borrowed)
+    }
+}
+
+impl Display for RawValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&**self, f)
     }
 }
 
 pub const TOKEN: &'static str = "$serde_json::private::RawValue";
 
-impl<'a> Serialize for RawValue<'a> {
-    #[inline]
+impl Serialize for RawSlice {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut s = serializer.serialize_struct(TOKEN, 1)?;
-        s.serialize_field(TOKEN, &self.cow)?;
+        s.serialize_field(TOKEN, &self.borrowed)?;
         s.end()
     }
 }
 
-impl<'a, 'de: 'a> Deserialize<'de> for RawValue<'a> {
-    #[inline]
+impl Serialize for RawValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        (**self).serialize(serializer)
+    }
+}
+
+impl<'de: 'a, 'a> Deserialize<'de> for &'a RawSlice {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct RawSliceVisitor;
+
+        impl<'de> Visitor<'de> for RawSliceVisitor {
+            type Value = &'de RawSlice;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "any valid JSON value")
+            }
+
+            fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let value = visitor.next_key::<RawKey>()?;
+                if value.is_none() {
+                    return Err(de::Error::invalid_type(Unexpected::Map, &self));
+                }
+                visitor.next_value_seed(RawSliceFromString)
+            }
+        }
+
+        deserializer.deserialize_newtype_struct(TOKEN, RawSliceVisitor)
+    }
+}
+
+impl<'de> Deserialize<'de> for RawValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -67,7 +168,7 @@ impl<'a, 'de: 'a> Deserialize<'de> for RawValue<'a> {
         struct RawValueVisitor;
 
         impl<'de> Visitor<'de> for RawValueVisitor {
-            type Value = RawValue<'de>;
+            type Value = RawValue;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(formatter, "any valid JSON value")
@@ -122,10 +223,38 @@ impl<'de> Deserialize<'de> for RawKey {
     }
 }
 
+pub struct RawSliceFromString;
+
+impl<'de> DeserializeSeed<'de> for RawSliceFromString {
+    type Value = &'de RawSlice;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(self)
+    }
+}
+
+impl<'de> Visitor<'de> for RawSliceFromString {
+    type Value = &'de RawSlice;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("raw value")
+    }
+
+    fn visit_borrowed_str<E>(self, s: &'de str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(RawSlice::from_inner(s))
+    }
+}
+
 pub struct RawValueFromString;
 
 impl<'de> DeserializeSeed<'de> for RawValueFromString {
-    type Value = RawValue<'de>;
+    type Value = RawValue;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -136,24 +265,24 @@ impl<'de> DeserializeSeed<'de> for RawValueFromString {
 }
 
 impl<'de> Visitor<'de> for RawValueFromString {
-    type Value = RawValue<'de>;
+    type Value = RawValue;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("raw value")
     }
 
-    fn visit_borrowed_str<E>(self, s: &'de str) -> Result<Self::Value, E>
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        Ok(RawValue { cow: Cow::Borrowed(s) })
+        self.visit_string(s.to_owned())
     }
 
     fn visit_string<E>(self, s: String) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        Ok(RawValue { cow: Cow::Owned(s) })
+        Ok(RawValue::from_inner(s.into_boxed_str()))
     }
 }
 

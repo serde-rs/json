@@ -366,10 +366,6 @@ pub use self::ser::{
 #[doc(inline)]
 pub use self::value::{from_value, to_value, Map, Number, Value};
 
-#[cfg(feature = "raw_value")]
-#[doc(inline)]
-pub use self::value::RawValue;
-
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
 macro_rules! try {

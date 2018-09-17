@@ -2042,28 +2042,61 @@ fn test_integer128() {
 
 #[cfg(feature = "raw_value")]
 #[test]
-fn test_raw_value() {
-    use serde_json::RawValue;
+fn test_raw_slice() {
+    use serde_json::value::RawSlice;
 
     #[derive(Serialize, Deserialize)]
     struct Wrapper<'a> {
         a: i8,
         #[serde(borrow)]
-        b: RawValue<'a>,
+        b: &'a RawSlice,
         c: i8,
     };
 
-    let wrapper_from_str =
-        serde_json::from_str::<Wrapper>(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
+    let wrapper_from_str: Wrapper =
+        serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.as_ref());
 
-    let wrapper_from_reader = serde_json::from_reader::<_, Wrapper<'static>>(
+    let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
+    assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_string);
+
+    let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
+    assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
+
+    let array_from_str: Vec<&RawSlice> =
+        serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+    assert_eq!(r#""a""#, array_from_str[0].as_ref());
+    assert_eq!(r#"42"#, array_from_str[1].as_ref());
+    assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].as_ref());
+    assert_eq!(r#"null"#, array_from_str[3].as_ref());
+
+    let array_to_string = serde_json::to_string(&array_from_str).unwrap();
+    assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
+}
+
+#[cfg(feature = "raw_value")]
+#[test]
+fn test_raw_value() {
+    use serde_json::value::RawValue;
+
+    #[derive(Serialize, Deserialize)]
+    struct Wrapper {
+        a: i8,
+        b: RawValue,
+        c: i8,
+    };
+
+    let wrapper_from_str: Wrapper =
+        serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
+    assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.as_ref());
+
+    let wrapper_from_reader: Wrapper = serde_json::from_reader(
         br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref(),
     ).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.as_ref());
 
-    let wrapper_from_value =
-        serde_json::from_value::<Wrapper<'static>>(json!({"a": 1, "b": {"foo": 2}, "c": 3}))
+    let wrapper_from_value: Wrapper =
+        serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3}))
             .unwrap();
     assert_eq!(r#"{"foo":2}"#, wrapper_from_value.b.as_ref());
 
@@ -2073,14 +2106,14 @@ fn test_raw_value() {
     let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
     assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
 
-    let array_from_str =
-        serde_json::from_str::<Vec<RawValue>>(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+    let array_from_str: Vec<RawValue> =
+        serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
     assert_eq!(r#""a""#, array_from_str[0].as_ref());
     assert_eq!(r#"42"#, array_from_str[1].as_ref());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].as_ref());
     assert_eq!(r#"null"#, array_from_str[3].as_ref());
 
-    let array_from_reader = serde_json::from_reader::<_, Vec<RawValue<'static>>>(
+    let array_from_reader: Vec<RawValue> = serde_json::from_reader(
         br#"["a", 42, {"foo": "bar"}, null]"#.as_ref(),
     ).unwrap();
     assert_eq!(r#""a""#, array_from_reader[0].as_ref());
