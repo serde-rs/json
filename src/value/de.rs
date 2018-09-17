@@ -128,7 +128,7 @@ impl<'de> Deserialize<'de> for Value {
 
                         Ok(Value::Object(values))
                     }
-                    None => return Ok(Value::Object(Map::new())),
+                    None => Ok(Value::Object(Map::new())),
                 }
             }
         }
