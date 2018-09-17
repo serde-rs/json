@@ -283,14 +283,10 @@ where
 
     /// Serialize newtypes without an object wrapper.
     #[inline]
-    fn serialize_newtype_struct<T: ?Sized>(self, name: &'static str, value: &T) -> Result<()>
+    fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, value: &T) -> Result<()>
     where
         T: ser::Serialize,
     {
-        if name == ::raw::SERDE_STRUCT_NAME {
-            return value.serialize(RawValueStrEmitter(self));
-        }
-
         value.serialize(self)
     }
 
@@ -464,6 +460,7 @@ where
         match name {
             #[cfg(feature = "arbitrary_precision")]
             ::number::SERDE_STRUCT_NAME => Ok(Compound::Number { ser: self }),
+            ::raw::SERDE_STRUCT_NAME => Ok(Compound::RawValue { ser: self }),
             _ => self.serialize_map(Some(len)),
         }
     }
@@ -574,6 +571,7 @@ pub enum Compound<'a, W: 'a, F: 'a> {
     },
     #[cfg(feature = "arbitrary_precision")]
     Number { ser: &'a mut Serializer<W, F> },
+    RawValue { ser: &'a mut Serializer<W, F> },
 }
 
 impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
@@ -610,6 +608,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            Compound::RawValue { .. } => unreachable!(),
         }
     }
 
@@ -625,6 +624,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            Compound::RawValue { .. } => unreachable!(),
         }
     }
 }
@@ -707,6 +707,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            Compound::RawValue { .. } => unreachable!(),
         }
     }
 }
@@ -747,6 +748,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            Compound::RawValue { .. } => unreachable!(),
         }
     }
 
@@ -772,6 +774,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            Compound::RawValue { .. } => unreachable!(),
         }
     }
 
@@ -787,6 +790,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            Compound::RawValue { .. } => unreachable!(),
         }
     }
 }
@@ -818,6 +822,14 @@ where
                     Err(invalid_number())
                 }
             }
+            Compound::RawValue { ref mut ser, .. } => {
+                if key == ::raw::SERDE_STRUCT_FIELD_NAME {
+                    try!(value.serialize(RawValueStrEmitter(&mut *ser)));
+                    Ok(())
+                } else {
+                    Err(invalid_raw_value())
+                }
+            }
         }
     }
 
@@ -827,6 +839,7 @@ where
             Compound::Map { .. } => ser::SerializeMap::end(self),
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => Ok(()),
+            Compound::RawValue { .. } => Ok(()),
         }
     }
 }
@@ -848,6 +861,7 @@ where
             Compound::Map { .. } => ser::SerializeStruct::serialize_field(self, key, value),
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            Compound::RawValue { .. } => unreachable!(),
         }
     }
 
@@ -869,6 +883,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
+            Compound::RawValue { .. } => unreachable!(),
         }
     }
 }
@@ -880,6 +895,10 @@ struct MapKeySerializer<'a, W: 'a, F: 'a> {
 #[cfg(feature = "arbitrary_precision")]
 fn invalid_number() -> Error {
     Error::syntax(ErrorCode::InvalidNumber, 0, 0)
+}
+
+fn invalid_raw_value() -> Error {
+    Error::syntax(ErrorCode::ExpectedSomeValue, 0, 0)
 }
 
 fn key_must_be_a_string() -> Error {
@@ -1928,7 +1947,7 @@ pub trait Formatter {
         Ok(())
     }
 
-    /// Writes a raw  json fragment that doesn't need any escaping to the
+    /// Writes a raw JSON fragment that doesn't need any escaping to the
     /// specified writer.
     #[inline]
     fn write_raw_fragment<W: ?Sized>(&mut self, writer: &mut W, fragment: &str) -> io::Result<()>

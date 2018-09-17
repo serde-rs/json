@@ -1,8 +1,11 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::ser::{Serialize, Serializer, SerializeStruct};
+use serde::de::{self, Deserialize, Deserializer, DeserializeSeed, IntoDeserializer, MapAccess, Unexpected, Visitor};
+use serde::de::value::BorrowedStrDeserializer;
+
+use error::Error;
 
 /// Represents any valid JSON value as a series of raw bytes.
 ///
@@ -30,9 +33,8 @@ impl<'a> fmt::Display for RawValue<'a> {
     }
 }
 
-/// Not public API. Should be pub(crate).
-#[doc(hidden)]
-pub const SERDE_STRUCT_NAME: &'static str = "$__serde_private_RawValue";
+pub const SERDE_STRUCT_NAME: &'static str = "$serde_json::RawValue";
+pub const SERDE_STRUCT_FIELD_NAME: &'static str = "$serde_json::RawValue::id";
 
 impl<'a> Serialize for RawValue<'a> {
     #[inline]
@@ -40,14 +42,13 @@ impl<'a> Serialize for RawValue<'a> {
     where
         S: Serializer,
     {
-        serializer.serialize_newtype_struct(SERDE_STRUCT_NAME, &self.0)
+        let mut s = serializer.serialize_struct(SERDE_STRUCT_NAME, 1)?;
+        s.serialize_field(SERDE_STRUCT_FIELD_NAME, &self.0)?;
+        s.end()
     }
 }
 
-impl<'a, 'de> Deserialize<'de> for RawValue<'a>
-where
-    'de: 'a,
-{
+impl<'a, 'de: 'a> Deserialize<'de> for RawValue<'a> {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -59,24 +60,158 @@ where
             type Value = RawValue<'de>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "a deserializable RawValue")
+                write!(formatter, "any valid JSON value")
             }
 
-            fn visit_borrowed_str<E>(self, s: &'de str) -> Result<Self::Value, E>
+            fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
             where
-                E: ::serde::de::Error,
+                V: MapAccess<'de>,
             {
-                Ok(RawValue(Cow::Borrowed(s)))
-            }
-
-            fn visit_string<E>(self, s: String) -> Result<Self::Value, E>
-            where
-                E: ::serde::de::Error,
-            {
-                Ok(RawValue(Cow::Owned(s)))
+                let value = visitor.next_key::<RawKey>()?;
+                if value.is_none() {
+                    return Err(de::Error::invalid_type(Unexpected::Map, &self));
+                }
+                visitor.next_value_seed(RawValueFromString)
             }
         }
 
         deserializer.deserialize_newtype_struct(SERDE_STRUCT_NAME, RawValueVisitor)
+    }
+}
+
+struct RawKey;
+
+impl<'de> Deserialize<'de> for RawKey {
+    fn deserialize<D>(deserializer: D) -> Result<RawKey, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct FieldVisitor;
+
+        impl<'de> Visitor<'de> for FieldVisitor {
+            type Value = ();
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("raw value")
+            }
+
+            fn visit_str<E>(self, s: &str) -> Result<(), E>
+            where
+                E: de::Error,
+            {
+                if s == SERDE_STRUCT_FIELD_NAME {
+                    Ok(())
+                } else {
+                    Err(de::Error::custom("unexpected raw value"))
+                }
+            }
+        }
+
+        deserializer.deserialize_identifier(FieldVisitor)?;
+        Ok(RawKey)
+    }
+}
+
+pub struct RawValueFromString;
+
+impl<'de> DeserializeSeed<'de> for RawValueFromString {
+    type Value = RawValue<'de>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(self)
+    }
+}
+
+impl<'de> Visitor<'de> for RawValueFromString {
+    type Value = RawValue<'de>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("raw value")
+    }
+
+    fn visit_borrowed_str<E>(self, s: &'de str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(RawValue(Cow::Borrowed(s)))
+    }
+
+    fn visit_string<E>(self, s: String) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(RawValue(Cow::Owned(s)))
+    }
+}
+
+struct RawKeyDeserializer;
+
+impl<'de> Deserializer<'de> for RawKeyDeserializer {
+    type Error = Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_borrowed_str(SERDE_STRUCT_FIELD_NAME)
+    }
+
+    forward_to_deserialize_any! {
+        bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 f32 f64 char str string seq
+        bytes byte_buf map struct option unit newtype_struct ignored_any
+        unit_struct tuple_struct tuple enum identifier
+    }
+}
+
+pub struct OwnedRawDeserializer {
+    pub raw_value: Option<String>,
+}
+
+impl<'de> MapAccess<'de> for OwnedRawDeserializer {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Error>
+    where
+        K: de::DeserializeSeed<'de>,
+    {
+        if self.raw_value.is_none() {
+            return Ok(None);
+        }
+        seed.deserialize(RawKeyDeserializer).map(Some)
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Error>
+    where
+        V: de::DeserializeSeed<'de>,
+    {
+        seed.deserialize(self.raw_value.take().unwrap().into_deserializer())
+    }
+}
+
+pub struct BorrowedRawDeserializer<'de> {
+    pub raw_value: Option<&'de str>,
+}
+
+impl<'de> MapAccess<'de> for BorrowedRawDeserializer<'de> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Error>
+    where
+        K: de::DeserializeSeed<'de>,
+    {
+        if self.raw_value.is_none() {
+            return Ok(None);
+        }
+        seed.deserialize(RawKeyDeserializer).map(Some)
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Error>
+    where
+        V: de::DeserializeSeed<'de>,
+    {
+        seed.deserialize(BorrowedStrDeserializer::new(self.raw_value.take().unwrap()))
     }
 }
