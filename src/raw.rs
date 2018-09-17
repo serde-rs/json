@@ -18,7 +18,7 @@ use error::Error;
 /// When deserializing, this type can not be used with the `#[serde(flatten)]` attribute,
 /// as it relies on the original input buffer.
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct RawValue<'a>(Cow<'a, str>);
 
 impl<'a> AsRef<str> for RawValue<'a> {
