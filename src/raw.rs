@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::fmt;
+use std::fmt::{self, Debug};
 
 use serde::ser::{Serialize, Serializer, SerializeStruct};
 use serde::de::{self, Deserialize, Deserializer, DeserializeSeed, IntoDeserializer, MapAccess, Unexpected, Visitor};
@@ -18,8 +18,17 @@ use error::Error;
 /// When deserializing, this type can not be used with the `#[serde(flatten)]` attribute,
 /// as it relies on the original input buffer.
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RawValue<'a>(Cow<'a, str>);
+
+impl<'a> Debug for RawValue<'a> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter
+            .debug_tuple("RawValue")
+            .field(&format_args!("{}", self.0))
+            .finish()
+    }
+}
 
 impl<'a> AsRef<str> for RawValue<'a> {
     fn as_ref(&self) -> &str {
