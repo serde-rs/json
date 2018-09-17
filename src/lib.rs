@@ -316,6 +316,7 @@
 //! [`serde-json-core`]: https://japaric.github.io/serde-json-core/serde_json_core/
 
 #![doc(html_root_url = "https://docs.rs/serde_json/1.0.27")]
+#![cfg_attr(feature = "cargo-clippy", allow(renamed_and_removed_lints))]
 #![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
 // Whitelisted clippy lints
 #![cfg_attr(
