@@ -44,8 +44,7 @@ impl<'a> fmt::Display for RawValue<'a> {
     }
 }
 
-pub const SERDE_STRUCT_NAME: &'static str = "$serde_json::RawValue";
-pub const SERDE_STRUCT_FIELD_NAME: &'static str = "$serde_json::RawValue::id";
+pub const TOKEN: &'static str = "$serde_json::private::RawValue";
 
 impl<'a> Serialize for RawValue<'a> {
     #[inline]
@@ -53,8 +52,8 @@ impl<'a> Serialize for RawValue<'a> {
     where
         S: Serializer,
     {
-        let mut s = serializer.serialize_struct(SERDE_STRUCT_NAME, 1)?;
-        s.serialize_field(SERDE_STRUCT_FIELD_NAME, &self.cow)?;
+        let mut s = serializer.serialize_struct(TOKEN, 1)?;
+        s.serialize_field(TOKEN, &self.cow)?;
         s.end()
     }
 }
@@ -86,7 +85,7 @@ impl<'a, 'de: 'a> Deserialize<'de> for RawValue<'a> {
             }
         }
 
-        deserializer.deserialize_newtype_struct(SERDE_STRUCT_NAME, RawValueVisitor)
+        deserializer.deserialize_newtype_struct(TOKEN, RawValueVisitor)
     }
 }
 
@@ -110,7 +109,7 @@ impl<'de> Deserialize<'de> for RawKey {
             where
                 E: de::Error,
             {
-                if s == SERDE_STRUCT_FIELD_NAME {
+                if s == TOKEN {
                     Ok(())
                 } else {
                     Err(de::Error::custom("unexpected raw value"))
@@ -167,7 +166,7 @@ impl<'de> Deserializer<'de> for RawKeyDeserializer {
     where
         V: de::Visitor<'de>,
     {
-        visitor.visit_borrowed_str(SERDE_STRUCT_FIELD_NAME)
+        visitor.visit_borrowed_str(TOKEN)
     }
 
     forward_to_deserialize_any! {

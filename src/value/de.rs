@@ -313,7 +313,7 @@ impl<'de> serde::Deserializer<'de> for Value {
     {
         #[cfg(feature = "raw_value")]
         {
-            if name == ::raw::SERDE_STRUCT_NAME {
+            if name == ::raw::TOKEN {
                 return visitor.visit_map(::raw::OwnedRawDeserializer {
                     raw_value: Some(self.to_string()),
                 });
@@ -852,7 +852,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     {
         #[cfg(feature = "raw_value")]
         {
-            if name == ::raw::SERDE_STRUCT_NAME {
+            if name == ::raw::TOKEN {
                 return visitor.visit_map(::raw::OwnedRawDeserializer {
                     raw_value: Some(self.to_string()),
                 });
@@ -1345,9 +1345,9 @@ impl<'de> Visitor<'de> for KeyClassifier {
     {
         match s {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::SERDE_STRUCT_FIELD_NAME => Ok(KeyClass::Number),
+            ::number::TOKEN => Ok(KeyClass::Number),
             #[cfg(feature = "raw_value")]
-            ::raw::SERDE_STRUCT_FIELD_NAME => Ok(KeyClass::RawValue),
+            ::raw::TOKEN => Ok(KeyClass::RawValue),
             _ => Ok(KeyClass::Map(s.to_owned())),
         }
     }
@@ -1358,9 +1358,9 @@ impl<'de> Visitor<'de> for KeyClassifier {
     {
         match s.as_str() {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::SERDE_STRUCT_FIELD_NAME => Ok(KeyClass::Number),
+            ::number::TOKEN => Ok(KeyClass::Number),
             #[cfg(feature = "raw_value")]
-            ::raw::SERDE_STRUCT_FIELD_NAME => Ok(KeyClass::RawValue),
+            ::raw::TOKEN => Ok(KeyClass::RawValue),
             _ => Ok(KeyClass::Map(s)),
         }
     }

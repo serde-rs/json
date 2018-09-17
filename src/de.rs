@@ -1429,7 +1429,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         #[cfg(feature = "raw_value")]
         {
-            if name == ::raw::SERDE_STRUCT_NAME {
+            if name == ::raw::TOKEN {
                 return self.deserialize_raw_value(visitor);
             }
         }

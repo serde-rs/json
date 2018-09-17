@@ -229,9 +229,9 @@ impl serde::Serializer for Serializer {
     ) -> Result<Self::SerializeStruct, Error> {
         match name {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::SERDE_STRUCT_NAME => Ok(SerializeMap::Number { out_value: None }),
+            ::number::TOKEN => Ok(SerializeMap::Number { out_value: None }),
             #[cfg(feature = "raw_value")]
-            ::raw::SERDE_STRUCT_NAME => Ok(SerializeMap::RawValue { out_value: None }),
+            ::raw::TOKEN => Ok(SerializeMap::RawValue { out_value: None }),
             _ => self.serialize_map(Some(len)),
         }
     }
@@ -599,7 +599,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
             }
             #[cfg(feature = "arbitrary_precision")]
             SerializeMap::Number { ref mut out_value } => {
-                if key == ::number::SERDE_STRUCT_FIELD_NAME {
+                if key == ::number::TOKEN {
                     *out_value = Some(value.serialize(NumberValueEmitter)?);
                     Ok(())
                 } else {
@@ -608,7 +608,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
             }
             #[cfg(feature = "raw_value")]
             SerializeMap::RawValue { ref mut out_value } => {
-                if key == ::raw::SERDE_STRUCT_FIELD_NAME {
+                if key == ::raw::TOKEN {
                     *out_value = Some(value.serialize(RawValueEmitter)?);
                     Ok(())
                 } else {

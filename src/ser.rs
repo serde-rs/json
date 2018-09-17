@@ -459,9 +459,9 @@ where
     fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         match name {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::SERDE_STRUCT_NAME => Ok(Compound::Number { ser: self }),
+            ::number::TOKEN => Ok(Compound::Number { ser: self }),
             #[cfg(feature = "raw_value")]
-            ::raw::SERDE_STRUCT_NAME => Ok(Compound::RawValue { ser: self }),
+            ::raw::TOKEN => Ok(Compound::RawValue { ser: self }),
             _ => self.serialize_map(Some(len)),
         }
     }
@@ -823,7 +823,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { ref mut ser, .. } => {
-                if key == ::number::SERDE_STRUCT_FIELD_NAME {
+                if key == ::number::TOKEN {
                     try!(value.serialize(NumberStrEmitter(&mut *ser)));
                     Ok(())
                 } else {
@@ -832,7 +832,7 @@ where
             }
             #[cfg(feature = "raw_value")]
             Compound::RawValue { ref mut ser, .. } => {
-                if key == ::raw::SERDE_STRUCT_FIELD_NAME {
+                if key == ::raw::TOKEN {
                     try!(value.serialize(RawValueStrEmitter(&mut *ser)));
                     Ok(())
                 } else {
