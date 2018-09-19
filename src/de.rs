@@ -50,7 +50,7 @@ where
     pub fn new(read: R) -> Self {
         Deserializer {
             read: read,
-            str_buf: Vec::with_capacity(128),
+            str_buf: Vec::new(),
             remaining_depth: 128,
         }
     }
