@@ -9,16 +9,72 @@ use serde::de::value::BorrowedStrDeserializer;
 
 use error::Error;
 
-/// Represents any valid JSON value as a series of raw bytes.
+/// Reference to a range of bytes encompassing a single valid JSON value in the
+/// input data.
 ///
-/// This type can be used to defer parsing parts of a payload until later,
-/// or to embed it verbatim into another JSON payload.
+/// A `RawSlice` can be used to defer parsing parts of a payload until later,
+/// or to avoid parsing it at all in the case that part of the payload just
+/// needs to be transferred verbatim into a different output object.
 ///
 /// When serializing, a value of this type will retain its original formatting
 /// and will not be minified or pretty-printed.
 ///
-/// When deserializing, this type can not be used with the `#[serde(flatten)]` attribute,
-/// as it relies on the original input buffer.
+/// # Example
+///
+/// ```
+/// #[macro_use]
+/// extern crate serde_derive;
+/// extern crate serde_json;
+///
+/// use serde_json::{Result, value::RawSlice};
+///
+/// #[derive(Deserialize)]
+/// struct Input<'a> {
+///     code: u32,
+///     #[serde(borrow)]
+///     payload: &'a RawSlice,
+/// }
+///
+/// #[derive(Serialize)]
+/// struct Output<'a> {
+///     info: (u32, &'a RawSlice),
+/// }
+///
+/// // Efficiently rearrange JSON input containing separate "code" and "payload"
+/// // keys into a single "info" key holding an array of code and payload.
+/// //
+/// // This could be done equivalently using serde_json::Value as the type for
+/// // payload, but &RawSlice will perform netter because it does not require
+/// // memory allocation. The correct range of bytes is borrowed from the input
+/// // data and pasted verbatim into the output.
+/// fn rearrange(input: &str) -> Result<String> {
+///     let input: Input = serde_json::from_str(input)?;
+///
+///     let output = Output {
+///         info: (input.code, input.payload),
+///     };
+///
+///     serde_json::to_string(&output)
+/// }
+///
+/// fn main() -> Result<()> {
+///     let out = rearrange(r#" {"code": 200, "payload": {}} "#)?;
+///
+///     assert_eq!(out, r#"{"info":[200,{}]}"#);
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// # Note
+///
+/// `RawSlice` is only available if serde\_json is built with the `"raw_value"`
+/// feature.
+///
+/// ```toml
+/// [dependencies]
+/// serde_json = { version = "1.0", features = ["raw_value"] }
+/// ```
 #[repr(C)]
 pub struct RawSlice {
     borrowed: str,
@@ -90,7 +146,42 @@ impl Debug for RawValue {
 }
 
 impl RawSlice {
+    /// Access the JSON text underlying a raw value.
     ///
+    /// # Example
+    ///
+    /// ```
+    /// #[macro_use]
+    /// extern crate serde_derive;
+    /// extern crate serde_json;
+    ///
+    /// use serde_json::{Result, value::RawSlice};
+    ///
+    /// #[derive(Deserialize)]
+    /// struct Response<'a> {
+    ///     code: u32,
+    ///     #[serde(borrow)]
+    ///     payload: &'a RawSlice,
+    /// }
+    ///
+    /// fn process(input: &str) -> Result<()> {
+    ///     let response: Response = serde_json::from_str(input)?;
+    ///
+    ///     let payload = response.payload.as_ref();
+    ///     if payload.starts_with('{') {
+    ///         // handle a payload which is a JSON map
+    ///     } else {
+    ///         // handle any other type
+    ///     }
+    ///
+    ///     Ok(())
+    /// }
+    ///
+    /// fn main() -> Result<()> {
+    ///     process(r#" {"code": 200, "payload": {}} "#)?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn as_ref(&self) -> &str {
         &self.borrowed
     }
