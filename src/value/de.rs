@@ -116,7 +116,12 @@ impl<'de> Deserialize<'de> for Value {
                     #[cfg(feature = "arbitrary_precision")]
                     Some(KeyClass::Number) => {
                         let number: NumberFromString = visitor.next_value()?;
-                        return Ok(Value::Number(number.value));
+                        Ok(Value::Number(number.value))
+                    }
+                    #[cfg(feature = "raw_value")]
+                    Some(KeyClass::RawValue) => {
+                        let value = visitor.next_value_seed(::raw::BoxedFromString)?;
+                        ::from_str(value.get()).map_err(de::Error::custom)
                     }
                     Some(KeyClass::Map(first_key)) => {
                         let mut values = Map::new();
@@ -300,12 +305,22 @@ impl<'de> serde::Deserializer<'de> for Value {
     #[inline]
     fn deserialize_newtype_struct<V>(
         self,
-        _name: &'static str,
+        name: &'static str,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
+        #[cfg(feature = "raw_value")]
+        {
+            if name == ::raw::TOKEN {
+                return visitor.visit_map(::raw::OwnedRawDeserializer {
+                    raw_value: Some(self.to_string()),
+                });
+            }
+        }
+
+        let _ = name;
         visitor.visit_newtype_struct(self)
     }
 
@@ -829,12 +844,22 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     #[inline]
     fn deserialize_newtype_struct<V>(
         self,
-        _name: &'static str,
+        name: &'static str,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
+        #[cfg(feature = "raw_value")]
+        {
+            if name == ::raw::TOKEN {
+                return visitor.visit_map(::raw::OwnedRawDeserializer {
+                    raw_value: Some(self.to_string()),
+                });
+            }
+        }
+
+        let _ = name;
         visitor.visit_newtype_struct(self)
     }
 
@@ -1292,6 +1317,8 @@ enum KeyClass {
     Map(String),
     #[cfg(feature = "arbitrary_precision")]
     Number,
+    #[cfg(feature = "raw_value")]
+    RawValue,
 }
 
 impl<'de> DeserializeSeed<'de> for KeyClassifier {
@@ -1318,7 +1345,9 @@ impl<'de> Visitor<'de> for KeyClassifier {
     {
         match s {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::SERDE_STRUCT_FIELD_NAME => Ok(KeyClass::Number),
+            ::number::TOKEN => Ok(KeyClass::Number),
+            #[cfg(feature = "raw_value")]
+            ::raw::TOKEN => Ok(KeyClass::RawValue),
             _ => Ok(KeyClass::Map(s.to_owned())),
         }
     }
@@ -1329,7 +1358,9 @@ impl<'de> Visitor<'de> for KeyClassifier {
     {
         match s.as_str() {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::SERDE_STRUCT_FIELD_NAME => Ok(KeyClass::Number),
+            ::number::TOKEN => Ok(KeyClass::Number),
+            #[cfg(feature = "raw_value")]
+            ::raw::TOKEN => Ok(KeyClass::RawValue),
             _ => Ok(KeyClass::Map(s)),
         }
     }

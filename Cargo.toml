@@ -26,6 +26,12 @@ compiletest_rs = "0.3"
 serde_bytes = "0.10"
 serde_derive = "1.0"
 
+[package.metadata.docs.rs]
+features = ["raw_value"]
+
+[package.metadata.playground]
+features = ["raw_value"]
+
 
 ### FEATURES #################################################################
 
@@ -41,3 +47,6 @@ preserve_order = ["indexmap"]
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
 # written back to a JSON string without loss of precision.
 arbitrary_precision = []
+
+# Provide a RawValue type that can hold unprocessed JSON during deserialization.
+raw_value = []

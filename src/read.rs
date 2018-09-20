@@ -9,9 +9,15 @@
 use std::ops::Deref;
 use std::{char, cmp, io, str};
 
+#[cfg(feature = "raw_value")]
+use serde::de::Visitor;
+
 use iter::LineColIterator;
 
-use super::error::{Error, ErrorCode, Result};
+use error::{Error, ErrorCode, Result};
+
+#[cfg(feature = "raw_value")]
+use raw::{BorrowedRawDeserializer, OwnedRawDeserializer};
 
 /// Trait used by the deserializer for iterating over input. This is manually
 /// "specialized" for iterating over &[u8]. Once feature(specialization) is
@@ -76,6 +82,21 @@ pub trait Read<'de>: private::Sealed {
     /// string until the next quotation mark but discards the data.
     #[doc(hidden)]
     fn ignore_str(&mut self) -> Result<()>;
+
+    /// Switch raw buffering mode on.
+    ///
+    /// This is used when deserializing `RawValue`.
+    #[cfg(feature = "raw_value")]
+    #[doc(hidden)]
+    fn begin_raw_buffering(&mut self);
+
+    /// Switch raw buffering mode off and provides the raw buffered data to the
+    /// given visitor.
+    #[cfg(feature = "raw_value")]
+    #[doc(hidden)]
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>;
 }
 
 pub struct Position {
@@ -107,6 +128,8 @@ where
     iter: LineColIterator<io::Bytes<R>>,
     /// Temporary storage of peeked byte.
     ch: Option<u8>,
+    #[cfg(feature = "raw_value")]
+    raw_buffer: Option<Vec<u8>>,
 }
 
 /// JSON input source that reads from a slice of bytes.
@@ -117,6 +140,8 @@ pub struct SliceRead<'a> {
     slice: &'a [u8],
     /// Index of the *next* byte that will be returned by next() or peek().
     index: usize,
+    #[cfg(feature = "raw_value")]
+    raw_buffering_start_index: usize,
 }
 
 /// JSON input source that reads from a UTF-8 string.
@@ -124,6 +149,8 @@ pub struct SliceRead<'a> {
 // Able to elide UTF-8 checks by assuming that the input is valid UTF-8.
 pub struct StrRead<'a> {
     delegate: SliceRead<'a>,
+    #[cfg(feature = "raw_value")]
+    data: &'a str,
 }
 
 // Prevent users from implementing the Read trait.
@@ -139,9 +166,20 @@ where
 {
     /// Create a JSON input source to read from a std::io input stream.
     pub fn new(reader: R) -> Self {
-        IoRead {
-            iter: LineColIterator::new(reader.bytes()),
-            ch: None,
+        #[cfg(not(feature = "raw_value"))]
+        {
+            IoRead {
+                iter: LineColIterator::new(reader.bytes()),
+                ch: None,
+            }
+        }
+        #[cfg(feature = "raw_value")]
+        {
+            IoRead {
+                iter: LineColIterator::new(reader.bytes()),
+                ch: None,
+                raw_buffer: None,
+            }
         }
     }
 }
@@ -193,10 +231,26 @@ where
     #[inline]
     fn next(&mut self) -> io::Result<Option<u8>> {
         match self.ch.take() {
-            Some(ch) => Ok(Some(ch)),
+            Some(ch) => {
+                #[cfg(feature = "raw_value")]
+                {
+                    if let Some(ref mut buf) = self.raw_buffer {
+                        buf.push(ch);
+                    }
+                }
+                Ok(Some(ch))
+            }
             None => match self.iter.next() {
                 Some(Err(err)) => Err(err),
-                Some(Ok(ch)) => Ok(Some(ch)),
+                Some(Ok(ch)) => {
+                    #[cfg(feature = "raw_value")]
+                    {
+                        if let Some(ref mut buf) = self.raw_buffer {
+                            buf.push(ch);
+                        }
+                    }
+                    Ok(Some(ch))
+                }
                 None => Ok(None),
             },
         }
@@ -217,9 +271,19 @@ where
         }
     }
 
+    #[cfg(not(feature = "raw_value"))]
     #[inline]
     fn discard(&mut self) {
         self.ch = None;
+    }
+
+    #[cfg(feature = "raw_value")]
+    fn discard(&mut self) {
+        if let Some(ch) = self.ch.take() {
+            if let Some(ref mut buf) = self.raw_buffer {
+                buf.push(ch);
+            }
+        }
     }
 
     fn position(&self) -> Position {
@@ -274,6 +338,21 @@ where
             }
         }
     }
+
+    #[cfg(feature = "raw_value")]
+    fn begin_raw_buffering(&mut self) {
+        self.raw_buffer = Some(Vec::new());
+    }
+
+    #[cfg(feature = "raw_value")]
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        let raw = self.raw_buffer.take().unwrap();
+        let raw = String::from_utf8(raw).unwrap();
+        visitor.visit_map(OwnedRawDeserializer { raw_value: Some(raw) })
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -281,9 +360,20 @@ where
 impl<'a> SliceRead<'a> {
     /// Create a JSON input source to read from a slice of bytes.
     pub fn new(slice: &'a [u8]) -> Self {
-        SliceRead {
-            slice: slice,
-            index: 0,
+        #[cfg(not(feature = "raw_value"))]
+        {
+            SliceRead {
+                slice: slice,
+                index: 0,
+            }
+        }
+        #[cfg(feature = "raw_value")]
+        {
+            SliceRead {
+                slice: slice,
+                index: 0,
+                raw_buffering_start_index: 0,
+            }
         }
     }
 
@@ -437,6 +527,21 @@ impl<'a> Read<'a> for SliceRead<'a> {
             }
         }
     }
+
+    #[cfg(feature = "raw_value")]
+    fn begin_raw_buffering(&mut self) {
+        self.raw_buffering_start_index = self.index;
+    }
+
+    #[cfg(feature = "raw_value")]
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'a>,
+    {
+        let raw = &self.slice[self.raw_buffering_start_index..self.index];
+        let raw = str::from_utf8(raw).unwrap();
+        visitor.visit_map(BorrowedRawDeserializer { raw_value: Some(raw) })
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -444,8 +549,18 @@ impl<'a> Read<'a> for SliceRead<'a> {
 impl<'a> StrRead<'a> {
     /// Create a JSON input source to read from a UTF-8 string.
     pub fn new(s: &'a str) -> Self {
-        StrRead {
-            delegate: SliceRead::new(s.as_bytes()),
+        #[cfg(not(feature = "raw_value"))]
+        {
+            StrRead {
+                delegate: SliceRead::new(s.as_bytes()),
+            }
+        }
+        #[cfg(feature = "raw_value")]
+        {
+            StrRead {
+                delegate: SliceRead::new(s.as_bytes()),
+                data: s,
+            }
         }
     }
 }
@@ -497,6 +612,20 @@ impl<'a> Read<'a> for StrRead<'a> {
 
     fn ignore_str(&mut self) -> Result<()> {
         self.delegate.ignore_str()
+    }
+
+    #[cfg(feature = "raw_value")]
+    fn begin_raw_buffering(&mut self) {
+        self.delegate.begin_raw_buffering()
+    }
+
+    #[cfg(feature = "raw_value")]
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'a>,
+    {
+        let raw = &self.data[self.delegate.raw_buffering_start_index..self.delegate.index];
+        visitor.visit_map(BorrowedRawDeserializer { raw_value: Some(raw) })
     }
 }
 

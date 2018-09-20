@@ -946,6 +946,17 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
         }
     }
+
+    #[cfg(feature = "raw_value")]
+    fn deserialize_raw_value<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.parse_whitespace()?;
+        self.read.begin_raw_buffering();
+        self.ignore_value()?;
+        self.read.end_raw_buffering(visitor)
+    }
 }
 
 impl FromStr for Number {
@@ -1412,10 +1423,18 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
     /// Parses a newtype struct as the underlying value.
     #[inline]
-    fn deserialize_newtype_struct<V>(self, _name: &str, visitor: V) -> Result<V::Value>
+    fn deserialize_newtype_struct<V>(self, name: &str, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
+        #[cfg(feature = "raw_value")]
+        {
+            if name == ::raw::TOKEN {
+                return self.deserialize_raw_value(visitor);
+            }
+        }
+
+        let _ = name;
         visitor.visit_newtype_struct(self)
     }
 

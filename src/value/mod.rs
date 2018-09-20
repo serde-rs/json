@@ -119,6 +119,9 @@ use error::Error;
 pub use map::Map;
 pub use number::Number;
 
+#[cfg(feature = "raw_value")]
+pub use raw::RawValue;
+
 pub use self::index::Index;
 
 use self::ser::Serializer;

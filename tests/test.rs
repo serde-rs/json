@@ -938,9 +938,9 @@ fn test_serialize_char() {
 #[test]
 fn test_malicious_number() {
     #[derive(Serialize)]
-    #[serde(rename = "$__serde_private_Number")]
+    #[serde(rename = "$serde_json::private::Number")]
     struct S {
-        #[serde(rename = "$__serde_private_number")]
+        #[serde(rename = "$serde_json::private::Number")]
         f: &'static str,
     }
 
@@ -2038,4 +2038,89 @@ fn test_integer128() {
             "number out of range at line 1 column 39",
         ),
     ]);
+}
+
+#[cfg(feature = "raw_value")]
+#[test]
+fn test_borrowed_raw_value() {
+    use serde_json::value::RawValue;
+
+    #[derive(Serialize, Deserialize)]
+    struct Wrapper<'a> {
+        a: i8,
+        #[serde(borrow)]
+        b: &'a RawValue,
+        c: i8,
+    };
+
+    let wrapper_from_str: Wrapper =
+        serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
+    assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.get());
+
+    let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
+    assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_string);
+
+    let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
+    assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
+
+    let array_from_str: Vec<&RawValue> =
+        serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+    assert_eq!(r#""a""#, array_from_str[0].get());
+    assert_eq!(r#"42"#, array_from_str[1].get());
+    assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
+    assert_eq!(r#"null"#, array_from_str[3].get());
+
+    let array_to_string = serde_json::to_string(&array_from_str).unwrap();
+    assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
+}
+
+#[cfg(feature = "raw_value")]
+#[test]
+fn test_boxed_raw_value() {
+    use serde_json::value::RawValue;
+
+    #[derive(Serialize, Deserialize)]
+    struct Wrapper {
+        a: i8,
+        b: Box<RawValue>,
+        c: i8,
+    };
+
+    let wrapper_from_str: Wrapper =
+        serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
+    assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.get());
+
+    let wrapper_from_reader: Wrapper = serde_json::from_reader(
+        br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref(),
+    ).unwrap();
+    assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.get());
+
+    let wrapper_from_value: Wrapper =
+        serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3}))
+            .unwrap();
+    assert_eq!(r#"{"foo":2}"#, wrapper_from_value.b.get());
+
+    let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
+    assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_string);
+
+    let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
+    assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
+
+    let array_from_str: Vec<Box<RawValue>> =
+        serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+    assert_eq!(r#""a""#, array_from_str[0].get());
+    assert_eq!(r#"42"#, array_from_str[1].get());
+    assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
+    assert_eq!(r#"null"#, array_from_str[3].get());
+
+    let array_from_reader: Vec<Box<RawValue>> = serde_json::from_reader(
+        br#"["a", 42, {"foo": "bar"}, null]"#.as_ref(),
+    ).unwrap();
+    assert_eq!(r#""a""#, array_from_reader[0].get());
+    assert_eq!(r#"42"#, array_from_reader[1].get());
+    assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());
+    assert_eq!(r#"null"#, array_from_reader[3].get());
+
+    let array_to_string = serde_json::to_string(&array_from_str).unwrap();
+    assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
 }
