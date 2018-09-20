@@ -938,9 +938,9 @@ fn test_serialize_char() {
 #[test]
 fn test_malicious_number() {
     #[derive(Serialize)]
-    #[serde(rename = "$__serde_private_Number")]
+    #[serde(rename = "$serde_json::private::Number")]
     struct S {
-        #[serde(rename = "$__serde_private_number")]
+        #[serde(rename = "$serde_json::private::Number")]
         f: &'static str,
     }
 
