@@ -9,6 +9,7 @@ matrix:
         - cargo test
         - cargo test --features preserve_order
         - cargo test --features arbitrary_precision
+        - cargo test --features raw_value
 
     - rust: 1.15.0
       script:
