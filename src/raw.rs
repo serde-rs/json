@@ -1,7 +1,5 @@
-use std::borrow::Borrow;
 use std::fmt::{self, Debug, Display};
 use std::mem;
-use std::ops::Deref;
 
 use serde::ser::{Serialize, Serializer, SerializeStruct};
 use serde::de::{self, Deserialize, Deserializer, DeserializeSeed, IntoDeserializer, MapAccess, Unexpected, Visitor};
@@ -12,7 +10,7 @@ use error::Error;
 /// Reference to a range of bytes encompassing a single valid JSON value in the
 /// input data.
 ///
-/// A `RawSlice` can be used to defer parsing parts of a payload until later,
+/// A `RawValue` can be used to defer parsing parts of a payload until later,
 /// or to avoid parsing it at all in the case that part of the payload just
 /// needs to be transferred verbatim into a different output object.
 ///
@@ -26,25 +24,25 @@ use error::Error;
 /// extern crate serde_derive;
 /// extern crate serde_json;
 ///
-/// use serde_json::{Result, value::RawSlice};
+/// use serde_json::{Result, value::RawValue};
 ///
 /// #[derive(Deserialize)]
 /// struct Input<'a> {
 ///     code: u32,
 ///     #[serde(borrow)]
-///     payload: &'a RawSlice,
+///     payload: &'a RawValue,
 /// }
 ///
 /// #[derive(Serialize)]
 /// struct Output<'a> {
-///     info: (u32, &'a RawSlice),
+///     info: (u32, &'a RawValue),
 /// }
 ///
 /// // Efficiently rearrange JSON input containing separate "code" and "payload"
 /// // keys into a single "info" key holding an array of code and payload.
 /// //
 /// // This could be done equivalently using serde_json::Value as the type for
-/// // payload, but &RawSlice will perform netter because it does not require
+/// // payload, but &RawValue will perform netter because it does not require
 /// // memory allocation. The correct range of bytes is borrowed from the input
 /// // data and pasted verbatim into the output.
 /// fn rearrange(input: &str) -> Result<String> {
@@ -68,7 +66,7 @@ use error::Error;
 ///
 /// # Note
 ///
-/// `RawSlice` is only available if serde\_json is built with the `"raw_value"`
+/// `RawValue` is only available if serde\_json is built with the `"raw_value"`
 /// feature.
 ///
 /// ```toml
@@ -76,63 +74,31 @@ use error::Error;
 /// serde_json = { version = "1.0", features = ["raw_value"] }
 /// ```
 #[repr(C)]
-pub struct RawSlice {
-    borrowed: str,
-}
-
-///
 pub struct RawValue {
-    owned: Box<RawSlice>,
-}
-
-impl RawSlice {
-    fn from_inner(borrowed: &str) -> &Self {
-        unsafe { mem::transmute::<&str, &RawSlice>(borrowed) }
-    }
+    json: str,
 }
 
 impl RawValue {
-    fn from_inner(owned: Box<str>) -> Self {
-        RawValue {
-            owned: unsafe { mem::transmute::<Box<str>, Box<RawSlice>>(owned) },
-        }
+    fn from_borrowed(json: &str) -> &Self {
+        unsafe { mem::transmute::<&str, &RawValue>(json) }
+    }
+
+    fn from_owned(json: Box<str>) -> Box<Self> {
+        unsafe { mem::transmute::<Box<str>, Box<RawValue>>(json) }
     }
 }
 
-impl Clone for RawValue {
+impl Clone for Box<RawValue> {
     fn clone(&self) -> Self {
-        self.owned.to_owned()
+        (**self).to_owned()
     }
 }
 
-impl Deref for RawValue {
-    type Target = RawSlice;
-
-    fn deref(&self) -> &Self::Target {
-        &self.owned
-    }
-}
-
-impl Borrow<RawSlice> for RawValue {
-    fn borrow(&self) -> &RawSlice {
-        &self.owned
-    }
-}
-
-impl ToOwned for RawSlice {
-    type Owned = RawValue;
+impl ToOwned for RawValue {
+    type Owned = Box<RawValue>;
 
     fn to_owned(&self) -> Self::Owned {
-        RawValue::from_inner(self.borrowed.to_owned().into_boxed_str())
-    }
-}
-
-impl Debug for RawSlice {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter
-            .debug_tuple("RawSlice")
-            .field(&format_args!("{}", &self.borrowed))
-            .finish()
+        RawValue::from_owned(self.json.to_owned().into_boxed_str())
     }
 }
 
@@ -140,12 +106,18 @@ impl Debug for RawValue {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter
             .debug_tuple("RawValue")
-            .field(&format_args!("{}", &self.owned.borrowed))
+            .field(&format_args!("{}", &self.json))
             .finish()
     }
 }
 
-impl RawSlice {
+impl Display for RawValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.json)
+    }
+}
+
+impl RawValue {
     /// Access the JSON text underlying a raw value.
     ///
     /// # Example
@@ -155,19 +127,19 @@ impl RawSlice {
     /// extern crate serde_derive;
     /// extern crate serde_json;
     ///
-    /// use serde_json::{Result, value::RawSlice};
+    /// use serde_json::{Result, value::RawValue};
     ///
     /// #[derive(Deserialize)]
     /// struct Response<'a> {
     ///     code: u32,
     ///     #[serde(borrow)]
-    ///     payload: &'a RawSlice,
+    ///     payload: &'a RawValue,
     /// }
     ///
     /// fn process(input: &str) -> Result<()> {
     ///     let response: Response = serde_json::from_str(input)?;
     ///
-    ///     let payload = response.payload.as_ref();
+    ///     let payload = response.payload.get();
     ///     if payload.starts_with('{') {
     ///         // handle a payload which is a JSON map
     ///     } else {
@@ -182,54 +154,33 @@ impl RawSlice {
     ///     Ok(())
     /// }
     /// ```
-    pub fn as_ref(&self) -> &str {
-        &self.borrowed
-    }
-}
-
-impl Display for RawSlice {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&self.borrowed)
-    }
-}
-
-impl Display for RawValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&**self, f)
+    pub fn get(&self) -> &str {
+        &self.json
     }
 }
 
 pub const TOKEN: &'static str = "$serde_json::private::RawValue";
-
-impl Serialize for RawSlice {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut s = serializer.serialize_struct(TOKEN, 1)?;
-        s.serialize_field(TOKEN, &self.borrowed)?;
-        s.end()
-    }
-}
 
 impl Serialize for RawValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        (**self).serialize(serializer)
+        let mut s = serializer.serialize_struct(TOKEN, 1)?;
+        s.serialize_field(TOKEN, &self.json)?;
+        s.end()
     }
 }
 
-impl<'de: 'a, 'a> Deserialize<'de> for &'a RawSlice {
+impl<'de: 'a, 'a> Deserialize<'de> for &'a RawValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct RawSliceVisitor;
+        struct ReferenceVisitor;
 
-        impl<'de> Visitor<'de> for RawSliceVisitor {
-            type Value = &'de RawSlice;
+        impl<'de> Visitor<'de> for ReferenceVisitor {
+            type Value = &'de RawValue;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(formatter, "any valid JSON value")
@@ -243,23 +194,23 @@ impl<'de: 'a, 'a> Deserialize<'de> for &'a RawSlice {
                 if value.is_none() {
                     return Err(de::Error::invalid_type(Unexpected::Map, &self));
                 }
-                visitor.next_value_seed(RawSliceFromString)
+                visitor.next_value_seed(ReferenceFromString)
             }
         }
 
-        deserializer.deserialize_newtype_struct(TOKEN, RawSliceVisitor)
+        deserializer.deserialize_newtype_struct(TOKEN, ReferenceVisitor)
     }
 }
 
-impl<'de> Deserialize<'de> for RawValue {
+impl<'de> Deserialize<'de> for Box<RawValue> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct RawValueVisitor;
+        struct BoxedVisitor;
 
-        impl<'de> Visitor<'de> for RawValueVisitor {
-            type Value = RawValue;
+        impl<'de> Visitor<'de> for BoxedVisitor {
+            type Value = Box<RawValue>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(formatter, "any valid JSON value")
@@ -273,11 +224,11 @@ impl<'de> Deserialize<'de> for RawValue {
                 if value.is_none() {
                     return Err(de::Error::invalid_type(Unexpected::Map, &self));
                 }
-                visitor.next_value_seed(RawValueFromString)
+                visitor.next_value_seed(BoxedFromString)
             }
         }
 
-        deserializer.deserialize_newtype_struct(TOKEN, RawValueVisitor)
+        deserializer.deserialize_newtype_struct(TOKEN, BoxedVisitor)
     }
 }
 
@@ -314,10 +265,10 @@ impl<'de> Deserialize<'de> for RawKey {
     }
 }
 
-pub struct RawSliceFromString;
+pub struct ReferenceFromString;
 
-impl<'de> DeserializeSeed<'de> for RawSliceFromString {
-    type Value = &'de RawSlice;
+impl<'de> DeserializeSeed<'de> for ReferenceFromString {
+    type Value = &'de RawValue;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -327,8 +278,8 @@ impl<'de> DeserializeSeed<'de> for RawSliceFromString {
     }
 }
 
-impl<'de> Visitor<'de> for RawSliceFromString {
-    type Value = &'de RawSlice;
+impl<'de> Visitor<'de> for ReferenceFromString {
+    type Value = &'de RawValue;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("raw value")
@@ -338,14 +289,14 @@ impl<'de> Visitor<'de> for RawSliceFromString {
     where
         E: de::Error,
     {
-        Ok(RawSlice::from_inner(s))
+        Ok(RawValue::from_borrowed(s))
     }
 }
 
-pub struct RawValueFromString;
+pub struct BoxedFromString;
 
-impl<'de> DeserializeSeed<'de> for RawValueFromString {
-    type Value = RawValue;
+impl<'de> DeserializeSeed<'de> for BoxedFromString {
+    type Value = Box<RawValue>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -355,8 +306,8 @@ impl<'de> DeserializeSeed<'de> for RawValueFromString {
     }
 }
 
-impl<'de> Visitor<'de> for RawValueFromString {
-    type Value = RawValue;
+impl<'de> Visitor<'de> for BoxedFromString {
+    type Value = Box<RawValue>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("raw value")
@@ -373,7 +324,7 @@ impl<'de> Visitor<'de> for RawValueFromString {
     where
         E: de::Error,
     {
-        Ok(RawValue::from_inner(s.into_boxed_str()))
+        Ok(RawValue::from_owned(s.into_boxed_str()))
     }
 }
 

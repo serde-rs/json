@@ -120,8 +120,8 @@ impl<'de> Deserialize<'de> for Value {
                     }
                     #[cfg(feature = "raw_value")]
                     Some(KeyClass::RawValue) => {
-                        let value = visitor.next_value_seed(::raw::RawValueFromString)?;
-                        ::from_str(value.as_ref()).map_err(de::Error::custom)
+                        let value = visitor.next_value_seed(::raw::BoxedFromString)?;
+                        ::from_str(value.get()).map_err(de::Error::custom)
                     }
                     Some(KeyClass::Map(first_key)) => {
                         let mut values = Map::new();
