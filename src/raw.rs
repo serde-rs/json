@@ -64,6 +64,53 @@ use error::Error;
 /// }
 /// ```
 ///
+/// # Ownership
+///
+/// The typical usage of `RawValue` will be in the borrowed form:
+///
+/// ```
+/// # #[macro_use]
+/// # extern crate serde_derive;
+/// # extern crate serde_json;
+/// #
+/// # use serde_json::value::RawValue;
+/// #
+/// #[derive(Deserialize)]
+/// struct SomeStruct<'a> {
+///     #[serde(borrow)]
+///     raw_value: &'a RawValue,
+/// }
+/// #
+/// # fn main() {}
+/// ```
+///
+/// The borrowed form is suitable when deserializing through
+/// [`serde_json::from_str`] and [`serde_json::from_slice`] which support
+/// borrowing from the input data without memory allocation.
+///
+/// When deserializing through [`serde_json::from_reader`] you will need to use
+/// the boxed form of `RawValue` instead. This is almost as efficient but
+/// involves buffering the raw value from the I/O stream into memory.
+///
+/// [`serde_json::from_str`]: ../fn.from_str.html
+/// [`serde_json::from_slice`]: ../fn.from_slice.html
+/// [`serde_json::from_reader`]: ../fn.from_reader.html
+///
+/// ```
+/// # #[macro_use]
+/// # extern crate serde_derive;
+/// # extern crate serde_json;
+/// #
+/// # use serde_json::value::RawValue;
+/// #
+/// #[derive(Deserialize)]
+/// struct SomeStruct {
+///     raw_value: Box<RawValue>,
+/// }
+/// #
+/// # fn main() {}
+/// ```
+///
 /// # Note
 ///
 /// `RawValue` is only available if serde\_json is built with the `"raw_value"`
