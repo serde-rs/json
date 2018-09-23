@@ -315,7 +315,7 @@
 //! [macro]: https://docs.serde.rs/serde_json/macro.json.html
 //! [`serde-json-core`]: https://japaric.github.io/serde-json-core/serde_json_core/
 
-#![doc(html_root_url = "https://docs.rs/serde_json/1.0.28")]
+#![doc(html_root_url = "https://docs.rs/serde_json/1.0.29")]
 #![cfg_attr(feature = "cargo-clippy", allow(renamed_and_removed_lints))]
 #![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
 // Whitelisted clippy lints
