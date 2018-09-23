@@ -31,7 +31,7 @@ use number::NumberDeserializer;
 /// A structure that deserializes JSON into Rust values.
 pub struct Deserializer<R> {
     read: R,
-    str_buf: Vec<u8>,
+    scratch: Vec<u8>,
     remaining_depth: u8,
 }
 
@@ -50,7 +50,7 @@ where
     pub fn new(read: R) -> Self {
         Deserializer {
             read: read,
-            str_buf: Vec::new(),
+            scratch: Vec::new(),
             remaining_depth: 128,
         }
     }
@@ -234,8 +234,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             },
             b'"' => {
                 self.eat_char();
-                self.str_buf.clear();
-                match self.read.parse_str(&mut self.str_buf) {
+                self.scratch.clear();
+                match self.read.parse_str(&mut self.scratch) {
                     Ok(s) => de::Error::invalid_type(Unexpected::Str(&s), exp),
                     Err(err) => return err,
                 }
@@ -745,58 +745,117 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn ignore_value(&mut self) -> Result<()> {
-        let peek = match try!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
+        self.scratch.clear();
+        let mut enclosing = None;
 
-        match peek {
-            b'n' => {
-                self.eat_char();
-                self.parse_ident(b"ull")
-            }
-            b't' => {
-                self.eat_char();
-                self.parse_ident(b"rue")
-            }
-            b'f' => {
-                self.eat_char();
-                self.parse_ident(b"alse")
-            }
-            b'-' => {
-                self.eat_char();
-                self.ignore_integer()
-            }
-            b'0'...b'9' => self.ignore_integer(),
-            b'"' => {
-                self.eat_char();
-                self.read.ignore_str()
-            }
-            b'[' => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+        loop {
+            let peek = match try!(self.parse_whitespace()) {
+                Some(b) => b,
+                None => {
+                    return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+                }
+            };
+
+            let frame = match peek {
+                b'n' => {
+                    self.eat_char();
+                    try!(self.parse_ident(b"ull"));
+                    None
+                }
+                b't' => {
+                    self.eat_char();
+                    try!(self.parse_ident(b"rue"));
+                    None
+                }
+                b'f' => {
+                    self.eat_char();
+                    try!(self.parse_ident(b"alse"));
+                    None
+                }
+                b'-' => {
+                    self.eat_char();
+                    try!(self.ignore_integer());
+                    None
+                }
+                b'0'...b'9' => {
+                    try!(self.ignore_integer());
+                    None
+                }
+                b'"' => {
+                    self.eat_char();
+                    try!(self.read.ignore_str());
+                    None
+                }
+                frame @ b'[' | frame @ b'{' => {
+                    self.scratch.extend(enclosing.take());
+                    self.eat_char();
+                    Some(frame)
+                }
+                _ => return Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+            };
+
+            let (mut accept_comma, mut frame) = match frame {
+                Some(frame) => (false, frame),
+                None => match enclosing.take() {
+                    Some(frame) => (true, frame),
+                    None => match self.scratch.pop() {
+                        Some(frame) => (true, frame),
+                        None => return Ok(()),
+                    },
+                },
+            };
+
+            loop {
+                match try!(self.parse_whitespace()) {
+                    Some(b',') if accept_comma => {
+                        self.eat_char();
+                        break;
+                    }
+                    Some(b']') if frame == b'[' => {}
+                    Some(b'}') if frame == b'{' => {}
+                    Some(_) => {
+                        if accept_comma {
+                            return Err(self.peek_error(match frame {
+                                b'[' => ErrorCode::ExpectedListCommaOrEnd,
+                                b'{' => ErrorCode::ExpectedObjectCommaOrEnd,
+                                _ => unreachable!(),
+                            }));
+                        } else {
+                            break;
+                        }
+                    }
+                    None => {
+                        return Err(self.peek_error(match frame {
+                            b'[' => ErrorCode::EofWhileParsingList,
+                            b'{' => ErrorCode::EofWhileParsingObject,
+                            _ => unreachable!(),
+                        }));
+                    }
                 }
 
                 self.eat_char();
-                let res = self.ignore_seq();
-                self.remaining_depth += 1;
-                res
+                frame = match self.scratch.pop() {
+                    Some(frame) => frame,
+                    None => return Ok(()),
+                };
+                accept_comma = true;
             }
-            b'{' => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                }
 
-                self.eat_char();
-                let res = self.ignore_map();
-                self.remaining_depth += 1;
-                res
+            if frame == b'{' {
+                match try!(self.parse_whitespace()) {
+                    Some(b'"') => self.eat_char(),
+                    Some(_) => return Err(self.peek_error(ErrorCode::KeyMustBeAString)),
+                    None => return Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
+                }
+                try!(self.read.ignore_str());
+                match try!(self.parse_whitespace()) {
+                    Some(b':') => self.eat_char(),
+                    Some(_) => return Err(self.peek_error(ErrorCode::ExpectedColon)),
+                    None => return Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
+                }
             }
-            _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+
+            enclosing = Some(frame);
         }
     }
 
@@ -863,88 +922,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         Ok(())
-    }
-
-    fn ignore_seq(&mut self) -> Result<()> {
-        let mut first = true;
-
-        loop {
-            match try!(self.parse_whitespace()) {
-                Some(b']') => {
-                    self.eat_char();
-                    return Ok(());
-                }
-                Some(b',') if !first => {
-                    self.eat_char();
-                }
-                Some(_) => {
-                    if first {
-                        first = false;
-                    } else {
-                        return Err(self.peek_error(ErrorCode::ExpectedListCommaOrEnd));
-                    }
-                }
-                None => {
-                    return Err(self.peek_error(ErrorCode::EofWhileParsingList));
-                }
-            }
-
-            try!(self.ignore_value());
-        }
-    }
-
-    fn ignore_map(&mut self) -> Result<()> {
-        let mut first = true;
-
-        loop {
-            let peek = match try!(self.parse_whitespace()) {
-                Some(b'}') => {
-                    self.eat_char();
-                    return Ok(());
-                }
-                Some(b',') if !first => {
-                    self.eat_char();
-                    try!(self.parse_whitespace())
-                }
-                Some(b) => {
-                    if first {
-                        first = false;
-                        Some(b)
-                    } else {
-                        return Err(self.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
-                    }
-                }
-                None => {
-                    return Err(self.peek_error(ErrorCode::EofWhileParsingObject));
-                }
-            };
-
-            match peek {
-                Some(b'"') => {
-                    self.eat_char();
-                    try!(self.read.ignore_str());
-                }
-                Some(_) => {
-                    return Err(self.peek_error(ErrorCode::KeyMustBeAString));
-                }
-                None => {
-                    return Err(self.peek_error(ErrorCode::EofWhileParsingObject));
-                }
-            }
-
-            match try!(self.parse_whitespace()) {
-                Some(b':') => {
-                    self.eat_char();
-                    try!(self.ignore_value());
-                }
-                Some(_) => {
-                    return Err(self.peek_error(ErrorCode::ExpectedColon));
-                }
-                None => {
-                    return Err(self.peek_error(ErrorCode::EofWhileParsingObject));
-                }
-            }
-        }
     }
 
     #[cfg(feature = "raw_value")]
@@ -1052,8 +1029,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             b'0'...b'9' => try!(self.parse_any_number(true)).visit(visitor),
             b'"' => {
                 self.eat_char();
-                self.str_buf.clear();
-                match try!(self.read.parse_str(&mut self.str_buf)) {
+                self.scratch.clear();
+                match try!(self.read.parse_str(&mut self.scratch)) {
                     Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
                     Reference::Copied(s) => visitor.visit_str(s),
                 }
@@ -1231,8 +1208,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         let value = match peek {
             b'"' => {
                 self.eat_char();
-                self.str_buf.clear();
-                match try!(self.read.parse_str(&mut self.str_buf)) {
+                self.scratch.clear();
+                match try!(self.read.parse_str(&mut self.scratch)) {
                     Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
                     Reference::Copied(s) => visitor.visit_str(s),
                 }
@@ -1348,8 +1325,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         let value = match peek {
             b'"' => {
                 self.eat_char();
-                self.str_buf.clear();
-                match try!(self.read.parse_str_raw(&mut self.str_buf)) {
+                self.scratch.clear();
+                match try!(self.read.parse_str_raw(&mut self.scratch)) {
                     Reference::Borrowed(b) => visitor.visit_borrowed_bytes(b),
                     Reference::Copied(b) => visitor.visit_bytes(b),
                 }
@@ -1881,8 +1858,8 @@ macro_rules! deserialize_integer_key {
             V: de::Visitor<'de>,
         {
             self.de.eat_char();
-            self.de.str_buf.clear();
-            let string = try!(self.de.read.parse_str(&mut self.de.str_buf));
+            self.de.scratch.clear();
+            let string = try!(self.de.read.parse_str(&mut self.de.scratch));
             match (string.parse(), string) {
                 (Ok(integer), _) => visitor.$visit(integer),
                 (Err(_), Reference::Borrowed(s)) => visitor.visit_borrowed_str(s),
@@ -1904,8 +1881,8 @@ where
         V: de::Visitor<'de>,
     {
         self.de.eat_char();
-        self.de.str_buf.clear();
-        match try!(self.de.read.parse_str(&mut self.de.str_buf)) {
+        self.de.scratch.clear();
+        match try!(self.de.read.parse_str(&mut self.de.scratch)) {
             Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
             Reference::Copied(s) => visitor.visit_str(s),
         }
