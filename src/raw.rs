@@ -165,6 +165,24 @@ impl Display for RawValue {
 }
 
 impl RawValue {
+    /// Convert an owned `String` of JSON data to an owned `RawValue`.
+    ///
+    /// This function is equivalent to `serde_json::from_str::<Box<RawValue>>`
+    /// except that we avoid an allocation and memcpy if both of the following
+    /// are true:
+    ///
+    /// - the input has no leading or trailing whitespace, and
+    /// - the input has capacity equal to its length.
+    pub fn from_string(json: String) -> Result<Box<Self>, Error> {
+        {
+            let borrowed = ::from_str::<&Self>(&json)?;
+            if borrowed.json.len() < json.len() {
+                return Ok(borrowed.to_owned());
+            }
+        }
+        Ok(Self::from_owned(json.into_boxed_str()))
+    }
+
     /// Access the JSON text underlying a raw value.
     ///
     /// # Example
