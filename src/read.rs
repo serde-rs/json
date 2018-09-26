@@ -27,9 +27,9 @@ use raw::{BorrowedRawDeserializer, OwnedRawDeserializer};
 /// `serde_json`.
 pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
-    fn next(&mut self) -> io::Result<Option<u8>>;
+    fn next(&mut self) -> Result<Option<u8>>;
     #[doc(hidden)]
-    fn peek(&mut self) -> io::Result<Option<u8>>;
+    fn peek(&mut self) -> Result<Option<u8>>;
 
     /// Only valid after a call to peek(). Discards the peeked byte.
     #[doc(hidden)]
@@ -234,7 +234,7 @@ where
     R: io::Read,
 {
     #[inline]
-    fn next(&mut self) -> io::Result<Option<u8>> {
+    fn next(&mut self) -> Result<Option<u8>> {
         match self.ch.take() {
             Some(ch) => {
                 #[cfg(feature = "raw_value")]
@@ -246,7 +246,7 @@ where
                 Ok(Some(ch))
             }
             None => match self.iter.next() {
-                Some(Err(err)) => Err(err),
+                Some(Err(err)) => Err(Error::io(err)),
                 Some(Ok(ch)) => {
                     #[cfg(feature = "raw_value")]
                     {
@@ -262,11 +262,11 @@ where
     }
 
     #[inline]
-    fn peek(&mut self) -> io::Result<Option<u8>> {
+    fn peek(&mut self) -> Result<Option<u8>> {
         match self.ch {
             Some(ch) => Ok(Some(ch)),
             None => match self.iter.next() {
-                Some(Err(err)) => Err(err),
+                Some(Err(err)) => Err(Error::io(err)),
                 Some(Ok(ch)) => {
                     self.ch = Some(ch);
                     Ok(self.ch)
@@ -469,7 +469,7 @@ impl<'a> private::Sealed for SliceRead<'a> {}
 
 impl<'a> Read<'a> for SliceRead<'a> {
     #[inline]
-    fn next(&mut self) -> io::Result<Option<u8>> {
+    fn next(&mut self) -> Result<Option<u8>> {
         // `Ok(self.slice.get(self.index).map(|ch| { self.index += 1; *ch }))`
         // is about 10% slower.
         Ok(if self.index < self.slice.len() {
@@ -482,7 +482,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
     }
 
     #[inline]
-    fn peek(&mut self) -> io::Result<Option<u8>> {
+    fn peek(&mut self) -> Result<Option<u8>> {
         // `Ok(self.slice.get(self.index).map(|ch| *ch))` is about 10% slower
         // for some reason.
         Ok(if self.index < self.slice.len() {
@@ -604,12 +604,12 @@ impl<'a> private::Sealed for StrRead<'a> {}
 
 impl<'a> Read<'a> for StrRead<'a> {
     #[inline]
-    fn next(&mut self) -> io::Result<Option<u8>> {
+    fn next(&mut self) -> Result<Option<u8>> {
         self.delegate.next()
     }
 
     #[inline]
-    fn peek(&mut self) -> io::Result<Option<u8>> {
+    fn peek(&mut self) -> Result<Option<u8>> {
         self.delegate.peek()
     }
 
@@ -699,7 +699,7 @@ static ESCAPE: [bool; 256] = [
 ];
 
 fn next_or_eof<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<u8> {
-    match try!(read.next().map_err(Error::io)) {
+    match try!(read.next()) {
         Some(b) => Ok(b),
         None => error(read, ErrorCode::EofWhileParsingString),
     }

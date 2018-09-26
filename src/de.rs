@@ -149,7 +149,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn peek(&mut self) -> Result<Option<u8>> {
-        self.read.peek().map_err(Error::io)
+        self.read.peek()
     }
 
     fn peek_or_null(&mut self) -> Result<u8> {
@@ -161,7 +161,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn next_char(&mut self) -> Result<Option<u8>> {
-        self.read.next().map_err(Error::io)
+        self.read.next()
     }
 
     fn next_char_or_null(&mut self) -> Result<u8> {
