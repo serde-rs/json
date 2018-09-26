@@ -344,7 +344,7 @@ where
         }
     }
 
-    fn decode_hex_escape<'s>(&'s mut self) -> Result<u16> {
+    fn decode_hex_escape(&mut self) -> Result<u16> {
         let mut n = 0;
         for _ in 0..4 {
             match decode_hex_val(try!(next_or_eof(self))) {
