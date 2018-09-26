@@ -45,16 +45,6 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn position(&self) -> Position;
 
-    /// Position of the most recent call to peek().
-    ///
-    /// The most recent call was probably peek() and not next(), but this method
-    /// should try to return a sensible result if the most recent call was
-    /// actually next() because we don't always know.
-    ///
-    /// Only called in case of an error, so performance is not important.
-    #[doc(hidden)]
-    fn peek_position(&self) -> Position;
-
     /// Offset from the beginning of the input to the next byte that would be
     /// returned by next() or peek().
     #[doc(hidden)]
@@ -145,6 +135,9 @@ pub struct SliceRead<'a> {
     slice: &'a [u8],
     /// Index of the *next* byte that will be returned by next() or peek().
     index: usize,
+
+    peek: bool,
+
     #[cfg(feature = "raw_value")]
     raw_buffering_start_index: usize,
 }
@@ -298,12 +291,6 @@ where
         }
     }
 
-    fn peek_position(&self) -> Position {
-        // The LineColIterator updates its position during peek() so it has the
-        // right one here.
-        self.position()
-    }
-
     fn byte_offset(&self) -> usize {
         match self.ch {
             Some(_) => self.iter.byte_offset() - 1,
@@ -383,6 +370,7 @@ impl<'a> SliceRead<'a> {
             SliceRead {
                 slice: slice,
                 index: 0,
+                peek: false,
             }
         }
         #[cfg(feature = "raw_value")]
@@ -390,6 +378,7 @@ impl<'a> SliceRead<'a> {
             SliceRead {
                 slice: slice,
                 index: 0,
+                peek: false,
                 raw_buffering_start_index: 0,
             }
         }
@@ -455,10 +444,10 @@ impl<'a> SliceRead<'a> {
                     start = self.index;
                 }
                 _ => {
+                    self.index += 1;
                     if validate {
                         return error(self, ErrorCode::ControlCharacterWhileParsingString);
                     }
-                    self.index += 1;
                 }
             }
         }
@@ -474,6 +463,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
         // is about 10% slower.
         Ok(if self.index < self.slice.len() {
             let ch = self.slice[self.index];
+            self.peek = false;
             self.index += 1;
             Some(ch)
         } else {
@@ -486,6 +476,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
         // `Ok(self.slice.get(self.index).map(|ch| *ch))` is about 10% slower
         // for some reason.
         Ok(if self.index < self.slice.len() {
+            self.peek = true;
             Some(self.slice[self.index])
         } else {
             None
@@ -494,17 +485,17 @@ impl<'a> Read<'a> for SliceRead<'a> {
 
     #[inline]
     fn discard(&mut self) {
+        self.peek = false;
         self.index += 1;
     }
 
     fn position(&self) -> Position {
-        self.position_of_index(self.index)
-    }
-
-    fn peek_position(&self) -> Position {
-        // Cap it at slice.len() just in case the most recent call was next()
-        // and it returned the last byte.
-        self.position_of_index(cmp::min(self.slice.len(), self.index + 1))
+        let index = if self.peek {
+            cmp::min(self.slice.len(), self.index + 1)
+        } else {
+            self.index
+        };
+        self.position_of_index(index)
     }
 
     fn byte_offset(&self) -> usize {
@@ -552,13 +543,14 @@ impl<'a> Read<'a> for SliceRead<'a> {
         }
         let mut n = 0;
         for _ in 0..4 {
-            match decode_hex_val(self.slice[self.index]) {
+            let ch = decode_hex_val(self.slice[self.index]);
+            self.index += 1;
+            match ch {
                 None => return error(self, ErrorCode::InvalidEscape),
                 Some(val) => {
                     n = (n << 4) + val;
                 }
             }
-            self.index += 1;
         }
         Ok(n)
     }
@@ -615,15 +607,11 @@ impl<'a> Read<'a> for StrRead<'a> {
 
     #[inline]
     fn discard(&mut self) {
-        self.delegate.discard();
+        self.delegate.discard()
     }
 
     fn position(&self) -> Position {
         self.delegate.position()
-    }
-
-    fn peek_position(&self) -> Position {
-        self.delegate.peek_position()
     }
 
     fn byte_offset(&self) -> usize {

@@ -178,7 +178,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     /// Error caused by a byte from peek().
     #[cold]
     fn peek_error(&self, reason: ErrorCode) -> Error {
-        let position = self.read.peek_position();
+        let position = self.read.position();
         Error::syntax(reason, position.line, position.column)
     }
 
@@ -545,11 +545,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
         match value {
             Ok(value) => Ok(value),
-            // The de::Error impl creates errors with unknown line and column.
-            // Fill in the position here by looking at the current index in the
-            // input. There is no way to tell whether this should call `error`
-            // or `peek_error` so pick the one that seems correct more often.
-            // Worst case, the position is off by one character.
             Err(err) => Err(self.fix_position(err)),
         }
     }
@@ -1494,9 +1489,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
                 self.remaining_depth += 1;
 
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
+                match ret {
+                    Err(err) => Err(err),
+                    Ok(ret) => self.end_map().map(|_| ret),
                 }
             }
             _ => Err(self.peek_invalid_type(&visitor)),
@@ -1552,9 +1547,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
                 self.remaining_depth += 1;
 
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
+                match ret {
+                    Err(err) => Err(err),
+                    Ok(ret) => self.end_map().map(|_| ret),
                 }
             }
             _ => Err(self.peek_invalid_type(&visitor)),
@@ -2049,7 +2044,7 @@ where
             Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b'"') | Some(b'[')
             | Some(b']') | Some(b'{') | Some(b'}') | Some(b',') | Some(b':') | None => Ok(()),
             Some(_) => {
-                let position = self.de.read.peek_position();
+                let position = self.de.read.position();
                 Err(Error::syntax(
                     ErrorCode::TrailingCharacters,
                     position.line,

@@ -657,6 +657,7 @@ where
     for &(s, err) in errors {
         test_parse_err!(from_str::<T>(s) => err);
         test_parse_err!(from_slice::<T>(s.as_bytes()) => err);
+        test_parse_err!(from_reader::<_, T>(s.as_bytes()) => err);
     }
 }
 
@@ -666,6 +667,7 @@ where
 {
     for &(s, err) in errors {
         test_parse_err!(from_slice::<T>(s) => err);
+        test_parse_err!(from_reader::<_, T>(s) => err);
     }
 }
 
@@ -995,11 +997,11 @@ fn test_parse_string() {
         ),
         (
             "\"\n\"",
-            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 2 column 0",
         ),
         (
             "\"\x1F\"",
-            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 2",
         ),
     ]);
 
@@ -1013,12 +1015,28 @@ fn test_parse_string() {
             "invalid unicode code point at line 1 column 7",
         ),
         (
+            &[b'"', b'\\', b'u', 250, 48, 51, 48, b'"'],
+            "invalid escape at line 1 column 4",
+        ),
+        (
+            &[b'"', b'\\', b'u', 48, 250, 51, 48, b'"'],
+            "invalid escape at line 1 column 5",
+        ),
+        (
+            &[b'"', b'\\', b'u', 48, 48, 250, 48, b'"'],
+            "invalid escape at line 1 column 6",
+        ),
+        (
+            &[b'"', b'\\', b'u', 48, 48, 51, 250, b'"'],
+            "invalid escape at line 1 column 7",
+        ),
+        (
             &[b'"', b'\n', b'"'],
-            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 2 column 0",
         ),
         (
             &[b'"', b'\x1F', b'"'],
-            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 2",
         ),
     ]);
 
@@ -1222,11 +1240,11 @@ fn test_parse_enum_errors() {
              "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 10"),
             ("{\"Dog\":", "EOF while parsing a value at line 1 column 7"),
             ("{\"Dog\":}", "expected value at line 1 column 8"),
-            ("{\"Dog\":{}}", "invalid type: map, expected unit at line 1 column 7"),
+            ("{\"Dog\":{}}", "invalid type: map, expected unit at line 1 column 8"),
             ("\"Frog\"", "invalid type: unit variant, expected tuple variant"),
             ("\"Frog\" 0 ", "invalid type: unit variant, expected tuple variant"),
             ("{\"Frog\":{}}",
-             "invalid type: map, expected tuple variant Animal::Frog at line 1 column 8"),
+             "invalid type: map, expected tuple variant Animal::Frog at line 1 column 9"),
             ("{\"Cat\":[]}", "invalid length 0, expected struct variant Animal::Cat with 2 elements at line 1 column 9"),
             ("{\"Cat\":[0]}", "invalid length 1, expected struct variant Animal::Cat with 2 elements at line 1 column 10"),
             ("{\"Cat\":[0, \"\", 2]}", "trailing characters at line 1 column 16"),
