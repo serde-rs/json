@@ -83,6 +83,11 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn ignore_str(&mut self) -> Result<()>;
 
+    /// Assumes the previous byte was a hex escape sequnce ('\u') in a string.
+    /// Parses next hexadecimal sequence.
+    #[doc(hidden)]
+    fn decode_hex_escape(&mut self) -> Result<u16>;
+
     /// Switch raw buffering mode on.
     ///
     /// This is used when deserializing `RawValue`.
@@ -339,6 +344,19 @@ where
         }
     }
 
+    fn decode_hex_escape<'s>(&'s mut self) -> Result<u16> {
+        let mut n = 0;
+        for _ in 0..4 {
+            match decode_hex_val(try!(next_or_eof(self))) {
+                None => return error(self, ErrorCode::InvalidEscape),
+                Some(val) => {
+                    n = (n << 4) + val;
+                }
+            }
+        }
+        Ok(n)
+    }
+
     #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
         self.raw_buffer = Some(Vec::new());
@@ -528,6 +546,23 @@ impl<'a> Read<'a> for SliceRead<'a> {
         }
     }
 
+    fn decode_hex_escape(&mut self) -> Result<u16> {
+        if self.index + 4 > self.slice.len() {
+            return error(self, ErrorCode::EofWhileParsingString);
+        }
+        let mut n = 0;
+        for _ in 0..4 {
+            match decode_hex_val(self.slice[self.index]) {
+                None => return error(self, ErrorCode::InvalidEscape),
+                Some(val) => {
+                    n = (n << 4) + val;
+                }
+            }
+            self.index += 1;
+        }
+        Ok(n)
+    }
+
     #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
         self.raw_buffering_start_index = self.index;
@@ -614,6 +649,10 @@ impl<'a> Read<'a> for StrRead<'a> {
         self.delegate.ignore_str()
     }
 
+    fn decode_hex_escape(&mut self) -> Result<u16> {
+        self.delegate.decode_hex_escape()
+    }
+
     #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
         self.delegate.begin_raw_buffering()
@@ -690,7 +729,7 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
         b'r' => scratch.push(b'\r'),
         b't' => scratch.push(b'\t'),
         b'u' => {
-            let c = match try!(decode_hex_escape(read)) {
+            let c = match try!(read.decode_hex_escape()) {
                 0xDC00...0xDFFF => {
                     return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
                 }
@@ -705,7 +744,7 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
                         return error(read, ErrorCode::UnexpectedEndOfHexEscape);
                     }
 
-                    let n2 = try!(decode_hex_escape(read));
+                    let n2 = try!(read.decode_hex_escape());
 
                     if n2 < 0xDC00 || n2 > 0xDFFF {
                         return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
@@ -747,7 +786,7 @@ fn ignore_escape<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<()> {
     match ch {
         b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't' => {}
         b'u' => {
-            let n = match try!(decode_hex_escape(read)) {
+            let n = match try!(read.decode_hex_escape()) {
                 0xDC00...0xDFFF => {
                     return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
                 }
@@ -762,7 +801,7 @@ fn ignore_escape<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<()> {
                         return error(read, ErrorCode::UnexpectedEndOfHexEscape);
                     }
 
-                    let n2 = try!(decode_hex_escape(read));
+                    let n2 = try!(read.decode_hex_escape());
 
                     if n2 < 0xDC00 || n2 > 0xDFFF {
                         return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
@@ -786,21 +825,32 @@ fn ignore_escape<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<()> {
     Ok(())
 }
 
-fn decode_hex_escape<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<u16> {
-    let mut n = 0;
-    for _ in 0..4 {
-        n = match try!(next_or_eof(read)) {
-            c @ b'0'...b'9' => n * 16_u16 + ((c as u16) - (b'0' as u16)),
-            b'a' | b'A' => n * 16_u16 + 10_u16,
-            b'b' | b'B' => n * 16_u16 + 11_u16,
-            b'c' | b'C' => n * 16_u16 + 12_u16,
-            b'd' | b'D' => n * 16_u16 + 13_u16,
-            b'e' | b'E' => n * 16_u16 + 14_u16,
-            b'f' | b'F' => n * 16_u16 + 15_u16,
-            _ => {
-                return error(read, ErrorCode::InvalidEscape);
-            }
-        };
+#[cfg_attr(rustfmt, rustfmt_skip)]
+static HEX: [u8; 256] = [
+    //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // 0
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // 1
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // 2
+     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,255,255,255,255,255,255, // 3
+   255, 10, 11, 12, 13, 14, 15,255,255,255,255,255,255,255,255,255, // 4
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // 5
+   255, 10, 11, 12, 13, 14, 15,255,255,255,255,255,255,255,255,255, // 6
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // 7
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // 8
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // 9
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // A
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // B
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // C
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // D
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // E
+   255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255, // F
+];
+
+fn decode_hex_val(val: u8) -> Option<u16> {
+    let n = HEX[val as usize] as u16;
+    if n == 255 {
+        None
+    } else {
+        Some(n)
     }
-    Ok(n)
 }
