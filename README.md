@@ -81,7 +81,7 @@ A string of JSON data can be parsed into a `serde_json::Value` by the
 [`from_reader`][from_reader] for parsing from any `io::Read` like a File or
 a TCP stream.
 
-<a href="http://play.integer32.com/?gist=a266662bc71712e080efbf25ce30f306" target="_blank">
+<a href="https://play.rust-lang.org/?gist=a266662bc71712e080efbf25ce30f306" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
 </a>
 
@@ -140,7 +140,7 @@ in one of the dozens of places it is used in your code.
 Serde provides a powerful way of mapping JSON data into Rust data structures
 largely automatically.
 
-<a href="http://play.integer32.com/?gist=cff572b80d3f078c942a2151e6020adc" target="_blank">
+<a href="https://play.rust-lang.org/?gist=cff572b80d3f078c942a2151e6020adc" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
 </a>
 
@@ -207,7 +207,7 @@ Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
 objects with very natural JSON syntax. In order to use this macro,
 `serde_json` needs to be imported with the `#[macro_use]` attribute.
 
-<a href="http://play.integer32.com/?gist=c216d6beabd9429a6ac13b8f88938dfe" target="_blank">
+<a href="https://play.rust-lang.org/?gist=c216d6beabd9429a6ac13b8f88938dfe" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
 </a>
 
@@ -241,7 +241,7 @@ be interpolated directly into the JSON value as you are building it. Serde
 will check at compile time that the value you are interpolating is able to
 be represented as JSON.
 
-<a href="http://play.integer32.com/?gist=aae3af4d274bd249d1c8a947076355f2" target="_blank">
+<a href="https://play.rust-lang.org/?gist=aae3af4d274bd249d1c8a947076355f2" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
 </a>
 
@@ -272,7 +272,7 @@ A data structure can be converted to a JSON string by
 [`serde_json::to_writer`][to_writer] which serializes to any `io::Write`
 such as a File or a TCP stream.
 
-<a href="http://play.integer32.com/?gist=40967ece79921c77fd78ebc8f177c063" target="_blank">
+<a href="https://play.rust-lang.org/?gist=40967ece79921c77fd78ebc8f177c063" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
 </a>
 
