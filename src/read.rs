@@ -455,10 +455,10 @@ impl<'a> SliceRead<'a> {
                     start = self.index;
                 }
                 _ => {
+                    self.index += 1;
                     if validate {
                         return error(self, ErrorCode::ControlCharacterWhileParsingString);
                     }
-                    self.index += 1;
                 }
             }
         }
@@ -548,17 +548,20 @@ impl<'a> Read<'a> for SliceRead<'a> {
 
     fn decode_hex_escape(&mut self) -> Result<u16> {
         if self.index + 4 > self.slice.len() {
+            self.index = self.slice.len();
             return error(self, ErrorCode::EofWhileParsingString);
         }
+
         let mut n = 0;
         for _ in 0..4 {
-            match decode_hex_val(self.slice[self.index]) {
+            let ch = decode_hex_val(self.slice[self.index]);
+            self.index += 1;
+            match ch {
                 None => return error(self, ErrorCode::InvalidEscape),
                 Some(val) => {
                     n = (n << 4) + val;
                 }
             }
-            self.index += 1;
         }
         Ok(n)
     }
