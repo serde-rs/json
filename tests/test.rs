@@ -995,11 +995,11 @@ fn test_parse_string() {
         ),
         (
             "\"\n\"",
-            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 2 column 0",
         ),
         (
             "\"\x1F\"",
-            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 2",
         ),
     ]);
 
@@ -1013,12 +1013,32 @@ fn test_parse_string() {
             "invalid unicode code point at line 1 column 7",
         ),
         (
+            &[b'"', b'\\', b'u', 48, 48, 51],
+            "EOF while parsing a string at line 1 column 6",
+        ),
+        (
+            &[b'"', b'\\', b'u', 250, 48, 51, 48, b'"'],
+            "invalid escape at line 1 column 4",
+        ),
+        (
+            &[b'"', b'\\', b'u', 48, 250, 51, 48, b'"'],
+            "invalid escape at line 1 column 5",
+        ),
+        (
+            &[b'"', b'\\', b'u', 48, 48, 250, 48, b'"'],
+            "invalid escape at line 1 column 6",
+        ),
+        (
+            &[b'"', b'\\', b'u', 48, 48, 51, 250, b'"'],
+            "invalid escape at line 1 column 7",
+        ),
+        (
             &[b'"', b'\n', b'"'],
-            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 2 column 0",
         ),
         (
             &[b'"', b'\x1F', b'"'],
-            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 1",
+            "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 2",
         ),
     ]);
 
