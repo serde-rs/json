@@ -676,7 +676,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     ) -> Result<f64> {
         let mut f = significand as f64;
         loop {
-            match POW10.get(exponent.abs() as usize) {
+            match POW10.get(exponent.wrapping_abs() as usize) {
                 Some(&pow) => {
                     if exponent >= 0 {
                         f *= pow;
