@@ -37,9 +37,9 @@ pub struct Number {
 #[cfg(not(feature = "arbitrary_precision"))]
 #[derive(Copy, Clone, PartialEq)]
 enum N {
-    PosInt(u64),
+    PosInt(u128),
     /// Always less than zero.
-    NegInt(i64),
+    NegInt(i128),
     /// Always finite.
     Float(f64),
 }
@@ -59,7 +59,7 @@ impl Number {
     /// # extern crate serde_json;
     /// #
     /// # fn main() {
-    /// let big = i64::max_value() as u64 + 10;
+    /// let big = i64::max_value() as u128 + 10;
     /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
     ///
     /// assert!(v["a"].is_i64());
@@ -75,12 +75,47 @@ impl Number {
     pub fn is_i64(&self) -> bool {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
-            N::PosInt(v) => v <= i64::max_value() as u64,
+            N::PosInt(v) => v <= i64::max_value() as u128,
             N::NegInt(_) => true,
             N::Float(_) => false,
         }
         #[cfg(feature = "arbitrary_precision")]
         self.as_i64().is_some()
+    }
+
+    /// Returns true if the `Number` is an integer between `i128::MIN` and
+    /// `i128::MAX`.
+    ///
+    /// For any Number on which `is_i128` returns true, `as_i128` is guaranteed to
+    /// return the integer value.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let big = i128::max_value() as u128 + 10;
+    /// let v = json!({ "a": 128, "b": big, "c": 256.0 });
+    ///
+    /// assert!(v["a"].is_i128());
+    ///
+    /// // Greater than i128::MAX.
+    /// assert!(!v["b"].is_i128());
+    ///
+    /// // Numbers with a decimal point are not considered integers.
+    /// assert!(!v["c"].is_i128());
+    /// # }
+    /// ```
+    #[inline]
+    pub fn is_i128(&self) -> bool {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        match self.n {
+            N::PosInt(v) => v <= i128::max_value() as u128,
+            N::NegInt(_) => true,
+            N::Float(_) => false,
+        }
+        #[cfg(feature = "arbitrary_precision")]
+        self.as_i128().is_some()
     }
 
     /// Returns true if the `Number` is an integer between zero and `u64::MAX`.
@@ -113,6 +148,38 @@ impl Number {
         }
         #[cfg(feature = "arbitrary_precision")]
         self.as_u64().is_some()
+    }
+
+    /// Returns true if the `Number` is an integer between zero and `u128::MAX`.
+    ///
+    /// For any Number on which `is_u128` returns true, `as_u128` is guaranteed to
+    /// return the integer value.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 128, "b": -128, "c": 256.0 });
+    ///
+    /// assert!(v["a"].is_u128());
+    ///
+    /// // Negative integer.
+    /// assert!(!v["b"].is_u128());
+    ///
+    /// // Numbers with a decimal point are not considered integers.
+    /// assert!(!v["c"].is_u128());
+    /// # }
+    /// ```
+    #[inline]
+    pub fn is_u128(&self) -> bool {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        match self.n {
+            N::PosInt(_) => true,
+            N::NegInt(_) | N::Float(_) => false,
+        }
+        #[cfg(feature = "arbitrary_precision")]
+        self.as_u128().is_some()
     }
 
     /// Returns true if the `Number` can be represented by f64.
@@ -155,7 +222,7 @@ impl Number {
         }
     }
 
-    /// If the `Number` is an integer, represent it as i64 if possible. Returns
+    /// If the `Number` is an integer, represent it as i128 if possible. Returns
     /// None otherwise.
     ///
     /// ```rust
@@ -175,8 +242,40 @@ impl Number {
     pub fn as_i64(&self) -> Option<i64> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
-            N::PosInt(n) => if n <= i64::max_value() as u64 {
+            N::PosInt(n) => if n <= i64::max_value() as u128 {
                 Some(n as i64)
+            } else {
+                None
+            },
+            N::NegInt(n) => Some(n as i64),
+            N::Float(_) => None,
+        }
+        #[cfg(feature = "arbitrary_precision")]
+        self.n.parse().ok()
+    }
+
+    /// If the `Number` is an integer, represent it as i128 if possible. Returns
+    /// None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let big = i128::max_value() as u128 + 10;
+    /// let v = json!({ "a": 128, "b": big, "c": 256.0 });
+    ///
+    /// assert_eq!(v["a"].as_i128(), Some(128));
+    /// assert_eq!(v["b"].as_i128(), None);
+    /// assert_eq!(v["c"].as_i128(), None);
+    /// # }
+    /// ```
+    #[inline]
+    pub fn as_i128(&self) -> Option<i128> {
+        #[cfg(not(feature = "arbitrary_precision"))]
+            match self.n {
+            N::PosInt(n) => if n <= i128::max_value() as u128 {
+                Some(n as i128)
             } else {
                 None
             },
@@ -184,10 +283,10 @@ impl Number {
             N::Float(_) => None,
         }
         #[cfg(feature = "arbitrary_precision")]
-        self.n.parse().ok()
+            self.n.parse().ok()
     }
 
-    /// If the `Number` is an integer, represent it as u64 if possible. Returns
+    /// If the `Number` is an integer, represent it as u128 if possible. Returns
     /// None otherwise.
     ///
     /// ```rust
@@ -204,6 +303,32 @@ impl Number {
     /// ```
     #[inline]
     pub fn as_u64(&self) -> Option<u64> {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        match self.n {
+            N::PosInt(n) => Some(n as u64),
+            N::NegInt(_) | N::Float(_) => None,
+        }
+        #[cfg(feature = "arbitrary_precision")]
+        self.n.parse().ok()
+    }
+
+    /// If the `Number` is an integer, represent it as u128 if possible. Returns
+    /// None otherwise.
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_json;
+    /// #
+    /// # fn main() {
+    /// let v = json!({ "a": 128, "b": -128, "c": 256.0 });
+    ///
+    /// assert_eq!(v["a"].as_u128(), Some(128));
+    /// assert_eq!(v["b"].as_u128(), None);
+    /// assert_eq!(v["c"].as_u128(), None);
+    /// # }
+    /// ```
+    #[inline]
+    pub fn as_u128(&self) -> Option<u128> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
             N::PosInt(n) => Some(n),
@@ -326,9 +451,10 @@ impl Serialize for Number {
     where
         S: Serializer,
     {
+        #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
-            N::PosInt(u) => serializer.serialize_u64(u),
-            N::NegInt(i) => serializer.serialize_i64(i),
+            N::PosInt(u) => serializer.serialize_u128(u),
+            N::NegInt(i) => serializer.serialize_i128(i),
             N::Float(f) => serializer.serialize_f64(f),
         }
     }
@@ -481,8 +607,8 @@ macro_rules! deserialize_any {
             V: Visitor<'de>,
         {
             match self.n {
-                N::PosInt(u) => visitor.visit_u64(u),
-                N::NegInt(i) => visitor.visit_i64(i),
+                N::PosInt(u) => visitor.visit_u128(u),
+                N::NegInt(i) => visitor.visit_i128(i),
                 N::Float(f) => visitor.visit_f64(f),
             }
         }
@@ -552,11 +678,8 @@ impl<'de> Deserializer<'de> for Number {
     deserialize_number!(deserialize_u64 => visit_u64);
     deserialize_number!(deserialize_f32 => visit_f32);
     deserialize_number!(deserialize_f64 => visit_f64);
-
-    serde_if_integer128! {
-        deserialize_number!(deserialize_i128 => visit_i128);
-        deserialize_number!(deserialize_u128 => visit_u128);
-    }
+    deserialize_number!(deserialize_i128 => visit_i128);
+    deserialize_number!(deserialize_u128 => visit_u128);
 
     forward_to_deserialize_any! {
         bool char str string bytes byte_buf option unit unit_struct
@@ -580,11 +703,8 @@ impl<'de, 'a> Deserializer<'de> for &'a Number {
     deserialize_number!(deserialize_u64 => visit_u64);
     deserialize_number!(deserialize_f32 => visit_f32);
     deserialize_number!(deserialize_f64 => visit_f64);
-
-    serde_if_integer128! {
-        deserialize_number!(deserialize_i128 => visit_i128);
-        deserialize_number!(deserialize_u128 => visit_u128);
-    }
+    deserialize_number!(deserialize_i128 => visit_i128);
+    deserialize_number!(deserialize_u128 => visit_u128);
 
     forward_to_deserialize_any! {
         bool char str string bytes byte_buf option unit unit_struct
@@ -659,7 +779,7 @@ impl From<ParserNumber> for Number {
             ParserNumber::U64(u) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
                 {
-                    N::PosInt(u)
+                    N::PosInt(u as u128)
                 }
                 #[cfg(feature = "arbitrary_precision")]
                 {
@@ -667,6 +787,26 @@ impl From<ParserNumber> for Number {
                 }
             }
             ParserNumber::I64(i) => {
+                #[cfg(not(feature = "arbitrary_precision"))]
+                {
+                    N::NegInt(i as i128)
+                }
+                #[cfg(feature = "arbitrary_precision")]
+                {
+                    i.to_string()
+                }
+            }
+            ParserNumber::U128(u) => {
+                #[cfg(not(feature = "arbitrary_precision"))]
+                {
+                    N::PosInt(u)
+                }
+                #[cfg(feature = "arbitrary_precision")]
+                {
+                    u.to_string()
+                }
+            }
+            ParserNumber::I128(i) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
                 {
                     N::NegInt(i)
@@ -693,7 +833,7 @@ macro_rules! impl_from_unsigned {
                 fn from(u: $ty) -> Self {
                     let n = {
                         #[cfg(not(feature = "arbitrary_precision"))]
-                        { N::PosInt(u as u64) }
+                        { N::PosInt(u as u128) }
                         #[cfg(feature = "arbitrary_precision")]
                         {
                             itoa::Buffer::new().format(u).to_owned()
@@ -718,9 +858,9 @@ macro_rules! impl_from_signed {
                         #[cfg(not(feature = "arbitrary_precision"))]
                         {
                             if i < 0 {
-                                N::NegInt(i as i64)
+                                N::NegInt(i as i128)
                             } else {
-                                N::PosInt(i as u64)
+                                N::PosInt(i as u128)
                             }
                         }
                         #[cfg(feature = "arbitrary_precision")]
@@ -735,8 +875,8 @@ macro_rules! impl_from_signed {
     };
 }
 
-impl_from_unsigned!(u8, u16, u32, u64, usize);
-impl_from_signed!(i8, i16, i32, i64, isize);
+impl_from_unsigned!(u8, u16, u32, u64, u128, usize);
+impl_from_signed!(i8, i16, i32, i64, i128, isize);
 
 impl Number {
     #[cfg(not(feature = "arbitrary_precision"))]
@@ -745,8 +885,7 @@ impl Number {
     #[cold]
     pub fn unexpected(&self) -> Unexpected {
         match self.n {
-            N::PosInt(u) => Unexpected::Unsigned(u),
-            N::NegInt(i) => Unexpected::Signed(i),
+            N::PosInt(_) | N::NegInt(_) => Unexpected::Other("number"),
             N::Float(f) => Unexpected::Float(f),
         }
     }
