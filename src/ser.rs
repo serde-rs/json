@@ -1720,6 +1720,17 @@ pub trait Formatter {
         itoa::write(writer, value).map(drop)
     }
 
+    serde_if_integer128! {
+        /// Writes an integer value like `-123` to the specified writer.
+        #[inline]
+        fn write_i128<W: ?Sized>(&mut self, writer: &mut W, value: i128) -> io::Result<()>
+        where
+            W: io::Write,
+        {
+            itoa::write(writer, value).map(drop)
+        }
+    }
+
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
     fn write_u8<W: ?Sized>(&mut self, writer: &mut W, value: u8) -> io::Result<()>
@@ -1754,6 +1765,17 @@ pub trait Formatter {
         W: io::Write,
     {
         itoa::write(writer, value).map(drop)
+    }
+
+    serde_if_integer128! {
+        /// Writes an integer value like `123` to the specified writer.
+        #[inline]
+        fn write_u128<W: ?Sized>(&mut self, writer: &mut W, value: u128) -> io::Result<()>
+        where
+            W: io::Write,
+        {
+            itoa::write(writer, value).map(drop)
+        }
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
