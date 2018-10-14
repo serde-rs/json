@@ -875,8 +875,8 @@ macro_rules! impl_from_signed {
     };
 }
 
-impl_from_unsigned!(u8, u16, u32, u64, usize);
-impl_from_signed!(i8, i16, i32, i64, isize);
+impl_from_unsigned!(u8, u16, u32, u64, u128, usize);
+impl_from_signed!(i8, i16, i32, i64, i128, isize);
 
 impl Number {
     #[cfg(not(feature = "arbitrary_precision"))]
