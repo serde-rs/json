@@ -885,8 +885,7 @@ impl Number {
     #[cold]
     pub fn unexpected(&self) -> Unexpected {
         match self.n {
-            N::PosInt(_) => Unexpected::Other("number"), // Unsigned(u),
-            N::NegInt(_) => Unexpected::Other("number"), // Signed(i),
+            N::PosInt(_) | N::NegInt(_) => Unexpected::Other("number"),
             N::Float(f) => Unexpected::Float(f),
         }
     }
