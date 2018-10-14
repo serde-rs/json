@@ -284,30 +284,28 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    serde_if_integer128! {
-        fn scan_integer128(&mut self, buf: &mut String) -> Result<()> {
-            match try!(self.next_char_or_null()) {
-                b'0' => {
-                    buf.push('0');
-                    // There can be only one leading '0'.
-                    match try!(self.peek_or_null()) {
-                        b'0'...b'9' => {
-                            Err(self.peek_error(ErrorCode::InvalidNumber))
-                        }
-                        _ => Ok(()),
+    fn scan_integer128(&mut self, buf: &mut String) -> Result<()> {
+        match try!(self.next_char_or_null()) {
+            b'0' => {
+                buf.push('0');
+                // There can be only one leading '0'.
+                match try!(self.peek_or_null()) {
+                    b'0'...b'9' => {
+                        Err(self.peek_error(ErrorCode::InvalidNumber))
                     }
+                    _ => Ok(()),
                 }
-                c @ b'1'...b'9' => {
+            }
+            c @ b'1'...b'9' => {
+                buf.push(c as char);
+                while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+                    self.eat_char();
                     buf.push(c as char);
-                    while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
-                        self.eat_char();
-                        buf.push(c as char);
-                    }
-                    Ok(())
                 }
-                _ => {
-                    Err(self.error(ErrorCode::InvalidNumber))
-                }
+                Ok(())
+            }
+            _ => {
+                Err(self.error(ErrorCode::InvalidNumber))
             }
         }
     }
@@ -1133,67 +1131,65 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     deserialize_prim_number!(deserialize_f32);
     deserialize_prim_number!(deserialize_f64);
 
-    serde_if_integer128! {
-        fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
-        where
-            V: de::Visitor<'de>,
-        {
-            let mut buf = String::new();
+    fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        let mut buf = String::new();
 
-            match try!(self.parse_whitespace()) {
-                Some(b'-') => {
-                    self.eat_char();
-                    buf.push('-');
-                }
-                Some(_) => {}
-                None => {
-                    return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-                }
-            };
+        match try!(self.parse_whitespace()) {
+            Some(b'-') => {
+                self.eat_char();
+                buf.push('-');
+            }
+            Some(_) => {}
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
 
-            try!(self.scan_integer128(&mut buf));
+        try!(self.scan_integer128(&mut buf));
 
-            let value = match buf.parse() {
-                Ok(int) => visitor.visit_i128(int),
-                Err(_) => {
-                    return Err(self.error(ErrorCode::NumberOutOfRange));
-                }
-            };
+        let value = match buf.parse() {
+            Ok(int) => visitor.visit_i128(int),
+            Err(_) => {
+                return Err(self.error(ErrorCode::NumberOutOfRange));
+            }
+        };
 
-            match value {
-                Ok(value) => Ok(value),
-                Err(err) => Err(self.fix_position(err)),
+        match value {
+            Ok(value) => Ok(value),
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+
+    fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        match try!(self.parse_whitespace()) {
+            Some(b'-') => {
+                return Err(self.peek_error(ErrorCode::NumberOutOfRange));
+            }
+            Some(_) => {}
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
             }
         }
 
-        fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value>
-        where
-            V: de::Visitor<'de>,
-        {
-            match try!(self.parse_whitespace()) {
-                Some(b'-') => {
-                    return Err(self.peek_error(ErrorCode::NumberOutOfRange));
-                }
-                Some(_) => {}
-                None => {
-                    return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-                }
+        let mut buf = String::new();
+        try!(self.scan_integer128(&mut buf));
+
+        let value = match buf.parse() {
+            Ok(int) => visitor.visit_u128(int),
+            Err(_) => {
+                return Err(self.error(ErrorCode::NumberOutOfRange));
             }
+        };
 
-            let mut buf = String::new();
-            try!(self.scan_integer128(&mut buf));
-
-            let value = match buf.parse() {
-                Ok(int) => visitor.visit_u128(int),
-                Err(_) => {
-                    return Err(self.error(ErrorCode::NumberOutOfRange));
-                }
-            };
-
-            match value {
-                Ok(value) => Ok(value),
-                Err(err) => Err(self.fix_position(err)),
-            }
+        match value {
+            Ok(value) => Ok(value),
+            Err(err) => Err(self.fix_position(err)),
         }
     }
 
@@ -1906,11 +1902,8 @@ where
     deserialize_integer_key!(deserialize_u16 => visit_u16);
     deserialize_integer_key!(deserialize_u32 => visit_u32);
     deserialize_integer_key!(deserialize_u64 => visit_u64);
-
-    serde_if_integer128! {
-        deserialize_integer_key!(deserialize_i128 => visit_i128);
-        deserialize_integer_key!(deserialize_u128 => visit_u128);
-    }
+    deserialize_integer_key!(deserialize_i128 => visit_i128);
+    deserialize_integer_key!(deserialize_u128 => visit_u128);
 
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>

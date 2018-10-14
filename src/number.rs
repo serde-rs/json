@@ -678,11 +678,8 @@ impl<'de> Deserializer<'de> for Number {
     deserialize_number!(deserialize_u64 => visit_u64);
     deserialize_number!(deserialize_f32 => visit_f32);
     deserialize_number!(deserialize_f64 => visit_f64);
-
-    serde_if_integer128! {
-        deserialize_number!(deserialize_i128 => visit_i128);
-        deserialize_number!(deserialize_u128 => visit_u128);
-    }
+    deserialize_number!(deserialize_i128 => visit_i128);
+    deserialize_number!(deserialize_u128 => visit_u128);
 
     forward_to_deserialize_any! {
         bool char str string bytes byte_buf option unit unit_struct
@@ -706,11 +703,8 @@ impl<'de, 'a> Deserializer<'de> for &'a Number {
     deserialize_number!(deserialize_u64 => visit_u64);
     deserialize_number!(deserialize_f32 => visit_f32);
     deserialize_number!(deserialize_f64 => visit_f64);
-
-    serde_if_integer128! {
-        deserialize_number!(deserialize_i128 => visit_i128);
-        deserialize_number!(deserialize_u128 => visit_u128);
-    }
+    deserialize_number!(deserialize_i128 => visit_i128);
+    deserialize_number!(deserialize_u128 => visit_u128);
 
     forward_to_deserialize_any! {
         bool char str string bytes byte_buf option unit unit_struct
