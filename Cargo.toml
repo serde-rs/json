@@ -22,7 +22,7 @@ itoa = "0.4.3"
 ryu = "0.2"
 
 [dev-dependencies]
-compiletest_rs = "0.3"
+compiletest_rs = { version = "0.3", features = ["stable"] }
 serde_bytes = "0.10"
 serde_derive = "1.0"
 
