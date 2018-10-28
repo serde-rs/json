@@ -2,7 +2,7 @@ error: unexpected end of macro invocation
   --> $DIR/missing_value.rs:13:5
    |
 13 |     json!({ "a" : });
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^ unexpected end of macro invocation
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
