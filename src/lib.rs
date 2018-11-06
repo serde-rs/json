@@ -319,32 +319,29 @@
 #![cfg_attr(feature = "cargo-clippy", allow(renamed_and_removed_lints))]
 #![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
 // Whitelisted clippy lints
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(doc_markdown, needless_pass_by_value)
-)]
+#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown, needless_pass_by_value))]
 // Whitelisted clippy_pedantic lints
 #![cfg_attr(feature = "cargo-clippy", allow(
-// Deserializer::from_str, into_iter
+    // Deserializer::from_str, into_iter
     should_implement_trait,
-// integer and float ser/de requires these sorts of casts
+    // integer and float ser/de requires these sorts of casts
     cast_possible_truncation,
     cast_possible_wrap,
     cast_precision_loss,
     cast_sign_loss,
-// string ser/de uses indexing and slicing
+    // string ser/de uses indexing and slicing
     indexing_slicing,
-// things are often more readable this way
+    // things are often more readable this way
     cast_lossless,
     shadow_reuse,
     shadow_unrelated,
     single_match_else,
     stutter,
     use_self,
-// not practical
+    // not practical
     missing_docs_in_private_items,
     similar_names,
-// we support older compilers
+    // we support older compilers
     redundant_field_names,
 ))]
 #![deny(missing_docs)]

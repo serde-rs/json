@@ -1,9 +1,12 @@
 use std::fmt::{self, Debug, Display};
 use std::mem;
 
-use serde::ser::{Serialize, Serializer, SerializeStruct};
-use serde::de::{self, Deserialize, Deserializer, DeserializeSeed, IntoDeserializer, MapAccess, Unexpected, Visitor};
 use serde::de::value::BorrowedStrDeserializer;
+use serde::de::{
+    self, Deserialize, DeserializeSeed, Deserializer, IntoDeserializer, MapAccess, Unexpected,
+    Visitor,
+};
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use error::Error;
 

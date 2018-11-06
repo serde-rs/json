@@ -7,10 +7,7 @@
 // except according to those terms.
 
 #![cfg(not(feature = "preserve_order"))]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(float_cmp, unreadable_literal)
-)]
+#![cfg_attr(feature = "cargo-clippy", allow(float_cmp, unreadable_literal))]
 #![cfg_attr(feature = "trace-macros", feature(trace_macros))]
 #[cfg(feature = "trace-macros")]
 trace_macros!(true);
@@ -1192,7 +1189,8 @@ fn test_parse_struct() {
                 [ null, 2, [\"abc\", \"xyz\"] ]
             ]
         ]",
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(
         v,
@@ -1680,7 +1678,8 @@ fn test_json_pointer() {
         " ": 7,
         "m~n": 8
     }"#,
-    ).unwrap();
+    )
+    .unwrap();
     assert_eq!(data.pointer("").unwrap(), &data);
     assert_eq!(data.pointer("/foo").unwrap(), &json!(["bar", "baz"]));
     assert_eq!(data.pointer("/foo/0").unwrap(), &json!("bar"));
@@ -1718,7 +1717,8 @@ fn test_json_pointer_mut() {
         " ": 7,
         "m~n": 8
     }"#,
-    ).unwrap();
+    )
+    .unwrap();
 
     // Basic pointer checks
     assert_eq!(data.pointer_mut("/foo").unwrap(), &json!(["bar", "baz"]));
@@ -1956,31 +1956,21 @@ fn test_category() {
     assert!(from_str::<Vec<usize>>("[0").unwrap_err().is_eof());
     assert!(from_str::<Vec<usize>>("[0,").unwrap_err().is_eof());
 
-    assert!(
-        from_str::<BTreeMap<String, usize>>("{")
-            .unwrap_err()
-            .is_eof()
-    );
-    assert!(
-        from_str::<BTreeMap<String, usize>>("{\"k\"")
-            .unwrap_err()
-            .is_eof()
-    );
-    assert!(
-        from_str::<BTreeMap<String, usize>>("{\"k\":")
-            .unwrap_err()
-            .is_eof()
-    );
-    assert!(
-        from_str::<BTreeMap<String, usize>>("{\"k\":0")
-            .unwrap_err()
-            .is_eof()
-    );
-    assert!(
-        from_str::<BTreeMap<String, usize>>("{\"k\":0,")
-            .unwrap_err()
-            .is_eof()
-    );
+    assert!(from_str::<BTreeMap<String, usize>>("{")
+        .unwrap_err()
+        .is_eof());
+    assert!(from_str::<BTreeMap<String, usize>>("{\"k\"")
+        .unwrap_err()
+        .is_eof());
+    assert!(from_str::<BTreeMap<String, usize>>("{\"k\":")
+        .unwrap_err()
+        .is_eof());
+    assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0")
+        .unwrap_err()
+        .is_eof());
+    assert!(from_str::<BTreeMap<String, usize>>("{\"k\":0,")
+        .unwrap_err()
+        .is_eof());
 
     let fail = FailReader(io::ErrorKind::NotConnected);
     assert!(from_reader::<_, String>(fail).unwrap_err().is_io());
@@ -2111,14 +2101,12 @@ fn test_boxed_raw_value() {
         serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.get());
 
-    let wrapper_from_reader: Wrapper = serde_json::from_reader(
-        br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref(),
-    ).unwrap();
+    let wrapper_from_reader: Wrapper =
+        serde_json::from_reader(br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref()).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.get());
 
     let wrapper_from_value: Wrapper =
-        serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3}))
-            .unwrap();
+        serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3})).unwrap();
     assert_eq!(r#"{"foo":2}"#, wrapper_from_value.b.get());
 
     let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
@@ -2134,9 +2122,8 @@ fn test_boxed_raw_value() {
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
     assert_eq!(r#"null"#, array_from_str[3].get());
 
-    let array_from_reader: Vec<Box<RawValue>> = serde_json::from_reader(
-        br#"["a", 42, {"foo": "bar"}, null]"#.as_ref(),
-    ).unwrap();
+    let array_from_reader: Vec<Box<RawValue>> =
+        serde_json::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
     assert_eq!(r#""a""#, array_from_reader[0].get());
     assert_eq!(r#"42"#, array_from_reader[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());

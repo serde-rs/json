@@ -346,13 +346,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             // number as a `u64` until we grow too large. At that point, switch to
                             // parsing the value as a `f64`.
                             if overflow!(res * 10 + digit, u64::max_value()) {
-                                return Ok(ParserNumber::F64(try!(
-                                    self.parse_long_integer(
-                                        positive,
-                                        res,
-                                        1, // res * 10^1
-                                    )
-                                )));
+                                return Ok(ParserNumber::F64(try!(self.parse_long_integer(
+                                    positive,
+                                    res,
+                                    1, // res * 10^1
+                                ))));
                             }
 
                             res = res * 10 + digit;
@@ -867,9 +865,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     return Err(self.peek_error(ErrorCode::InvalidNumber));
                 }
             }
-            b'1'...b'9' => while let b'0'...b'9' = try!(self.peek_or_null()) {
-                self.eat_char();
-            },
+            b'1'...b'9' => {
+                while let b'0'...b'9' = try!(self.peek_or_null()) {
+                    self.eat_char();
+                }
+            }
             _ => {
                 return Err(self.error(ErrorCode::InvalidNumber));
             }

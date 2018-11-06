@@ -369,7 +369,9 @@ where
     {
         let raw = self.raw_buffer.take().unwrap();
         let raw = String::from_utf8(raw).unwrap();
-        visitor.visit_map(OwnedRawDeserializer { raw_value: Some(raw) })
+        visitor.visit_map(OwnedRawDeserializer {
+            raw_value: Some(raw),
+        })
     }
 }
 
@@ -578,7 +580,9 @@ impl<'a> Read<'a> for SliceRead<'a> {
     {
         let raw = &self.slice[self.raw_buffering_start_index..self.index];
         let raw = str::from_utf8(raw).unwrap();
-        visitor.visit_map(BorrowedRawDeserializer { raw_value: Some(raw) })
+        visitor.visit_map(BorrowedRawDeserializer {
+            raw_value: Some(raw),
+        })
     }
 }
 
@@ -667,7 +671,9 @@ impl<'a> Read<'a> for StrRead<'a> {
         V: Visitor<'a>,
     {
         let raw = &self.data[self.delegate.raw_buffering_start_index..self.delegate.index];
-        visitor.visit_map(BorrowedRawDeserializer { raw_value: Some(raw) })
+        visitor.visit_map(BorrowedRawDeserializer {
+            raw_value: Some(raw),
+        })
     }
 }
 
