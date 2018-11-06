@@ -318,9 +318,12 @@
 #![doc(html_root_url = "https://docs.rs/serde_json/1.0.32")]
 #![cfg_attr(feature = "cargo-clippy", allow(renamed_and_removed_lints))]
 #![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
-// Whitelisted clippy lints
-#![cfg_attr(feature = "cargo-clippy", allow(doc_markdown, needless_pass_by_value))]
-// Whitelisted clippy_pedantic lints
+// Ignored clippy lints
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(deprecated_cfg_attr, doc_markdown, needless_pass_by_value,)
+)]
+// Ignored clippy_pedantic lints
 #![cfg_attr(feature = "cargo-clippy", allow(
     // Deserializer::from_str, into_iter
     should_implement_trait,
