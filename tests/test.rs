@@ -2132,3 +2132,28 @@ fn test_boxed_raw_value() {
     let array_to_string = serde_json::to_string(&array_from_str).unwrap();
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
 }
+
+#[test]
+fn test_borrow_in_map_key() {
+    #[derive(Deserialize, Debug)]
+    struct Outer {
+        map: BTreeMap<MyMapKey, ()>,
+    }
+
+    #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+    struct MyMapKey(usize);
+
+    impl<'de> Deserialize<'de> for MyMapKey {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: de::Deserializer<'de>,
+        {
+            let s = <&str>::deserialize(deserializer)?;
+            let n = s.parse().map_err(de::Error::custom)?;
+            Ok(MyMapKey(n))
+        }
+    }
+
+    let value = json!({ "map": { "1": null } });
+    Outer::deserialize(&value).unwrap();
+}
