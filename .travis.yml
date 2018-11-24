@@ -22,7 +22,7 @@ matrix:
     - rust: 1.18.0
 
     - rust: nightly
-      env: CLIPPY
+      name: Clippy
       script:
         - rustup component add clippy-preview || travis_terminate 0
         - cargo clippy
