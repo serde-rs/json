@@ -2,7 +2,7 @@ error: no rules expected the token `,`
   --> $DIR/unexpected_comma.rs:13:17
    |
 13 |     json!({ "a" , "b": true });
-   |                 ^ no rules expected the token `,`
+   |                 ^ no rules expected this token in macro call
 
 error: aborting due to previous error
 
