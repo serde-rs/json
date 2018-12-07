@@ -2124,6 +2124,13 @@ where
 /// The content of the IO stream is deserialized directly from the stream
 /// without being buffered in memory by serde_json.
 ///
+/// When reading from a source against which short reads are not efficient, such
+/// as a [`File`], you will want to apply your own buffering because serde_json
+/// will not buffer the input. See [`std::io::BufReader`].
+///
+/// [`File`]: https://doc.rust-lang.org/std/fs/struct.File.html
+/// [`BufReader`]: https://doc.rust-lang.org/std/io/struct.BufReader.html
+///
 /// # Example
 ///
 /// ```rust
@@ -2135,6 +2142,7 @@ where
 ///
 /// use std::error::Error;
 /// use std::fs::File;
+/// use std::io::BufReader;
 /// use std::path::Path;
 ///
 /// #[derive(Deserialize, Debug)]
@@ -2144,11 +2152,12 @@ where
 /// }
 ///
 /// fn read_user_from_file<P: AsRef<Path>>(path: P) -> Result<User, Box<Error>> {
-///     // Open the file in read-only mode.
+///     // Open the file in read-only mode with buffer.
 ///     let file = File::open(path)?;
+///     let reader = BufReader::new(file);
 ///
 ///     // Read the JSON contents of the file as an instance of `User`.
-///     let u = serde_json::from_reader(file)?;
+///     let u = serde_json::from_reader(reader)?;
 ///
 ///     // Return the `User`.
 ///     Ok(u)
