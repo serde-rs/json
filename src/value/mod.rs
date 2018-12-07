@@ -1018,6 +1018,8 @@ mod ser;
 /// Convert a `T` into `serde_json::Value` which is an enum that can represent
 /// any valid JSON data.
 ///
+/// # Example
+///
 /// ```rust
 /// extern crate serde;
 ///
@@ -1087,13 +1089,7 @@ where
 
 /// Interpret a `serde_json::Value` as an instance of type `T`.
 ///
-/// This conversion can fail if the structure of the Value does not match the
-/// structure expected by `T`, for example if `T` is a struct type but the Value
-/// contains something other than a JSON map. It can also fail if the structure
-/// is correct but `T`'s implementation of `Deserialize` decides that something
-/// is wrong with the data, for example required struct fields are missing from
-/// the JSON map or some number is too big to fit in the expected primitive
-/// type.
+/// # Example
 ///
 /// ```rust
 /// #[macro_use]
@@ -1121,6 +1117,16 @@ where
 ///     println!("{:#?}", u);
 /// }
 /// ```
+///
+/// # Errors
+///
+/// This conversion can fail if the structure of the Value does not match the
+/// structure expected by `T`, for example if `T` is a struct type but the Value
+/// contains something other than a JSON map. It can also fail if the structure
+/// is correct but `T`'s implementation of `Deserialize` decides that something
+/// is wrong with the data, for example required struct fields are missing from
+/// the JSON map or some number is too big to fit in the expected primitive
+/// type.
 pub fn from_value<T>(value: Value) -> Result<T, Error>
 where
     T: DeserializeOwned,

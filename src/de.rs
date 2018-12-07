@@ -2121,15 +2121,7 @@ where
 
 /// Deserialize an instance of type `T` from an IO stream of JSON.
 ///
-/// # Errors
-///
-/// This conversion can fail if the structure of the input does not match the
-/// structure expected by `T`, for example if `T` is a struct type but the input
-/// contains something other than a JSON map. It can also fail if the structure
-/// is correct but `T`'s implementation of `Deserialize` decides that something
-/// is wrong with the data, for example required struct fields are missing from
-/// the JSON map or some number is too big to fit in the expected primitive
-/// type.
+/// # Example
 ///
 /// ```rust
 /// #[macro_use]
@@ -2166,15 +2158,6 @@ where
 ///     println!("{:#?}", u);
 /// }
 /// ```
-pub fn from_reader<R, T>(rdr: R) -> Result<T>
-where
-    R: io::Read,
-    T: de::DeserializeOwned,
-{
-    from_trait(read::IoRead::new(rdr))
-}
-
-/// Deserialize an instance of type `T` from bytes of JSON text.
 ///
 /// # Errors
 ///
@@ -2185,6 +2168,17 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
+pub fn from_reader<R, T>(rdr: R) -> Result<T>
+where
+    R: io::Read,
+    T: de::DeserializeOwned,
+{
+    from_trait(read::IoRead::new(rdr))
+}
+
+/// Deserialize an instance of type `T` from bytes of JSON text.
+///
+/// # Example
 ///
 /// ```rust
 /// #[macro_use]
@@ -2210,14 +2204,6 @@ where
 ///     println!("{:#?}", u);
 /// }
 /// ```
-pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
-where
-    T: de::Deserialize<'a>,
-{
-    from_trait(read::SliceRead::new(v))
-}
-
-/// Deserialize an instance of type `T` from a string of JSON text.
 ///
 /// # Errors
 ///
@@ -2228,6 +2214,16 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
+pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
+where
+    T: de::Deserialize<'a>,
+{
+    from_trait(read::SliceRead::new(v))
+}
+
+/// Deserialize an instance of type `T` from a string of JSON text.
+///
+/// # Example
 ///
 /// ```rust
 /// #[macro_use]
@@ -2253,6 +2249,16 @@ where
 ///     println!("{:#?}", u);
 /// }
 /// ```
+///
+/// # Errors
+///
+/// This conversion can fail if the structure of the input does not match the
+/// structure expected by `T`, for example if `T` is a struct type but the input
+/// contains something other than a JSON map. It can also fail if the structure
+/// is correct but `T`'s implementation of `Deserialize` decides that something
+/// is wrong with the data, for example required struct fields are missing from
+/// the JSON map or some number is too big to fit in the expected primitive
+/// type.
 pub fn from_str<'a, T>(s: &'a str) -> Result<T>
 where
     T: de::Deserialize<'a>,
