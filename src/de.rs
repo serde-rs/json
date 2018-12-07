@@ -2121,6 +2121,9 @@ where
 
 /// Deserialize an instance of type `T` from an IO stream of JSON.
 ///
+/// The content of the IO stream is deserialized directly from the stream
+/// without being buffered in memory by serde_json.
+///
 /// # Example
 ///
 /// ```rust
