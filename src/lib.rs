@@ -330,9 +330,9 @@
     cast_sign_loss,
     // things are often more readable this way
     cast_lossless,
+    module_name_repetitions,
     shadow_unrelated,
     single_match_else,
-    stutter,
     use_self,
     // we support older compilers
     redundant_field_names,
