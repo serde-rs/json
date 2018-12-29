@@ -77,6 +77,13 @@ impl serde::Serializer for Serializer {
         Ok(Value::Number(value.into()))
     }
 
+    serde_if_integer128! {
+        #[cfg(feature = "arbitrary_precision")]
+        fn serialize_i128(self, value: i128) -> Result<Value, Error> {
+            Ok(Value::Number(Number::from_string_unchecked(value.to_string())))
+        }
+    }
+
     #[inline]
     fn serialize_u8(self, value: u8) -> Result<Value, Error> {
         self.serialize_u64(value as u64)
@@ -95,6 +102,13 @@ impl serde::Serializer for Serializer {
     #[inline]
     fn serialize_u64(self, value: u64) -> Result<Value, Error> {
         Ok(Value::Number(value.into()))
+    }
+
+    serde_if_integer128! {
+        #[cfg(feature = "arbitrary_precision")]
+        fn serialize_u128(self, value: u128) -> Result<Value, Error> {
+            Ok(Value::Number(Number::from_string_unchecked(value.to_string())))
+        }
     }
 
     #[inline]

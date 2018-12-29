@@ -1910,6 +1910,28 @@ fn test_partialeq_number() {
 }
 
 #[test]
+#[cfg(integer128)]
+#[cfg(feature = "arbitrary_precision")]
+fn test_partialeq_integer128() {
+    use std::{u128, i128};
+    use std::str::FromStr;
+    fn test_u128_number_partial_eq(input: u128) {
+        let val1 = serde_json::Value::from_str(&format!("{}", input)).unwrap();
+        let val2 = serde_json::to_value(input).unwrap();
+        assert_eq!(val1, val2);
+    }
+    fn test_i128_number_partial_eq(input: i128) {
+        let val1 = serde_json::Value::from_str(&format!("{}", input)).unwrap();
+        let val2 = serde_json::to_value(input).unwrap();
+        assert_eq!(val1, val2);
+    }
+    test_u128_number_partial_eq(u128::MAX);
+    test_u128_number_partial_eq(u128::MIN);
+    test_i128_number_partial_eq(i128::MAX);
+    test_i128_number_partial_eq(i128::MIN);
+}
+
+#[test]
 fn test_partialeq_string() {
     let v = to_value("42").unwrap();
     assert_eq!(v, "42");
