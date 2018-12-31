@@ -1910,6 +1910,13 @@ fn test_partialeq_number() {
 }
 
 #[test]
+#[cfg(integer128)]
+#[cfg(feature = "arbitrary_precision")]
+fn test_partialeq_integer128() {
+    number_partialeq_ok!(i128::MIN i128::MAX u128::MIN u128::MAX)
+}
+
+#[test]
 fn test_partialeq_string() {
     let v = to_value("42").unwrap();
     assert_eq!(v, "42");
