@@ -29,6 +29,13 @@ from_integer! {
     u8 u16 u32 u64 usize
 }
 
+#[cfg(feature = "arbitrary_precision")]
+serde_if_integer128! {
+    from_integer! {
+        i128 u128
+    }
+}
+
 impl From<f32> for Value {
     /// Convert 32-bit floating point number to `Value`
     ///

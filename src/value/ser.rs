@@ -77,10 +77,10 @@ impl serde::Serializer for Serializer {
         Ok(Value::Number(value.into()))
     }
 
+    #[cfg(feature = "arbitrary_precision")]
     serde_if_integer128! {
-        #[cfg(feature = "arbitrary_precision")]
         fn serialize_i128(self, value: i128) -> Result<Value, Error> {
-            Ok(Value::Number(Number::from_string_unchecked(value.to_string())))
+            Ok(Value::Number(value.into()))
         }
     }
 
@@ -104,10 +104,10 @@ impl serde::Serializer for Serializer {
         Ok(Value::Number(value.into()))
     }
 
+    #[cfg(feature = "arbitrary_precision")]
     serde_if_integer128! {
-        #[cfg(feature = "arbitrary_precision")]
         fn serialize_u128(self, value: u128) -> Result<Value, Error> {
-            Ok(Value::Number(Number::from_string_unchecked(value.to_string())))
+            Ok(Value::Number(value.into()))
         }
     }
 

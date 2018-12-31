@@ -740,6 +740,21 @@ macro_rules! impl_from_signed {
 impl_from_unsigned!(u8, u16, u32, u64, usize);
 impl_from_signed!(i8, i16, i32, i64, isize);
 
+#[cfg(feature = "arbitrary_precision")]
+serde_if_integer128! {
+    impl From<i128> for Number {
+        fn from(i: i128) -> Self {
+            Number { n: i.to_string() }
+        }
+    }
+
+    impl From<u128> for Number {
+        fn from(u: u128) -> Self {
+            Number { n: u.to_string() }
+        }
+    }
+}
+
 impl Number {
     #[cfg(not(feature = "arbitrary_precision"))]
     // Not public API. Should be pub(crate).
