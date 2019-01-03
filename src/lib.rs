@@ -334,6 +334,7 @@
     shadow_unrelated,
     single_match_else,
     use_self,
+    zero_prefixed_literal,
     // we support older compilers
     redundant_field_names,
 ))]
