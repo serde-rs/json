@@ -32,6 +32,7 @@ use number::NumberDeserializer;
 pub struct Deserializer<R> {
     read: R,
     scratch: Vec<u8>,
+    #[cfg(not(feature = "stacker"))]
     remaining_depth: u8,
 }
 
@@ -51,6 +52,7 @@ where
         Deserializer {
             read: read,
             scratch: Vec::new(),
+            #[cfg(not(feature = "stacker"))]
             remaining_depth: 128,
         }
     }
@@ -150,6 +152,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     #[inline(always)]
     fn recurse<T, F: FnOnce(&mut Self) -> Result<T>>(&mut self, f: F) -> Result<T> {
+        #[cfg(not(feature = "stacker"))]
+        {
             self.remaining_depth -= 1;
             if self.remaining_depth == 0 {
                 return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
@@ -161,6 +165,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
             ret
         }
+
+        #[cfg(feature = "stacker")]
+        {
+            stacker::maybe_grow(32 * 1024, 1024 * 1024, move || f(self))
+        }
+    }
 
     fn peek(&mut self) -> Result<Option<u8>> {
         self.read.peek()

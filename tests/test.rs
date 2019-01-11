@@ -1761,6 +1761,7 @@ fn test_json_pointer_mut() {
 }
 
 #[test]
+#[cfg(not(feature = "stacker"))]
 fn test_stack_overflow() {
     let brackets: String = iter::repeat('[')
         .take(127)
@@ -1770,6 +1771,17 @@ fn test_stack_overflow() {
 
     let brackets: String = iter::repeat('[').take(128).collect();
     test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 128")]);
+}
+
+#[test]
+#[cfg(feature = "stacker")]
+fn test_stack_overflow() {
+    let brackets: String = iter::repeat('[')
+        .take(2000)
+        .chain(iter::once('1'))
+        .chain(iter::repeat(']').take(2000))
+        .collect();
+    let _: Value = from_str(&brackets).unwrap();
 }
 
 #[test]

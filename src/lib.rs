@@ -346,6 +346,8 @@ extern crate serde;
 extern crate indexmap;
 extern crate itoa;
 extern crate ryu;
+#[cfg(feature = "stacker")]
+extern crate stacker;
 
 #[doc(inline)]
 pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
