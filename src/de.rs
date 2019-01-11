@@ -148,6 +148,20 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[inline(always)]
+    fn recurse<T, F: FnOnce(&mut Self) -> Result<T>>(&mut self, f: F) -> Result<T> {
+            self.remaining_depth -= 1;
+            if self.remaining_depth == 0 {
+                return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+            }
+
+            let ret = f(self);
+
+            self.remaining_depth += 1;
+
+            ret
+        }
+
     fn peek(&mut self) -> Result<Option<u8>> {
         self.read.peek()
     }
@@ -1036,15 +1050,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'[' => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                }
-
                 self.eat_char();
-                let ret = visitor.visit_seq(SeqAccess::new(self));
 
-                self.remaining_depth += 1;
+                let ret = self.recurse(|this| visitor.visit_seq(SeqAccess::new(this)));
 
                 match (ret, self.end_seq()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1052,15 +1060,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'{' => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                }
-
                 self.eat_char();
-                let ret = visitor.visit_map(MapAccess::new(self));
 
-                self.remaining_depth += 1;
+                let ret = self.recurse(|this| visitor.visit_map(MapAccess::new(this)));
 
                 match (ret, self.end_map()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1428,15 +1430,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
         let value = match peek {
             b'[' => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                }
-
                 self.eat_char();
-                let ret = visitor.visit_seq(SeqAccess::new(self));
 
-                self.remaining_depth += 1;
+                let ret = self.recurse(|this| visitor.visit_seq(SeqAccess::new(this)));
 
                 match (ret, self.end_seq()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1484,15 +1480,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
         let value = match peek {
             b'{' => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                }
-
                 self.eat_char();
-                let ret = visitor.visit_map(MapAccess::new(self));
 
-                self.remaining_depth += 1;
+                let ret = self.recurse(|this| visitor.visit_map(MapAccess::new(this)));
 
                 match (ret, self.end_map()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1526,15 +1516,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
         let value = match peek {
             b'[' => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                }
-
                 self.eat_char();
-                let ret = visitor.visit_seq(SeqAccess::new(self));
 
-                self.remaining_depth += 1;
+                let ret = self.recurse(|this| visitor.visit_seq(SeqAccess::new(this)));
 
                 match (ret, self.end_seq()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1542,15 +1526,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'{' => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                }
-
                 self.eat_char();
-                let ret = visitor.visit_map(MapAccess::new(self));
 
-                self.remaining_depth += 1;
+                let ret = self.recurse(|this| visitor.visit_map(MapAccess::new(this)));
 
                 match (ret, self.end_map()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1580,15 +1558,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         match try!(self.parse_whitespace()) {
             Some(b'{') => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                }
-
                 self.eat_char();
-                let value = try!(visitor.visit_enum(VariantAccess::new(self)));
 
-                self.remaining_depth += 1;
+                let value = self.recurse(|this| visitor.visit_enum(VariantAccess::new(this)))?;
 
                 match try!(self.parse_whitespace()) {
                     Some(b'}') => {
