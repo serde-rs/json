@@ -51,3 +51,9 @@ arbitrary_precision = []
 
 # Provide a RawValue type that can hold unprocessed JSON during deserialization.
 raw_value = []
+
+# Parse arbitrarily deep JSON structures at the cost of extra stack check on
+# each recursion. Note that this helps only with the parsing itself, and it's
+# left to the user to correctly handle all other recursive operations on the
+# parsed result, including, but not limited to, Display, Debug and Drop impls.
+arbitrary_depth = ["stacker"]

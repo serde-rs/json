@@ -32,7 +32,7 @@ use number::NumberDeserializer;
 pub struct Deserializer<R> {
     read: R,
     scratch: Vec<u8>,
-    #[cfg(not(feature = "stacker"))]
+    #[cfg(not(feature = "arbitrary_depth"))]
     remaining_depth: u8,
 }
 
@@ -52,7 +52,7 @@ where
         Deserializer {
             read: read,
             scratch: Vec::new(),
-            #[cfg(not(feature = "stacker"))]
+            #[cfg(not(feature = "arbitrary_depth"))]
             remaining_depth: 128,
         }
     }
@@ -152,7 +152,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     #[inline(always)]
     fn recurse<T, F: FnOnce(&mut Self) -> Result<T>>(&mut self, f: F) -> Result<T> {
-        #[cfg(not(feature = "stacker"))]
+        #[cfg(not(feature = "arbitrary_depth"))]
         {
             self.remaining_depth -= 1;
             if self.remaining_depth == 0 {
@@ -166,7 +166,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             ret
         }
 
-        #[cfg(feature = "stacker")]
+        #[cfg(feature = "arbitrary_depth")]
         {
             stacker::maybe_grow(32 * 1024, 1024 * 1024, move || f(self))
         }

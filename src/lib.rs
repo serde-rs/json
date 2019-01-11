@@ -346,7 +346,7 @@ extern crate serde;
 extern crate indexmap;
 extern crate itoa;
 extern crate ryu;
-#[cfg(feature = "stacker")]
+#[cfg(feature = "arbitrary_depth")]
 extern crate stacker;
 
 #[doc(inline)]

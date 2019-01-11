@@ -1761,7 +1761,7 @@ fn test_json_pointer_mut() {
 }
 
 #[test]
-#[cfg(not(feature = "stacker"))]
+#[cfg(not(feature = "arbitrary_depth"))]
 fn test_stack_overflow() {
     let brackets: String = iter::repeat('[')
         .take(127)
@@ -1774,7 +1774,7 @@ fn test_stack_overflow() {
 }
 
 #[test]
-#[cfg(feature = "stacker")]
+#[cfg(feature = "arbitrary_depth")]
 fn test_stack_overflow() {
     let brackets: String = iter::repeat('[')
         .take(2000)
