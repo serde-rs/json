@@ -1060,9 +1060,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'[' => {
-                self.eat_char();
-
-                let ret = self.recurse(|this| visitor.visit_seq(SeqAccess::new(this)));
+                let ret = self.recurse(|this| {
+                    this.eat_char();
+                    visitor.visit_seq(SeqAccess::new(this))
+                });
 
                 match (ret, self.end_seq()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1070,9 +1071,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'{' => {
-                self.eat_char();
-
-                let ret = self.recurse(|this| visitor.visit_map(MapAccess::new(this)));
+                let ret = self.recurse(|this| {
+                    this.eat_char();
+                    visitor.visit_map(MapAccess::new(this))
+                });
 
                 match (ret, self.end_map()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1440,9 +1442,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
         let value = match peek {
             b'[' => {
-                self.eat_char();
-
-                let ret = self.recurse(|this| visitor.visit_seq(SeqAccess::new(this)));
+                let ret = self.recurse(|this| {
+                    this.eat_char();
+                    visitor.visit_seq(SeqAccess::new(this))
+                });
 
                 match (ret, self.end_seq()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1490,9 +1493,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
         let value = match peek {
             b'{' => {
-                self.eat_char();
-
-                let ret = self.recurse(|this| visitor.visit_map(MapAccess::new(this)));
+                let ret = self.recurse(|this| {
+                    this.eat_char();
+                    visitor.visit_map(MapAccess::new(this))
+                });
 
                 match (ret, self.end_map()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1526,9 +1530,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
         let value = match peek {
             b'[' => {
-                self.eat_char();
-
-                let ret = self.recurse(|this| visitor.visit_seq(SeqAccess::new(this)));
+                let ret = self.recurse(|this| {
+                    this.eat_char();
+                    visitor.visit_seq(SeqAccess::new(this))
+                });
 
                 match (ret, self.end_seq()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1536,9 +1541,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'{' => {
-                self.eat_char();
-
-                let ret = self.recurse(|this| visitor.visit_map(MapAccess::new(this)));
+                let ret = self.recurse(|this| {
+                    this.eat_char();
+                    visitor.visit_map(MapAccess::new(this))
+                });
 
                 match (ret, self.end_map()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1568,9 +1574,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         match try!(self.parse_whitespace()) {
             Some(b'{') => {
-                self.eat_char();
-
-                let value = self.recurse(|this| visitor.visit_enum(VariantAccess::new(this)))?;
+                let value = self.recurse(|this| {
+                    this.eat_char();
+                    visitor.visit_enum(VariantAccess::new(this))
+                })?;
 
                 match try!(self.parse_whitespace()) {
                     Some(b'}') => {
