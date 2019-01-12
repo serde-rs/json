@@ -1257,10 +1257,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ///
     /// You can use this to parse JSON strings containing invalid UTF-8 bytes.
     ///
-    /// ```rust
-    /// extern crate serde_json;
-    /// extern crate serde_bytes;
-    ///
+    /// ```edition2018
     /// use serde_bytes::ByteBuf;
     ///
     /// fn look_at_bytes() -> Result<(), serde_json::Error> {
@@ -1283,10 +1280,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     /// to be valid, and `\u` escape sequences are required to represent valid
     /// Unicode code points.
     ///
-    /// ```rust
-    /// extern crate serde_json;
-    /// extern crate serde_bytes;
-    ///
+    /// ```edition2018
     /// use serde_bytes::ByteBuf;
     ///
     /// fn look_at_bytes() {
@@ -1956,9 +1950,7 @@ where
 /// The data can consist of any JSON value. Values need to be a self-delineating value e.g.
 /// arrays, objects, or strings, or be followed by whitespace or a self-delineating value.
 ///
-/// ```rust
-/// extern crate serde_json;
-///
+/// ```edition2018
 /// use serde_json::{Deserializer, Value};
 ///
 /// fn main() {
@@ -2006,7 +1998,7 @@ where
     /// If a stream deserializer returns an EOF error, new data can be joined to
     /// `old_data[stream.byte_offset()..]` to try again.
     ///
-    /// ```rust
+    /// ```edition2018
     /// let data = b"[0] [1] [";
     ///
     /// let de = serde_json::Deserializer::from_slice(data);
@@ -2125,12 +2117,9 @@ where
 ///
 /// # Example
 ///
-/// ```rust
-/// #[macro_use]
-/// extern crate serde_derive;
-///
-/// extern crate serde;
-/// extern crate serde_json;
+/// ```edition2018
+/// # use serde_derive::Deserialize;
+/// use serde::Deserialize;
 ///
 /// use std::error::Error;
 /// use std::fs::File;
@@ -2184,12 +2173,9 @@ where
 ///
 /// # Example
 ///
-/// ```rust
-/// #[macro_use]
-/// extern crate serde_derive;
-///
-/// extern crate serde;
-/// extern crate serde_json;
+/// ```edition2018
+/// # use serde_derive::Deserialize;
+/// use serde::Deserialize;
 ///
 /// #[derive(Deserialize, Debug)]
 /// struct User {
@@ -2199,10 +2185,11 @@ where
 ///
 /// fn main() {
 ///     // The type of `j` is `&[u8]`
-///     let j = b"{
-///                 \"fingerprint\": \"0xF9BA143B95FF6D82\",
-///                 \"location\": \"Menlo Park, CA\"
-///               }";
+///     let j = b"
+///         {
+///             \"fingerprint\": \"0xF9BA143B95FF6D82\",
+///             \"location\": \"Menlo Park, CA\"
+///         }";
 ///
 ///     let u: User = serde_json::from_slice(j).unwrap();
 ///     println!("{:#?}", u);
@@ -2229,12 +2216,9 @@ where
 ///
 /// # Example
 ///
-/// ```rust
-/// #[macro_use]
-/// extern crate serde_derive;
-///
-/// extern crate serde;
-/// extern crate serde_json;
+/// ```edition2018
+/// # use serde_derive::Deserialize;
+/// use serde::Deserialize;
 ///
 /// #[derive(Deserialize, Debug)]
 /// struct User {
@@ -2244,10 +2228,11 @@ where
 ///
 /// fn main() {
 ///     // The type of `j` is `&str`
-///     let j = "{
-///                \"fingerprint\": \"0xF9BA143B95FF6D82\",
-///                \"location\": \"Menlo Park, CA\"
-///              }";
+///     let j = "
+///         {
+///             \"fingerprint\": \"0xF9BA143B95FF6D82\",
+///             \"location\": \"Menlo Park, CA\"
+///         }";
 ///
 ///     let u: User = serde_json::from_str(j).unwrap();
 ///     println!("{:#?}", u);

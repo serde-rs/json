@@ -22,11 +22,9 @@ use error::Error;
 ///
 /// # Example
 ///
-/// ```
-/// #[macro_use]
-/// extern crate serde_derive;
-/// extern crate serde_json;
-///
+/// ```edition2018
+/// # use serde_derive::{Deserialize, Serialize};
+/// use serde::{Deserialize, Serialize};
 /// use serde_json::{Result, value::RawValue};
 ///
 /// #[derive(Deserialize)]
@@ -71,11 +69,8 @@ use error::Error;
 ///
 /// The typical usage of `RawValue` will be in the borrowed form:
 ///
-/// ```
-/// # #[macro_use]
-/// # extern crate serde_derive;
-/// # extern crate serde_json;
-/// #
+/// ```edition2018
+/// # use serde_derive::Deserialize;
 /// # use serde_json::value::RawValue;
 /// #
 /// #[derive(Deserialize)]
@@ -83,8 +78,6 @@ use error::Error;
 ///     #[serde(borrow)]
 ///     raw_value: &'a RawValue,
 /// }
-/// #
-/// # fn main() {}
 /// ```
 ///
 /// The borrowed form is suitable when deserializing through
@@ -99,19 +92,14 @@ use error::Error;
 /// [`serde_json::from_slice`]: ../fn.from_slice.html
 /// [`serde_json::from_reader`]: ../fn.from_reader.html
 ///
-/// ```
-/// # #[macro_use]
-/// # extern crate serde_derive;
-/// # extern crate serde_json;
-/// #
+/// ```edition2018
+/// # use serde_derive::Deserialize;
 /// # use serde_json::value::RawValue;
 /// #
 /// #[derive(Deserialize)]
 /// struct SomeStruct {
 ///     raw_value: Box<RawValue>,
 /// }
-/// #
-/// # fn main() {}
 /// ```
 ///
 /// # Note
@@ -196,11 +184,9 @@ impl RawValue {
     ///
     /// # Example
     ///
-    /// ```
-    /// #[macro_use]
-    /// extern crate serde_derive;
-    /// extern crate serde_json;
-    ///
+    /// ```edition2018
+    /// # use serde_derive::Deserialize;
+    /// use serde::Deserialize;
     /// use serde_json::{Result, value::RawValue};
     ///
     /// #[derive(Deserialize)]

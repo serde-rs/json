@@ -46,11 +46,9 @@ impl Number {
     /// For any Number on which `is_i64` returns true, `as_i64` is guaranteed to
     /// return the integer value.
     ///
-    /// ```rust
-    /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// ```edition2018
+    /// # use serde_json::json;
     /// #
-    /// # fn main() {
     /// let big = i64::max_value() as u64 + 10;
     /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
     ///
@@ -61,7 +59,6 @@ impl Number {
     ///
     /// // Numbers with a decimal point are not considered integers.
     /// assert!(!v["c"].is_i64());
-    /// # }
     /// ```
     #[inline]
     pub fn is_i64(&self) -> bool {
@@ -80,11 +77,9 @@ impl Number {
     /// For any Number on which `is_u64` returns true, `as_u64` is guaranteed to
     /// return the integer value.
     ///
-    /// ```rust
-    /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// ```edition2018
+    /// # use serde_json::json;
     /// #
-    /// # fn main() {
     /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
     ///
     /// assert!(v["a"].is_u64());
@@ -94,7 +89,6 @@ impl Number {
     ///
     /// // Numbers with a decimal point are not considered integers.
     /// assert!(!v["c"].is_u64());
-    /// # }
     /// ```
     #[inline]
     pub fn is_u64(&self) -> bool {
@@ -115,11 +109,9 @@ impl Number {
     /// Currently this function returns true if and only if both `is_i64` and
     /// `is_u64` return false but this is not a guarantee in the future.
     ///
-    /// ```rust
-    /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// ```edition2018
+    /// # use serde_json::json;
     /// #
-    /// # fn main() {
     /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
     ///
     /// assert!(v["a"].is_f64());
@@ -127,7 +119,6 @@ impl Number {
     /// // Integers.
     /// assert!(!v["b"].is_f64());
     /// assert!(!v["c"].is_f64());
-    /// # }
     /// ```
     #[inline]
     pub fn is_f64(&self) -> bool {
@@ -150,18 +141,15 @@ impl Number {
     /// If the `Number` is an integer, represent it as i64 if possible. Returns
     /// None otherwise.
     ///
-    /// ```rust
-    /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// ```edition2018
+    /// # use serde_json::json;
     /// #
-    /// # fn main() {
     /// let big = i64::max_value() as u64 + 10;
     /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
     ///
     /// assert_eq!(v["a"].as_i64(), Some(64));
     /// assert_eq!(v["b"].as_i64(), None);
     /// assert_eq!(v["c"].as_i64(), None);
-    /// # }
     /// ```
     #[inline]
     pub fn as_i64(&self) -> Option<i64> {
@@ -184,17 +172,14 @@ impl Number {
     /// If the `Number` is an integer, represent it as u64 if possible. Returns
     /// None otherwise.
     ///
-    /// ```rust
-    /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// ```edition2018
+    /// # use serde_json::json;
     /// #
-    /// # fn main() {
     /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
     ///
     /// assert_eq!(v["a"].as_u64(), Some(64));
     /// assert_eq!(v["b"].as_u64(), None);
     /// assert_eq!(v["c"].as_u64(), None);
-    /// # }
     /// ```
     #[inline]
     pub fn as_u64(&self) -> Option<u64> {
@@ -209,17 +194,14 @@ impl Number {
 
     /// Represents the number as f64 if possible. Returns None otherwise.
     ///
-    /// ```rust
-    /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// ```edition2018
+    /// # use serde_json::json;
     /// #
-    /// # fn main() {
     /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
     ///
     /// assert_eq!(v["a"].as_f64(), Some(256.0));
     /// assert_eq!(v["b"].as_f64(), Some(64.0));
     /// assert_eq!(v["c"].as_f64(), Some(-64.0));
-    /// # }
     /// ```
     #[inline]
     pub fn as_f64(&self) -> Option<f64> {
@@ -236,7 +218,7 @@ impl Number {
     /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not JSON
     /// numbers.
     ///
-    /// ```rust
+    /// ```edition2018
     /// # use std::f64;
     /// #
     /// # use serde_json::Number;

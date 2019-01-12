@@ -3,18 +3,18 @@
 //! JSON is a ubiquitous open-standard format that uses human-readable text to
 //! transmit data objects consisting of key-value pairs.
 //!
-//! ```json,ignore
+//! ```json
 //! {
-//!   "name": "John Doe",
-//!   "age": 43,
-//!   "address": {
-//!     "street": "10 Downing Street",
-//!     "city": "London"
-//!   },
-//!   "phones": [
-//!     "+44 1234567",
-//!     "+44 2345678"
-//!   ]
+//!     "name": "John Doe",
+//!     "age": 43,
+//!     "address": {
+//!         "street": "10 Downing Street",
+//!         "city": "London"
+//!     },
+//!     "phones": [
+//!         "+44 1234567",
+//!         "+44 2345678"
+//!     ]
 //! }
 //! ```
 //!
@@ -40,7 +40,7 @@
 //! Any valid JSON data can be manipulated in the following recursive enum
 //! representation. This data structure is [`serde_json::Value`][value].
 //!
-//! ```rust
+//! ```edition2018
 //! # use serde_json::{Number, Map};
 //! #
 //! # #[allow(dead_code)]
@@ -60,21 +60,20 @@
 //! [`from_reader`][from_reader] for parsing from any `io::Read` like a File or
 //! a TCP stream.
 //!
-//! ```rust
-//! extern crate serde_json;
+//! ```edition2018
+//! use serde_json::{Result, Value};
 //!
-//! use serde_json::{Value, Error};
-//!
-//! fn untyped_example() -> Result<(), Error> {
+//! fn untyped_example() -> Result<()> {
 //!     // Some JSON input data as a &str. Maybe this comes from the user.
-//!     let data = r#"{
-//!                     "name": "John Doe",
-//!                     "age": 43,
-//!                     "phones": [
-//!                       "+44 1234567",
-//!                       "+44 2345678"
-//!                     ]
-//!                   }"#;
+//!     let data = r#"
+//!         {
+//!             "name": "John Doe",
+//!             "age": 43,
+//!             "phones": [
+//!                 "+44 1234567",
+//!                 "+44 2345678"
+//!             ]
+//!         }"#;
 //!
 //!     // Parse the string of data into serde_json::Value.
 //!     let v: Value = serde_json::from_str(data)?;
@@ -119,14 +118,10 @@
 //! Serde provides a powerful way of mapping JSON data into Rust data structures
 //! largely automatically.
 //!
-//! ```rust
-//! extern crate serde;
-//! extern crate serde_json;
-//!
-//! #[macro_use]
-//! extern crate serde_derive;
-//!
-//! use serde_json::Error;
+//! ```edition2018
+//! # use serde_derive::{Deserialize, Serialize};
+//! use serde::{Deserialize, Serialize};
+//! use serde_json::Result;
 //!
 //! #[derive(Serialize, Deserialize)]
 //! struct Person {
@@ -135,16 +130,17 @@
 //!     phones: Vec<String>,
 //! }
 //!
-//! fn typed_example() -> Result<(), Error> {
+//! fn typed_example() -> Result<()> {
 //!     // Some JSON input data as a &str. Maybe this comes from the user.
-//!     let data = r#"{
-//!                     "name": "John Doe",
-//!                     "age": 43,
-//!                     "phones": [
-//!                       "+44 1234567",
-//!                       "+44 2345678"
-//!                     ]
-//!                   }"#;
+//!     let data = r#"
+//!         {
+//!             "name": "John Doe",
+//!             "age": 43,
+//!             "phones": [
+//!                 "+44 1234567",
+//!                 "+44 2345678"
+//!             ]
+//!         }"#;
 //!
 //!     // Parse the string of data into a Person object. This is exactly the
 //!     // same function as the one that produced serde_json::Value above, but
@@ -186,19 +182,18 @@
 //! objects with very natural JSON syntax. In order to use this macro,
 //! `serde_json` needs to be imported with the `#[macro_use]` attribute.
 //!
-//! ```rust
-//! #[macro_use]
-//! extern crate serde_json;
+//! ```edition2018
+//! use serde_json::json;
 //!
 //! fn main() {
 //!     // The type of `john` is `serde_json::Value`
 //!     let john = json!({
-//!       "name": "John Doe",
-//!       "age": 43,
-//!       "phones": [
-//!         "+44 1234567",
-//!         "+44 2345678"
-//!       ]
+//!         "name": "John Doe",
+//!         "age": 43,
+//!         "phones": [
+//!             "+44 1234567",
+//!             "+44 2345678"
+//!         ]
 //!     });
 //!
 //!     println!("first phone number: {}", john["phones"][0]);
@@ -216,26 +211,22 @@
 //! will check at compile time that the value you are interpolating is able to
 //! be represented as JSON.
 //!
-//! ```rust
-//! # #[macro_use]
-//! # extern crate serde_json;
+//! ```edition2018
+//! # use serde_json::json;
 //! #
 //! # fn random_phone() -> u16 { 0 }
 //! #
-//! # fn main() {
 //! let full_name = "John Doe";
 //! let age_last_year = 42;
 //!
 //! // The type of `john` is `serde_json::Value`
 //! let john = json!({
-//!   "name": full_name,
-//!   "age": age_last_year + 1,
-//!   "phones": [
-//!     format!("+44 {}", random_phone())
-//!   ]
+//!     "name": full_name,
+//!     "age": age_last_year + 1,
+//!     "phones": [
+//!         format!("+44 {}", random_phone())
+//!     ]
 //! });
-//! #     let _ = john;
-//! # }
 //! ```
 //!
 //! This is amazingly convenient but we have the problem we had before with
@@ -251,14 +242,10 @@
 //! [`serde_json::to_writer`][to_writer] which serializes to any `io::Write`
 //! such as a File or a TCP stream.
 //!
-//! ```rust
-//! extern crate serde;
-//! extern crate serde_json;
-//!
-//! #[macro_use]
-//! extern crate serde_derive;
-//!
-//! use serde_json::Error;
+//! ```edition2018
+//! # use serde_derive::{Deserialize, Serialize};
+//! use serde::{Deserialize, Serialize};
+//! use serde_json::Result;
 //!
 //! #[derive(Serialize, Deserialize)]
 //! struct Address {
@@ -266,7 +253,7 @@
 //!     city: String,
 //! }
 //!
-//! fn print_an_address() -> Result<(), Error> {
+//! fn print_an_address() -> Result<()> {
 //!     // Some data structure.
 //!     let address = Address {
 //!         street: "10 Downing Street".to_owned(),
