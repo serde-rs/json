@@ -1,7 +1,7 @@
 error[E0609]: no field `s` on type `&'static str`
- --> $DIR/parse_key.rs:5:16
+ --> $DIR/parse_key.rs:4:16
   |
-5 |     json!({ "".s : true });
+4 |     json!({ "".s : true });
   |                ^
 
 error: aborting due to previous error

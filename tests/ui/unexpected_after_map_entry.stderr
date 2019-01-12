@@ -1,7 +1,7 @@
 error: no rules expected the token `=>`
- --> $DIR/unexpected_after_map_entry.rs:5:23
+ --> $DIR/unexpected_after_map_entry.rs:4:23
   |
-5 |     json!({ "k": true => });
+4 |     json!({ "k": true => });
   |                       ^^ no rules expected this token in macro call
 
 error: aborting due to previous error

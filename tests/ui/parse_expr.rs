@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate serde_json;
+use serde_json::json;
 
 fn main() {
     json!({ "a" : ~ });
