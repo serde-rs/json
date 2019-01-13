@@ -42,12 +42,23 @@ where
     ///   - Deserializer::from_bytes
     ///   - Deserializer::from_reader
     pub fn new(read: R) -> Self {
-        Deserializer {
-            read: read,
-            scratch: Vec::new(),
-            remaining_depth: 128,
-            #[cfg(feature = "unbounded_depth")]
-            disable_recursion_limit: false,
+        #[cfg(not(feature = "unbounded_depth"))]
+        {
+            Deserializer {
+                read: read,
+                scratch: Vec::new(),
+                remaining_depth: 128,
+            }
+        }
+
+        #[cfg(feature = "unbounded_depth")]
+        {
+            Deserializer {
+                read: read,
+                scratch: Vec::new(),
+                remaining_depth: 128,
+                disable_recursion_limit: false,
+            }
         }
     }
 }
@@ -1044,26 +1055,26 @@ macro_rules! if_checking_recursion_limit {
 
 #[cfg(feature = "unbounded_depth")]
 macro_rules! if_checking_recursion_limit {
-    ($self:ident $($body:tt)*) => {
-        if !$self.disable_recursion_limit {
-            $self $($body)*
+    ($this:ident $($body:tt)*) => {
+        if !$this.disable_recursion_limit {
+            $this $($body)*
         }
     };
 }
 
 macro_rules! check_recursion {
-    ($self:ident $($body:tt)*) => {
+    ($this:ident $($body:tt)*) => {
         if_checking_recursion_limit! {
-            $self.remaining_depth -= 1;
-            if $self.remaining_depth == 0 {
-                return Err($self.peek_error(ErrorCode::RecursionLimitExceeded));
+            $this.remaining_depth -= 1;
+            if $this.remaining_depth == 0 {
+                return Err($this.peek_error(ErrorCode::RecursionLimitExceeded));
             }
         }
 
-        $self $($body)*
+        $this $($body)*
 
         if_checking_recursion_limit! {
-            $self.remaining_depth += 1;
+            $this.remaining_depth += 1;
         }
     };
 }
