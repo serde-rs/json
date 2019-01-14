@@ -1760,7 +1760,7 @@ fn test_stack_overflow() {
         .collect();
     let _: Value = from_str(&brackets).unwrap();
 
-    let brackets: String = iter::repeat('[').take(128).collect();
+    let brackets: String = iter::repeat('[').take(129).collect();
     test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 128")]);
 }
 
