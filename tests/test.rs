@@ -1783,6 +1783,16 @@ fn test_integer_key() {
 }
 
 #[test]
+fn test_integer128_key() {
+    let map = treemap! {
+        100000000000000000000000000000000000000u128 => ()
+    };
+    let j = r#"{"100000000000000000000000000000000000000":null}"#;
+    assert_eq!(to_string(&map).unwrap(), j);
+    assert_eq!(from_str::<BTreeMap<u128, ()>>(j).unwrap(), map);
+}
+
+#[test]
 fn test_deny_float_key() {
     #[derive(Eq, PartialEq, Ord, PartialOrd)]
     struct Float;

@@ -987,10 +987,22 @@ where
 
     serde_if_integer128! {
         fn serialize_i128(self, value: i128) -> Result<()> {
-            self.ser
+            try!(self
+                .ser
+                .formatter
+                .begin_string(&mut self.ser.writer)
+                .map_err(Error::io));
+            try!(self
+                .ser
                 .formatter
                 .write_number_str(&mut self.ser.writer, &value.to_string())
-                .map_err(Error::io)
+                .map_err(Error::io));
+            try!(self
+                .ser
+                .formatter
+                .end_string(&mut self.ser.writer)
+                .map_err(Error::io));
+            Ok(())
         }
     }
 
@@ -1072,10 +1084,22 @@ where
 
     serde_if_integer128! {
         fn serialize_u128(self, value: u128) -> Result<()> {
-            self.ser
+            try!(self
+                .ser
+                .formatter
+                .begin_string(&mut self.ser.writer)
+                .map_err(Error::io));
+            try!(self
+                .ser
                 .formatter
                 .write_number_str(&mut self.ser.writer, &value.to_string())
-                .map_err(Error::io)
+                .map_err(Error::io));
+            try!(self
+                .ser
+                .formatter
+                .end_string(&mut self.ser.writer)
+                .map_err(Error::io));
+            Ok(())
         }
     }
 
