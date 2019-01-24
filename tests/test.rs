@@ -32,8 +32,8 @@ use serde::ser::{self, Serialize, Serializer};
 use serde_bytes::{ByteBuf, Bytes};
 
 use serde_json::{
-    from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
-    to_writer, Deserializer, Number, Value,
+    from_reader, from_slice, from_str, from_str_with_options, from_value, to_string,
+    to_string_pretty, to_value, to_vec, to_writer, Deserializer, Number, Options, Value,
 };
 
 macro_rules! treemap {
@@ -571,6 +571,37 @@ fn test_deserialize_number_to_untagged_enum() {
     }
 
     assert_eq!(E::N(0), E::deserialize(Number::from(0)).unwrap());
+}
+
+#[test]
+fn test_parse_line_comments() {
+    let s = r#"
+    {
+        // Here is a comment.
+        "key": "value"
+    }// Here is a another comment at the end."#;
+    let options = Options {
+        allow_comments: true,
+    };
+    let value: Value = from_str_with_options(s, options).unwrap();
+    assert_eq!(value, json!({"key": "value"}));
+}
+
+#[test]
+fn test_parse_block_comments() {
+    let s = r#"
+    /*
+     Here is a comment up here.
+     */
+    {
+        /* And one in here. */
+        "key": "value"
+    }/* Some at the end... *//* ...back to back! */"#;
+    let options = Options {
+        allow_comments: true,
+    };
+    let value: Value = from_str_with_options(s, options).unwrap();
+    assert_eq!(value, json!({"key": "value"}));
 }
 
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)

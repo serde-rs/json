@@ -20,11 +20,26 @@ use number::NumberDeserializer;
 
 //////////////////////////////////////////////////////////////////////////////
 
+/// Options for a Deserializer.
+pub struct Options {
+    /// Whether to allow // and /* */ comments in the JSON.
+    pub allow_comments: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            allow_comments: false,
+        }
+    }
+}
+
 /// A structure that deserializes JSON into Rust values.
 pub struct Deserializer<R> {
     read: R,
     scratch: Vec<u8>,
     remaining_depth: u8,
+    options: Options,
 }
 
 impl<'de, R> Deserializer<R>
@@ -44,6 +59,17 @@ where
             read: read,
             scratch: Vec::new(),
             remaining_depth: 128,
+            options: Options::default(),
+        }
+    }
+
+    /// Up for discussion...
+    pub fn new_with_options(read: R, options: Options) -> Self {
+        Deserializer {
+            read: read,
+            scratch: Vec::new(),
+            remaining_depth: 128,
+            options,
         }
     }
 }
@@ -177,6 +203,73 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     /// Returns the first non-whitespace byte without consuming it, or `None` if
     /// EOF is encountered.
     fn parse_whitespace(&mut self) -> Result<Option<u8>> {
+        if self.options.allow_comments {
+            // Consume comments as if they were whitespace.
+            loop {
+                match try!(self.parse_strict_whitespace()) {
+                    Some(b'/') => {
+                        self.eat_char();
+                        match try!(self.peek()) {
+                            Some(b'/') => {
+                                // TODO: Read until newline.
+                                loop {
+                                    match try!(self.peek()) {
+                                        Some(b'\n') => {
+                                            self.eat_char();
+                                            break;
+                                        }
+                                        Some(_) => {
+                                            self.eat_char();
+                                        }
+                                        None => {
+                                            return Ok(None);
+                                        }
+                                    }
+                                }
+                            }
+                            Some(b'*') => loop {
+                                match try!(self.peek()) {
+                                    Some(b'*') => {
+                                        self.eat_char();
+                                        match try!(self.peek()) {
+                                            Some(b'/') => {
+                                                self.eat_char();
+                                                break;
+                                            }
+                                            Some(_) => self.eat_char(),
+                                            None => {
+                                                return Err(self.peek_error(
+                                                    ErrorCode::EofWhileParsingBlockComment,
+                                                ));
+                                            }
+                                        }
+                                    }
+                                    Some(_) => {
+                                        self.eat_char();
+                                    }
+                                    None => {
+                                        return Err(
+                                            self.peek_error(ErrorCode::EofWhileParsingBlockComment)
+                                        );
+                                    }
+                                }
+                            },
+                            _ => {
+                                return Err(self.peek_error(ErrorCode::ExpectedCommentSlashOrStar));
+                            }
+                        };
+                    }
+                    other => {
+                        return Ok(other);
+                    }
+                }
+            }
+        } else {
+            self.parse_strict_whitespace()
+        }
+    }
+
+    fn parse_strict_whitespace(&mut self) -> Result<Option<u8>> {
         loop {
             match try!(self.peek()) {
                 Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') => {
@@ -2103,6 +2196,19 @@ where
     Ok(value)
 }
 
+fn from_trait_with_options<'de, R, T>(read: R, options: Options) -> Result<T>
+where
+    R: Read<'de>,
+    T: de::Deserialize<'de>,
+{
+    let mut de = Deserializer::new_with_options(read, options);
+    let value = try!(de::Deserialize::deserialize(&mut de));
+
+    // Make sure the whole stream has been consumed.
+    try!(de.end());
+    Ok(value)
+}
+
 /// Deserialize an instance of type `T` from an IO stream of JSON.
 ///
 /// The content of the IO stream is deserialized directly from the stream
@@ -2253,4 +2359,12 @@ where
     T: de::Deserialize<'a>,
 {
     from_trait(read::StrRead::new(s))
+}
+
+/// For review...
+pub fn from_str_with_options<'a, T>(s: &'a str, options: Options) -> Result<T>
+where
+    T: de::Deserialize<'a>,
+{
+    from_trait_with_options(read::StrRead::new(s), options)
 }

@@ -327,7 +327,9 @@ extern crate itoa;
 extern crate ryu;
 
 #[doc(inline)]
-pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
+pub use self::de::{
+    from_reader, from_slice, from_str, from_str_with_options, Deserializer, Options, StreamDeserializer,
+};
 #[doc(inline)]
 pub use self::error::{Error, Result};
 #[doc(inline)]

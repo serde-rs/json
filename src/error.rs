@@ -3,8 +3,8 @@
 use std::error;
 use std::fmt::{self, Debug, Display};
 use std::io;
-use std::str::FromStr;
 use std::result;
+use std::str::FromStr;
 
 use serde::de;
 use serde::ser;
@@ -51,11 +51,13 @@ impl Error {
         match self.err.code {
             ErrorCode::Message(_) => Category::Data,
             ErrorCode::Io(_) => Category::Io,
-            ErrorCode::EofWhileParsingList
+            ErrorCode::EofWhileParsingBlockComment
+            | ErrorCode::EofWhileParsingList
             | ErrorCode::EofWhileParsingObject
             | ErrorCode::EofWhileParsingString
             | ErrorCode::EofWhileParsingValue => Category::Eof,
             ErrorCode::ExpectedColon
+            | ErrorCode::ExpectedCommentSlashOrStar
             | ErrorCode::ExpectedListCommaOrEnd
             | ErrorCode::ExpectedObjectCommaOrEnd
             | ErrorCode::ExpectedObjectOrArray
@@ -187,6 +189,9 @@ pub enum ErrorCode {
     /// Some IO error occurred while serializing or deserializing.
     Io(io::Error),
 
+    /// Saw an opening `'/*'` without a closing `'*/'`.
+    EofWhileParsingBlockComment,
+
     /// EOF while parsing a list.
     EofWhileParsingList,
 
@@ -201,6 +206,10 @@ pub enum ErrorCode {
 
     /// Expected this character to be a `':'`.
     ExpectedColon,
+
+    /// Saw a `'/'` while parsing whitespace, so expected it to be
+    /// followed by either `'/'` or `'*'`.
+    ExpectedCommentSlashOrStar,
 
     /// Expected this character to be either a `','` or a `']'`.
     ExpectedListCommaOrEnd,
@@ -303,11 +312,15 @@ impl Display for ErrorCode {
         match *self {
             ErrorCode::Message(ref msg) => f.write_str(msg),
             ErrorCode::Io(ref err) => Display::fmt(err, f),
+            ErrorCode::EofWhileParsingBlockComment => {
+                f.write_str("EOF while parsing a block comment")
+            }
             ErrorCode::EofWhileParsingList => f.write_str("EOF while parsing a list"),
             ErrorCode::EofWhileParsingObject => f.write_str("EOF while parsing an object"),
             ErrorCode::EofWhileParsingString => f.write_str("EOF while parsing a string"),
             ErrorCode::EofWhileParsingValue => f.write_str("EOF while parsing a value"),
             ErrorCode::ExpectedColon => f.write_str("expected `:`"),
+            ErrorCode::ExpectedCommentSlashOrStar => f.write_str("expected `/` or `*` after `/`"),
             ErrorCode::ExpectedListCommaOrEnd => f.write_str("expected `,` or `]`"),
             ErrorCode::ExpectedObjectCommaOrEnd => f.write_str("expected `,` or `}`"),
             ErrorCode::ExpectedObjectOrArray => f.write_str("expected `{` or `[`"),
