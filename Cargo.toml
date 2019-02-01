@@ -17,7 +17,7 @@ appveyor = { repository = "serde-rs/json" }
 
 [dependencies]
 serde = { version = "1.0.85", default-features = false, features = ["alloc"] }
-#indexmap = { version = "1.0", optional = true }
+indexmap = { version = "1.0", optional = true }
 itoa = { version = "0.4.3", optional = true, default-features = false }
 ryu = { version = "0.2", optional = true, default-features = false }
 
@@ -36,7 +36,7 @@ features = ["raw_value"]
 ### FEATURES #################################################################
 
 [features]
-default = []
+default = ["std"]
 
 # Use a different representation for the map type of serde_json::Value.
 # This allows data to be read into a Value and written back to a JSON string
@@ -52,7 +52,7 @@ arbitrary_precision = []
 raw_value = []
 
 # Default feature indicating std support
-# std = ["itoa/default"]
+std = ["serde/default", "itoa/default", "indexmap", "ryu"]
 
 # No-Std feature
 no_std = ["serde/alloc", "itoa", "ryu"]
