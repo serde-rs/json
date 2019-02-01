@@ -1760,8 +1760,21 @@ fn test_stack_overflow() {
         .collect();
     let _: Value = from_str(&brackets).unwrap();
 
-    let brackets: String = iter::repeat('[').take(128).collect();
+    let brackets: String = iter::repeat('[').take(129).collect();
     test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 128")]);
+}
+
+#[test]
+#[cfg(feature = "unbounded_depth")]
+fn test_disable_recursion_limit() {
+    let brackets: String = iter::repeat('[')
+        .take(140)
+        .chain(iter::repeat(']').take(140))
+        .collect();
+
+    let mut deserializer = Deserializer::from_str(&brackets);
+    deserializer.disable_recursion_limit();
+    Value::deserialize(&mut deserializer).unwrap();
 }
 
 #[test]
