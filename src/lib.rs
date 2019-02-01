@@ -331,9 +331,11 @@ extern crate ryu;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+#[doc(inline)]
+pub use self::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[cfg(feature = "std")]
 #[doc(inline)]
-pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
+pub use self::de::from_reader;
 #[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::error::{Error, Result};
