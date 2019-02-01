@@ -10,6 +10,7 @@ use core::{str, char, cmp};
 #[cfg(feature = "raw_value")]
 use serde::de::Visitor;
 
+#[cfg(feature = "std")]
 use iter::LineColIterator;
 
 use error::{Error, ErrorCode, Result};

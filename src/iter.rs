@@ -1,15 +1,4 @@
-#[cfg(feature = "std")]
 use std::io;
-#[cfg(not(feature = "std"))]
-use core::result;
-
-#[cfg(not(feature = "std"))]
-use super::error::Error;
-
-#[cfg(feature = "std")]
-type Result<T> = io::Result<T>;
-#[cfg(not(feature = "std"))]
-type Result<T> = result::Result<T, Error>;
 
 pub struct LineColIterator<I> {
     iter: I,
@@ -32,7 +21,7 @@ pub struct LineColIterator<I> {
 
 impl<I> LineColIterator<I>
 where
-    I: Iterator<Item = Result<u8>>,
+    I: Iterator<Item = io::Result<u8>>,
 {
     pub fn new(iter: I) -> LineColIterator<I> {
         LineColIterator {
@@ -58,11 +47,11 @@ where
 
 impl<I> Iterator for LineColIterator<I>
 where
-    I: Iterator<Item = Result<u8>>,
+    I: Iterator<Item = io::Result<u8>>,
 {
-    type Item = Result<u8>;
+    type Item = io::Result<u8>;
 
-    fn next(&mut self) -> Option<Result<u8>> {
+    fn next(&mut self) -> Option<io::Result<u8>> {
         match self.iter.next() {
             None => None,
             Some(Ok(b'\n')) => {

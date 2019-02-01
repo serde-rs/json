@@ -377,6 +377,7 @@ pub mod ser;
 #[cfg(feature = "std")]
 pub mod value;
 
+#[cfg(feature = "std")]
 mod iter;
 mod number;
 mod read;

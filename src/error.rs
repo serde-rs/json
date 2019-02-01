@@ -23,6 +23,7 @@ use alloc::string::String;
 use alloc::prelude::*;
 
 use serde::de;
+#[cfg(feature = "std")]
 use serde::ser;
 
 /// This type represents all possible errors that can occur when serializing or
