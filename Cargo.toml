@@ -41,7 +41,7 @@ default = ["std"]
 # Use a different representation for the map type of serde_json::Value.
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
-# preserve_order = ["indexmap"]
+preserve_order = ["indexmap"]
 
 # Use an arbitrary precision number representation for serde_json::Number. This
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
