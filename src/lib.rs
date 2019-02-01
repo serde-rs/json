@@ -326,7 +326,9 @@
 extern crate serde;
 #[cfg(feature = "preserve_order")]
 extern crate indexmap;
+#[cfg(feature = "std")]
 extern crate itoa;
+#[cfg(feature = "std")]
 extern crate ryu;
 #[cfg(not(feature = "std"))]
 extern crate alloc;

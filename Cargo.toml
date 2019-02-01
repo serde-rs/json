@@ -55,4 +55,4 @@ raw_value = []
 std = ["serde/default", "itoa/default", "indexmap", "ryu"]
 
 # No-Std feature
-no_std = ["serde/alloc", "itoa", "ryu"]
+no_std = ["serde/alloc"]
