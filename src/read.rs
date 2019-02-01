@@ -1,5 +1,11 @@
+#[cfg(feature = "std")]
 use std::ops::Deref;
+#[cfg(not(feature = "std"))]
+use core::ops::Deref;
+#[cfg(feature = "std")]
 use std::{char, cmp, io, str};
+#[cfg(not(feature = "std"))]
+use core::{str, char, cmp};
 
 #[cfg(feature = "raw_value")]
 use serde::de::Visitor;
@@ -10,6 +16,9 @@ use error::{Error, ErrorCode, Result};
 
 #[cfg(feature = "raw_value")]
 use raw::{BorrowedRawDeserializer, OwnedRawDeserializer};
+
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 /// Trait used by the deserializer for iterating over input. This is manually
 /// "specialized" for iterating over &[u8]. Once feature(specialization) is
@@ -118,6 +127,7 @@ impl<'b, 'c, T: ?Sized + 'static> Deref for Reference<'b, 'c, T> {
 }
 
 /// JSON input source that reads from a std::io input stream.
+#[cfg(feature = "std")]
 pub struct IoRead<R>
 where
     R: io::Read,
@@ -157,6 +167,7 @@ mod private {
 
 //////////////////////////////////////////////////////////////////////////////
 
+#[cfg(feature = "std")]
 impl<R> IoRead<R>
 where
     R: io::Read,
@@ -181,8 +192,10 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<R> private::Sealed for IoRead<R> where R: io::Read {}
 
+#[cfg(feature = "std")]
 impl<R> IoRead<R>
 where
     R: io::Read,
@@ -221,6 +234,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'de, R> Read<'de> for IoRead<R>
 where
     R: io::Read,

@@ -1,9 +1,26 @@
 //! Deserialize JSON data to a Rust data structure.
 
+#[cfg(feature ="std")]
 use std::io;
+#[cfg(not(feature = "std"))]
+use core::marker::PhantomData;
+#[cfg(feature = "std")]
 use std::marker::PhantomData;
+#[cfg(feature = "std")]
 use std::result;
+#[cfg(not(feature = "std"))]
+use core::result;
+#[cfg(feature = "std")]
 use std::str::FromStr;
+#[cfg(not(feature = "std"))]
+use alloc::str::FromStr;
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+use core::{i32, u64};
+#[cfg(feature = "std")]
 use std::{i32, u64};
 
 use serde::de::{self, Expected, Unexpected};
@@ -12,7 +29,9 @@ use super::error::{Error, ErrorCode, Result};
 
 use read::{self, Reference};
 
-pub use read::{IoRead, Read, SliceRead, StrRead};
+pub use read::{Read, SliceRead, StrRead};
+#[cfg(feature = "std")]
+pub use read::IoRead;
 
 use number::Number;
 #[cfg(feature = "arbitrary_precision")]
@@ -48,6 +67,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<R> Deserializer<read::IoRead<R>>
 where
     R: io::Read,
@@ -2161,6 +2181,7 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
+#[cfg(feature = "std")]
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
 where
     R: io::Read,

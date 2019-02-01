@@ -319,47 +319,66 @@
 ))]
 #![deny(missing_docs)]
 
+#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(feature = "std"), feature(alloc))]
+
 #[macro_use]
 extern crate serde;
 #[cfg(feature = "preserve_order")]
 extern crate indexmap;
 extern crate itoa;
 extern crate ryu;
+#[cfg(not(feature = "std"))]
+extern crate alloc;
 
+#[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
+#[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::error::{Error, Result};
+#[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::ser::{
     to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer, to_writer_pretty, Serializer,
 };
+#[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::value::{from_value, to_value, Map, Number, Value};
+
+#[cfg(not(feature = "std"))]
+use core::result;
+#[cfg(feature = "std")]
+use std::result;
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
 macro_rules! try {
     ($e:expr) => {
         match $e {
-            ::std::result::Result::Ok(val) => val,
-            ::std::result::Result::Err(err) => return ::std::result::Result::Err(err),
+            ::result::Result::Ok(val) => val,
+            ::result::Result::Err(err) => return ::result::Result::Err(err),
         }
     };
 }
 
+#[cfg(feature = "std")]
 #[macro_use]
 mod macros;
 
 pub mod de;
 pub mod error;
+#[cfg(feature = "std")]
 pub mod map;
+#[cfg(feature = "std")]
 pub mod ser;
+#[cfg(feature = "std")]
 pub mod value;
 
 mod iter;
 mod number;
 mod read;
 
+#[cfg(feature = "std")]
 #[cfg(feature = "raw_value")]
 mod raw;

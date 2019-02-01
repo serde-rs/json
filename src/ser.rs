@@ -1,9 +1,20 @@
 //! Serialize a Rust data structure into JSON data.
 
+#[cfg(feature = "std")]
 use std::fmt;
+#[cfg(feature = "std")]
 use std::io;
+#[cfg(feature = "std")]
 use std::num::FpCategory;
+#[cfg(feature = "std")]
 use std::str;
+
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+use alloc::fmt::write;
 
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
@@ -1608,6 +1619,7 @@ impl CharEscape {
 
 /// This trait abstracts away serializing the JSON control characters, which allows the user to
 /// optionally pretty print the JSON output.
+#[cfg(feature = "std")]
 pub trait Formatter {
     /// Writes a `null` value to the specified writer.
     #[inline]

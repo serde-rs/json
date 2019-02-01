@@ -16,15 +16,15 @@ travis-ci = { repository = "serde-rs/json" }
 appveyor = { repository = "serde-rs/json" }
 
 [dependencies]
-serde = "1.0.60"
-indexmap = { version = "1.0", optional = true }
-itoa = "0.4.3"
-ryu = "0.2"
+serde = { version = "1.0.85", default-features = false, features = ["alloc"] }
+#indexmap = { version = "1.0", optional = true }
+itoa = { version = "0.4.3", optional = true, default-features = false }
+ryu = { version = "0.2", optional = true, default-features = false }
 
 [dev-dependencies]
-compiletest_rs = { version = "0.3", features = ["stable"] }
-serde_bytes = "0.10"
-serde_derive = "1.0"
+# compiletest_rs = { version = "0.3", features = ["stable"] }
+# serde_bytes = "0.10"
+# serde_derive = "1.0"
 
 [package.metadata.docs.rs]
 features = ["raw_value"]
@@ -41,7 +41,7 @@ default = []
 # Use a different representation for the map type of serde_json::Value.
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
-preserve_order = ["indexmap"]
+# preserve_order = ["indexmap"]
 
 # Use an arbitrary precision number representation for serde_json::Number. This
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
@@ -50,3 +50,9 @@ arbitrary_precision = []
 
 # Provide a RawValue type that can hold unprocessed JSON during deserialization.
 raw_value = []
+
+# Default feature indicating std support
+# std = ["itoa/default"]
+
+# No-Std feature
+no_std = ["serde/alloc", "itoa", "ryu"]
