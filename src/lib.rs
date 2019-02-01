@@ -318,26 +318,25 @@
     redundant_field_names,
 ))]
 #![deny(missing_docs)]
-
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(not(feature = "std"), feature(alloc))]
 
 #[macro_use]
 extern crate serde;
+#[cfg(not(feature = "std"))]
+extern crate alloc;
 #[cfg(feature = "preserve_order")]
 extern crate indexmap;
 #[cfg(feature = "std")]
 extern crate itoa;
 #[cfg(feature = "std")]
 extern crate ryu;
-#[cfg(not(feature = "std"))]
-extern crate alloc;
 
-#[doc(inline)]
-pub use self::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::de::from_reader;
+#[doc(inline)]
+pub use self::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::error::{Error, Result};

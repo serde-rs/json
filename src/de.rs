@@ -1,17 +1,5 @@
 //! Deserialize JSON data to a Rust data structure.
 
-#[cfg(feature ="std")]
-use std::io;
-#[cfg(not(feature = "std"))]
-use core::marker::PhantomData;
-#[cfg(feature = "std")]
-use std::marker::PhantomData;
-#[cfg(feature = "std")]
-use std::result;
-#[cfg(not(feature = "std"))]
-use core::result;
-#[cfg(feature = "std")]
-use std::str::FromStr;
 #[cfg(not(feature = "std"))]
 use alloc::str::FromStr;
 #[cfg(not(feature = "std"))]
@@ -19,7 +7,19 @@ use alloc::string::String;
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 #[cfg(not(feature = "std"))]
+use core::marker::PhantomData;
+#[cfg(not(feature = "std"))]
+use core::result;
+#[cfg(not(feature = "std"))]
 use core::{i32, u64};
+#[cfg(feature = "std")]
+use std::io;
+#[cfg(feature = "std")]
+use std::marker::PhantomData;
+#[cfg(feature = "std")]
+use std::result;
+#[cfg(feature = "std")]
+use std::str::FromStr;
 #[cfg(feature = "std")]
 use std::{i32, u64};
 
@@ -29,9 +29,9 @@ use super::error::{Error, ErrorCode, Result};
 
 use read::{self, Reference};
 
-pub use read::{Read, SliceRead, StrRead};
 #[cfg(feature = "std")]
 pub use read::IoRead;
+pub use read::{Read, SliceRead, StrRead};
 
 use number::Number;
 #[cfg(feature = "arbitrary_precision")]

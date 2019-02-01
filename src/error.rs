@@ -1,26 +1,26 @@
 //! When serializing or deserializing JSON goes wrong.
 
-#[cfg(feature = "std")]
-use std::error;
+#[cfg(not(feature = "std"))]
+use alloc::str::FromStr;
 #[cfg(not(feature = "std"))]
 use core::fmt::{self, Debug, Display};
+#[cfg(not(feature = "std"))]
+use core::result;
+#[cfg(feature = "std")]
+use std::error;
 #[cfg(feature = "std")]
 use std::fmt::{self, Debug, Display};
 #[cfg(feature = "std")]
 use std::io;
 #[cfg(feature = "std")]
-use std::str::FromStr;
-#[cfg(not(feature = "std"))]
-use alloc::str::FromStr;
-#[cfg(not(feature = "std"))]
-use core::result;
-#[cfg(feature = "std")]
 use std::result;
+#[cfg(feature = "std")]
+use std::str::FromStr;
 
 #[cfg(not(feature = "std"))]
-use alloc::string::String;
-#[cfg(not(feature = "std"))]
 use alloc::prelude::*;
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
 
 use serde::de;
 #[cfg(feature = "std")]
@@ -178,7 +178,6 @@ impl From<Error> for io::Error {
     ///     }
     /// }
     /// ```
-    #[cfg(feature = "std")]
     fn from(j: Error) -> Self {
         if let ErrorCode::Io(err) = j.err.code {
             err

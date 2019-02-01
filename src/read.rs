@@ -1,11 +1,11 @@
-#[cfg(feature = "std")]
-use std::ops::Deref;
 #[cfg(not(feature = "std"))]
 use core::ops::Deref;
+#[cfg(not(feature = "std"))]
+use core::{char, cmp, str};
+#[cfg(feature = "std")]
+use std::ops::Deref;
 #[cfg(feature = "std")]
 use std::{char, cmp, io, str};
-#[cfg(not(feature = "std"))]
-use core::{str, char, cmp};
 
 #[cfg(feature = "raw_value")]
 use serde::de::Visitor;
