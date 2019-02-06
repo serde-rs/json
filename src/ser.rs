@@ -21,17 +21,20 @@ use serde::ser::{self, Impossible, Serialize};
 use itoa;
 use ryu;
 
-/// A structure for serializing Rust values into JSON.
 #[cfg(feature = "std")]
+use std::io::Write as WriteTrait;
+#[cfg(not(feature = "std"))]
+use core::fmt::Write as WriteTrait;
+
+/// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F = CompactFormatter> {
     writer: W,
     formatter: F,
 }
 
-#[cfg(feature = "std")]
 impl<W> Serializer<W>
 where
-    W: io::Write,
+    W: WriteTrait,
 {
     /// Creates a new JSON serializer.
     #[inline]
@@ -52,10 +55,9 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<W, F> Serializer<W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     /// Creates a new JSON visitor whose output will be written to the writer
@@ -525,7 +527,6 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 #[derive(Eq, PartialEq)]
 /// Not public API. Should be pub(crate).
 #[doc(hidden)]
@@ -535,7 +536,6 @@ pub enum State {
     Rest,
 }
 
-#[cfg(feature = "std")]
 /// Not public API. Should be pub(crate).
 #[doc(hidden)]
 pub enum Compound<'a, W: 'a, F: 'a> {
@@ -1600,7 +1600,6 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
 }
 
 /// Represents a character escape code in a type-safe manner.
-#[cfg(feature = "std")]
 pub enum CharEscape {
     /// An escaped quote `"`
     Quote,
@@ -1956,13 +1955,328 @@ pub trait Formatter {
         writer.write_all(fragment.as_bytes())
     }
 }
+///
+/// This trait abstracts away serializing the JSON control characters, which allows the user to
+/// optionally pretty print the JSON output.
+#[cfg(not(feature = "std"))]
+pub trait Formatter {
+    /// Writes a `null` value to the specified writer.
+    #[inline]
+    fn write_null<W: ?Sized>(&mut self, writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str("null")
+    }
+
+    /// Writes a `true` or `false` value to the specified writer.
+    #[inline]
+    fn write_bool<W: ?Sized>(&mut self, writer: &mut W, value: bool) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        let s = if value {
+            "true"
+        } else {
+            "false"
+        };
+        writer.write_str(s)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        itoa::fmt(writer, value).map(drop)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    fn write_i16<W: ?Sized>(&mut self, writer: &mut W, value: i16) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        itoa::fmt(writer, value).map(drop)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    fn write_i32<W: ?Sized>(&mut self, writer: &mut W, value: i32) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        itoa::fmt(writer, value).map(drop)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        itoa::fmt(writer, value).map(drop)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_u8<W: ?Sized>(&mut self, writer: &mut W, value: u8) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        itoa::fmt(writer, value).map(drop)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_u16<W: ?Sized>(&mut self, writer: &mut W, value: u16) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        itoa::fmt(writer, value).map(drop)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_u32<W: ?Sized>(&mut self, writer: &mut W, value: u32) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        itoa::fmt(writer, value).map(drop)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_u64<W: ?Sized>(&mut self, writer: &mut W, value: u64) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        itoa::fmt(writer, value).map(drop)
+    }
+
+    /// Writes a floating point value like `-31.26e+12` to the specified writer.
+    #[inline]
+    fn write_f32<W: ?Sized>(&mut self, writer: &mut W, value: f32) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        let mut buffer = ryu::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_str(s)
+    }
+
+    /// Writes a floating point value like `-31.26e+12` to the specified writer.
+    #[inline]
+    fn write_f64<W: ?Sized>(&mut self, writer: &mut W, value: f64) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        let mut buffer = ryu::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_str(s)
+    }
+
+    /// Writes a number that has already been rendered to a string.
+    #[inline]
+    fn write_number_str<W: ?Sized>(&mut self, writer: &mut W, value: &str) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str(value)
+    }
+
+    /// Called before each series of `write_string_fragment` and
+    /// `write_char_escape`.  Writes a `"` to the specified writer.
+    #[inline]
+    fn begin_string<W: ?Sized>(&mut self, writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str("\"")
+    }
+
+    /// Called after each series of `write_string_fragment` and
+    /// `write_char_escape`.  Writes a `"` to the specified writer.
+    #[inline]
+    fn end_string<W: ?Sized>(&mut self, writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str("\"")
+    }
+
+    /// Writes a string fragment that doesn't need any escaping to the
+    /// specified writer.
+    #[inline]
+    fn write_string_fragment<W: ?Sized>(&mut self, writer: &mut W, fragment: &str) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str(fragment)
+    }
+
+    /// Writes a character escape code to the specified writer.
+    #[inline]
+    fn write_char_escape<W: ?Sized>(
+        &mut self,
+        writer: &mut W,
+        char_escape: CharEscape,
+    ) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        use self::CharEscape::*;
+
+        let s = match char_escape {
+            Quote => "\\\"",
+            ReverseSolidus => "\\\\",
+            Solidus => "\\/",
+            Backspace => "\\b",
+            FormFeed => "\\f",
+            LineFeed => "\\n",
+            CarriageReturn => "\\r",
+            Tab => "\\t",
+            AsciiControl(byte) => {
+                static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
+                let bytes = &[
+                    b'\\',
+                    b'u',
+                    b'0',
+                    b'0',
+                    HEX_DIGITS[(byte >> 4) as usize],
+                    HEX_DIGITS[(byte & 0xF) as usize],
+                ];
+                let bytes = str::from_utf8(bytes).or(Err(fmt::Error))?;
+                return writer.write_str(bytes);
+            }
+        };
+
+        writer.write_str(s)
+    }
+
+    /// Called before every array.  Writes a `[` to the specified
+    /// writer.
+    #[inline]
+    fn begin_array<W: ?Sized>(&mut self, writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str("[")
+    }
+
+    /// Called after every array.  Writes a `]` to the specified
+    /// writer.
+    #[inline]
+    fn end_array<W: ?Sized>(&mut self, writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str("]")
+    }
+
+    /// Called before every array value.  Writes a `,` if needed to
+    /// the specified writer.
+    #[inline]
+    fn begin_array_value<W: ?Sized>(&mut self, writer: &mut W, first: bool) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        if first {
+            Ok(())
+        } else {
+            writer.write_str(",")
+        }
+    }
+
+    /// Called after every array value.
+    #[inline]
+    fn end_array_value<W: ?Sized>(&mut self, _writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        Ok(())
+    }
+
+    /// Called before every object.  Writes a `{` to the specified
+    /// writer.
+    #[inline]
+    fn begin_object<W: ?Sized>(&mut self, writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str("{")
+    }
+
+    /// Called after every object.  Writes a `}` to the specified
+    /// writer.
+    #[inline]
+    fn end_object<W: ?Sized>(&mut self, writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str("}")
+    }
+
+    /// Called before every object key.
+    #[inline]
+    fn begin_object_key<W: ?Sized>(&mut self, writer: &mut W, first: bool) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        if first {
+            Ok(())
+        } else {
+            writer.write_str(",")
+        }
+    }
+
+    /// Called after every object key.  A `:` should be written to the
+    /// specified writer by either this method or
+    /// `begin_object_value`.
+    #[inline]
+    fn end_object_key<W: ?Sized>(&mut self, _writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        Ok(())
+    }
+
+    /// Called before every object value.  A `:` should be written to
+    /// the specified writer by either this method or
+    /// `end_object_key`.
+    #[inline]
+    fn begin_object_value<W: ?Sized>(&mut self, writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str(":")
+    }
+
+    /// Called after every object value.
+    #[inline]
+    fn end_object_value<W: ?Sized>(&mut self, _writer: &mut W) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        Ok(())
+    }
+
+    /// Writes a raw JSON fragment that doesn't need any escaping to the
+    /// specified writer.
+    #[inline]
+    fn write_raw_fragment<W: ?Sized>(&mut self, writer: &mut W, fragment: &str) -> fmt::Result
+    where
+        W: fmt::Write,
+    {
+        writer.write_str(fragment)
+    }
+}
 
 /// This structure compacts a JSON value with no extra whitespace.
-#[cfg(feature = "std")]
 #[derive(Clone, Debug)]
 pub struct CompactFormatter;
 
-#[cfg(feature = "std")]
 impl Formatter for CompactFormatter {}
 
 /// This structure pretty prints a JSON value to make it human readable.
