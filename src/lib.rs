@@ -327,9 +327,7 @@ extern crate serde;
 extern crate alloc;
 #[cfg(feature = "preserve_order")]
 extern crate indexmap;
-#[cfg(feature = "std")]
 extern crate itoa;
-#[cfg(feature = "std")]
 extern crate ryu;
 
 #[cfg(feature = "std")]
@@ -373,7 +371,6 @@ pub mod de;
 pub mod error;
 #[cfg(feature = "std")]
 pub mod map;
-#[cfg(feature = "std")]
 pub mod ser;
 #[cfg(feature = "std")]
 pub mod value;

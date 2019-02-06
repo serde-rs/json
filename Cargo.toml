@@ -19,7 +19,7 @@ appveyor = { repository = "serde-rs/json" }
 serde = { version = "1.0.85", default-features = false }
 indexmap = { version = "1.0", optional = true }
 itoa = { version = "0.4.3", optional = true, default-features = false }
-ryu = { version = "0.2", optional = true, default-features = false }
+ryu = "0.2"
 
 [dev-dependencies]
 # compiletest_rs = { version = "0.3", features = ["stable"] }
@@ -52,7 +52,7 @@ arbitrary_precision = []
 raw_value = []
 
 # Default feature indicating std support
-std = ["serde/default", "itoa/default", "indexmap", "ryu"]
+std = ["serde/default", "itoa/default", "indexmap"]
 
 # No-Std feature
-no_std = ["serde/alloc"]
+no_std = ["serde/alloc", "itoa"]

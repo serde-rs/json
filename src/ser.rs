@@ -1,9 +1,19 @@
 //! Serialize a Rust data structure into JSON data.
 
+#[cfg(feature = "std")]
 use std::fmt;
+#[cfg(not(feature = "std"))]
+use core::fmt;
+#[cfg(feature = "std")]
 use std::io;
+#[cfg(feature = "std")]
 use std::num::FpCategory;
+#[cfg(not(feature = "std"))]
+use core::num::FpCategory;
+#[cfg(feature = "std")]
 use std::str;
+#[cfg(not(feature = "std"))]
+use core::str;
 
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
@@ -12,11 +22,13 @@ use itoa;
 use ryu;
 
 /// A structure for serializing Rust values into JSON.
+#[cfg(feature = "std")]
 pub struct Serializer<W, F = CompactFormatter> {
     writer: W,
     formatter: F,
 }
 
+#[cfg(feature = "std")]
 impl<W> Serializer<W>
 where
     W: io::Write,
@@ -28,6 +40,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, W> Serializer<W, PrettyFormatter<'a>>
 where
     W: io::Write,
@@ -39,6 +52,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<W, F> Serializer<W, F>
 where
     W: io::Write,
@@ -61,6 +75,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
 where
     W: io::Write,
@@ -510,6 +525,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 #[derive(Eq, PartialEq)]
 /// Not public API. Should be pub(crate).
 #[doc(hidden)]
@@ -519,6 +535,7 @@ pub enum State {
     Rest,
 }
 
+#[cfg(feature = "std")]
 /// Not public API. Should be pub(crate).
 #[doc(hidden)]
 pub enum Compound<'a, W: 'a, F: 'a> {
@@ -532,6 +549,7 @@ pub enum Compound<'a, W: 'a, F: 'a> {
     RawValue { ser: &'a mut Serializer<W, F> },
 }
 
+#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
 where
     W: io::Write,
@@ -587,6 +605,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeTuple for Compound<'a, W, F>
 where
     W: io::Write,
@@ -609,6 +628,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeTupleStruct for Compound<'a, W, F>
 where
     W: io::Write,
@@ -631,6 +651,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeTupleVariant for Compound<'a, W, F>
 where
     W: io::Write,
@@ -670,6 +691,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeMap for Compound<'a, W, F>
 where
     W: io::Write,
@@ -752,6 +774,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeStruct for Compound<'a, W, F>
 where
     W: io::Write,
@@ -803,6 +826,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeStructVariant for Compound<'a, W, F>
 where
     W: io::Write,
@@ -848,24 +872,29 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 struct MapKeySerializer<'a, W: 'a, F: 'a> {
     ser: &'a mut Serializer<W, F>,
 }
 
+#[cfg(feature = "std")]
 #[cfg(feature = "arbitrary_precision")]
 fn invalid_number() -> Error {
     Error::syntax(ErrorCode::InvalidNumber, 0, 0)
 }
 
+#[cfg(feature = "std")]
 #[cfg(feature = "raw_value")]
 fn invalid_raw_value() -> Error {
     Error::syntax(ErrorCode::ExpectedSomeValue, 0, 0)
 }
 
+#[cfg(feature = "std")]
 fn key_must_be_a_string() -> Error {
     Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
 }
 
+#[cfg(feature = "std")]
 impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
 where
     W: io::Write,
@@ -1196,9 +1225,11 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(feature = "arbitrary_precision")]
 struct NumberStrEmitter<'a, W: 'a + io::Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
 
+#[cfg(feature = "std")]
 #[cfg(feature = "arbitrary_precision")]
 impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W, F> {
     type Ok = ();
@@ -1381,9 +1412,11 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(feature = "raw_value")]
 struct RawValueStrEmitter<'a, W: 'a + io::Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
 
+#[cfg(feature = "std")]
 #[cfg(feature = "raw_value")]
 impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, W, F> {
     type Ok = ();
@@ -1567,6 +1600,7 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
 }
 
 /// Represents a character escape code in a type-safe manner.
+#[cfg(feature = "std")]
 pub enum CharEscape {
     /// An escaped quote `"`
     Quote,
@@ -1589,6 +1623,7 @@ pub enum CharEscape {
     AsciiControl(u8),
 }
 
+#[cfg(feature = "std")]
 impl CharEscape {
     #[inline]
     fn from_escape_table(escape: u8, byte: u8) -> CharEscape {
@@ -1608,6 +1643,7 @@ impl CharEscape {
 
 /// This trait abstracts away serializing the JSON control characters, which allows the user to
 /// optionally pretty print the JSON output.
+#[cfg(feature = "std")]
 pub trait Formatter {
     /// Writes a `null` value to the specified writer.
     #[inline]
@@ -1922,12 +1958,15 @@ pub trait Formatter {
 }
 
 /// This structure compacts a JSON value with no extra whitespace.
+#[cfg(feature = "std")]
 #[derive(Clone, Debug)]
 pub struct CompactFormatter;
 
+#[cfg(feature = "std")]
 impl Formatter for CompactFormatter {}
 
 /// This structure pretty prints a JSON value to make it human readable.
+#[cfg(feature = "std")]
 #[derive(Clone, Debug)]
 pub struct PrettyFormatter<'a> {
     current_indent: usize,
@@ -1935,6 +1974,7 @@ pub struct PrettyFormatter<'a> {
     indent: &'a [u8],
 }
 
+#[cfg(feature = "std")]
 impl<'a> PrettyFormatter<'a> {
     /// Construct a pretty printer formatter that defaults to using two spaces for indentation.
     pub fn new() -> Self {
@@ -1951,12 +1991,14 @@ impl<'a> PrettyFormatter<'a> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a> Default for PrettyFormatter<'a> {
     fn default() -> Self {
         PrettyFormatter::new()
     }
 }
 
+#[cfg(feature = "std")]
 impl<'a> Formatter for PrettyFormatter<'a> {
     #[inline]
     fn begin_array<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
@@ -2062,6 +2104,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 }
 
+#[cfg(feature = "std")]
 fn format_escaped_str<W: ?Sized, F: ?Sized>(
     writer: &mut W,
     formatter: &mut F,
@@ -2077,6 +2120,7 @@ where
     Ok(())
 }
 
+#[cfg(feature = "std")]
 fn format_escaped_str_contents<W: ?Sized, F: ?Sized>(
     writer: &mut W,
     formatter: &mut F,
@@ -2151,6 +2195,7 @@ static ESCAPE: [u8; 256] = [
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
+#[cfg(feature = "std")]
 #[inline]
 pub fn to_writer<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
 where
@@ -2169,6 +2214,7 @@ where
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
+#[cfg(feature = "std")]
 #[inline]
 pub fn to_writer_pretty<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
 where
@@ -2186,6 +2232,7 @@ where
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
+#[cfg(feature = "std")]
 #[inline]
 pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
 where
@@ -2202,6 +2249,7 @@ where
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
+#[cfg(feature = "std")]
 #[inline]
 pub fn to_vec_pretty<T: ?Sized>(value: &T) -> Result<Vec<u8>>
 where
@@ -2218,6 +2266,7 @@ where
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
+#[cfg(feature = "std")]
 #[inline]
 pub fn to_string<T: ?Sized>(value: &T) -> Result<String>
 where
@@ -2237,6 +2286,7 @@ where
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
+#[cfg(feature = "std")]
 #[inline]
 pub fn to_string_pretty<T: ?Sized>(value: &T) -> Result<String>
 where
@@ -2250,6 +2300,7 @@ where
     Ok(string)
 }
 
+#[cfg(feature = "std")]
 fn indent<W: ?Sized>(wr: &mut W, n: usize, s: &[u8]) -> io::Result<()>
 where
     W: io::Write,
