@@ -1,21 +1,21 @@
 //! Serialize a Rust data structure into JSON data.
 
-#[cfg(feature = "std")]
-use std::fmt;
+#[cfg(not(feature = "std"))]
+use alloc::prelude::{String, ToString, Vec};
 #[cfg(not(feature = "std"))]
 use core::fmt;
+#[cfg(not(feature = "std"))]
+use core::num::FpCategory;
+#[cfg(not(feature = "std"))]
+use core::str;
+#[cfg(feature = "std")]
+use std::fmt;
 #[cfg(feature = "std")]
 use std::io;
 #[cfg(feature = "std")]
 use std::num::FpCategory;
-#[cfg(not(feature = "std"))]
-use core::num::FpCategory;
 #[cfg(feature = "std")]
 use std::str;
-#[cfg(not(feature = "std"))]
-use core::str;
-#[cfg(not(feature = "std"))]
-use alloc::prelude::ToString;
 
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
@@ -23,13 +23,13 @@ use serde::ser::{self, Impossible, Serialize};
 use itoa;
 use ryu;
 
-#[cfg(feature = "std")]
-use std::io::Write as WriteTrait;
 #[cfg(not(feature = "std"))]
 use core::fmt::Write as WriteTrait;
+#[cfg(feature = "std")]
+use std::io::Write as WriteTrait;
 
 #[cfg(feature = "std")]
-type IoResult =  io::Result<()>;
+type IoResult = io::Result<()>;
 #[cfg(not(feature = "std"))]
 type IoResult = fmt::Result;
 
@@ -483,10 +483,10 @@ where
     where
         T: fmt::Display,
     {
-        #[cfg(feature = "std")]
-        use std::fmt::Write;
         #[cfg(not(feature = "std"))]
         use core::fmt::Write;
+        #[cfg(feature = "std")]
+        use std::fmt::Write;
 
         struct Adapter<'ser, W: 'ser, F: 'ser> {
             writer: &'ser mut W,
@@ -494,7 +494,7 @@ where
             #[cfg(feature = "std")]
             error: Option<io::Error>,
             #[cfg(not(feature = "std"))]
-            error: Option<fmt::Error>
+            error: Option<fmt::Error>,
         }
 
         impl<'ser, W, F> fmt::Write for Adapter<'ser, W, F>
@@ -1976,11 +1976,7 @@ pub trait Formatter {
     where
         W: fmt::Write,
     {
-        let s = if value {
-            "true"
-        } else {
-            "false"
-        };
+        let s = if value { "true" } else { "false" };
         writer.write_str(s)
     }
 
@@ -2508,11 +2504,10 @@ static ESCAPE: [u8; 256] = [
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
-#[cfg(feature = "std")]
 #[inline]
 pub fn to_writer<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
 where
-    W: io::Write,
+    W: WriteTrait,
     T: Serialize,
 {
     let mut ser = Serializer::new(writer);
@@ -2556,6 +2551,23 @@ where
     Ok(writer)
 }
 
+/// Serialize the given data structure as a JSON byte vector.
+///
+/// # Errors
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+#[cfg(not(feature = "std"))]
+#[inline]
+pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
+where
+    T: Serialize,
+{
+    let mut writer = String::with_capacity(128);
+    try!(to_writer(&mut writer, value));
+    Ok(writer.into())
+}
+
 /// Serialize the given data structure as a pretty-printed JSON byte vector.
 ///
 /// # Errors
@@ -2579,7 +2591,6 @@ where
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
-#[cfg(feature = "std")]
 #[inline]
 pub fn to_string<T: ?Sized>(value: &T) -> Result<String>
 where
