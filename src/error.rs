@@ -23,7 +23,6 @@ use alloc::prelude::*;
 use alloc::string::String;
 
 use serde::de;
-#[cfg(feature = "std")]
 use serde::ser;
 
 /// This type represents all possible errors that can occur when serializing or
@@ -67,7 +66,6 @@ impl Error {
     pub fn classify(&self) -> Category {
         match self.err.code {
             ErrorCode::Message(_) => Category::Data,
-            #[cfg(feature = "std")]
             ErrorCode::Io(_) => Category::Io,
             ErrorCode::EofWhileParsingList
             | ErrorCode::EofWhileParsingObject
@@ -207,6 +205,10 @@ pub enum ErrorCode {
     #[cfg(feature = "std")]
     Io(io::Error),
 
+    /// Some IO error occurred while serializing or deserializing.
+    #[cfg(not(feature = "std"))]
+    Io(fmt::Error),
+
     /// EOF while parsing a list.
     EofWhileParsingList,
 
@@ -304,6 +306,19 @@ impl Error {
         }
     }
 
+    #[cfg(not(feature = "std"))]
+    #[doc(hidden)]
+    #[cold]
+    pub fn io(error: fmt::Error) -> Self {
+        Error {
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::Io(error),
+                line: 0,
+                column: 0,
+            }),
+        }
+    }
+
     // Not public API. Should be pub(crate).
     #[doc(hidden)]
     #[cold]
@@ -323,7 +338,6 @@ impl Display for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorCode::Message(ref msg) => f.write_str(msg),
-            #[cfg(feature = "std")]
             ErrorCode::Io(ref err) => Display::fmt(err, f),
             ErrorCode::EofWhileParsingList => f.write_str("EOF while parsing a list"),
             ErrorCode::EofWhileParsingObject => f.write_str("EOF while parsing an object"),
@@ -425,7 +439,6 @@ impl de::Error for Error {
     }
 }
 
-#[cfg(feature = "std")]
 impl ser::Error for Error {
     #[cold]
     fn custom<T: Display>(msg: T) -> Error {

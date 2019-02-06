@@ -14,6 +14,8 @@ use core::num::FpCategory;
 use std::str;
 #[cfg(not(feature = "std"))]
 use core::str;
+#[cfg(not(feature = "std"))]
+use alloc::prelude::ToString;
 
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
@@ -25,6 +27,11 @@ use ryu;
 use std::io::Write as WriteTrait;
 #[cfg(not(feature = "std"))]
 use core::fmt::Write as WriteTrait;
+
+#[cfg(feature = "std")]
+type IoResult =  io::Result<()>;
+#[cfg(not(feature = "std"))]
+type IoResult = fmt::Result;
 
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F = CompactFormatter> {
@@ -77,10 +84,9 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     type Ok = ();
@@ -477,17 +483,23 @@ where
     where
         T: fmt::Display,
     {
+        #[cfg(feature = "std")]
         use std::fmt::Write;
+        #[cfg(not(feature = "std"))]
+        use core::fmt::Write;
 
         struct Adapter<'ser, W: 'ser, F: 'ser> {
             writer: &'ser mut W,
             formatter: &'ser mut F,
+            #[cfg(feature = "std")]
             error: Option<io::Error>,
+            #[cfg(not(feature = "std"))]
+            error: Option<fmt::Error>
         }
 
-        impl<'ser, W, F> Write for Adapter<'ser, W, F>
+        impl<'ser, W, F> fmt::Write for Adapter<'ser, W, F>
         where
-            W: io::Write,
+            W: WriteTrait,
             F: Formatter,
         {
             fn write_str(&mut self, s: &str) -> fmt::Result {
@@ -549,10 +561,9 @@ pub enum Compound<'a, W: 'a, F: 'a> {
     RawValue { ser: &'a mut Serializer<W, F> },
 }
 
-#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     type Ok = ();
@@ -605,10 +616,9 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeTuple for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     type Ok = ();
@@ -628,10 +638,9 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeTupleStruct for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     type Ok = ();
@@ -651,10 +660,9 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeTupleVariant for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     type Ok = ();
@@ -691,10 +699,9 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeMap for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     type Ok = ();
@@ -774,10 +781,9 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeStruct for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     type Ok = ();
@@ -826,10 +832,9 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 impl<'a, W, F> ser::SerializeStructVariant for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     type Ok = ();
@@ -872,7 +877,6 @@ where
     }
 }
 
-#[cfg(feature = "std")]
 struct MapKeySerializer<'a, W: 'a, F: 'a> {
     ser: &'a mut Serializer<W, F>,
 }
@@ -889,15 +893,13 @@ fn invalid_raw_value() -> Error {
     Error::syntax(ErrorCode::ExpectedSomeValue, 0, 0)
 }
 
-#[cfg(feature = "std")]
 fn key_must_be_a_string() -> Error {
     Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
 }
 
-#[cfg(feature = "std")]
 impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     type Ok = ();
@@ -1622,7 +1624,6 @@ pub enum CharEscape {
     AsciiControl(u8),
 }
 
-#[cfg(feature = "std")]
 impl CharEscape {
     #[inline]
     fn from_escape_table(escape: u8, byte: u8) -> CharEscape {
@@ -2418,14 +2419,13 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 }
 
-#[cfg(feature = "std")]
 fn format_escaped_str<W: ?Sized, F: ?Sized>(
     writer: &mut W,
     formatter: &mut F,
     value: &str,
-) -> io::Result<()>
+) -> IoResult
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     try!(formatter.begin_string(writer));
@@ -2434,14 +2434,13 @@ where
     Ok(())
 }
 
-#[cfg(feature = "std")]
 fn format_escaped_str_contents<W: ?Sized, F: ?Sized>(
     writer: &mut W,
     formatter: &mut F,
     value: &str,
-) -> io::Result<()>
+) -> IoResult
 where
-    W: io::Write,
+    W: WriteTrait,
     F: Formatter,
 {
     let bytes = value.as_bytes();
