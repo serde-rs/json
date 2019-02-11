@@ -6,14 +6,36 @@
 //! [`BTreeMap`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
 //! [`IndexMap`]: https://docs.rs/indexmap/*/indexmap/map/struct.IndexMap.html
 
+#[cfg(not(feature = "std"))]
+use core::borrow::Borrow;
+#[cfg(not(feature = "std"))]
+use core::fmt::{self, Debug};
+#[cfg(not(feature = "std"))]
+use core::hash::Hash;
+#[cfg(not(feature = "std"))]
+use core::iter::FromIterator;
+#[cfg(not(feature = "std"))]
+use core::ops;
 use serde::{de, ser};
+#[cfg(feature = "std")]
 use std::borrow::Borrow;
+#[cfg(feature = "std")]
 use std::fmt::{self, Debug};
+#[cfg(feature = "std")]
 use std::hash::Hash;
+#[cfg(feature = "std")]
 use std::iter::FromIterator;
+#[cfg(feature = "std")]
 use std::ops;
 use value::Value;
 
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
+
+#[cfg(not(feature = "std"))]
+#[cfg(not(feature = "preserve_order"))]
+use alloc::collections::{btree_map, BTreeMap};
+#[cfg(feature = "std")]
 #[cfg(not(feature = "preserve_order"))]
 use std::collections::{btree_map, BTreeMap};
 
@@ -135,8 +157,12 @@ impl Map<String, Value> {
     where
         S: Into<String>,
     {
+        #[cfg(not(feature = "std"))]
+        #[cfg(not(feature = "preserve_order"))]
+        use alloc::collections::btree_map::Entry as EntryImpl;
         #[cfg(feature = "preserve_order")]
         use indexmap::map::Entry as EntryImpl;
+        #[cfg(feature = "std")]
         #[cfg(not(feature = "preserve_order"))]
         use std::collections::btree_map::Entry as EntryImpl;
 

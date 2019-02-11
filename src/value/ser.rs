@@ -6,6 +6,9 @@ use map::Map;
 use number::Number;
 use value::{to_value, Value};
 
+#[cfg(not(feature = "std"))]
+use alloc::prelude::{String, ToOwned, ToString, Vec};
+
 impl Serialize for Value {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

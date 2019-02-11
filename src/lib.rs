@@ -343,7 +343,6 @@ pub use self::ser::{to_string, to_vec, to_writer, Serializer};
 #[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::ser::{to_string_pretty, to_vec_pretty, to_writer_pretty};
-#[cfg(feature = "std")]
 #[doc(inline)]
 pub use self::value::{from_value, to_value, Map, Number, Value};
 
@@ -369,10 +368,8 @@ mod macros;
 
 pub mod de;
 pub mod error;
-#[cfg(feature = "std")]
 pub mod map;
 pub mod ser;
-#[cfg(feature = "std")]
 pub mod value;
 
 #[cfg(feature = "std")]

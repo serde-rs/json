@@ -1,8 +1,18 @@
+#[cfg(not(feature = "std"))]
+use core::iter::FromIterator;
+#[cfg(feature = "std")]
 use std::borrow::Cow;
+#[cfg(feature = "std")]
+use std::iter::FromIterator;
 
 use super::Value;
 use map::Map;
 use number::Number;
+
+#[cfg(not(feature = "std"))]
+use alloc::borrow::Cow;
+#[cfg(not(feature = "std"))]
+use alloc::prelude::{String, ToString, Vec};
 
 macro_rules! from_integer {
     ($($ty:ident)*) => {
@@ -182,7 +192,7 @@ impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     }
 }
 
-impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
+impl<T: Into<Value>> FromIterator<T> for Value {
     /// Convert an iteratable type to a `Value`
     ///
     /// # Examples

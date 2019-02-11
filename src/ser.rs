@@ -2534,6 +2534,24 @@ where
     Ok(())
 }
 
+/// Serialize the given data structure as pretty-printed JSON into the IO
+/// stream.
+///
+/// # Errors
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+// Currently no_std does not support to_writer_pretty. This is a workaround for types that
+// implement alternate `{:#?}`.
+#[cfg(not(feature = "std"))]
+pub fn to_writer_pretty<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
+where
+    W: WriteTrait,
+    T: Serialize,
+{
+    to_writer(writer, value)
+}
+
 /// Serialize the given data structure as a JSON byte vector.
 ///
 /// # Errors
