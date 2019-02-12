@@ -362,7 +362,6 @@ macro_rules! try {
     };
 }
 
-#[cfg(feature = "std")]
 #[macro_use]
 mod macros;
 
