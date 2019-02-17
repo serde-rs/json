@@ -13,6 +13,7 @@ fn ui() {
              --extern serde_json \
              ",
         )),
+        build_base: std::path::PathBuf::from("target/ui"),
         ..Default::default()
     });
 }
