@@ -473,7 +473,7 @@ macro_rules! deserialize_any {
             } else if let Some(i) = self.as_i64() {
                 return visitor.visit_i64(i);
             } else if let Some(f) = self.as_f64() {
-                if f.to_string() == self.n {
+                if ryu::Buffer::new().format(f) == self.n || f.to_string() == self.n {
                     return visitor.visit_f64(f);
                 }
             }
