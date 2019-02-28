@@ -3,8 +3,8 @@
 use std::error;
 use std::fmt::{self, Debug, Display};
 use std::io;
-use std::str::FromStr;
 use std::result;
+use std::str::FromStr;
 
 use serde::de;
 use serde::ser;
