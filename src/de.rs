@@ -496,7 +496,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         if !at_least_one_digit {
-            return Err(self.peek_error(ErrorCode::InvalidNumber));
+            match try!(self.peek()) {
+                Some(_) => return Err(self.peek_error(ErrorCode::InvalidNumber)),
+                None => return Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
+            }
         }
 
         match try!(self.peek_or_null()) {
@@ -680,7 +683,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         if !at_least_one_digit {
-            return Err(self.peek_error(ErrorCode::InvalidNumber));
+            match try!(self.peek()) {
+                Some(_) => return Err(self.peek_error(ErrorCode::InvalidNumber)),
+                None => return Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
+            }
         }
 
         match try!(self.peek_or_null()) {
