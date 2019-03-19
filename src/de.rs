@@ -155,6 +155,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    /// Parse the JSON array as a stream of values.
+    pub fn into_array(self) -> ArrayDeserializer<'de, R> {
+        ArrayDeserializer {
+            de: self,
+            started: false,
+            lifetime: PhantomData,
+        }
+    }
+
     /// Parse arbitrarily deep JSON structures without any consideration for
     /// overflowing the stack.
     ///
@@ -2168,6 +2177,109 @@ where
         }
     }
 }
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+
+/// A streaming JSON array deserializer.
+///
+/// An array deserializer can be created from any JSON deserializer using the
+/// `Deserializer::into_array` method.
+///
+/// The top-level data should be a JSON array, but each array element can consist of any JSON
+/// value. An array deserializer only needs to keep a single array element in memory, and is
+/// therefore preferable over deserializing into a container type such as `Vec` when the complete
+/// array is too large to fit in memory.
+///
+/// ```edition2018
+/// use serde_json::{Deserializer, Value};
+///
+/// fn main() {
+///     let data = "[{\"k\": 3}, 1, \"cool\", \"stuff\", [0, 1, 2]]";
+///
+///     let mut iter = Deserializer::from_str(data).into_array();
+///
+///     while let Some(value) = iter.next::<Value>() {
+///         println!("{}", value.unwrap());
+///     }
+/// }
+/// ```
+pub struct ArrayDeserializer<'de, R> {
+    de: Deserializer<R>,
+    started: bool, // True if we have consumed the first '['
+    lifetime: PhantomData<&'de ()>,
+}
+
+impl<'de, R> ArrayDeserializer<'de, R>
+where
+    R: read::Read<'de>,
+{
+    /// Create a JSON array deserializer from one of the possible serde_json
+    /// input sources.
+    ///
+    /// Typically it is more convenient to use one of these methods instead:
+    ///
+    ///   - Deserializer::from_str(...).into_array()
+    ///   - Deserializer::from_bytes(...).into_array()
+    ///   - Deserializer::from_reader(...).into_array()
+    pub fn new(read: R) -> Self {
+        ArrayDeserializer {
+            de: Deserializer::new(read),
+            started: false,
+            lifetime: PhantomData,
+        }
+    }
+
+    fn end<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
+        self.de.eat_char();
+        match self.de.end() {
+            Ok(_) => None,
+            Err(e) => Some(Err(e)),
+        }
+    }
+
+    fn next_value<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
+        match de::Deserialize::deserialize(&mut self.de) {
+            Ok(v) => Some(Ok(v)),
+            Err(e) => Some(Err(e))
+        }
+    }
+
+    /// Return the next element from the array. Returns None if there are no more elements.
+    pub fn next<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
+        match self.de.parse_whitespace() {
+            Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
+            Ok(Some(b'[')) if !self.started => {
+                self.started = true;
+                self.de.eat_char();
+
+                // We have to peek at the next character here to handle an empty array.
+                match self.de.parse_whitespace() {
+                    Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
+                    Ok(Some(b']')) => self.end(),
+                    Ok(Some(_)) => self.next_value(),
+                    Err(e) => Some(Err(e)),
+                }
+            },
+            Ok(Some(b']')) if self.started => self.end(),
+            Ok(Some(b',')) if self.started => {
+                self.de.eat_char();
+
+                match self.de.parse_whitespace() {
+                    Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
+                    Ok(Some(b']')) => Some(Err(self.de.peek_error(ErrorCode::TrailingComma))),
+                    Ok(Some(_)) => self.next_value(),
+                    Err(e) => Some(Err(e)),
+                }
+            },
+            Ok(Some(_)) => Some(Err(self.de.peek_error(ErrorCode::ExpectedSomeValue))),
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
+
 
 //////////////////////////////////////////////////////////////////////////////
 
