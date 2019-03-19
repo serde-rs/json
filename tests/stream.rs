@@ -92,6 +92,26 @@ fn test_json_stream_truncated_decimal() {
 }
 
 #[test]
+fn test_json_stream_truncated_negative() {
+    let data = "{\"x\":-";
+
+    test_stream!(data, Value, |stream| {
+        assert!(stream.next().unwrap().unwrap_err().is_eof());
+        assert_eq!(stream.byte_offset(), 0);
+    });
+}
+
+#[test]
+fn test_json_stream_truncated_exponent() {
+    let data = "{\"x\":4e";
+
+    test_stream!(data, Value, |stream| {
+        assert!(stream.next().unwrap().unwrap_err().is_eof());
+        assert_eq!(stream.byte_offset(), 0);
+    });
+}
+
+#[test]
 fn test_json_stream_empty() {
     let data = "";
 

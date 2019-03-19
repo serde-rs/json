@@ -380,7 +380,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn parse_integer(&mut self, positive: bool) -> Result<ParserNumber> {
-        match try!(self.next_char_or_null()) {
+        let next = match try!(self.next_char()) {
+            Some(b) => b,
+            None => {
+                return Err(self.error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        match next {
             b'0' => {
                 // There can be only one leading '0'.
                 match try!(self.peek_or_null()) {
@@ -528,8 +535,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             _ => true,
         };
 
+        let next = match try!(self.next_char()) {
+            Some(b) => b,
+            None => {
+                return Err(self.error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
         // Make sure a digit follows the exponent place.
-        let mut exp = match try!(self.next_char_or_null()) {
+        let mut exp = match next {
             c @ b'0'...b'9' => (c - b'0') as i32,
             _ => {
                 return Err(self.error(ErrorCode::InvalidNumber));
@@ -626,19 +640,19 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    fn scan_or_null(&mut self, buf: &mut String) -> Result<u8> {
+    fn scan_or_eof(&mut self, buf: &mut String) -> Result<u8> {
         match try!(self.next_char()) {
             Some(b) => {
                 buf.push(b as char);
                 Ok(b)
             }
-            None => Ok(b'\x00'),
+            None => Err(self.error(ErrorCode::EofWhileParsingValue))
         }
     }
 
     #[cfg(feature = "arbitrary_precision")]
     fn scan_integer(&mut self, buf: &mut String) -> Result<()> {
-        match try!(self.scan_or_null(buf)) {
+        match try!(self.scan_or_eof(buf)) {
             b'0' => {
                 // There can be only one leading '0'.
                 match try!(self.peek_or_null()) {
@@ -712,7 +726,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         // Make sure a digit follows the exponent place.
-        match try!(self.scan_or_null(buf)) {
+        match try!(self.scan_or_eof(buf)) {
             b'0'...b'9' => {}
             _ => {
                 return Err(self.error(ErrorCode::InvalidNumber));
