@@ -320,6 +320,8 @@
 
 #[macro_use]
 extern crate serde;
+#[cfg(feature = "hashbrown")]
+extern crate hashbrown;
 #[cfg(feature = "preserve_order")]
 extern crate indexmap;
 extern crate itoa;

@@ -14,21 +14,26 @@ use std::iter::FromIterator;
 use std::ops;
 use value::Value;
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 use std::collections::{btree_map, BTreeMap};
 
 #[cfg(feature = "preserve_order")]
 use indexmap::{self, IndexMap};
+
+#[cfg(feature = "hashbrown")]
+use hashbrown::{self, HashMap};
 
 /// Represents a JSON key/value type.
 pub struct Map<K, V> {
     map: MapImpl<K, V>,
 }
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 type MapImpl<K, V> = BTreeMap<K, V>;
 #[cfg(feature = "preserve_order")]
 type MapImpl<K, V> = IndexMap<K, V>;
+#[cfg(feature = "hashbrown")]
+type MapImpl<K, V> = HashMap<K, V>;
 
 impl Map<String, Value> {
     /// Makes a new empty Map.
@@ -39,7 +44,7 @@ impl Map<String, Value> {
         }
     }
 
-    #[cfg(not(feature = "preserve_order"))]
+    #[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
     /// Makes a new empty Map with the given initial capacity.
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
@@ -56,6 +61,15 @@ impl Map<String, Value> {
     pub fn with_capacity(capacity: usize) -> Self {
         Map {
             map: IndexMap::with_capacity(capacity),
+        }
+    }
+
+    #[cfg(feature = "hashbrown")]
+    /// Makes a new empty Map with the given initial capacity.
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Map {
+            map: HashMap::with_capacity(capacity),
         }
     }
 
@@ -135,9 +149,11 @@ impl Map<String, Value> {
     where
         S: Into<String>,
     {
+        #[cfg(feature = "hashbrown")]
+        use hashbrown::hash_map::Entry as EntryImpl;
         #[cfg(feature = "preserve_order")]
         use indexmap::map::Entry as EntryImpl;
-        #[cfg(not(feature = "preserve_order"))]
+        #[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
         use std::collections::btree_map::Entry as EntryImpl;
 
         match self.map.entry(key.into()) {
@@ -381,6 +397,7 @@ macro_rules! delegate_iterator {
             }
         }
 
+        #[cfg(not(feature = "hashbrown") )]
         impl $($generics)* DoubleEndedIterator for $name $($generics)* {
             #[inline]
             fn next_back(&mut self) -> Option<Self::Item> {
@@ -425,15 +442,21 @@ pub struct OccupiedEntry<'a> {
     occupied: OccupiedEntryImpl<'a>,
 }
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 type VacantEntryImpl<'a> = btree_map::VacantEntry<'a, String, Value>;
 #[cfg(feature = "preserve_order")]
 type VacantEntryImpl<'a> = indexmap::map::VacantEntry<'a, String, Value>;
+#[cfg(feature = "hashbrown")]
+type VacantEntryImpl<'a> =
+    hashbrown::hash_map::VacantEntry<'a, String, Value, hashbrown::hash_map::DefaultHashBuilder>;
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 type OccupiedEntryImpl<'a> = btree_map::OccupiedEntry<'a, String, Value>;
 #[cfg(feature = "preserve_order")]
 type OccupiedEntryImpl<'a> = indexmap::map::OccupiedEntry<'a, String, Value>;
+#[cfg(feature = "hashbrown")]
+type OccupiedEntryImpl<'a> =
+    hashbrown::hash_map::OccupiedEntry<'a, String, Value, hashbrown::hash_map::DefaultHashBuilder>;
 
 impl<'a> Entry<'a> {
     /// Returns a reference to this entry's key.
@@ -714,10 +737,12 @@ pub struct Iter<'a> {
     iter: IterImpl<'a>,
 }
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 type IterImpl<'a> = btree_map::Iter<'a, String, Value>;
 #[cfg(feature = "preserve_order")]
 type IterImpl<'a> = indexmap::map::Iter<'a, String, Value>;
+#[cfg(feature = "hashbrown")]
+type IterImpl<'a> = hashbrown::hash_map::Iter<'a, String, Value>;
 
 delegate_iterator!((Iter<'a>) => (&'a String, &'a Value));
 
@@ -739,10 +764,12 @@ pub struct IterMut<'a> {
     iter: IterMutImpl<'a>,
 }
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 type IterMutImpl<'a> = btree_map::IterMut<'a, String, Value>;
 #[cfg(feature = "preserve_order")]
 type IterMutImpl<'a> = indexmap::map::IterMut<'a, String, Value>;
+#[cfg(feature = "hashbrown")]
+type IterMutImpl<'a> = hashbrown::hash_map::IterMut<'a, String, Value>;
 
 delegate_iterator!((IterMut<'a>) => (&'a String, &'a mut Value));
 
@@ -764,10 +791,12 @@ pub struct IntoIter {
     iter: IntoIterImpl,
 }
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 type IntoIterImpl = btree_map::IntoIter<String, Value>;
 #[cfg(feature = "preserve_order")]
 type IntoIterImpl = indexmap::map::IntoIter<String, Value>;
+#[cfg(feature = "hashbrown")]
+type IntoIterImpl = hashbrown::hash_map::IntoIter<String, Value>;
 
 delegate_iterator!((IntoIter) => (String, Value));
 
@@ -778,10 +807,12 @@ pub struct Keys<'a> {
     iter: KeysImpl<'a>,
 }
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 type KeysImpl<'a> = btree_map::Keys<'a, String, Value>;
 #[cfg(feature = "preserve_order")]
 type KeysImpl<'a> = indexmap::map::Keys<'a, String, Value>;
+#[cfg(feature = "hashbrown")]
+type KeysImpl<'a> = hashbrown::hash_map::Keys<'a, String, Value>;
 
 delegate_iterator!((Keys<'a>) => &'a String);
 
@@ -792,10 +823,12 @@ pub struct Values<'a> {
     iter: ValuesImpl<'a>,
 }
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 type ValuesImpl<'a> = btree_map::Values<'a, String, Value>;
 #[cfg(feature = "preserve_order")]
 type ValuesImpl<'a> = indexmap::map::Values<'a, String, Value>;
+#[cfg(feature = "hashbrown")]
+type ValuesImpl<'a> = hashbrown::hash_map::Values<'a, String, Value>;
 
 delegate_iterator!((Values<'a>) => &'a Value);
 
@@ -806,9 +839,11 @@ pub struct ValuesMut<'a> {
     iter: ValuesMutImpl<'a>,
 }
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(not(any(feature = "preserve_order", feature = "hashbrown")))]
 type ValuesMutImpl<'a> = btree_map::ValuesMut<'a, String, Value>;
 #[cfg(feature = "preserve_order")]
 type ValuesMutImpl<'a> = indexmap::map::ValuesMut<'a, String, Value>;
+#[cfg(feature = "hashbrown")]
+type ValuesMutImpl<'a> = hashbrown::hash_map::ValuesMut<'a, String, Value>;
 
 delegate_iterator!((ValuesMut<'a>) => &'a mut Value);
