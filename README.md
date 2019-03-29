@@ -199,8 +199,7 @@ when we write `p.phones[0]`, then `p.phones` is guaranteed to be a
 ## Constructing JSON values
 
 Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
-objects with very natural JSON syntax. In order to use this macro,
-`serde_json` needs to be imported with the `#[macro_use]` attribute.
+objects with very natural JSON syntax.
 
 <a href="https://play.rust-lang.org/?edition=2018&gist=6ccafad431d72b62e77cc34c8e879b24" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">

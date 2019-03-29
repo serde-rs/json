@@ -1,6 +1,6 @@
 [package]
 name = "serde_json"
-version = "1.0.37" # remember to update html_root_url
+version = "1.0.39" # remember to update html_root_url
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "A JSON serialization file format"
@@ -22,12 +22,14 @@ itoa = { version = "0.4.3", optional = true, default-features = false }
 ryu = "0.2"
 
 [dev-dependencies]
+# automod = "0.1"
 # compiletest_rs = { version = "0.3", features = ["stable"] }
 # serde_bytes = "0.10"
 # serde_derive = "1.0"
+# serde_stacker = "0.1"
 
 [package.metadata.docs.rs]
-features = ["raw_value"]
+features = ["raw_value", "unbounded_depth"]
 
 [package.metadata.playground]
 features = ["raw_value"]
@@ -51,7 +53,16 @@ arbitrary_precision = []
 # Provide a RawValue type that can hold unprocessed JSON during deserialization.
 raw_value = []
 
-# Default feature indicating std support
+# Provide a method disable_recursion_limit to parse arbitrarily deep JSON
+# structures without any consideration for overflowing the stack. When using
+# this feature, you will want to provide some other way to protect against stack
+# overflows, such as by wrapping your Deserializer in the dynamically growing
+# stack adapter provided by the serde_stacker crate. Additionally you will need
+# to be careful around other recursive operations on the parsed result which may
+# overflow the stack after deserialization has completed, including, but not
+# limited to, Display and Debug and Drop impls.
+unbounded_depth = []
+
 std = ["serde/default", "itoa/default", "indexmap"]
 
 # No-Std feature

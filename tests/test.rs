@@ -737,15 +737,15 @@ fn test_parse_number_errors() {
     test_parse_err::<f64>(&[
         ("+", "expected value at line 1 column 1"),
         (".", "expected value at line 1 column 1"),
-        ("-", "invalid number at line 1 column 1"),
+        ("-", "EOF while parsing a value at line 1 column 1"),
         ("00", "invalid number at line 1 column 2"),
         ("0x80", "trailing characters at line 1 column 2"),
         ("\\0", "expected value at line 1 column 1"),
-        ("1.", "invalid number at line 1 column 2"),
+        ("1.", "EOF while parsing a value at line 1 column 2"),
         ("1.a", "invalid number at line 1 column 3"),
         ("1.e1", "invalid number at line 1 column 3"),
-        ("1e", "invalid number at line 1 column 2"),
-        ("1e+", "invalid number at line 1 column 3"),
+        ("1e", "EOF while parsing a value at line 1 column 2"),
+        ("1e+", "EOF while parsing a value at line 1 column 3"),
         ("1a", "trailing characters at line 1 column 2"),
         (
             "100e777777777777777777777777777",
@@ -1760,8 +1760,21 @@ fn test_stack_overflow() {
         .collect();
     let _: Value = from_str(&brackets).unwrap();
 
-    let brackets: String = iter::repeat('[').take(128).collect();
+    let brackets: String = iter::repeat('[').take(129).collect();
     test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 128")]);
+}
+
+#[test]
+#[cfg(feature = "unbounded_depth")]
+fn test_disable_recursion_limit() {
+    let brackets: String = iter::repeat('[')
+        .take(140)
+        .chain(iter::repeat(']').take(140))
+        .collect();
+
+    let mut deserializer = Deserializer::from_str(&brackets);
+    deserializer.disable_recursion_limit();
+    Value::deserialize(&mut deserializer).unwrap();
 }
 
 #[test]

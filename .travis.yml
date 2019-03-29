@@ -10,6 +10,7 @@ matrix:
         - cargo test --features preserve_order
         - cargo test --features arbitrary_precision
         - cargo test --features raw_value
+        - cargo test --features unbounded_depth
 
     - rust: 1.15.0
       script:
@@ -24,7 +25,7 @@ matrix:
     - rust: nightly
       name: Clippy
       script:
-        - rustup component add clippy-preview || travis_terminate 0
+        - rustup component add clippy || travis_terminate 0
         - cargo clippy
 
 script:
