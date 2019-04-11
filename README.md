@@ -144,7 +144,7 @@ largely automatically.
 </a>
 
 ```rust
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use serde_json::Result;
 
 #[derive(Serialize, Deserialize)]
