@@ -119,7 +119,6 @@
 //! largely automatically.
 //!
 //! ```edition2018
-//! # use serde_derive::{Deserialize, Serialize};
 //! use serde::{Deserialize, Serialize};
 //! use serde_json::Result;
 //!
@@ -242,7 +241,6 @@
 //! such as a File or a TCP stream.
 //!
 //! ```edition2018
-//! # use serde_derive::{Deserialize, Serialize};
 //! use serde::{Deserialize, Serialize};
 //! use serde_json::Result;
 //!

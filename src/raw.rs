@@ -23,7 +23,6 @@ use error::Error;
 /// # Example
 ///
 /// ```edition2018
-/// # use serde_derive::{Deserialize, Serialize};
 /// use serde::{Deserialize, Serialize};
 /// use serde_json::{Result, value::RawValue};
 ///
@@ -70,7 +69,7 @@ use error::Error;
 /// The typical usage of `RawValue` will be in the borrowed form:
 ///
 /// ```edition2018
-/// # use serde_derive::Deserialize;
+/// # use serde::Deserialize;
 /// # use serde_json::value::RawValue;
 /// #
 /// #[derive(Deserialize)]
@@ -93,7 +92,7 @@ use error::Error;
 /// [`serde_json::from_reader`]: ../fn.from_reader.html
 ///
 /// ```edition2018
-/// # use serde_derive::Deserialize;
+/// # use serde::Deserialize;
 /// # use serde_json::value::RawValue;
 /// #
 /// #[derive(Deserialize)]
@@ -185,7 +184,6 @@ impl RawValue {
     /// # Example
     ///
     /// ```edition2018
-    /// # use serde_derive::Deserialize;
     /// use serde::Deserialize;
     /// use serde_json::{Result, value::RawValue};
     ///

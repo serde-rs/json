@@ -864,7 +864,7 @@ impl Value {
 /// # Examples
 ///
 /// ```edition2018
-/// # use serde_derive::Deserialize;
+/// # use serde::Deserialize;
 /// use serde_json::Value;
 ///
 /// #[derive(Deserialize)]
@@ -906,7 +906,6 @@ mod ser;
 /// # Example
 ///
 /// ```edition2018
-/// # use serde_derive::Serialize;
 /// use serde::Serialize;
 /// use serde_json::json;
 ///
@@ -971,7 +970,6 @@ where
 /// # Example
 ///
 /// ```edition2018
-/// # use serde_derive::Deserialize;
 /// use serde::Deserialize;
 /// use serde_json::json;
 ///

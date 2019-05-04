@@ -2199,7 +2199,6 @@ where
 /// # Example
 ///
 /// ```edition2018
-/// # use serde_derive::Deserialize;
 /// use serde::Deserialize;
 ///
 /// use std::error::Error;
@@ -2255,7 +2254,6 @@ where
 /// # Example
 ///
 /// ```edition2018
-/// # use serde_derive::Deserialize;
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize, Debug)]
@@ -2298,7 +2296,6 @@ where
 /// # Example
 ///
 /// ```edition2018
-/// # use serde_derive::Deserialize;
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize, Debug)]
