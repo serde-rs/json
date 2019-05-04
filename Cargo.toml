@@ -23,10 +23,10 @@ ryu = "0.2"
 
 [dev-dependencies]
 automod = "0.1"
-compiletest_rs = { version = "0.3", features = ["stable"] }
 serde_bytes = "0.11"
 serde_derive = "1.0"
 serde_stacker = "0.1"
+trybuild = "1.0"
 
 [package.metadata.docs.rs]
 features = ["raw_value", "unbounded_depth"]

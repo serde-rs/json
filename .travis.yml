@@ -4,8 +4,6 @@ matrix:
   include:
     - rust: nightly
       script:
-        - cargo build
-        - cargo build --manifest-path tests/deps/Cargo.toml
         - cargo test
         - cargo test --features preserve_order
         - cargo test --features arbitrary_precision

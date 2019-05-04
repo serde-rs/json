@@ -3,6 +3,3 @@ error: no rules expected the token `=>`
   |
 4 |     json!([ true => ]);
   |                  ^^ no rules expected this token in macro call
-
-error: aborting due to previous error
-
