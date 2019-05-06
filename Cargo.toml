@@ -23,6 +23,7 @@ ryu = "0.2"
 
 [dev-dependencies]
 automod = "0.1"
+select-rustc = "0.1"
 serde_bytes = "0.11"
 serde_derive = "1.0"
 serde_stacker = "0.1"
