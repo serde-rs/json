@@ -326,23 +326,6 @@ Serde without a standard library, please see the [`serde-json-core`] crate.
 
 [`serde-json-core`]: https://japaric.github.io/serde-json-core/serde_json_core/
 
-## License
-
-Serde JSON is licensed under either of
-
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
-   http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or
-   http://opensource.org/licenses/MIT)
-
-at your option.
-
-### Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in Serde JSON by you, as defined in the Apache-2.0 license, shall
-be dual licensed as above, without any additional terms or conditions.
-
 [value]: https://docs.serde.rs/serde_json/value/enum.Value.html
 [from_str]: https://docs.serde.rs/serde_json/de/fn.from_str.html
 [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
@@ -351,3 +334,20 @@ be dual licensed as above, without any additional terms or conditions.
 [to_vec]: https://docs.serde.rs/serde_json/ser/fn.to_vec.html
 [to_writer]: https://docs.serde.rs/serde_json/ser/fn.to_writer.html
 [macro]: https://docs.serde.rs/serde_json/macro.json.html
+
+<br>
+
+#### License
+
+<sup>
+Licensed under either of <a href="LICENSE-APACHE">Apache License, Version
+2.0</a> or <a href="LICENSE-MIT">MIT license</a> at your option.
+</sup>
+
+<br>
+
+<sub>
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in this crate by you, as defined in the Apache-2.0 license, shall
+be dual licensed as above, without any additional terms or conditions.
+</sub>
