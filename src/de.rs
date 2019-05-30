@@ -2193,8 +2193,15 @@ where
 /// as a [`File`], you will want to apply your own buffering because serde_json
 /// will not buffer the input. See [`std::io::BufReader`].
 ///
+/// Note that counter to intuition, this function is usually slower than
+/// reading a file completely into memory and then applying [`from_str`]
+/// or [`from_slice`] on it. See [issue #160].
+///
 /// [`File`]: https://doc.rust-lang.org/std/fs/struct.File.html
-/// [`BufReader`]: https://doc.rust-lang.org/std/io/struct.BufReader.html
+/// [`std::io::BufReader`]: https://doc.rust-lang.org/std/io/struct.BufReader.html
+/// [`from_str`]: ./fn.from_str.html
+/// [`from_slice`]: ./fn.from_slice.html
+/// [issue #160]: https://github.com/serde-rs/json/issues/160
 ///
 /// # Example
 ///
