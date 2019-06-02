@@ -313,6 +313,7 @@
     use_self,
     zero_prefixed_literal,
     // we support older compilers
+    checked_conversions,
     redundant_field_names,
 ))]
 #![deny(missing_docs)]
