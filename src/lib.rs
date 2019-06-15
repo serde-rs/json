@@ -305,6 +305,8 @@
     cast_possible_wrap,
     cast_precision_loss,
     cast_sign_loss,
+    // correctly used
+    integer_division,
     // things are often more readable this way
     cast_lossless,
     module_name_repetitions,
