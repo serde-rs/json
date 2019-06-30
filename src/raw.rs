@@ -20,6 +20,16 @@ use error::Error;
 /// When serializing, a value of this type will retain its original formatting
 /// and will not be minified or pretty-printed.
 ///
+/// # Note
+///
+/// `RawValue` is only available if serde\_json is built with the `"raw_value"`
+/// feature.
+///
+/// ```toml
+/// [dependencies]
+/// serde_json = { version = "1.0", features = ["raw_value"] }
+/// ```
+///
 /// # Example
 ///
 /// ```edition2018
@@ -99,16 +109,6 @@ use error::Error;
 /// struct SomeStruct {
 ///     raw_value: Box<RawValue>,
 /// }
-/// ```
-///
-/// # Note
-///
-/// `RawValue` is only available if serde\_json is built with the `"raw_value"`
-/// feature.
-///
-/// ```toml
-/// [dependencies]
-/// serde_json = { version = "1.0", features = ["raw_value"] }
 /// ```
 #[repr(C)]
 pub struct RawValue {
