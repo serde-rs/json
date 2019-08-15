@@ -32,8 +32,8 @@ use serde::ser::{self, Serialize, Serializer};
 use serde_bytes::{ByteBuf, Bytes};
 
 use serde_json::{
-    from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
-    to_writer, Deserializer, Number, Value,
+    from_reader, from_slice, from_str, from_str_with_binary_mode, from_value, to_string,
+    to_string_pretty, to_value, to_vec, to_writer, Deserializer, Number, Value,
 };
 
 macro_rules! treemap {
@@ -1658,7 +1658,6 @@ fn test_byte_buf_de_multiple() {
 #[test]
 fn test_bytes_hex_ser_de() {
     use serde_json::ser::CompactFormatter;
-    use serde_json::StrReadForTestsOnlyDoNotUse as StrRead;
     use serde_json::{BinaryMode, Serializer};
     use std::collections::HashMap;
 
@@ -1676,11 +1675,7 @@ fn test_bytes_hex_ser_de() {
     where
         T: de::Deserialize<'a>,
     {
-        let mut de = Deserializer::new_with_binary_mode(StrRead::new(s), BinaryMode::Hex);
-        let value = de::Deserialize::deserialize(&mut de).expect("Should deserialize");
-        // Make sure the whole stream has been consumed.
-        de.end().expect("Should consume the whole stream");
-        value
+        from_str_with_binary_mode(s, BinaryMode::Hex).expect("Should deserialize")
     }
 
     // Encode/decode empty buffer

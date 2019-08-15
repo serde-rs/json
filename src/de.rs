@@ -2215,7 +2215,15 @@ where
     R: Read<'de>,
     T: de::Deserialize<'de>,
 {
-    let mut de = Deserializer::new(read);
+    from_trait_with_binary_mode(read, BinaryMode::Array)
+}
+
+fn from_trait_with_binary_mode<'de, R, T>(read: R, binary_mode: BinaryMode) -> Result<T>
+where
+    R: Read<'de>,
+    T: de::Deserialize<'de>,
+{
+    let mut de = Deserializer::new_with_binary_mode(read, binary_mode);
     let value = try!(de::Deserialize::deserialize(&mut de));
 
     // Make sure the whole stream has been consumed.
@@ -2295,6 +2303,15 @@ where
     from_trait(read::IoRead::new(rdr))
 }
 
+/// See `from_reader`.
+pub fn from_reader_with_binary_mode<R, T>(rdr: R, binary_mode: BinaryMode) -> Result<T>
+where
+    R: io::Read,
+    T: de::DeserializeOwned,
+{
+    from_trait_with_binary_mode(read::IoRead::new(rdr), binary_mode)
+}
+
 /// Deserialize an instance of type `T` from bytes of JSON text.
 ///
 /// # Example
@@ -2337,6 +2354,14 @@ where
     from_trait(read::SliceRead::new(v))
 }
 
+/// See `from_slice`.
+pub fn from_slice_with_binary_mode<'a, T>(v: &'a [u8], binary_mode: BinaryMode) -> Result<T>
+where
+    T: de::Deserialize<'a>,
+{
+    from_trait_with_binary_mode(read::SliceRead::new(v), binary_mode)
+}
+
 /// Deserialize an instance of type `T` from a string of JSON text.
 ///
 /// # Example
@@ -2377,4 +2402,12 @@ where
     T: de::Deserialize<'a>,
 {
     from_trait(read::StrRead::new(s))
+}
+
+/// See `from_str`.
+pub fn from_str_with_binary_mode<'a, T>(s: &'a str, binary_mode: BinaryMode) -> Result<T>
+where
+    T: de::Deserialize<'a>,
+{
+    from_trait_with_binary_mode(read::StrRead::new(s), binary_mode)
 }

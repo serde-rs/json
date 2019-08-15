@@ -335,6 +335,10 @@ pub use self::binary::BinaryMode;
 #[doc(inline)]
 pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
+pub use self::de::{
+    from_reader_with_binary_mode, from_slice_with_binary_mode, from_str_with_binary_mode,
+};
+#[doc(inline)]
 pub use self::error::{Error, Result};
 #[doc(inline)]
 pub use self::ser::{
@@ -367,10 +371,6 @@ mod binary;
 mod iter;
 mod number;
 mod read;
-
-/// FIXME: this is a temporary shortcut to enable binary2hex tests
-#[cfg(feature = "binary_hex")]
-pub use read::StrRead as StrReadForTestsOnlyDoNotUse;
 
 #[cfg(feature = "raw_value")]
 mod raw;
