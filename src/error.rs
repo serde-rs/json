@@ -255,7 +255,7 @@ pub enum ErrorCode {
     /// Encountered nesting of JSON maps and arrays more than 128 layers deep.
     RecursionLimitExceeded,
 
-    /// Invalid hex 
+    /// Invalid hex
     #[cfg(feature = "binary_hex")]
     InvalidHexEncoding,
 }

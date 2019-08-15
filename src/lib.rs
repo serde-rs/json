@@ -327,10 +327,11 @@ extern crate indexmap;
 extern crate itoa;
 extern crate ryu;
 
-#[cfg(feature="binary_hex")]
+#[cfg(feature = "binary_hex")]
 extern crate hex;
 
-
+#[doc(inline)]
+pub use self::binary::BinaryMode;
 #[doc(inline)]
 pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
@@ -341,8 +342,6 @@ pub use self::ser::{
 };
 #[doc(inline)]
 pub use self::value::{from_value, to_value, Map, Number, Value};
-#[doc(inline)]
-pub use self::binary::BinaryMode;
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
@@ -364,13 +363,13 @@ pub mod map;
 pub mod ser;
 pub mod value;
 
+mod binary;
 mod iter;
 mod number;
 mod read;
-mod binary;
 
 /// FIXME: this is a temporary shortcut to enable binary2hex tests
-#[cfg(feature="binary_hex")]
+#[cfg(feature = "binary_hex")]
 pub use read::StrRead as StrReadForTestsOnlyDoNotUse;
 
 #[cfg(feature = "raw_value")]

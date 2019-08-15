@@ -5,8 +5,8 @@ use std::io;
 use std::num::FpCategory;
 use std::str;
 
-use super::error::{Error, ErrorCode, Result};
 use super::binary::BinaryMode;
+use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
 
 use itoa;
@@ -53,14 +53,18 @@ where
         Serializer {
             writer: writer,
             formatter: formatter,
-            binary_mode: BinaryMode::Array
+            binary_mode: BinaryMode::Array,
         }
     }
 
     /// Creates a new JSON visitor whose output will be written to the writer
     /// specified, with explicit choice of formatter (compact or pretty)
     #[inline]
-    pub fn with_formatter_and_binary_mode(writer: W, formatter: F, binary_mode: BinaryMode) -> Self {
+    pub fn with_formatter_and_binary_mode(
+        writer: W,
+        formatter: F,
+        binary_mode: BinaryMode,
+    ) -> Self {
         Serializer {
             writer: writer,
             formatter: formatter,
@@ -249,11 +253,9 @@ where
                     try!(seq.serialize_element(byte));
                 }
                 seq.end()
-            },
+            }
             #[cfg(feature = "binary_hex")]
-            BinaryMode::Hex => {
-                self.serialize_str(&hex::encode(value))
-            },
+            BinaryMode::Hex => self.serialize_str(&hex::encode(value)),
         }
     }
 
@@ -1141,9 +1143,7 @@ where
         match self.ser.binary_mode {
             BinaryMode::Array => Err(key_must_be_a_string()),
             #[cfg(feature = "binary_hex")]
-            BinaryMode::Hex => {
-                self.serialize_str(&hex::encode(_value))
-            },
+            BinaryMode::Hex => self.serialize_str(&hex::encode(_value)),
         }
     }
 

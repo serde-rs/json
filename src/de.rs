@@ -6,9 +6,9 @@ use std::result;
 use std::str::FromStr;
 use std::{i32, u64};
 
-use serde::de::{self, Expected, Unexpected};
 use super::binary::BinaryMode;
 use super::error::{Error, ErrorCode, Result};
+use serde::de::{self, Expected, Unexpected};
 
 use read::{self, Reference};
 
@@ -674,7 +674,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 buf.push(b as char);
                 Ok(b)
             }
-            None => Err(self.error(ErrorCode::EofWhileParsingValue))
+            None => Err(self.error(ErrorCode::EofWhileParsingValue)),
         }
     }
 
@@ -1456,11 +1456,11 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     BinaryMode::Hex => {
                         use std::ops::Deref;
                         let bytes: &[u8] = str_ref.deref();
-                        let bytes = try!(hex::decode(bytes).map_err(|_| self.peek_error(ErrorCode::InvalidHexEncoding)));
+                        let bytes = try!(hex::decode(bytes)
+                            .map_err(|_| self.peek_error(ErrorCode::InvalidHexEncoding)));
                         visitor.visit_bytes(&bytes)
                     }
                 }
-                
             }
             b'[' => self.deserialize_seq(visitor),
             _ => Err(self.peek_invalid_type(&visitor)),
