@@ -73,6 +73,8 @@ impl Error {
             | ErrorCode::TrailingCharacters
             | ErrorCode::UnexpectedEndOfHexEscape
             | ErrorCode::RecursionLimitExceeded => Category::Syntax,
+            #[cfg(feature = "binary_hex")]
+            ErrorCode::InvalidHexEncoding => Category::Syntax,
         }
     }
 
@@ -252,6 +254,10 @@ pub enum ErrorCode {
 
     /// Encountered nesting of JSON maps and arrays more than 128 layers deep.
     RecursionLimitExceeded,
+
+    /// Invalid hex 
+    #[cfg(feature = "binary_hex")]
+    InvalidHexEncoding,
 }
 
 impl Error {
@@ -329,6 +335,8 @@ impl Display for ErrorCode {
             ErrorCode::TrailingCharacters => f.write_str("trailing characters"),
             ErrorCode::UnexpectedEndOfHexEscape => f.write_str("unexpected end of hex escape"),
             ErrorCode::RecursionLimitExceeded => f.write_str("recursion limit exceeded"),
+            #[cfg(feature = "binary_hex")]
+            ErrorCode::InvalidHexEncoding => f.write_str("invalid hex encoding"),
         }
     }
 }

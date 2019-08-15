@@ -33,7 +33,7 @@ use serde_bytes::{ByteBuf, Bytes};
 
 use serde_json::{
     from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
-    to_writer, Deserializer, Number, Value,
+    to_writer, Deserializer, Number, Value
 };
 
 macro_rules! treemap {
@@ -1652,6 +1652,59 @@ fn test_byte_buf_de_multiple() {
     let a = ByteBuf::from(b"ab\nc".to_vec());
     let b = ByteBuf::from(b"cd\ne".to_vec());
     assert_eq!(vec![a, b], s);
+}
+
+#[cfg(feature="binary_hex")]
+#[test]
+fn test_bytes_hex_ser_de() {
+    use std::collections::HashMap;
+    use serde_json::{BinaryMode, Serializer};
+    use serde_json::ser::CompactFormatter;
+    use serde_json::StrReadForTestsOnlyDoNotUse as StrRead;
+    
+    fn to_string_with_hex<T: Serialize>(value: &T) -> String {
+        let mut vec = Vec::with_capacity(128);
+        let mut ser = Serializer::with_formatter_and_binary_mode(&mut vec, CompactFormatter, BinaryMode::Hex);
+        value.serialize(&mut ser).expect("Serialization should work");
+        String::from_utf8(vec).expect("Should not emit invalid UTF-8")
+    }
+
+    fn from_str_with_hex<'a, T>(s: &'a str) -> T
+    where
+        T: de::Deserialize<'a>,
+    {
+        let mut de = Deserializer::new_with_binary_mode(StrRead::new(s), BinaryMode::Hex);
+        let value = de::Deserialize::deserialize(&mut de).expect("Should deserialize");
+        // Make sure the whole stream has been consumed.
+        de.end().expect("Should consume the whole stream");
+        value
+    }
+
+    // Encode/decode empty buffer
+    let buf: Vec<u8> = vec![];
+    let bytes = Bytes::new(&buf);
+    assert_eq!(to_string_with_hex(&bytes), "\"\"".to_string());
+    let bytes2: ByteBuf = from_str_with_hex("\"\"");
+    assert_eq!(bytes2.into_vec(), buf);
+
+    // Encode/decode non-empty buffer
+    let buf: Vec<u8> = vec![1, 2, 3];
+    let bytes = Bytes::new(&buf);
+    assert_eq!(to_string_with_hex(&bytes), "\"010203\"".to_string());
+    let bytes2: ByteBuf = from_str_with_hex("\"010203\"");
+    assert_eq!(bytes2.into_vec(), buf);
+    
+    // TBD: add ser/de test for binary keys in hashmap 
+    let mut dict = HashMap::new();
+    dict.insert(ByteBuf::from(vec![1, 2, 3]), ByteBuf::from(vec![4, 5, 6]));
+    assert_eq!(to_string_with_hex(&dict), "{\"010203\":\"040506\"}".to_string());
+
+    dict = from_str_with_hex("{\"010203\":\"040506\"}");
+    let vec: Vec<(_,_)> = dict.into_iter().collect();
+    assert_eq!(vec, vec![(
+        ByteBuf::from(vec![1, 2, 3]),
+        ByteBuf::from(vec![4, 5, 6])
+    )]);
 }
 
 #[test]

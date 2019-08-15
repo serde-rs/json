@@ -6,6 +6,7 @@ use std::num::FpCategory;
 use std::str;
 
 use super::error::{Error, ErrorCode, Result};
+use super::binary::BinaryMode;
 use serde::ser::{self, Impossible, Serialize};
 
 use itoa;
@@ -15,6 +16,7 @@ use ryu;
 pub struct Serializer<W, F = CompactFormatter> {
     writer: W,
     formatter: F,
+    binary_mode: BinaryMode,
 }
 
 impl<W> Serializer<W>
@@ -51,6 +53,18 @@ where
         Serializer {
             writer: writer,
             formatter: formatter,
+            binary_mode: BinaryMode::Array
+        }
+    }
+
+    /// Creates a new JSON visitor whose output will be written to the writer
+    /// specified, with explicit choice of formatter (compact or pretty)
+    #[inline]
+    pub fn with_formatter_and_binary_mode(writer: W, formatter: F, binary_mode: BinaryMode) -> Self {
+        Serializer {
+            writer: writer,
+            formatter: formatter,
+            binary_mode: binary_mode,
         }
     }
 
@@ -228,11 +242,19 @@ where
     #[inline]
     fn serialize_bytes(self, value: &[u8]) -> Result<()> {
         use serde::ser::SerializeSeq;
-        let mut seq = try!(self.serialize_seq(Some(value.len())));
-        for byte in value {
-            try!(seq.serialize_element(byte));
+        match self.binary_mode {
+            BinaryMode::Array => {
+                let mut seq = try!(self.serialize_seq(Some(value.len())));
+                for byte in value {
+                    try!(seq.serialize_element(byte));
+                }
+                seq.end()
+            },
+            #[cfg(feature = "binary_hex")]
+            BinaryMode::Hex => {
+                self.serialize_str(&hex::encode(value))
+            },
         }
-        seq.end()
     }
 
     #[inline]
@@ -1116,7 +1138,13 @@ where
     }
 
     fn serialize_bytes(self, _value: &[u8]) -> Result<()> {
-        Err(key_must_be_a_string())
+        match self.ser.binary_mode {
+            BinaryMode::Array => Err(key_must_be_a_string()),
+            #[cfg(feature = "binary_hex")]
+            BinaryMode::Hex => {
+                self.serialize_str(&hex::encode(_value))
+            },
+        }
     }
 
     fn serialize_unit(self) -> Result<()> {

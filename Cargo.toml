@@ -20,6 +20,7 @@ serde = "1.0.60"
 indexmap = { version = "1.0", optional = true }
 itoa = "0.4.3"
 ryu = "1.0"
+hex = { version = "0.3.2", default-features = false, optional = true }
 
 [dev-dependencies]
 automod = "0.1"
@@ -63,3 +64,6 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# Enables hex crate and API for hex-encoded binary strings
+binary_hex = ["hex"]

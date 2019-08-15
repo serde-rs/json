@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::{i32, u64};
 
 use serde::de::{self, Expected, Unexpected};
-
+use super::binary::BinaryMode;
 use super::error::{Error, ErrorCode, Result};
 
 use read::{self, Reference};
@@ -27,6 +27,7 @@ pub struct Deserializer<R> {
     remaining_depth: u8,
     #[cfg(feature = "unbounded_depth")]
     disable_recursion_limit: bool,
+    binary_mode: BinaryMode,
 }
 
 impl<'de, R> Deserializer<R>
@@ -48,6 +49,7 @@ where
                 read: read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
+                binary_mode: BinaryMode::Array,
             }
         }
 
@@ -58,6 +60,32 @@ where
                 scratch: Vec::new(),
                 remaining_depth: 128,
                 disable_recursion_limit: false,
+                binary_mode: BinaryMode::Array,
+            }
+        }
+    }
+
+    /// Create a JSON deserializer from one of the possible serde_json input
+    /// sources, with choice of handling binary data.
+    pub fn new_with_binary_mode(read: R, binary_mode: BinaryMode) -> Self {
+        #[cfg(not(feature = "unbounded_depth"))]
+        {
+            Deserializer {
+                read: read,
+                scratch: Vec::new(),
+                remaining_depth: 128,
+                binary_mode: binary_mode,
+            }
+        }
+
+        #[cfg(feature = "unbounded_depth")]
+        {
+            Deserializer {
+                read: read,
+                scratch: Vec::new(),
+                remaining_depth: 128,
+                disable_recursion_limit: false,
+                binary_mode: binary_mode,
             }
         }
     }
@@ -1418,10 +1446,21 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
-                match try!(self.read.parse_str_raw(&mut self.scratch)) {
-                    Reference::Borrowed(b) => visitor.visit_borrowed_bytes(b),
-                    Reference::Copied(b) => visitor.visit_bytes(b),
+                let str_ref = try!(self.read.parse_str_raw(&mut self.scratch));
+                match self.binary_mode {
+                    BinaryMode::Array => match str_ref {
+                        Reference::Borrowed(b) => visitor.visit_borrowed_bytes(b),
+                        Reference::Copied(b) => visitor.visit_bytes(b),
+                    },
+                    #[cfg(feature = "binary_hex")]
+                    BinaryMode::Hex => {
+                        use std::ops::Deref;
+                        let bytes: &[u8] = str_ref.deref();
+                        let bytes = try!(hex::decode(bytes).map_err(|_| self.peek_error(ErrorCode::InvalidHexEncoding)));
+                        visitor.visit_bytes(&bytes)
+                    }
                 }
+                
             }
             b'[' => self.deserialize_seq(visitor),
             _ => Err(self.peek_invalid_type(&visitor)),
