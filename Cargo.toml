@@ -29,6 +29,9 @@ serde_derive = "1.0"
 serde_stacker = "0.1"
 trybuild = "1.0"
 
+[workspace]
+members = ["tests/crate"]
+
 [package.metadata.docs.rs]
 features = ["raw_value", "unbounded_depth"]
 
