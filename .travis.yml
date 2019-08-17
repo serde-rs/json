@@ -13,12 +13,18 @@ matrix:
     - rust: 1.15.0
       script:
         # preserve_order is not supported on 1.15.0
-        - cargo build
-        - cargo build --features arbitrary_precision
+        - cargo build --manifest-path tests/crate/Cargo.toml
+        - cargo build --manifest-path tests/crate/Cargo.toml --features arbitrary_precision
+
+    - rust: 1.18.0
+      script:
+        - cargo build --manifest-path tests/crate/Cargo.toml
+        - cargo build --manifest-path tests/crate/Cargo.toml --features preserve_order
+        - cargo build --manifest-path tests/crate/Cargo.toml --features arbitrary_precision
 
     - rust: stable
     - rust: beta
-    - rust: 1.18.0
+    - rust: 1.31.0
 
     - rust: nightly
       name: Clippy

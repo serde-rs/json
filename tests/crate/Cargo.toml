@@ -1,0 +1,17 @@
+[package]
+name = "serde_json_test"
+version = "0.0.0"
+edition = "2018"
+publish = false
+
+[lib]
+path = "test.rs"
+
+[dependencies]
+serde_json = { path = "../.." }
+
+[features]
+arbitrary_precision = ["serde_json/arbitrary_precision"]
+preserve_order = ["serde_json/preserve_order"]
+raw_value = ["serde_json/raw_value"]
+unbounded_depth = ["serde_json/unbounded_depth"]
