@@ -1,9 +1,29 @@
 //! Serialize a Rust data structure into JSON data.
 
+#[cfg(not(feature = "no_std"))]
+use std::result;
+#[cfg(feature = "no_std")]
+use core::result;
+#[cfg(not(feature = "no_std"))]
 use std::fmt;
+#[cfg(feature = "no_std")]
+use core::fmt;
+#[cfg(not(feature = "no_std"))]
 use std::io;
+#[cfg(feature = "no_std")]
+use core_io as io;
+#[cfg(not(feature = "no_std"))]
 use std::num::FpCategory;
+#[cfg(feature = "no_std")]
+use core::num::FpCategory;
+#[cfg(not(feature = "no_std"))]
 use std::str;
+#[cfg(feature = "no_std")]
+use core::str;
+#[cfg(feature = "no_std")]
+use alloc::string::{String, ToString};
+#[cfg(feature = "no_std")]
+use alloc::vec::Vec;
 
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
@@ -460,7 +480,10 @@ where
     where
         T: fmt::Display,
     {
+        #[cfg(not(feature = "no_std"))]
         use std::fmt::Write;
+        #[cfg(feature = "no_std")]
+        use core::fmt::Write;
 
         struct Adapter<'ser, W: 'ser, F: 'ser> {
             writer: &'ser mut W,
@@ -1634,6 +1657,7 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
+    #[cfg(not(feature = "no_std"))]
     fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> io::Result<()>
     where
         W: io::Write,
@@ -1643,6 +1667,18 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
+    #[cfg(feature = "no_std")]
+    fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buf = itoa::Buffer::new();
+        writer.write(buf.format(value).as_bytes()).map(drop)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    #[cfg(not(feature = "no_std"))]
     fn write_i16<W: ?Sized>(&mut self, writer: &mut W, value: i16) -> io::Result<()>
     where
         W: io::Write,
@@ -1652,6 +1688,18 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
+    #[cfg(feature = "no_std")]
+    fn write_i16<W: ?Sized>(&mut self, writer: &mut W, value: i16) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buf = itoa::Buffer::new();
+        writer.write(buf.format(value).as_bytes()).map(drop)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    #[cfg(not(feature = "no_std"))]
     fn write_i32<W: ?Sized>(&mut self, writer: &mut W, value: i32) -> io::Result<()>
     where
         W: io::Write,
@@ -1661,6 +1709,18 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
+    #[cfg(feature = "no_std")]
+    fn write_i32<W: ?Sized>(&mut self, writer: &mut W, value: i32) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buf = itoa::Buffer::new();
+        writer.write(buf.format(value).as_bytes()).map(drop)
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    #[cfg(not(feature = "no_std"))]
     fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> io::Result<()>
     where
         W: io::Write,
@@ -1668,8 +1728,20 @@ pub trait Formatter {
         itoa::write(writer, value).map(drop)
     }
 
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    #[cfg(feature = "no_std")]
+    fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buf = itoa::Buffer::new();
+        writer.write(buf.format(value).as_bytes()).map(drop)
+    }
+
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
+    #[cfg(not(feature = "no_std"))]
     fn write_u8<W: ?Sized>(&mut self, writer: &mut W, value: u8) -> io::Result<()>
     where
         W: io::Write,
@@ -1679,6 +1751,18 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
+    #[cfg(feature = "no_std")]
+    fn write_u8<W: ?Sized>(&mut self, writer: &mut W, value: u8) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buf = itoa::Buffer::new();
+        writer.write(buf.format(value).as_bytes()).map(drop)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    #[cfg(not(feature = "no_std"))]
     fn write_u16<W: ?Sized>(&mut self, writer: &mut W, value: u16) -> io::Result<()>
     where
         W: io::Write,
@@ -1688,6 +1772,18 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
+    #[cfg(feature = "no_std")]
+    fn write_u16<W: ?Sized>(&mut self, writer: &mut W, value: u16) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buf = itoa::Buffer::new();
+        writer.write(buf.format(value).as_bytes()).map(drop)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    #[cfg(not(feature = "no_std"))]
     fn write_u32<W: ?Sized>(&mut self, writer: &mut W, value: u32) -> io::Result<()>
     where
         W: io::Write,
@@ -1697,11 +1793,34 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
+    #[cfg(feature = "no_std")]
+    fn write_u32<W: ?Sized>(&mut self, writer: &mut W, value: u32) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buf = itoa::Buffer::new();
+        writer.write(buf.format(value).as_bytes()).map(drop)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    #[cfg(not(feature = "no_std"))]
     fn write_u64<W: ?Sized>(&mut self, writer: &mut W, value: u64) -> io::Result<()>
     where
         W: io::Write,
     {
         itoa::write(writer, value).map(drop)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    #[cfg(feature = "no_std")]
+    fn write_u64<W: ?Sized>(&mut self, writer: &mut W, value: u64) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buf = itoa::Buffer::new();
+        writer.write(buf.format(value).as_bytes()).map(drop)
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
@@ -2180,6 +2299,20 @@ where
     Ok(())
 }
 
+// extra type needed so we can implement Write for FakeVec
+struct VecBox<'v>(&'v mut Vec<u8>);
+
+impl<'v> io::Write for VecBox<'v> {
+    fn write(&mut self, data: &[u8]) -> result::Result<usize, io::Error> {
+        self.0.extend_from_slice(data);
+        Ok(data.len())
+    }
+
+    fn flush(&mut self)  -> result::Result<(), io::Error> {
+        Ok(())
+    }
+}
+
 /// Serialize the given data structure as a JSON byte vector.
 ///
 /// # Errors
@@ -2192,7 +2325,8 @@ where
     T: Serialize,
 {
     let mut writer = Vec::with_capacity(128);
-    try!(to_writer(&mut writer, value));
+    let mut fake_vec = VecBox(&mut writer);
+    try!(to_writer(&mut fake_vec, value));
     Ok(writer)
 }
 
@@ -2208,7 +2342,8 @@ where
     T: Serialize,
 {
     let mut writer = Vec::with_capacity(128);
-    try!(to_writer_pretty(&mut writer, value));
+    let mut fake_vec = VecBox(&mut writer);
+    try!(to_writer_pretty(&mut fake_vec, value));
     Ok(writer)
 }
 

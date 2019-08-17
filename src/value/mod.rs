@@ -92,10 +92,26 @@
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
+#[cfg(not(feature = "no_std"))]
 use std::fmt::{self, Debug};
+#[cfg(feature = "no_std")]
+use core::fmt::{self, Debug};
+#[cfg(not(feature = "no_std"))]
 use std::io;
+#[cfg(feature = "no_std")]
+use core_io as io;
+#[cfg(not(feature = "no_std"))]
 use std::mem;
+#[cfg(feature = "no_std")]
+use core::mem;
+#[cfg(not(feature = "no_std"))]
 use std::str;
+#[cfg(feature = "no_std")]
+use core::str;
+#[cfg(feature = "no_std")]
+use alloc::vec::Vec;
+#[cfg(feature = "no_std")]
+use alloc::string::String;
 
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;

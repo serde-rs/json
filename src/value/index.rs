@@ -1,5 +1,15 @@
+#[cfg(not(feature = "no_std"))]
 use std::fmt;
+#[cfg(feature = "no_std")]
+use core::fmt;
+#[cfg(not(feature = "no_std"))]
 use std::ops;
+#[cfg(feature = "no_std")]
+use core::ops;
+#[cfg(feature = "no_std")]
+use alloc::string::String;
+#[cfg(feature = "no_std")]
+use alloc::borrow::ToOwned;
 
 use super::Value;
 use map::Map;
@@ -132,6 +142,9 @@ where
 
 // Prevent users from implementing the Index trait.
 mod private {
+    #[cfg(feature = "no_std")]
+    use alloc::string::String;
+
     pub trait Sealed {}
     impl Sealed for usize {}
     impl Sealed for str {}

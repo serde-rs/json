@@ -1,5 +1,17 @@
+#[cfg(not(feature = "no_std"))]
 use std::ops::Deref;
-use std::{char, cmp, io, str};
+#[cfg(feature = "no_std")]
+use core::ops::Deref;
+#[cfg(not(feature = "no_std"))]
+use std::{char, cmp, str};
+#[cfg(feature = "no_std")]
+use core::{char, cmp, str};
+#[cfg(not(feature = "no_std"))]
+use std::io;
+#[cfg(feature = "no_std")]
+use core_io as io;
+#[cfg(feature = "no_std")]
+use alloc::vec::Vec;
 
 #[cfg(feature = "raw_value")]
 use serde::de::Visitor;

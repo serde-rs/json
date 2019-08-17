@@ -1,10 +1,29 @@
 //! Deserialize JSON data to a Rust data structure.
 
+#[cfg(not(feature = "no_std"))]
 use std::io;
+#[cfg(feature = "no_std")]
+use core_io as io;
+#[cfg(not(feature = "no_std"))]
 use std::marker::PhantomData;
+#[cfg(feature = "no_std")]
+use core::marker::PhantomData;
+#[cfg(not(feature = "no_std"))]
 use std::result;
+#[cfg(feature = "no_std")]
+use core::result;
+#[cfg(not(feature = "no_std"))]
 use std::str::FromStr;
+#[cfg(feature = "no_std")]
+use core::str::FromStr;
+#[cfg(not(feature = "no_std"))]
 use std::{i32, u64};
+#[cfg(feature = "no_std")]
+use core::{i32, u64};
+#[cfg(feature = "no_std")]
+use alloc::vec::Vec;
+#[cfg(feature = "no_std")]
+use alloc::string::String;
 
 use serde::de::{self, Expected, Unexpected};
 

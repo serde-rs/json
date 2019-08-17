@@ -1,10 +1,27 @@
 //! When serializing or deserializing JSON goes wrong.
 
+#[cfg(not(feature = "no_std"))]
 use std::error;
+#[cfg(not(feature = "no_std"))]
 use std::fmt::{self, Debug, Display};
+#[cfg(feature = "no_std")]
+use core::fmt::{self, Debug, Display};
+#[cfg(not(feature = "no_std"))]
 use std::io;
+#[cfg(feature = "no_std")]
+use core_io as io;
+#[cfg(not(feature = "no_std"))]
 use std::result;
+#[cfg(feature = "no_std")]
+use core::result;
+#[cfg(not(feature = "no_std"))]
 use std::str::FromStr;
+#[cfg(feature = "no_std")]
+use core::str::FromStr;
+#[cfg(feature = "no_std")]
+use alloc::boxed::Box;
+#[cfg(feature = "no_std")]
+use alloc::string::{String, ToString};
 
 use serde::de;
 use serde::ser;
@@ -159,6 +176,7 @@ impl From<Error> for io::Error {
     ///     }
     /// }
     /// ```
+    #[cfg(not(feature = "no_std"))]
     fn from(j: Error) -> Self {
         if let ErrorCode::Io(err) = j.err.code {
             err
@@ -167,6 +185,19 @@ impl From<Error> for io::Error {
                 Category::Io => unreachable!(),
                 Category::Syntax | Category::Data => io::Error::new(io::ErrorKind::InvalidData, j),
                 Category::Eof => io::Error::new(io::ErrorKind::UnexpectedEof, j),
+            }
+        }
+    }
+
+    #[cfg(feature = "no_std")]
+    fn from(j: Error) -> Self {
+        if let ErrorCode::Io(err) = j.err.code {
+            err
+        } else {
+            match j.classify() {
+                Category::Io => unreachable!(),
+                Category::Syntax | Category::Data => io::Error::new(io::ErrorKind::InvalidData, "Symtax error"),
+                Category::Eof => io::Error::new(io::ErrorKind::UnexpectedEof, "Eof"),
             }
         }
     }
@@ -333,6 +364,7 @@ impl Display for ErrorCode {
     }
 }
 
+#[cfg(not(feature = "no_std"))]
 impl error::Error for Error {
     fn description(&self) -> &str {
         match self.err.code {

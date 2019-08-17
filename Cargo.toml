@@ -16,10 +16,11 @@ travis-ci = { repository = "serde-rs/json" }
 appveyor = { repository = "serde-rs/json" }
 
 [dependencies]
-serde = "1.0.60"
+serde = { version = "1.0.60", default-features = false, features = ["alloc"] }
 indexmap = { version = "1.0", optional = true }
-itoa = "0.4.3"
+itoa = { version = "0.4.3", default-features = false }
 ryu = "1.0"
+core_io = { version = "0.1.20190701", optional = true }
 
 [dev-dependencies]
 automod = "0.1"
@@ -39,7 +40,7 @@ features = ["raw_value"]
 ### FEATURES #################################################################
 
 [features]
-default = []
+default = [ "std" ]
 
 # Use a different representation for the map type of serde_json::Value.
 # This allows data to be read into a Value and written back to a JSON string
@@ -63,3 +64,9 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# enable std support (enabled by default)
+std = [ "itoa/std" ]
+
+# enable no_std support
+no_std = [ "core_io" ]

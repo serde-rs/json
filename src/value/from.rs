@@ -1,4 +1,16 @@
+#[cfg(not(feature = "no_std"))]
 use std::borrow::Cow;
+#[cfg(feature = "no_std")]
+use alloc::borrow::Cow;
+#[cfg(feature = "no_std")]
+use alloc::string::{String, ToString};
+#[cfg(feature = "no_std")]
+use alloc::vec::Vec;
+
+#[cfg(not(feature = "no_std"))]
+use ::std::iter::FromIterator;
+#[cfg(feature = "no_std")]
+use ::core::iter::FromIterator;
 
 use super::Value;
 use map::Map;
@@ -182,7 +194,7 @@ impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     }
 }
 
-impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
+impl<T: Into<Value>> FromIterator<T> for Value {
     /// Convert an iteratable type to a `Value`
     ///
     /// # Examples

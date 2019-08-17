@@ -319,6 +319,11 @@
     redundant_field_names,
 ))]
 #![deny(missing_docs)]
+#![cfg_attr(feature = "no_std", no_std)]
+#[cfg(not(any(feature = "std", feature = "no_std")))]
+compile_error!("std and no_std are both disabled!");
+#[cfg(all(feature = "std", feature = "no_std"))]
+compile_error!("std and no_std cannot both be enabled!");
 
 #[macro_use]
 extern crate serde;
@@ -326,6 +331,10 @@ extern crate serde;
 extern crate indexmap;
 extern crate itoa;
 extern crate ryu;
+#[cfg(feature = "no_std")]
+extern crate core_io;
+#[cfg(feature = "no_std")]
+extern crate alloc;
 
 #[doc(inline)]
 pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
@@ -340,11 +349,21 @@ pub use self::value::{from_value, to_value, Map, Number, Value};
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
+#[cfg(not(feature = "no_std"))]
 macro_rules! try {
     ($e:expr) => {
         match $e {
             ::std::result::Result::Ok(val) => val,
             ::std::result::Result::Err(err) => return ::std::result::Result::Err(err),
+        }
+    };
+}
+#[cfg(feature = "no_std")]
+macro_rules! try {
+    ($e:expr) => {
+        match $e {
+            ::core::result::Result::Ok(val) => val,
+            ::core::result::Result::Err(err) => return ::core::result::Result::Err(err),
         }
     };
 }

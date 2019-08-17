@@ -5,6 +5,12 @@ use error::{Error, ErrorCode};
 use map::Map;
 use number::Number;
 use value::{to_value, Value};
+#[cfg(feature = "no_std")]
+use alloc::string::{String, ToString};
+#[cfg(feature = "no_std")]
+use alloc::vec::Vec;
+#[cfg(feature = "no_std")]
+use alloc::borrow::ToOwned;
 
 impl Serialize for Value {
     #[inline]
