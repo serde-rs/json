@@ -319,37 +319,34 @@
     redundant_field_names,
 ))]
 #![deny(missing_docs)]
-#![cfg_attr(feature = "no_std", no_std)]
-#[cfg(not(any(feature = "std", feature = "no_std")))]
-compile_error!("std and no_std are both disabled!");
-#[cfg(all(feature = "std", feature = "no_std"))]
-compile_error!("std and no_std cannot both be enabled!");
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
 extern crate serde;
+#[cfg(not(feature = "std"))]
+extern crate alloc;
 #[cfg(feature = "preserve_order")]
 extern crate indexmap;
 extern crate itoa;
 extern crate ryu;
-#[cfg(feature = "no_std")]
-extern crate core_io;
-#[cfg(feature = "no_std")]
-extern crate alloc;
 
 #[doc(inline)]
-pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
+#[cfg(feature = "std")]
+pub use self::de::from_reader;
+#[doc(inline)]
+pub use self::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
 pub use self::error::{Error, Result};
 #[doc(inline)]
-pub use self::ser::{
-    to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer, to_writer_pretty, Serializer,
-};
+pub use self::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty, Serializer};
+#[cfg(feature = "std")]
+pub use self::ser::{to_writer, to_writer_pretty};
 #[doc(inline)]
 pub use self::value::{from_value, to_value, Map, Number, Value};
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 macro_rules! try {
     ($e:expr) => {
         match $e {
@@ -358,7 +355,7 @@ macro_rules! try {
         }
     };
 }
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 macro_rules! try {
     ($e:expr) => {
         match $e {
@@ -377,9 +374,11 @@ pub mod map;
 pub mod ser;
 pub mod value;
 
+#[cfg(feature = "std")]
 mod iter;
 mod number;
 mod read;
+mod write;
 
 #[cfg(feature = "raw_value")]
 mod raw;

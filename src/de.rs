@@ -1,29 +1,27 @@
 //! Deserialize JSON data to a Rust data structure.
 
-#[cfg(not(feature = "no_std"))]
-use std::io;
-#[cfg(feature = "no_std")]
-use core_io as io;
-#[cfg(not(feature = "no_std"))]
-use std::marker::PhantomData;
-#[cfg(feature = "no_std")]
-use core::marker::PhantomData;
-#[cfg(not(feature = "no_std"))]
-use std::result;
-#[cfg(feature = "no_std")]
-use core::result;
-#[cfg(not(feature = "no_std"))]
-use std::str::FromStr;
-#[cfg(feature = "no_std")]
-use core::str::FromStr;
-#[cfg(not(feature = "no_std"))]
-use std::{i32, u64};
-#[cfg(feature = "no_std")]
-use core::{i32, u64};
-#[cfg(feature = "no_std")]
-use alloc::vec::Vec;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::string::String;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+use core::marker::PhantomData;
+#[cfg(not(feature = "std"))]
+use core::result;
+#[cfg(not(feature = "std"))]
+use core::str::FromStr;
+#[cfg(not(feature = "std"))]
+use core::{i32, u64};
+#[cfg(feature = "std")]
+use std::io;
+#[cfg(feature = "std")]
+use std::marker::PhantomData;
+#[cfg(feature = "std")]
+use std::result;
+#[cfg(feature = "std")]
+use std::str::FromStr;
+#[cfg(feature = "std")]
+use std::{i32, u64};
 
 use serde::de::{self, Expected, Unexpected};
 
@@ -31,7 +29,9 @@ use super::error::{Error, ErrorCode, Result};
 
 use read::{self, Reference};
 
-pub use read::{IoRead, Read, SliceRead, StrRead};
+#[cfg(feature = "std")]
+pub use read::IoRead;
+pub use read::{Read, SliceRead, StrRead};
 
 use number::Number;
 #[cfg(feature = "arbitrary_precision")]
@@ -82,6 +82,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<R> Deserializer<read::IoRead<R>>
 where
     R: io::Read,
@@ -665,7 +666,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 buf.push(b as char);
                 Ok(b)
             }
-            None => Err(self.error(ErrorCode::EofWhileParsingValue))
+            None => Err(self.error(ErrorCode::EofWhileParsingValue)),
         }
     }
 
@@ -2267,6 +2268,7 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
+#[cfg(feature = "std")]
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
 where
     R: io::Read,

@@ -1,27 +1,25 @@
 //! When serializing or deserializing JSON goes wrong.
 
-#[cfg(not(feature = "no_std"))]
-use std::error;
-#[cfg(not(feature = "no_std"))]
-use std::fmt::{self, Debug, Display};
-#[cfg(feature = "no_std")]
-use core::fmt::{self, Debug, Display};
-#[cfg(not(feature = "no_std"))]
-use std::io;
-#[cfg(feature = "no_std")]
-use core_io as io;
-#[cfg(not(feature = "no_std"))]
-use std::result;
-#[cfg(feature = "no_std")]
-use core::result;
-#[cfg(not(feature = "no_std"))]
-use std::str::FromStr;
-#[cfg(feature = "no_std")]
-use core::str::FromStr;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::string::{String, ToString};
+#[cfg(not(feature = "std"))]
+use core::fmt::{self, Debug, Display};
+#[cfg(not(feature = "std"))]
+use core::result;
+#[cfg(not(feature = "std"))]
+use core::str::FromStr;
+#[cfg(feature = "std")]
+use std::error;
+#[cfg(feature = "std")]
+use std::fmt::{self, Debug, Display};
+#[cfg(feature = "std")]
+use std::io;
+#[cfg(feature = "std")]
+use std::result;
+#[cfg(feature = "std")]
+use std::str::FromStr;
 
 use serde::de;
 use serde::ser;
@@ -67,6 +65,7 @@ impl Error {
     pub fn classify(&self) -> Category {
         match self.err.code {
             ErrorCode::Message(_) => Category::Data,
+            #[cfg(feature = "std")]
             ErrorCode::Io(_) => Category::Io,
             ErrorCode::EofWhileParsingList
             | ErrorCode::EofWhileParsingObject
@@ -148,6 +147,7 @@ pub enum Category {
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(fallible_impl_from))]
+#[cfg(feature = "std")]
 impl From<Error> for io::Error {
     /// Convert a `serde_json::Error` into an `io::Error`.
     ///
@@ -176,7 +176,7 @@ impl From<Error> for io::Error {
     ///     }
     /// }
     /// ```
-    #[cfg(not(feature = "no_std"))]
+    #[cfg(feature = "std")]
     fn from(j: Error) -> Self {
         if let ErrorCode::Io(err) = j.err.code {
             err
@@ -189,14 +189,16 @@ impl From<Error> for io::Error {
         }
     }
 
-    #[cfg(feature = "no_std")]
+    #[cfg(not(feature = "std"))]
     fn from(j: Error) -> Self {
         if let ErrorCode::Io(err) = j.err.code {
             err
         } else {
             match j.classify() {
                 Category::Io => unreachable!(),
-                Category::Syntax | Category::Data => io::Error::new(io::ErrorKind::InvalidData, "Symtax error"),
+                Category::Syntax | Category::Data => {
+                    io::Error::new(io::ErrorKind::InvalidData, "Symtax error")
+                }
                 Category::Eof => io::Error::new(io::ErrorKind::UnexpectedEof, "Eof"),
             }
         }
@@ -216,6 +218,7 @@ pub enum ErrorCode {
     Message(Box<str>),
 
     /// Some IO error occurred while serializing or deserializing.
+    #[cfg(feature = "std")]
     Io(io::Error),
 
     /// EOF while parsing a list.
@@ -304,6 +307,7 @@ impl Error {
     // Update `eager_json` crate when this function changes.
     #[doc(hidden)]
     #[cold]
+    #[cfg(feature = "std")]
     pub fn io(error: io::Error) -> Self {
         Error {
             err: Box::new(ErrorImpl {
@@ -333,6 +337,7 @@ impl Display for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ErrorCode::Message(ref msg) => f.write_str(msg),
+            #[cfg(feature = "std")]
             ErrorCode::Io(ref err) => Display::fmt(err, f),
             ErrorCode::EofWhileParsingList => f.write_str("EOF while parsing a list"),
             ErrorCode::EofWhileParsingObject => f.write_str("EOF while parsing an object"),
@@ -364,7 +369,7 @@ impl Display for ErrorCode {
     }
 }
 
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 impl error::Error for Error {
     fn description(&self) -> &str {
         match self.err.code {

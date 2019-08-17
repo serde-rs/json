@@ -92,26 +92,22 @@
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
-#[cfg(not(feature = "no_std"))]
-use std::fmt::{self, Debug};
-#[cfg(feature = "no_std")]
-use core::fmt::{self, Debug};
-#[cfg(not(feature = "no_std"))]
-use std::io;
-#[cfg(feature = "no_std")]
-use core_io as io;
-#[cfg(not(feature = "no_std"))]
-use std::mem;
-#[cfg(feature = "no_std")]
-use core::mem;
-#[cfg(not(feature = "no_std"))]
-use std::str;
-#[cfg(feature = "no_std")]
-use core::str;
-#[cfg(feature = "no_std")]
-use alloc::vec::Vec;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::string::String;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+use core::fmt::{self, Debug};
+#[cfg(not(feature = "std"))]
+use core::mem;
+#[cfg(not(feature = "std"))]
+use core::str;
+#[cfg(feature = "std")]
+use std::fmt::{self, Debug};
+#[cfg(feature = "std")]
+use std::mem;
+#[cfg(feature = "std")]
+use std::str;
 
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
@@ -119,6 +115,7 @@ use serde::ser::Serialize;
 use error::Error;
 pub use map::Map;
 pub use number::Number;
+use write;
 
 #[cfg(feature = "raw_value")]
 pub use raw::RawValue;
@@ -206,27 +203,6 @@ impl Debug for Value {
     }
 }
 
-struct WriterFormatter<'a, 'b: 'a> {
-    inner: &'a mut fmt::Formatter<'b>,
-}
-
-impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        fn io_error<E>(_: E) -> io::Error {
-            // Error value does not matter because fmt::Display impl below just
-            // maps it to fmt::Error
-            io::Error::new(io::ErrorKind::Other, "fmt error")
-        }
-        let s = try!(str::from_utf8(buf).map_err(io_error));
-        try!(self.inner.write_str(s).map_err(io_error));
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
 impl fmt::Display for Value {
     /// Display a JSON value as a string.
     ///
@@ -254,13 +230,13 @@ impl fmt::Display for Value {
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let alternate = f.alternate();
-        let mut wr = WriterFormatter { inner: f };
+        let wr = write::WriterFormatter { inner: f };
         if alternate {
             // {:#}
-            super::ser::to_writer_pretty(&mut wr, self).map_err(|_| fmt::Error)
+            super::ser::to_internal_writer_pretty(wr, self).map_err(|_| fmt::Error)
         } else {
             // {}
-            super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
+            super::ser::to_internal_writer(wr, self).map_err(|_| fmt::Error)
         }
     }
 }

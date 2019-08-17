@@ -1,29 +1,29 @@
-#[cfg(not(feature = "no_std"))]
-use std::borrow::Cow;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::borrow::Cow;
-#[cfg(not(feature = "no_std"))]
-use std::fmt;
-#[cfg(feature = "no_std")]
-use core::fmt;
-#[cfg(not(feature = "no_std"))]
-use std::slice;
-#[cfg(feature = "no_std")]
-use core::slice;
-#[cfg(not(feature = "no_std"))]
-use std::str;
-#[cfg(feature = "no_std")]
-use core::str;
-#[cfg(not(feature = "no_std"))]
-use std::vec;
-#[cfg(feature = "no_std")]
-use alloc::vec;
-#[cfg(feature = "no_std")]
-use alloc::vec::Vec;
-#[cfg(feature = "no_std")]
-use alloc::string::String;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::borrow::ToOwned;
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+use core::fmt;
+#[cfg(not(feature = "std"))]
+use core::slice;
+#[cfg(not(feature = "std"))]
+use core::str;
+#[cfg(feature = "std")]
+use std::borrow::Cow;
+#[cfg(feature = "std")]
+use std::fmt;
+#[cfg(feature = "std")]
+use std::slice;
+#[cfg(feature = "std")]
+use std::str;
+#[cfg(feature = "std")]
+use std::vec;
 
 use serde;
 use serde::de::{

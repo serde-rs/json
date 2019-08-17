@@ -1,7 +1,4 @@
-#[cfg(not(feature = "no_std"))]
 use std::io;
-#[cfg(feature = "no_std")]
-use core_io as io;
 
 pub struct LineColIterator<I> {
     iter: I,

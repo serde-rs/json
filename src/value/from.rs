@@ -1,16 +1,16 @@
-#[cfg(not(feature = "no_std"))]
-use std::borrow::Cow;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::borrow::Cow;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::string::{String, ToString};
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::borrow::Cow;
 
-#[cfg(not(feature = "no_std"))]
-use ::std::iter::FromIterator;
-#[cfg(feature = "no_std")]
-use ::core::iter::FromIterator;
+#[cfg(not(feature = "std"))]
+use core::iter::FromIterator;
+#[cfg(feature = "std")]
+use std::iter::FromIterator;
 
 use super::Value;
 use map::Map;

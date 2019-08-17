@@ -1,10 +1,10 @@
+#[cfg(not(feature = "std"))]
+use core::fmt::{self, Debug, Display};
 use error::Error;
 use serde::de::{self, Unexpected, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-#[cfg(not(feature = "no_std"))]
+#[cfg(feature = "std")]
 use std::fmt::{self, Debug, Display};
-#[cfg(feature = "no_std")]
-use core::fmt::{self, Debug, Display};
 
 #[cfg(feature = "arbitrary_precision")]
 use itoa;

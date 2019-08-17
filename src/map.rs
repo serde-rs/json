@@ -6,35 +6,35 @@
 //! [`BTreeMap`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
 //! [`IndexMap`]: https://docs.rs/indexmap/*/indexmap/map/struct.IndexMap.html
 
-use serde::{de, ser};
-#[cfg(not(feature = "no_std"))]
-use std::borrow::Borrow;
-#[cfg(feature = "no_std")]
-use core::borrow::Borrow;
-#[cfg(not(feature = "no_std"))]
-use std::fmt::{self, Debug};
-#[cfg(feature = "no_std")]
-use core::fmt::{self, Debug};
-#[cfg(not(feature = "no_std"))]
-use std::hash::Hash;
-#[cfg(feature = "no_std")]
-use core::hash::Hash;
-#[cfg(not(feature = "no_std"))]
-use std::iter::FromIterator;
-#[cfg(feature = "no_std")]
-use core::iter::FromIterator;
-#[cfg(not(feature = "no_std"))]
-use std::ops;
-#[cfg(feature = "no_std")]
-use core::ops;
-use value::Value;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::string::String;
+#[cfg(not(feature = "std"))]
+use core::borrow::Borrow;
+#[cfg(not(feature = "std"))]
+use core::fmt::{self, Debug};
+#[cfg(not(feature = "std"))]
+use core::hash::Hash;
+#[cfg(not(feature = "std"))]
+use core::iter::FromIterator;
+#[cfg(not(feature = "std"))]
+use core::ops;
+use serde::{de, ser};
+#[cfg(feature = "std")]
+use std::borrow::Borrow;
+#[cfg(feature = "std")]
+use std::fmt::{self, Debug};
+#[cfg(feature = "std")]
+use std::hash::Hash;
+#[cfg(feature = "std")]
+use std::iter::FromIterator;
+#[cfg(feature = "std")]
+use std::ops;
+use value::Value;
 
-#[cfg(all(not(feature = "no_std"), not(feature = "preserve_order")))]
-use std::collections::{btree_map, BTreeMap};
-#[cfg(all(feature = "no_std", not(feature = "preserve_order")))]
+#[cfg(all(not(feature = "std"), not(feature = "preserve_order")))]
 use alloc::collections::{btree_map, BTreeMap};
+#[cfg(all(feature = "std", not(feature = "preserve_order")))]
+use std::collections::{btree_map, BTreeMap};
 
 #[cfg(feature = "preserve_order")]
 use indexmap::{self, IndexMap};
@@ -154,12 +154,12 @@ impl Map<String, Value> {
     where
         S: Into<String>,
     {
+        #[cfg(all(not(feature = "preserve_order"), not(feature = "std")))]
+        use alloc::collections::btree_map::Entry as EntryImpl;
         #[cfg(feature = "preserve_order")]
         use indexmap::map::Entry as EntryImpl;
-        #[cfg(all(not(feature = "preserve_order"), not(feature = "no_std")))]
+        #[cfg(all(not(feature = "preserve_order"), feature = "std"))]
         use std::collections::btree_map::Entry as EntryImpl;
-        #[cfg(all(not(feature = "preserve_order"), feature = "no_std"))]
-        use alloc::collections::btree_map::Entry as EntryImpl;
 
         match self.map.entry(key.into()) {
             EntryImpl::Vacant(vacant) => Entry::Vacant(VacantEntry { vacant: vacant }),

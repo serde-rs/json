@@ -1,5 +1,5 @@
 use super::Value;
-#[cfg(feature = "no_std")]
+#[cfg(not(feature = "std"))]
 use alloc::string::String;
 
 fn eq_i64(value: &Value, other: i64) -> bool {
@@ -61,7 +61,7 @@ impl PartialEq<Value> for String {
 macro_rules! partialeq_numeric {
     ($($eq:ident [$($ty:ty)*])*) => {
         $($(
-            #[cfg(not(feature = "no_std"))]
+            #[cfg(feature = "std")]
             impl PartialEq<$ty> for Value {
                 fn eq(&self, other: &$ty) -> bool {
                     $eq(self, *other as _)
