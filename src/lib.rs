@@ -344,6 +344,11 @@ pub use self::ser::{to_writer, to_writer_pretty};
 #[doc(inline)]
 pub use self::value::{from_value, to_value, Map, Number, Value};
 
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+compile_error!("std and alloc are both disabled");
+#[cfg(all(feature = "std", feature = "alloc"))]
+compile_error!("std and alloc are both enabled");
+
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
 #[cfg(feature = "std")]
