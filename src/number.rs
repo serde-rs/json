@@ -207,9 +207,11 @@ impl Number {
     pub fn as_f64(&self) -> Option<f64> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
-            N::PosInt(n) => Some(n as f64),
-            N::NegInt(n) => Some(n as f64),
+            // 9007199254740993 is the first non-representable integer
+            N::PosInt(n) if n < 9007199254740993 => Some(n as f64),
+            N::NegInt(n) if n > -9007199254740993 => Some(n as f64),
             N::Float(n) => Some(n),
+            _ => None,
         }
         #[cfg(feature = "arbitrary_precision")]
         self.n.parse().ok()
