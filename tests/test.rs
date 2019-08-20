@@ -2179,3 +2179,32 @@ fn test_borrow_in_map_key() {
     let value = json!({ "map": { "1": null } });
     Outer::deserialize(&value).unwrap();
 }
+
+#[test]
+fn test_integers_as_f64() {
+    for &value in [
+        1,
+        -1,
+        0,
+        9007199254740992,
+        9007199254740993,
+        9007199254740994,
+        9999999999999999,
+        -9007199254740992,
+        -9007199254740993,
+        -9007199254740994,
+        -9999999999999999,
+        i64::MAX,
+        i64::MIN,
+    ].iter() {
+        let number = Number::from_str(&format!("{}", value)).unwrap();
+        if let Some(signed) = number.as_i64() {
+            assert_eq!(signed, value);
+            if let Some(float) = number.as_f64() {
+                assert_eq!(signed, float as i64);
+            }
+        } else {
+            unreachable!()
+        }
+    }
+}
