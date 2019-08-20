@@ -2206,5 +2206,12 @@ fn test_integers_as_f64() {
         } else {
             unreachable!()
         }
+
+        // This number is a valid f64, if not for leading zeroes.
+        // The string length is used in the arbitrary precision conversion logic.
+        match Number::from_str("00009007199254740992") {
+            Ok(number) => assert_eq!(9007199254740992.0, number.as_f64().unwrap()),
+            Err(_) => {},
+        }
     }
 }

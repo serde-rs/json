@@ -213,8 +213,23 @@ impl Number {
             N::Float(n) => Some(n),
             _ => None,
         }
+
         #[cfg(feature = "arbitrary_precision")]
-        self.n.parse().ok()
+        // 16 == length of "9007199254740993"
+        match self.n.len() {
+            0..=15 => self.n.parse().ok(),
+            // GT | EQ implies an 'e' 'E' or too high
+            16 if self.n.as_str() < "9007199254740993" => self.n.parse().ok(),
+            // Leading zeroes are invalid, so length is significant
+            _ => {
+                for c in self.n.chars() {
+                    if c == '.' || c == 'e' || c == 'E' {
+                        return self.n.parse().ok();
+                    }
+                }
+                None
+            }
+        }
     }
 
     /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not JSON
