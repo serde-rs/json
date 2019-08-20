@@ -216,11 +216,11 @@ impl Number {
 
         #[cfg(feature = "arbitrary_precision")]
         // 16 == length of "9007199254740993"
-        match self.n.len() {
-            0..=15 => self.n.parse().ok(),
+        match (self.n.chars().next().unwrap(), self.n.len()) {
+            (_, 0..=15) | ('-', 16) | ('1'..='8', 16) => self.n.parse().ok(),
             // GT | EQ implies an 'e' 'E' or too high
-            16 if self.n.as_str() < "9007199254740993" => self.n.parse().ok(),
-            // Leading zeroes are invalid, so length is significant
+            ('-', 17) if self.n.as_str() < "-9007199254740993" => self.n.parse().ok(),
+            ('9', 16) if self.n.as_str() < "9007199254740993" => self.n.parse().ok(),
             _ => {
                 for c in self.n.chars() {
                     if c == '.' || c == 'e' || c == 'E' {

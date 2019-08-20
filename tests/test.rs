@@ -2206,12 +2206,31 @@ fn test_integers_as_f64() {
         } else {
             unreachable!()
         }
+    }
 
-        // This number is a valid f64, if not for leading zeroes.
-        // The string length is used in the arbitrary precision conversion logic.
-        match Number::from_str("00009007199254740992") {
-            Ok(number) => assert_eq!(9007199254740992.0, number.as_f64().unwrap()),
-            Err(_) => {},
-        }
+    // This number is a valid f64, if not for leading zeroes.
+    // The string length is used in the arbitrary precision conversion logic.
+    match Number::from_str("00009007199254740992") {
+        Ok(number) => assert_eq!(9007199254740992.0, number.as_f64().unwrap()),
+        Err(_) => {},
+    }
+    match Number::from_str("-00009007199254740992") {
+        Ok(number) => assert_eq!(-9007199254740992.0, number.as_f64().unwrap()),
+        Err(_) => {},
+    }
+    for &value in [
+        "-9007199254740992",
+        "9007199254740992",
+        "-999999999999999",
+        "999999999999999",
+    ].iter() {
+        let parsed: f64 = value.parse().unwrap();
+        let converted =
+            Number::from_str(value).expect(value)
+                .as_f64().expect(value);
+        assert_eq!(
+            parsed,
+            converted,
+        )
     }
 }
