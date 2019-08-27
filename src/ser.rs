@@ -2099,8 +2099,10 @@ where
     T: Serialize,
 {
     let mut writer = Vec::with_capacity(128);
-    let vec_writer = write::VecWriter(&mut writer);
-    to_internal_writer(vec_writer, value)?;
+    {
+        let vec_writer = write::VecWriter(&mut writer);
+        to_internal_writer(vec_writer, value)?;
+    }
     Ok(writer)
 }
 
@@ -2116,8 +2118,10 @@ where
     T: Serialize,
 {
     let mut writer = Vec::with_capacity(128);
-    let vec_writer = write::VecWriter(&mut writer);
-    to_internal_writer_pretty(vec_writer, value)?;
+    {
+        let vec_writer = write::VecWriter(&mut writer);
+        to_internal_writer_pretty(vec_writer, value)?;
+    }
     Ok(writer)
 }
 

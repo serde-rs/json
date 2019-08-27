@@ -47,7 +47,7 @@ pub trait Write: private::Sealed {
 
 #[doc(hidden)]
 #[cfg(feature = "std")]
-pub struct ImplIoWrite<'v>(&'v mut dyn Write);
+pub struct ImplIoWrite<'v>(&'v mut Write);
 
 #[cfg(feature = "std")]
 impl<'v> std::io::Write for ImplIoWrite<'v> {
