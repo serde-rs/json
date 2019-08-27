@@ -39,7 +39,8 @@ pub trait Write: private::Sealed {
     }
 
     #[cfg(feature = "std")]
-    fn as_io_write(&mut self) -> ImplIoWrite<'_>
+    #[allow(clippy::needless_lifetimes)]
+    fn as_io_write<'a>(&'a mut self) -> ImplIoWrite<'a>
     where
         Self: Sized,
     {
