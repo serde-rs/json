@@ -16,6 +16,8 @@ use std::fmt;
 use std::num::FpCategory;
 #[cfg(feature = "std")]
 use std::str;
+#[cfg(feature = "std")]
+use std::io::Write;
 
 use super::error::{Error, ErrorCode, Result};
 use super::write;
@@ -2050,7 +2052,7 @@ where
 #[cfg(feature = "std")]
 pub fn to_writer<W, T: ?Sized>(mut writer: W, value: &T) -> Result<()>
 where
-    W: std::io::Write,
+    W: Write,
     T: Serialize,
 {
     let writer = write::IoWrite(&mut writer);
@@ -2080,7 +2082,7 @@ where
 #[cfg(feature = "std")]
 pub fn to_writer_pretty<W, T: ?Sized>(mut writer: W, value: &T) -> Result<()>
 where
-    W: std::io::Write,
+    W: Write,
     T: Serialize,
 {
     let writer = write::IoWrite(&mut writer);

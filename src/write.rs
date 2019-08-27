@@ -12,6 +12,8 @@ use ser;
 use std::fmt;
 #[cfg(feature = "std")]
 use std::str;
+#[cfg(feature = "std")]
+use std::io;
 
 pub trait Write: private::Sealed {
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
@@ -50,17 +52,17 @@ pub trait Write: private::Sealed {
 pub struct ImplIoWrite<'v>(&'v mut Write);
 
 #[cfg(feature = "std")]
-impl<'v> std::io::Write for ImplIoWrite<'v> {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+impl<'v> io::Write for ImplIoWrite<'v> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0
             .write(buf)
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "io error"))
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "io error"))
     }
 
-    fn flush(&mut self) -> std::io::Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         self.0
             .flush()
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "io error"))
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "io error"))
     }
 }
 
@@ -136,7 +138,7 @@ where
 }
 
 #[cfg(feature = "std")]
-pub struct IoWrite<'i>(pub &'i mut std::io::Write);
+pub struct IoWrite<'i>(pub &'i mut io::Write);
 
 #[cfg(feature = "std")]
 impl<'i> private::Sealed for IoWrite<'i> {}
