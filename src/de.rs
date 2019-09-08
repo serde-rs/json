@@ -646,7 +646,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 buf.push(b as char);
                 Ok(b)
             }
-            None => Err(self.error(ErrorCode::EofWhileParsingValue))
+            None => Err(self.error(ErrorCode::EofWhileParsingValue)),
         }
     }
 
