@@ -126,7 +126,10 @@ impl Map<String, Value> {
         String: Borrow<Q>,
         Q: Ord + Eq + Hash,
     {
-        self.map.remove(key)
+        #[cfg(feature = "preserve_order")]
+        return self.map.swap_remove(key);
+        #[cfg(not(feature = "preserve_order"))]
+        return self.map.remove(key);
     }
 
     /// Gets the given key's corresponding entry in the map for in-place
@@ -692,7 +695,10 @@ impl<'a> OccupiedEntry<'a> {
     /// ```
     #[inline]
     pub fn remove(self) -> Value {
-        self.occupied.remove()
+        #[cfg(feature = "preserve_order")]
+        return self.occupied.swap_remove();
+        #[cfg(not(feature = "preserve_order"))]
+        return self.occupied.remove();
     }
 }
 
