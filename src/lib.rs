@@ -312,6 +312,7 @@
     module_name_repetitions,
     shadow_unrelated,
     single_match_else,
+    too_many_lines,
     use_self,
     zero_prefixed_literal,
     // we support older compilers
