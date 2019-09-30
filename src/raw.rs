@@ -52,7 +52,7 @@ use error::Error;
 /// // keys into a single "info" key holding an array of code and payload.
 /// //
 /// // This could be done equivalently using serde_json::Value as the type for
-/// // payload, but &RawValue will perform netter because it does not require
+/// // payload, but &RawValue will perform better because it does not require
 /// // memory allocation. The correct range of bytes is borrowed from the input
 /// // data and pasted verbatim into the output.
 /// fn rearrange(input: &str) -> Result<String> {
