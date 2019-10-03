@@ -68,6 +68,10 @@ where
     R: io::Read,
 {
     /// Creates a JSON deserializer from an `io::Read`.
+    ///
+    /// Reader-based deserializers do not support deserializing borrowed types
+    /// like `&str`, since the `std::io::Read` trait has no non-copying methods
+    /// -- everything it does involves copying bytes out of the data source.
     pub fn from_reader(reader: R) -> Self {
         Deserializer::new(read::IoRead::new(reader))
     }
