@@ -1388,9 +1388,9 @@ fn test_serialize_seq_with_no_len() {
             S: ser::Serializer,
         {
             use serde::ser::SerializeSeq;
-            let mut seq = try!(serializer.serialize_seq(None));
+            let mut seq = serializer.serialize_seq(None)?;
             for elem in &self.0 {
-                try!(seq.serialize_element(elem));
+                seq.serialize_element(elem)?;
             }
             seq.end()
         }
@@ -1425,7 +1425,7 @@ fn test_serialize_seq_with_no_len() {
         {
             let mut values = Vec::new();
 
-            while let Some(value) = try!(visitor.next_element()) {
+            while let Some(value) = visitor.next_element()? {
                 values.push(value);
             }
 
@@ -1475,10 +1475,10 @@ fn test_serialize_map_with_no_len() {
             S: ser::Serializer,
         {
             use serde::ser::SerializeMap;
-            let mut map = try!(serializer.serialize_map(None));
+            let mut map = serializer.serialize_map(None)?;
             for (k, v) in &self.0 {
-                try!(map.serialize_key(k));
-                try!(map.serialize_value(v));
+                map.serialize_key(k)?;
+                map.serialize_value(v)?;
             }
             map.end()
         }
@@ -1514,7 +1514,7 @@ fn test_serialize_map_with_no_len() {
         {
             let mut values = BTreeMap::new();
 
-            while let Some((key, value)) = try!(visitor.next_entry()) {
+            while let Some((key, value)) = visitor.next_entry()? {
                 values.insert(key, value);
             }
 
