@@ -296,7 +296,10 @@
 #![cfg_attr(feature = "cargo-clippy", allow(renamed_and_removed_lints))]
 #![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
 // Ignored clippy lints
-#![cfg_attr(feature = "cargo-clippy", allow(deprecated_cfg_attr, doc_markdown))]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(deprecated_cfg_attr, doc_markdown, needless_doctest_main)
+)]
 // Ignored clippy_pedantic lints
 #![cfg_attr(feature = "cargo-clippy", allow(
     // Deserializer::from_str, into_iter

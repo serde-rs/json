@@ -82,9 +82,7 @@
 //!     Ok(())
 //! }
 //! #
-//! # fn main() {
-//! #     untyped_example().unwrap();
-//! # }
+//! # untyped_example().unwrap();
 //! ```
 //!
 //! [macro]: https://docs.serde.rs/serde_json/macro.json.html
@@ -884,9 +882,7 @@ impl Value {
 /// #     Ok(())
 /// # }
 /// #
-/// # fn main() {
-/// #     try_main().unwrap()
-/// # }
+/// # try_main().unwrap()
 /// ```
 impl Default for Value {
     fn default() -> Value {
@@ -935,9 +931,7 @@ mod ser;
 ///     Ok(())
 /// }
 /// #
-/// # fn main() {
-/// #     compare_json_values().unwrap();
-/// # }
+/// # compare_json_values().unwrap();
 /// ```
 ///
 /// # Errors

@@ -1381,9 +1381,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ///     Ok(())
     /// }
     /// #
-    /// # fn main() {
-    /// #     look_at_bytes().unwrap();
-    /// # }
+    /// # look_at_bytes().unwrap();
     /// ```
     ///
     /// Backslash escape sequences like `\n` are still interpreted and required
@@ -1403,9 +1401,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ///     assert_eq!(expected_msg, parsed.unwrap_err().to_string());
     /// }
     /// #
-    /// # fn main() {
-    /// #     look_at_bytes();
-    /// # }
+    /// # look_at_bytes();
     /// ```
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
     where
