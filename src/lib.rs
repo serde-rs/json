@@ -321,6 +321,8 @@
     // we support older compilers
     checked_conversions,
     redundant_field_names,
+    // noisy
+    must_use_candidate,
 ))]
 #![deny(missing_docs)]
 
