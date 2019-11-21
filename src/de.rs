@@ -111,7 +111,7 @@ impl ParserNumber {
     where
         V: de::Visitor<'de>,
     {
-        let err = || Err(super::number::invalid_number());
+        let err = || Err(Error::syntax(ErrorCode::InvalidNumber, 0, 0));
 
         serde_if_integer128! {
             let res = if let Some(val) = number.parse::<i128>().ok() {
