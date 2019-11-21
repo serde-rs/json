@@ -956,21 +956,6 @@ fn test_parse_number() {
         ("\t1.0", "invalid number at line 1 column 1"),
         ("1.0\t", "invalid number at line 1 column 4"),
     ]);
-
-    #[cfg(feature = "arbitrary_precision")]
-    test_parse_ok(vec![
-        ("1e999", Number::from_string_unchecked("1e999".to_owned())),
-        ("-1e999", Number::from_string_unchecked("-1e999".to_owned())),
-        ("1e-999", Number::from_string_unchecked("1e-999".to_owned())),
-        (
-            "2.3e999",
-            Number::from_string_unchecked("2.3e999".to_owned()),
-        ),
-        (
-            "-2.3e999",
-            Number::from_string_unchecked("-2.3e999".to_owned()),
-        ),
-    ]);
 }
 
 #[test]

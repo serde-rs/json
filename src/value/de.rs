@@ -50,6 +50,19 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(Value::Number(value.into()))
             }
 
+            #[cfg(feature = "arbitrary_precision")]
+            serde_if_integer128! {
+                #[inline]
+                fn visit_i128<E>(self, value: i128) -> Result<Value, E> {
+                    Ok(Value::Number(value.into()))
+                }
+
+                #[inline]
+                fn visit_u128<E>(self, value: u128) -> Result<Value, E> {
+                    Ok(Value::Number(value.into()))
+                }
+            }
+
             #[inline]
             fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
                 Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
