@@ -444,7 +444,7 @@ impl<'de> de::Deserialize<'de> for NumberFromString {
 }
 
 #[cfg(feature = "arbitrary_precision")]
-fn invalid_number() -> Error {
+pub(crate) fn invalid_number() -> Error {
     Error::syntax(ErrorCode::InvalidNumber, 0, 0)
 }
 

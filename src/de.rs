@@ -15,8 +15,6 @@ use read::{self, Reference};
 pub use read::{IoRead, Read, SliceRead, StrRead};
 
 use number::Number;
-#[cfg(feature = "arbitrary_precision")]
-use number::NumberDeserializer;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -107,6 +105,43 @@ pub enum ParserNumber {
     String(String),
 }
 
+#[cfg(feature = "arbitrary_precision")]
+impl ParserNumber {
+    fn parse_arbitrary_precision<'de, V>(number: &str, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        let err = || Err(super::number::invalid_number());
+
+        serde_if_integer128! {
+            let res = if let Some(val) = number.parse::<i128>().ok() {
+                visitor.visit_i128(val)
+            } else if let Some(val) = number.parse::<u128>().ok() {
+                visitor.visit_u128(val)
+            } else if let Some(val) = number.parse::<f64>().ok() {
+                visitor.visit_f64(val)
+            } else {
+                err()
+            };
+
+            return res;
+        }
+
+        #[allow(unreachable_code)]
+        {
+            if let Some(val) = number.parse::<i64>().ok() {
+                visitor.visit_i64(val)
+            } else if let Some(val) = number.parse::<u64>().ok() {
+                visitor.visit_u64(val)
+            } else if let Some(val) = number.parse::<f64>().ok() {
+                visitor.visit_f64(val)
+            } else {
+                err()
+            }
+        }
+    }
+}
+
 impl ParserNumber {
     fn visit<'de, V>(self, visitor: V) -> Result<V::Value>
     where
@@ -117,7 +152,7 @@ impl ParserNumber {
             ParserNumber::U64(x) => visitor.visit_u64(x),
             ParserNumber::I64(x) => visitor.visit_i64(x),
             #[cfg(feature = "arbitrary_precision")]
-            ParserNumber::String(x) => visitor.visit_map(NumberDeserializer { number: x.into() }),
+            ParserNumber::String(x) => Self::parse_arbitrary_precision(&x, visitor),
         }
     }
 

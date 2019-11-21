@@ -66,3 +66,6 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+[patch.crates-io]
+serde = { git = "https://github.com/bkchr/serde.git", branch = "bkchr-tagged-content-u128-i128" }
