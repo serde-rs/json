@@ -211,3 +211,19 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
         Value::Array(iter.into_iter().map(Into::into).collect())
     }
 }
+
+impl From<()> for Value {
+    /// Convert `()` to `Value`
+    ///
+    /// # Examples
+    ///
+    /// ```edition2018
+    /// use serde_json::Value;
+    ///
+    /// let u = ();
+    /// let x: Value = u.into();
+    /// ```
+    fn from((): ()) -> Self {
+        Value::Null
+    }
+}
