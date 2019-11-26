@@ -1,8 +1,18 @@
+#[cfg(feature = "std")]
 use std::borrow::Cow;
-use std::fmt;
-use std::slice;
-use std::str;
+#[cfg(feature = "alloc")]
+use alloc::borrow::{Cow, ToOwned};
+use core::fmt;
+use core::slice;
+use core::str;
+#[cfg(feature = "std")]
 use std::vec;
+#[cfg(feature = "alloc")]
+use alloc::vec;
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 use serde;
 use serde::de::{

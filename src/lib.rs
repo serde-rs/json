@@ -331,6 +331,7 @@
     must_use_candidate,
 ))]
 #![deny(missing_docs)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
 extern crate serde;
@@ -338,6 +339,10 @@ extern crate serde;
 extern crate indexmap;
 extern crate itoa;
 extern crate ryu;
+#[cfg(feature = "std")]
+extern crate core;
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[doc(inline)]
 pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
@@ -355,8 +360,8 @@ pub use self::value::{from_value, to_value, Map, Number, Value};
 macro_rules! try {
     ($e:expr) => {
         match $e {
-            ::std::result::Result::Ok(val) => val,
-            ::std::result::Result::Err(err) => return ::std::result::Result::Err(err),
+            ::core::result::Result::Ok(val) => val,
+            ::core::result::Result::Err(err) => return ::core::result::Result::Err(err),
         }
     };
 }
@@ -370,6 +375,7 @@ pub mod map;
 pub mod ser;
 pub mod value;
 
+mod io;
 mod iter;
 mod number;
 mod read;

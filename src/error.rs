@@ -1,10 +1,15 @@
 //! When serializing or deserializing JSON goes wrong.
 
+#[cfg(feature = "std")]
 use std::error;
-use std::fmt::{self, Debug, Display};
-use std::io;
-use std::result;
-use std::str::FromStr;
+use core::fmt::{self, Debug, Display};
+use io;
+use core::result;
+use core::str::FromStr;
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+#[cfg(feature = "alloc")]
+use alloc::string::{String, ToString};
 
 use serde::de;
 use serde::ser;
@@ -131,6 +136,7 @@ pub enum Category {
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(fallible_impl_from))]
+#[cfg(feature = "std")]
 impl From<Error> for io::Error {
     /// Convert a `serde_json::Error` into an `io::Error`.
     ///
@@ -333,6 +339,7 @@ impl Display for ErrorCode {
     }
 }
 
+#[cfg(feature = "std")]
 impl error::Error for Error {
     fn source(&self) -> Option<&(error::Error + 'static)> {
         match self.err.code {
@@ -341,6 +348,9 @@ impl error::Error for Error {
         }
     }
 }
+
+#[cfg(not(feature = "std"))]
+impl serde::de::StdError for Error {}
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

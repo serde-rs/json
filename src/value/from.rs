@@ -1,4 +1,11 @@
+#[cfg(feature = "std")]
 use std::borrow::Cow;
+#[cfg(feature = "alloc")]
+use alloc::borrow::Cow;
+#[cfg(feature = "alloc")]
+use alloc::string::{String, ToString};
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 use super::Value;
 use map::Map;
@@ -182,7 +189,7 @@ impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     }
 }
 
-impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
+impl<T: Into<Value>> ::core::iter::FromIterator<T> for Value {
     /// Convert an iteratable type to a `Value`
     ///
     /// # Examples

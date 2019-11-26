@@ -16,7 +16,7 @@ travis-ci = { repository = "serde-rs/json" }
 appveyor = { repository = "serde-rs/json" }
 
 [dependencies]
-serde = "1.0.60"
+serde = { version = "1.0.60", default-features = false }
 indexmap = { version = "1.2", optional = true }
 itoa = "0.4.3"
 ryu = "1.0"
@@ -42,7 +42,11 @@ features = ["raw_value"]
 ### FEATURES #################################################################
 
 [features]
-default = []
+default = ["std"]
+
+std = ["serde/std"]
+
+alloc = ["serde/alloc"]
 
 # Use a different representation for the map type of serde_json::Value.
 # This allows data to be read into a Value and written back to a JSON string

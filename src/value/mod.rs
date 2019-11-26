@@ -90,10 +90,14 @@
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
-use std::fmt::{self, Debug};
-use std::io;
-use std::mem;
-use std::str;
+use core::fmt::{self, Debug};
+use io;
+use core::mem;
+use core::str;
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
@@ -194,10 +198,15 @@ struct WriterFormatter<'a, 'b: 'a> {
 
 impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        #[cfg(feature = "std")]
         fn io_error<E>(_: E) -> io::Error {
             // Error value does not matter because fmt::Display impl below just
             // maps it to fmt::Error
             io::Error::new(io::ErrorKind::Other, "fmt error")
+        }
+        #[cfg(not(feature = "std"))]
+        fn io_error<E>(_: E) -> &'static str {
+            "fmt error"
         }
         let s = try!(str::from_utf8(buf).map_err(io_error));
         try!(self.inner.write_str(s).map_err(io_error));
