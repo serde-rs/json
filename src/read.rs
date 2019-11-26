@@ -1,5 +1,8 @@
-use std::ops::Deref;
-use std::{char, cmp, io, str};
+use core::ops::Deref;
+use io;
+use core::{char, cmp, str};
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 #[cfg(feature = "raw_value")]
 use serde::de::Visitor;

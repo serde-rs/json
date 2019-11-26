@@ -1,9 +1,13 @@
 //! Serialize a Rust data structure into JSON data.
 
-use std::fmt;
-use std::io;
-use std::num::FpCategory;
-use std::str;
+use core::fmt;
+use io;
+use core::num::FpCategory;
+use core::str;
+#[cfg(feature = "alloc")]
+use alloc::string::{String, ToString};
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
@@ -460,7 +464,7 @@ where
     where
         T: fmt::Display,
     {
-        use std::fmt::Write;
+        use core::fmt::Write;
 
         struct Adapter<'ser, W: 'ser, F: 'ser> {
             writer: &'ser mut W,
@@ -1634,6 +1638,7 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
+    #[cfg(feature = "std")]
     fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> io::Result<()>
     where
         W: io::Write,
@@ -1643,6 +1648,19 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
+    #[cfg(not(feature = "std"))]
+    fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    #[cfg(feature = "std")]
     fn write_i16<W: ?Sized>(&mut self, writer: &mut W, value: i16) -> io::Result<()>
     where
         W: io::Write,
@@ -1652,6 +1670,19 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
+    #[cfg(not(feature = "std"))]
+    fn write_i16<W: ?Sized>(&mut self, writer: &mut W, value: i16) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    #[cfg(feature = "std")]
     fn write_i32<W: ?Sized>(&mut self, writer: &mut W, value: i32) -> io::Result<()>
     where
         W: io::Write,
@@ -1661,6 +1692,19 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
+    #[cfg(not(feature = "std"))]
+    fn write_i32<W: ?Sized>(&mut self, writer: &mut W, value: i32) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
+    }
+
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    #[cfg(feature = "std")]
     fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> io::Result<()>
     where
         W: io::Write,
@@ -1668,8 +1712,21 @@ pub trait Formatter {
         itoa::write(writer, value).map(drop)
     }
 
+    /// Writes an integer value like `-123` to the specified writer.
+    #[inline]
+    #[cfg(not(feature = "std"))]
+    fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
+    }
+
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
+    #[cfg(feature = "std")]
     fn write_u8<W: ?Sized>(&mut self, writer: &mut W, value: u8) -> io::Result<()>
     where
         W: io::Write,
@@ -1679,6 +1736,19 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
+    #[cfg(not(feature = "std"))]
+    fn write_u8<W: ?Sized>(&mut self, writer: &mut W, value: u8) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    #[cfg(feature = "std")]
     fn write_u16<W: ?Sized>(&mut self, writer: &mut W, value: u16) -> io::Result<()>
     where
         W: io::Write,
@@ -1688,6 +1758,19 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
+    #[cfg(not(feature = "std"))]
+    fn write_u16<W: ?Sized>(&mut self, writer: &mut W, value: u16) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    #[cfg(feature = "std")]
     fn write_u32<W: ?Sized>(&mut self, writer: &mut W, value: u32) -> io::Result<()>
     where
         W: io::Write,
@@ -1697,11 +1780,36 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
+    #[cfg(not(feature = "std"))]
+    fn write_u32<W: ?Sized>(&mut self, writer: &mut W, value: u32) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    #[cfg(feature = "std")]
     fn write_u64<W: ?Sized>(&mut self, writer: &mut W, value: u64) -> io::Result<()>
     where
         W: io::Write,
     {
         itoa::write(writer, value).map(drop)
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    #[cfg(not(feature = "std"))]
+    fn write_u64<W: ?Sized>(&mut self, writer: &mut W, value: u64) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.

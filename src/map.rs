@@ -7,15 +7,19 @@
 //! [`IndexMap`]: https://docs.rs/indexmap/*/indexmap/map/struct.IndexMap.html
 
 use serde::{de, ser};
-use std::borrow::Borrow;
-use std::fmt::{self, Debug};
-use std::hash::Hash;
-use std::iter::FromIterator;
-use std::ops;
+use core::borrow::Borrow;
+use core::fmt::{self, Debug};
+use core::hash::Hash;
+use core::iter::FromIterator;
+use core::ops;
 use value::Value;
+#[cfg(feature = "alloc")]
+use alloc::string::String;
 
-#[cfg(not(feature = "preserve_order"))]
+#[cfg(all(not(feature = "preserve_order"), feature = "std"))]
 use std::collections::{btree_map, BTreeMap};
+#[cfg(all(not(feature = "preserve_order"), feature = "alloc"))]
+use alloc::collections::{btree_map, BTreeMap};
 
 #[cfg(feature = "preserve_order")]
 use indexmap::{self, IndexMap};
@@ -140,8 +144,10 @@ impl Map<String, Value> {
     {
         #[cfg(feature = "preserve_order")]
         use indexmap::map::Entry as EntryImpl;
-        #[cfg(not(feature = "preserve_order"))]
+        #[cfg(all(not(feature = "preserve_order"), feature = "std"))]
         use std::collections::btree_map::Entry as EntryImpl;
+        #[cfg(all(not(feature = "preserve_order"), feature = "alloc"))]
+        use alloc::collections::btree_map::Entry as EntryImpl;
 
         match self.map.entry(key.into()) {
             EntryImpl::Vacant(vacant) => Entry::Vacant(VacantEntry { vacant: vacant }),

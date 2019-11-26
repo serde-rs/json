@@ -1,7 +1,7 @@
 use error::Error;
 use serde::de::{self, Unexpected, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::{self, Debug, Display};
+use core::fmt::{self, Debug, Display};
 
 #[cfg(feature = "arbitrary_precision")]
 use itoa;

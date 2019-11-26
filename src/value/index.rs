@@ -1,5 +1,9 @@
-use std::fmt;
-use std::ops;
+use core::fmt;
+use core::ops;
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+#[cfg(feature = "alloc")]
+use alloc::borrow::ToOwned;
 
 use super::Value;
 use map::Map;
@@ -132,6 +136,9 @@ where
 
 // Prevent users from implementing the Index trait.
 mod private {
+    #[cfg(feature = "alloc")]
+    use alloc::string::String;
+
     pub trait Sealed {}
     impl Sealed for usize {}
     impl Sealed for str {}
