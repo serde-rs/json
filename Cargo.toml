@@ -18,7 +18,7 @@ appveyor = { repository = "serde-rs/json" }
 [dependencies]
 serde = { version = "1.0.60", default-features = false }
 indexmap = { version = "1.2", optional = true }
-itoa = "0.4.3"
+itoa = { version = "0.4.3", default-features = false }
 ryu = "1.0"
 
 [dev-dependencies]
@@ -44,7 +44,7 @@ features = ["raw_value"]
 [features]
 default = ["std"]
 
-std = ["serde/std"]
+std = ["serde/std", "itoa/std"]
 
 alloc = ["serde/alloc"]
 
