@@ -479,6 +479,14 @@ impl<'de> EnumAccess<'de> for EnumDeserializer {
     }
 }
 
+impl<'de> IntoDeserializer<'de, Error> for Value {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
 struct VariantDeserializer {
     value: Option<Value>,
 }
