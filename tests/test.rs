@@ -26,7 +26,7 @@ use std::{f32, f64};
 use std::{i16, i32, i64, i8};
 use std::{u16, u32, u64, u8};
 
-use serde::de::{self, Deserialize, IgnoredAny};
+use serde::de::{self, Deserialize, IgnoredAny, IntoDeserializer};
 use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
@@ -2178,4 +2178,23 @@ fn test_borrow_in_map_key() {
 
     let value = json!({ "map": { "1": null } });
     Outer::deserialize(&value).unwrap();
+}
+
+#[test]
+fn test_value_into_deserializer() {
+    #[derive(Deserialize)]
+    struct Outer {
+        inner: Inner,
+    }
+
+    #[derive(Deserialize)]
+    struct Inner {
+        string: String,
+    }
+
+    let mut map = BTreeMap::new();
+    map.insert("inner", json!({ "string": "Hello World" }));
+
+    let outer = Outer::deserialize(map.into_deserializer()).unwrap();
+    assert_eq!(outer.inner.string, "Hello World");
 }
