@@ -293,6 +293,8 @@
 //! [value]: https://docs.serde.rs/serde_json/value/enum.Value.html
 //! [from_str]: https://docs.serde.rs/serde_json/de/fn.from_str.html
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
+//! [from_mut_str]: https://docs.serde.rs/serde_json/de/fn.from_str.html
+//! [from_mut_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 //! [to_string]: https://docs.serde.rs/serde_json/ser/fn.to_string.html
 //! [to_vec]: https://docs.serde.rs/serde_json/ser/fn.to_vec.html
@@ -401,7 +403,9 @@ mod lib {
 #[doc(inline)]
 pub use crate::de::from_reader;
 #[doc(inline)]
-pub use crate::de::{from_slice, from_str, Deserializer, StreamDeserializer};
+pub use crate::de::{
+    from_mut_slice, from_mut_str, from_slice, from_str, Deserializer, StreamDeserializer,
+};
 #[doc(inline)]
 pub use crate::error::{Error, Result};
 #[doc(inline)]

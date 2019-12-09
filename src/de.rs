@@ -83,10 +83,24 @@ impl<'a> Deserializer<read::SliceRead<'a>> {
     }
 }
 
+impl<'a> Deserializer<read::SliceMutRead<'a>> {
+    /// Creates a JSON deserializer from a `&mut [u8]`.
+    pub fn from_mut_slice(bytes: &'a mut [u8]) -> Self {
+        Deserializer::new(read::SliceMutRead::new(bytes))
+    }
+}
+
 impl<'a> Deserializer<read::StrRead<'a>> {
     /// Creates a JSON deserializer from a `&str`.
     pub fn from_str(s: &'a str) -> Self {
         Deserializer::new(read::StrRead::new(s))
+    }
+}
+
+impl<'a> Deserializer<read::StrMutRead<'a>> {
+    /// Creates a JSON deserializer from a `&mut str`.
+    pub fn from_mut_str(s: &'a mut str) -> Self {
+        Deserializer::new(read::StrMutRead::new(s))
     }
 }
 
@@ -2337,6 +2351,52 @@ where
     from_trait(read::SliceRead::new(v))
 }
 
+/// Deserialize an instance of type `T` from mutable bytes of JSON text.
+///
+/// # Example
+///
+/// ```edition2018
+/// use serde::Deserialize;
+///
+/// #[derive(Deserialize, Debug)]
+/// struct User {
+///     fingerprint: String,
+///     location: String,
+/// }
+///
+/// fn main() {
+///     // The type of `j` is `&mut [u8]`
+///     let mut j = b"
+///         {
+///             \"fingerprint\": \"0xF9BA143B95FF6D82\",
+///             \"location\": \"Menlo Park, CA\"
+///         }".to_owned();
+///
+///     let u: User = serde_json::from_mut_slice(&mut j).unwrap();
+///     println!("{:#?}", u);
+/// }
+/// ```
+///
+/// # Safety
+///
+/// It is unsafe to re-parse the JSON text as it modifies the bytes in-situ.
+///
+/// # Errors
+///
+/// This conversion can fail if the structure of the input does not match the
+/// structure expected by `T`, for example if `T` is a struct type but the input
+/// contains something other than a JSON map. It can also fail if the structure
+/// is correct but `T`'s implementation of `Deserialize` decides that something
+/// is wrong with the data, for example required struct fields are missing from
+/// the JSON map or some number is too big to fit in the expected primitive
+/// type.
+pub fn from_mut_slice<'a, T>(v: &'a mut [u8]) -> Result<T>
+where
+    T: de::Deserialize<'a>,
+{
+    from_trait(read::SliceMutRead::new(v))
+}
+
 /// Deserialize an instance of type `T` from a string of JSON text.
 ///
 /// # Example
@@ -2377,4 +2437,203 @@ where
     T: de::Deserialize<'a>,
 {
     from_trait(read::StrRead::new(s))
+}
+
+/// Deserialize an instance of type `T` from a mutable string of JSON text.
+///
+/// # Example
+///
+/// ```edition2018
+/// use serde::Deserialize;
+///
+/// #[derive(Deserialize, Debug)]
+/// struct User {
+///     fingerprint: String,
+///     location: String,
+/// }
+///
+/// fn main() {
+///     // The type of `j` is `&mut str`
+///     let mut j = "
+///         {
+///             \"fingerprint\": \"0xF9BA143B95FF6D82\",
+///             \"location\": \"Menlo Park, CA\"
+///         }".to_owned();
+///
+///     let u: User = serde_json::from_mut_str(&mut j).unwrap();
+///     println!("{:#?}", u);
+/// }
+/// ```
+///
+/// # Safety
+///
+/// It is unsafe to re-parse the JSON text as it modifies the bytes in-situ.
+///
+/// # Errors
+///
+/// This conversion can fail if the structure of the input does not match the
+/// structure expected by `T`, for example if `T` is a struct type but the input
+/// contains something other than a JSON map. It can also fail if the structure
+/// is correct but `T`'s implementation of `Deserialize` decides that something
+/// is wrong with the data, for example required struct fields are missing from
+/// the JSON map or some number is too big to fit in the expected primitive
+/// type.
+pub fn from_mut_str<'a, T>(s: &'a mut str) -> Result<T>
+where
+    T: de::Deserialize<'a>,
+{
+    from_trait(read::StrMutRead::new(s))
+}
+
+#[test]
+fn test_from_mut_slice() {
+    use serde::Deserialize;
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct S<'a> {
+        msg: &'a [u8],
+    }
+
+    let mut s = String::from("{\"msg\":\"abc\\nxyz\"}");
+    let mut j = unsafe { s.as_bytes_mut() };
+    let actual = from_mut_slice::<S>(&mut j).unwrap();
+
+    let expected = S { msg: "abc\nxyz".as_bytes() };
+    assert_eq!(actual, expected);
+    assert_eq!(actual.msg.as_ptr(), j[8..].as_ptr());
+    assert_eq!(std::str::from_utf8(j), std::str::from_utf8(unsafe { String::from("{\"msg\":\"abc\nxyz\u{0}\"}").as_bytes_mut() })); // not a commitment in the API, but in practice this is what it will be
+}
+
+#[test]
+fn test_from_mut_slice_double() {
+    use serde::Deserialize;
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct S<'a> {
+        msg: &'a [u8],
+    }
+
+    let mut s = String::from("{\"msg\":\"abc\\nxyz\\nxyz\"}");
+    let mut j = unsafe { s.as_bytes_mut() };
+    let actual = from_mut_slice::<S>(&mut j).unwrap();
+
+    let expected = S { msg: "abc\nxyz\nxyz".as_bytes() };
+    assert_eq!(actual, expected);
+    assert_eq!(actual.msg.as_ptr(), j[8..].as_ptr());
+    assert_eq!(std::str::from_utf8(j), std::str::from_utf8(unsafe { String::from("{\"msg\":\"abc\nxyz\nxyz\u{0}\u{0}\"}").as_bytes_mut() })); // not a commitment in the API, but in practice this is what it will be
+}
+
+#[test]
+fn test_from_mut_str_empty() {
+    use serde::Deserialize;
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct S<'a> {
+        msg: &'a str,
+    }
+
+    let mut j = "{\"msg\":\"\"}".to_owned();
+    let actual = from_mut_str::<S>(&mut j).unwrap();
+
+    let expected = S { msg: "" };
+    assert_eq!(actual, expected);
+    assert_eq!(actual.msg.as_ptr(), j[8..].as_ptr());
+    assert_eq!(j, "{\"msg\":\"\"}"); // not a commitment in the API, but in practice this is what it will be
+}
+
+#[test]
+fn test_from_mut_str_basic() {
+    use serde::Deserialize;
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct S<'a> {
+        msg: &'a str,
+    }
+
+    let mut j = "{\"msg\":\"abc\"}".to_owned();
+    let actual = from_mut_str::<S>(&mut j).unwrap();
+
+    let expected = S { msg: "abc" };
+    assert_eq!(actual, expected);
+    assert_eq!(actual.msg.as_ptr(), j[8..].as_ptr());
+    assert_eq!(j, "{\"msg\":\"abc\"}"); // not a commitment in the API, but in practice this is what it will be
+}
+
+#[test]
+fn test_from_mut_str_newline() {
+    use serde::Deserialize;
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct S<'a> {
+        msg: &'a str,
+    }
+
+    let mut j = "{\"msg\":\"\\n\"}".to_owned();
+    let actual = from_mut_str::<S>(&mut j).unwrap();
+
+    let expected = S { msg: "\n" };
+    assert_eq!(actual, expected);
+    assert_eq!(actual.msg.as_ptr(), j[8..].as_ptr());
+    assert_eq!(j, "{\"msg\":\"\n\u{0}\"}"); // not a commitment in the API, but in practice this is what it will be
+}
+
+#[test]
+fn test_from_mut_str_snowman() {
+    use serde::Deserialize;
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct S<'a> {
+        msg: &'a str,
+    }
+
+    let mut j = "{\"msg\":\"\u{2603}\"}".to_owned();
+    let actual = from_mut_str::<S>(&mut j).unwrap();
+
+    let expected = S { msg: "\u{2603}" };
+    assert_eq!(actual, expected);
+    assert_eq!(actual.msg.as_ptr(), j[8..].as_ptr());
+    assert_eq!(j, "{\"msg\":\"\u{2603}\"}"); // not a commitment in the API, but in practice this is what it will be
+}
+
+#[test]
+fn test_from_mut_str_newline_snowman() {
+    use serde::Deserialize;
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct S<'a> {
+        msg: &'a str,
+    }
+
+    let mut j = "{\"msg\":\"\\n\u{2603}\"}".to_owned();
+    let actual = from_mut_str::<S>(&mut j).unwrap();
+
+    let expected = S { msg: "\n\u{2603}" };
+    assert_eq!(actual, expected);
+    assert_eq!(actual.msg.as_ptr(), j[8..].as_ptr());
+    assert_eq!(j, "{\"msg\":\"\n\u{2603}\u{0}\"}"); // not a commitment in the API, but in practice this is what it will be
+}
+
+#[test]
+fn test_from_mut_str_snowman_newline() {
+    use serde::Deserialize;
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct S<'a> {
+        msg: &'a str,
+    }
+
+    let mut j = "{\"msg\":\"\u{2603}\\n\"}".to_owned();
+    let actual = from_mut_str::<S>(&mut j).unwrap();
+
+    let expected = S { msg: "\u{2603}\n" };
+    assert_eq!(actual, expected);
+    assert_eq!(actual.msg.as_ptr(), j[8..].as_ptr());
+    assert_eq!(j, "{\"msg\":\"\u{2603}\n\u{0}\"}"); // not a commitment in the API, but in practice this is what it will be
+}
+
+#[test]
+fn test_from_mut_str_twitter() {
+    use crate::value::Value;
+    let mut j = std::fs::read_to_string("benches/twitter.json").unwrap();
+    from_mut_str::<Value>(&mut j).unwrap();
 }

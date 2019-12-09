@@ -1,0 +1,27 @@
+
+[package]
+name = "serde_json-fuzz"
+version = "0.0.0"
+authors = ["Automatically generated"]
+publish = false
+edition = "2018"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies.serde_json]
+path = ".."
+[dependencies.libfuzzer-sys]
+git = "https://github.com/rust-fuzz/libfuzzer-sys.git"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "from_mut_str"
+path = "fuzz_targets/from_mut_str.rs"
+
+[[bin]]
+name = "from_str"
+path = "fuzz_targets/from_str.rs"
