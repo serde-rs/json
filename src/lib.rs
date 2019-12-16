@@ -322,6 +322,7 @@
     checked_conversions,
     redundant_field_names,
     // noisy
+    missing_errors_doc,
     must_use_candidate,
 ))]
 #![deny(missing_docs)]
