@@ -745,7 +745,7 @@ impl Value {
     /// assert_eq!(data.pointer("/x/y/1").unwrap(), &json!("zz"));
     /// assert_eq!(data.pointer("/a/b/c"), None);
     /// ```
-    pub fn pointer<'a>(&'a self, pointer: &str) -> Option<&'a Value> {
+    pub fn pointer(&self, pointer: &str) -> Option<&Value> {
         if pointer == "" {
             return Some(self);
         }
@@ -810,7 +810,7 @@ impl Value {
     ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Null);
     /// }
     /// ```
-    pub fn pointer_mut<'a>(&'a mut self, pointer: &str) -> Option<&'a mut Value> {
+    pub fn pointer_mut(&mut self, pointer: &str) -> Option<&mut Value> {
         if pointer == "" {
             return Some(self);
         }
