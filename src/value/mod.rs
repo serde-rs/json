@@ -801,6 +801,8 @@ impl Value {
     ///     *value.pointer_mut("/x").unwrap() = 1.5.into();
     ///     // Check that new value was written
     ///     assert_eq!(value.pointer("/x"), Some(&1.5.into()));
+    ///     // Or change the value only if it exists
+    ///     value.pointer_mut("/x").map(|v| *v = 1.5.into());
     ///
     ///     // "Steal" ownership of a value. Can replace with any valid Value.
     ///     let old_x = value.pointer_mut("/x").map(Value::take).unwrap();
