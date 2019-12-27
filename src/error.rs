@@ -334,7 +334,7 @@ impl Display for ErrorCode {
 }
 
 impl error::Error for Error {
-    fn cause(&self) -> Option<&error::Error> {
+    fn source(&self) -> Option<&(error::Error + 'static)> {
         match self.err.code {
             ErrorCode::Io(ref err) => Some(err),
             _ => None,
