@@ -10,7 +10,7 @@ matrix:
         - cargo test --features raw_value
         - cargo test --features unbounded_depth
 
-    - rust: 1.27.0
+    - rust: 1.30.0
       script:
         - cargo build --manifest-path tests/crate/Cargo.toml
         - cargo build --manifest-path tests/crate/Cargo.toml --features preserve_order
