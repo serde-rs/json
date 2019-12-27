@@ -334,16 +334,6 @@ impl Display for ErrorCode {
 }
 
 impl error::Error for Error {
-    fn description(&self) -> &str {
-        match self.err.code {
-            ErrorCode::Io(ref err) => error::Error::description(err),
-            _ => {
-                // If you want a better message, use Display::fmt or to_string().
-                "JSON error"
-            }
-        }
-    }
-
     fn cause(&self) -> Option<&error::Error> {
         match self.err.code {
             ErrorCode::Io(ref err) => Some(err),
