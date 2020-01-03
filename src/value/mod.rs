@@ -103,7 +103,7 @@ pub use map::Map;
 pub use number::Number;
 
 #[cfg(feature = "raw_value")]
-pub use raw::{RawValue, to_raw, from_raw};
+pub use raw::{RawValue, to_raw};
 
 pub use self::index::Index;
 

@@ -118,7 +118,7 @@ pub struct RawValue {
 
 impl RawValue {
     fn from_borrowed(json: &str) -> &Self {
-        unsafe { mem::transmute::<&str, &RawValue>(json) }
+        unsafe { &*(json as *const str as *const RawValue) }
     }
 
     fn from_owned(json: Box<str>) -> Box<Self> {
@@ -191,13 +191,15 @@ impl RawValue {
     /// Convert an owned `String` of JSON data to an owned `RawValue`, without
     /// checking whether the JSON is valid.
     ///
-    /// It is assumed that the following are true:
-    ///
-    /// - the input is valid JSON,
-    /// - the input has no leading or trailing whitespace
-    ///
     /// We avoid an allocation and memcpy if the input has capacity equal to
     /// its length.
+    ///
+    /// # Safety
+    ///
+    /// This function assumes that:
+    ///
+    /// - the input is valid JSON,
+    /// - the input has no leading or trailing whitespace.
     pub unsafe fn from_string_unchecked(json: String) -> Box<Self> {
         Self::from_owned(json.into_boxed_str())
     }
@@ -205,10 +207,12 @@ impl RawValue {
     /// Convert a borrowed `str` of JSON data to a borrowed `RawValue`, without
     /// checking whether the JSON is valid.
     ///
-    /// It is assumed that the following are true:
+    /// # Safety
+    ///
+    /// This function assumes that:
     ///
     /// - the input is valid JSON, and
-    /// - the input has no leading or trailing whitespace
+    /// - the input has no leading or trailing whitespace.
     pub unsafe fn from_str_unchecked(json: &str) -> &Self {
         Self::from_borrowed(json)
     }
@@ -251,7 +255,7 @@ impl RawValue {
     }
 }
 
-pub const TOKEN: &'static str = "$serde_json::private::RawValue";
+pub const TOKEN: &str = "$serde_json::private::RawValue";
 
 impl Serialize for RawValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -491,17 +495,11 @@ impl<'de> MapAccess<'de> for BorrowedRawDeserializer<'de> {
 
 /// Convert a `T` into `serde_json::value::RawValue` which is a single valid
 /// JSON value.
-pub fn to_raw<T>(value: T) -> Result<RawValue, Error>
+pub fn to_raw<T>(value: T) -> Result<Box<RawValue>, Error>
 where
     T: Serialize,
 {
-    value.serialize(Serializer)
-}
-
-/// Interpret a `serde_json::value::RawValue` as an instance of type `T`.
-pub fn from_raw<T>(value: RawValue) -> Result<T, Error>
-where
-    T: DeserializeOwned,
-{
-    T::deserialize(value)
+    Ok(unsafe {
+        RawValue::from_string_unchecked(try!(crate::to_string(&value)))
+    })
 }
