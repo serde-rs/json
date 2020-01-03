@@ -253,6 +253,22 @@ impl RawValue {
     pub fn get(&self) -> &str {
         &self.json
     }
+
+    /// Converts a `Box<RawValue>` into its JSON text as a boxed str without
+    /// copying or allocating.
+    pub fn into_boxed_str(self: Box<Self>) -> Box<str> {
+        unsafe { mem::transmute::<Box<Self>, Box<str>>(self) }
+    }
+    /// Converts a `Box<RawValue>` into its JSON bytes without copying or
+    /// allocating.
+    pub fn into_boxed_bytes(self: Box<Self>) -> Box<[u8]> {
+        self.into_boxed_str().into_boxed_bytes()
+    }
+    /// Converts a `Box<RawValue>` into its JSON text without copying or
+    /// allocating.
+    pub fn into_string(self: Box<Self>) -> String {
+        self.into_boxed_str().into_string()
+    }
 }
 
 pub const TOKEN: &str = "$serde_json::private::RawValue";
