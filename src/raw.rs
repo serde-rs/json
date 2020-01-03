@@ -76,7 +76,8 @@ use error::Error;
 ///
 /// # Ownership
 ///
-/// The typical usage of `RawValue` will be in the borrowed form:
+/// As `RawValue` is not `Sized`, the typical usage of `RawValue` will be in
+/// the borrowed form:
 ///
 /// ```edition2018
 /// # use serde::Deserialize;
@@ -160,6 +161,14 @@ impl Display for RawValue {
     }
 }
 
+impl PartialEq<RawValue> for RawValue {
+    fn eq(&self, other: &RawValue) -> bool {
+        self.json.eq(&other.json)
+    }
+}
+
+impl Eq for RawValue {}
+
 impl RawValue {
     /// Convert an owned `String` of JSON data to an owned `RawValue`.
     ///
@@ -177,6 +186,31 @@ impl RawValue {
             }
         }
         Ok(Self::from_owned(json.into_boxed_str()))
+    }
+
+    /// Convert an owned `String` of JSON data to an owned `RawValue`, without
+    /// checking whether the JSON is valid.
+    ///
+    /// It is assumed that the following are true:
+    ///
+    /// - the input is valid JSON,
+    /// - the input has no leading or trailing whitespace
+    ///
+    /// We avoid an allocation and memcpy if the input has capacity equal to
+    /// its length.
+    pub unsafe fn from_string_unchecked(json: String) -> Box<Self> {
+        Self::from_owned(json.into_boxed_str())
+    }
+
+    /// Convert a borrowed `str` of JSON data to a borrowed `RawValue`, without
+    /// checking whether the JSON is valid.
+    ///
+    /// It is assumed that the following are true:
+    ///
+    /// - the input is valid JSON, and
+    /// - the input has no leading or trailing whitespace
+    pub unsafe fn from_str_unchecked(json: &str) -> &Self {
+        Self::from_borrowed(json)
     }
 
     /// Access the JSON text underlying a raw value.
@@ -453,4 +487,21 @@ impl<'de> MapAccess<'de> for BorrowedRawDeserializer<'de> {
     {
         seed.deserialize(BorrowedStrDeserializer::new(self.raw_value.take().unwrap()))
     }
+}
+
+/// Convert a `T` into `serde_json::value::RawValue` which is a single valid
+/// JSON value.
+pub fn to_raw<T>(value: T) -> Result<RawValue, Error>
+where
+    T: Serialize,
+{
+    value.serialize(Serializer)
+}
+
+/// Interpret a `serde_json::value::RawValue` as an instance of type `T`.
+pub fn from_raw<T>(value: RawValue) -> Result<T, Error>
+where
+    T: DeserializeOwned,
+{
+    T::deserialize(value)
 }

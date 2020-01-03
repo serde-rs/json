@@ -2078,7 +2078,7 @@ fn test_integer128() {
 fn test_borrowed_raw_value() {
     use serde_json::value::RawValue;
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Serialize, Deserialize, PartialEq, Eq)]
     struct Wrapper<'a> {
         a: i8,
         #[serde(borrow)]
@@ -2095,6 +2095,12 @@ fn test_borrowed_raw_value() {
 
     let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
     assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
+
+    let wrapper_to_raw = serde_json::to_raw(&wrapper_from_str).unwrap();
+    assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_raw.get());
+
+    let wrapper_from_raw: Wrapper = serde_json::from_raw(&wrapper_to_raw).unwrap();
+    assert_eq!(wrapper_from_str, wrapper_from_raw);
 
     let array_from_str: Vec<&RawValue> =
         serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
@@ -2136,6 +2142,12 @@ fn test_boxed_raw_value() {
 
     let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
     assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
+
+    let wrapper_to_raw = serde_json::to_raw(&wrapper_from_str).unwrap();
+    assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_raw.get());
+
+    let wrapper_from_raw: Wrapper = serde_json::from_raw(&wrapper_to_raw).unwrap();
+    assert_eq!(wrapper_from_str, wrapper_from_raw);
 
     let array_from_str: Vec<Box<RawValue>> =
         serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
