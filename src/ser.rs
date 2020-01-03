@@ -793,7 +793,6 @@ where
 
     #[inline]
     fn end(self) -> Result<()> {
-        #[allow(clippy::match_same_arms)]
         match self {
             Compound::Map { .. } => ser::SerializeMap::end(self),
             #[cfg(feature = "arbitrary_precision")]
