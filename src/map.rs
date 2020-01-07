@@ -132,6 +132,17 @@ impl Map<String, Value> {
         return self.map.remove(key);
     }
 
+    /// Moves all elements from other into Self, leaving other empty.
+    #[inline]
+    pub fn append(&mut self, other: &mut Self) {
+        #[cfg(feature = "preserve_order")]
+        for (k, v) in std::mem::take(&mut other.map).into_iter() {
+            self.map.insert(k, v);
+        }
+        #[cfg(not(feature = "preserve_order"))]
+        self.map.append(&mut other.map);
+    }
+
     /// Gets the given key's corresponding entry in the map for in-place
     /// manipulation.
     pub fn entry<S>(&mut self, key: S) -> Entry
