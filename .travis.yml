@@ -19,6 +19,9 @@ matrix:
     - rust: stable
     - rust: beta
     - rust: 1.31.0
+    - rust: 1.36.0
+      script:
+        - cargo build --no-default-features --features alloc
 
     - rust: nightly
       name: Clippy
