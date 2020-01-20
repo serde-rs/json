@@ -199,10 +199,12 @@ impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
             // maps it to fmt::Error
             io::Error::new(io::ErrorKind::Other, "fmt error")
         }
+
         #[cfg(not(feature = "std"))]
-        fn io_error<E>(_: E) -> &'static str {
+        fn io_error<E>(_: E) -> io::Error {
             "fmt error"
         }
+
         let s = try!(str::from_utf8(buf).map_err(io_error));
         try!(self.inner.write_str(s).map_err(io_error));
         Ok(buf.len())

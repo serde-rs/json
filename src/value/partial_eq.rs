@@ -1,4 +1,4 @@
-use lib::String;
+use lib::*;
 
 use super::Value;
 
