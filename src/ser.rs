@@ -1634,17 +1634,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
-    #[cfg(feature = "std")]
-    fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        itoa::write(writer, value).map(drop)
-    }
-
-    /// Writes an integer value like `-123` to the specified writer.
-    #[inline]
-    #[cfg(not(feature = "std"))]
     fn write_i8<W: ?Sized>(&mut self, writer: &mut W, value: i8) -> io::Result<()>
     where
         W: io::Write,
@@ -1656,17 +1645,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
-    #[cfg(feature = "std")]
-    fn write_i16<W: ?Sized>(&mut self, writer: &mut W, value: i16) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        itoa::write(writer, value).map(drop)
-    }
-
-    /// Writes an integer value like `-123` to the specified writer.
-    #[inline]
-    #[cfg(not(feature = "std"))]
     fn write_i16<W: ?Sized>(&mut self, writer: &mut W, value: i16) -> io::Result<()>
     where
         W: io::Write,
@@ -1678,17 +1656,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
-    #[cfg(feature = "std")]
-    fn write_i32<W: ?Sized>(&mut self, writer: &mut W, value: i32) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        itoa::write(writer, value).map(drop)
-    }
-
-    /// Writes an integer value like `-123` to the specified writer.
-    #[inline]
-    #[cfg(not(feature = "std"))]
     fn write_i32<W: ?Sized>(&mut self, writer: &mut W, value: i32) -> io::Result<()>
     where
         W: io::Write,
@@ -1700,17 +1667,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
-    #[cfg(feature = "std")]
-    fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        itoa::write(writer, value).map(drop)
-    }
-
-    /// Writes an integer value like `-123` to the specified writer.
-    #[inline]
-    #[cfg(not(feature = "std"))]
     fn write_i64<W: ?Sized>(&mut self, writer: &mut W, value: i64) -> io::Result<()>
     where
         W: io::Write,
@@ -1722,17 +1678,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
-    #[cfg(feature = "std")]
-    fn write_u8<W: ?Sized>(&mut self, writer: &mut W, value: u8) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        itoa::write(writer, value).map(drop)
-    }
-
-    /// Writes an integer value like `123` to the specified writer.
-    #[inline]
-    #[cfg(not(feature = "std"))]
     fn write_u8<W: ?Sized>(&mut self, writer: &mut W, value: u8) -> io::Result<()>
     where
         W: io::Write,
@@ -1744,17 +1689,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
-    #[cfg(feature = "std")]
-    fn write_u16<W: ?Sized>(&mut self, writer: &mut W, value: u16) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        itoa::write(writer, value).map(drop)
-    }
-
-    /// Writes an integer value like `123` to the specified writer.
-    #[inline]
-    #[cfg(not(feature = "std"))]
     fn write_u16<W: ?Sized>(&mut self, writer: &mut W, value: u16) -> io::Result<()>
     where
         W: io::Write,
@@ -1766,17 +1700,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
-    #[cfg(feature = "std")]
-    fn write_u32<W: ?Sized>(&mut self, writer: &mut W, value: u32) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        itoa::write(writer, value).map(drop)
-    }
-
-    /// Writes an integer value like `123` to the specified writer.
-    #[inline]
-    #[cfg(not(feature = "std"))]
     fn write_u32<W: ?Sized>(&mut self, writer: &mut W, value: u32) -> io::Result<()>
     where
         W: io::Write,
@@ -1788,17 +1711,6 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
-    #[cfg(feature = "std")]
-    fn write_u64<W: ?Sized>(&mut self, writer: &mut W, value: u64) -> io::Result<()>
-    where
-        W: io::Write,
-    {
-        itoa::write(writer, value).map(drop)
-    }
-
-    /// Writes an integer value like `123` to the specified writer.
-    #[inline]
-    #[cfg(not(feature = "std"))]
     fn write_u64<W: ?Sized>(&mut self, writer: &mut W, value: u64) -> io::Result<()>
     where
         W: io::Write,
