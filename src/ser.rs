@@ -1,13 +1,9 @@
 //! Serialize a Rust data structure into JSON data.
 
-use core::fmt;
+use lib::num::FpCategory;
+use lib::*;
+
 use io;
-use core::num::FpCategory;
-use core::str;
-#[cfg(feature = "alloc")]
-use alloc::string::{String, ToString};
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
@@ -464,7 +460,7 @@ where
     where
         T: fmt::Display,
     {
-        use core::fmt::Write;
+        use self::fmt::Write;
 
         struct Adapter<'ser, W: 'ser, F: 'ser> {
             writer: &'ser mut W,

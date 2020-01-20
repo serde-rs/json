@@ -1,15 +1,9 @@
 //! When serializing or deserializing JSON goes wrong.
 
-#[cfg(feature = "std")]
-use std::error;
-use core::fmt::{self, Debug, Display};
+use lib::str::FromStr;
+use lib::*;
+
 use io;
-use core::result;
-use core::str::FromStr;
-#[cfg(feature = "alloc")]
-use alloc::boxed::Box;
-#[cfg(feature = "alloc")]
-use alloc::string::{String, ToString};
 
 use serde::de;
 use serde::ser;

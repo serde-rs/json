@@ -1,14 +1,9 @@
 //! Deserialize JSON data to a Rust data structure.
 
+use lib::str::FromStr;
+use lib::*;
+
 use io;
-use core::marker::PhantomData;
-use core::result;
-use core::str::FromStr;
-use core::{i32, u64};
-#[cfg(feature = "alloc")]
-use alloc::string::String;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 use serde::de::{self, Expected, Unexpected};
 

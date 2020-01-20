@@ -90,14 +90,9 @@
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
-use core::fmt::{self, Debug};
+use lib::*;
+
 use io;
-use core::mem;
-use core::str;
-#[cfg(feature = "alloc")]
-use alloc::string::String;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;

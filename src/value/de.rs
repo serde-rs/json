@@ -1,18 +1,5 @@
-#[cfg(feature = "std")]
-use std::borrow::Cow;
-#[cfg(feature = "alloc")]
-use alloc::borrow::{Cow, ToOwned};
-use core::fmt;
-use core::slice;
-use core::str;
-#[cfg(feature = "std")]
-use std::vec;
-#[cfg(feature = "alloc")]
-use alloc::vec;
-#[cfg(feature = "alloc")]
-use alloc::string::String;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use lib::str::FromStr;
+use lib::*;
 
 use serde;
 use serde::de::{
@@ -144,7 +131,7 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
-impl str::FromStr for Value {
+impl FromStr for Value {
     type Err = Error;
     fn from_str(s: &str) -> Result<Value, Error> {
         super::super::de::from_str(s)

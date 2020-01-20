@@ -1,3 +1,5 @@
+use lib::*;
+
 use serde::ser::Impossible;
 use serde::{self, Serialize};
 
@@ -5,13 +7,6 @@ use error::{Error, ErrorCode};
 use map::Map;
 use number::Number;
 use value::{to_value, Value};
-
-#[cfg(feature = "alloc")]
-use alloc::string::{String, ToString};
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-#[cfg(feature = "alloc")]
-use alloc::borrow::ToOwned;
 
 impl Serialize for Value {
     #[inline]
