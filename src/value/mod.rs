@@ -193,18 +193,11 @@ struct WriterFormatter<'a, 'b: 'a> {
 
 impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        #[cfg(feature = "std")]
         fn io_error<E>(_: E) -> io::Error {
             // Error value does not matter because fmt::Display impl below just
             // maps it to fmt::Error
             io::Error::new(io::ErrorKind::Other, "fmt error")
         }
-
-        #[cfg(not(feature = "std"))]
-        fn io_error<E>(_: E) -> io::Error {
-            "fmt error"
-        }
-
         let s = try!(str::from_utf8(buf).map_err(io_error));
         try!(self.inner.write_str(s).map_err(io_error));
         Ok(buf.len())

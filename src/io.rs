@@ -15,16 +15,87 @@ use lib::*;
 
 #[cfg(feature = "std")]
 pub use std::io::ErrorKind;
+#[cfg(not(feature = "std"))]
+pub enum ErrorKind {
+    InvalidData,
+    WriteZero,
+    Other,
+    UnexpectedEof,
+}
+
+#[cfg(not(feature = "std"))]
+impl ErrorKind {
+    #[inline]
+    fn as_str(&self) -> &'static str {
+        match self {
+            ErrorKind::InvalidData => "invalid data",
+            ErrorKind::WriteZero => "write zero",
+            ErrorKind::Other => "other os error",
+            ErrorKind::UnexpectedEof => "unexpected end of file",
+        }
+    }
+}
 
 #[cfg(feature = "std")]
 pub use std::io::Error;
 #[cfg(not(feature = "std"))]
-pub type Error = &'static str;
+pub struct Error {
+    repr: Repr,
+}
+
+#[cfg(not(feature = "std"))]
+enum Repr {
+    Simple(ErrorKind),
+    Custom(ErrorKind, Box<dyn serde::de::StdError + Send + Sync>),
+}
+
+#[cfg(not(feature = "std"))]
+impl Display for Error {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.repr {
+            Repr::Custom(_, msg) => write!(fmt, "{}", msg),
+            Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl Debug for Error {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Display::fmt(self, fmt)
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl serde::de::StdError for Error {}
+
+#[cfg(not(feature = "std"))]
+impl From<ErrorKind> for Error {
+    #[inline]
+    fn from(kind: ErrorKind) -> Error {
+        Error {
+            repr: Repr::Simple(kind),
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl Error {
+    #[inline]
+    pub fn new<E>(kind: ErrorKind, error: E) -> Error
+    where
+        E: Into<Box<dyn serde::de::StdError + Send + Sync>>,
+    {
+        Error {
+            repr: Repr::Custom(kind, error.into()),
+        }
+    }
+}
 
 #[cfg(feature = "std")]
 pub use std::io::Result;
 #[cfg(not(feature = "std"))]
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<T> = result::Result<T, Error>;
 
 #[cfg(feature = "std")]
 pub use std::io::Write;
@@ -35,7 +106,12 @@ pub trait Write {
     fn write_all(&mut self, mut buf: &[u8]) -> Result<()> {
         while !buf.is_empty() {
             match self.write(buf) {
-                Ok(0) => return Err("failed to write whole buffer"),
+                Ok(0) => {
+                    return Err(Error::new(
+                        ErrorKind::WriteZero,
+                        "failed to write whole buffer",
+                    ))
+                }
                 Ok(n) => buf = &buf[n..],
                 Err(e) => return Err(e),
             }

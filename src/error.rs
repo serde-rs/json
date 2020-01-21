@@ -130,7 +130,6 @@ pub enum Category {
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(fallible_impl_from))]
-#[cfg(feature = "std")]
 impl From<Error> for io::Error {
     /// Convert a `serde_json::Error` into an `io::Error`.
     ///
@@ -333,18 +332,14 @@ impl Display for ErrorCode {
     }
 }
 
-#[cfg(feature = "std")]
-impl error::Error for Error {
-    fn source(&self) -> Option<&(error::Error + 'static)> {
+impl serde::de::StdError for Error {
+    fn source(&self) -> Option<&(serde::de::StdError + 'static)> {
         match self.err.code {
             ErrorCode::Io(ref err) => Some(err),
             _ => None,
         }
     }
 }
-
-#[cfg(not(feature = "std"))]
-impl serde::de::StdError for Error {}
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
