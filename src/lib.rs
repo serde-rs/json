@@ -342,7 +342,7 @@ extern crate ryu;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(feature = "alloc")]
+#[cfg(not(feature = "std"))]
 extern crate alloc;
 
 /// A facade around all the types we need from the `std`, `core`, and `alloc`
@@ -370,27 +370,27 @@ mod lib {
     pub use self::core::marker::{self, PhantomData};
     pub use self::core::result::{self, Result};
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::borrow::{Cow, ToOwned};
     #[cfg(feature = "std")]
     pub use std::borrow::{Cow, ToOwned};
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::string::{String, ToString};
     #[cfg(feature = "std")]
     pub use std::string::{String, ToString};
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::vec::{self, Vec};
     #[cfg(feature = "std")]
     pub use std::vec::{self, Vec};
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::boxed::Box;
     #[cfg(feature = "std")]
     pub use std::boxed::Box;
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(not(feature = "std"))]
     pub use alloc::collections::{btree_map, BTreeMap};
     #[cfg(feature = "std")]
     pub use std::collections::{btree_map, BTreeMap};
