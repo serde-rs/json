@@ -1,21 +1,9 @@
-//! A tiny, `no_std`-friendly facade around `std::io`.
-//! Reexports types from `std` when available; otherwise reimplements and
-//! provides some of the core logic.
-//!
-//! The main reason that `std::io` hasn't found itself reexported as part of
-//! the `core` crate is the `std::io::{Read, Write}` traits' reliance on
-//! `std::io::Error`, which may contain internally a heap-allocated `Box<Error>`
-//! and/or now relying on OS-specific `std::backtrace::Backtrace`.
-//!
-//! Because of this, we simply redefine those traits as if the error type is
-//! simply a `&'static str` and reimplement those traits for `core` primitives
-//! or `alloc` types, e.g. `Vec<T>`.
-#[cfg(not(feature = "std"))]
+//! Reimplements core logic and types from `std::io` in an `alloc`-friendly
+//! fashion.
+#![cfg(not(feature = "std"))]
+
 use lib::*;
 
-#[cfg(feature = "std")]
-pub use std::io::ErrorKind;
-#[cfg(not(feature = "std"))]
 pub enum ErrorKind {
     InvalidData,
     WriteZero,
@@ -23,7 +11,6 @@ pub enum ErrorKind {
     UnexpectedEof,
 }
 
-#[cfg(not(feature = "std"))]
 impl ErrorKind {
     #[inline]
     fn as_str(&self) -> &'static str {
@@ -36,20 +23,15 @@ impl ErrorKind {
     }
 }
 
-#[cfg(feature = "std")]
-pub use std::io::Error;
-#[cfg(not(feature = "std"))]
 pub struct Error {
     repr: Repr,
 }
 
-#[cfg(not(feature = "std"))]
 enum Repr {
     Simple(ErrorKind),
     Custom(ErrorKind, Box<dyn serde::de::StdError + Send + Sync>),
 }
 
-#[cfg(not(feature = "std"))]
 impl Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.repr {
@@ -59,17 +41,14 @@ impl Display for Error {
     }
 }
 
-#[cfg(not(feature = "std"))]
 impl Debug for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         Display::fmt(self, fmt)
     }
 }
 
-#[cfg(not(feature = "std"))]
 impl serde::de::StdError for Error {}
 
-#[cfg(not(feature = "std"))]
 impl From<ErrorKind> for Error {
     #[inline]
     fn from(kind: ErrorKind) -> Error {
@@ -79,7 +58,6 @@ impl From<ErrorKind> for Error {
     }
 }
 
-#[cfg(not(feature = "std"))]
 impl Error {
     #[inline]
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
@@ -92,14 +70,8 @@ impl Error {
     }
 }
 
-#[cfg(feature = "std")]
-pub use std::io::Result;
-#[cfg(not(feature = "std"))]
 pub type Result<T> = result::Result<T, Error>;
 
-#[cfg(feature = "std")]
-pub use std::io::Write;
-#[cfg(not(feature = "std"))]
 pub trait Write {
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
 
@@ -122,7 +94,6 @@ pub trait Write {
     fn flush(&mut self) -> Result<()>;
 }
 
-#[cfg(not(feature = "std"))]
 impl<W: Write> Write for &mut W {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
@@ -140,7 +111,6 @@ impl<W: Write> Write for &mut W {
     }
 }
 
-#[cfg(not(feature = "std"))]
 impl Write for Vec<u8> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
@@ -160,9 +130,6 @@ impl Write for Vec<u8> {
     }
 }
 
-#[cfg(feature = "std")]
-pub use std::io::Read;
-#[cfg(not(feature = "std"))]
 pub trait Read {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
     fn bytes(self) -> Bytes<Self>
@@ -173,14 +140,10 @@ pub trait Read {
     }
 }
 
-#[cfg(feature = "std")]
-pub use std::io::Bytes;
-#[cfg(not(feature = "std"))]
 pub struct Bytes<R> {
     inner: R,
 }
 
-#[cfg(not(feature = "std"))]
 impl<R: Read> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
