@@ -298,7 +298,12 @@
 // Ignored clippy lints
 #![cfg_attr(
     feature = "cargo-clippy",
-    allow(deprecated_cfg_attr, doc_markdown, needless_doctest_main)
+    allow(
+        deprecated_cfg_attr,
+        doc_markdown,
+        needless_doctest_main,
+        transmute_ptr_to_ptr,
+    )
 )]
 // Ignored clippy_pedantic lints
 #![cfg_attr(feature = "cargo-clippy", allow(
