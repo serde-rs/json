@@ -432,6 +432,8 @@ pub mod map;
 pub mod ser;
 pub mod value;
 
+mod features_check;
+
 mod io;
 mod iter;
 mod number;
