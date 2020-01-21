@@ -217,7 +217,7 @@ impl RawValue {
     }
 }
 
-pub const TOKEN: &'static str = "$serde_json::private::RawValue";
+pub const TOKEN: &str = "$serde_json::private::RawValue";
 
 impl Serialize for RawValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

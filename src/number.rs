@@ -18,7 +18,7 @@ use error::ErrorCode;
 #[cfg(feature = "arbitrary_precision")]
 /// Not public API. Should be pub(crate).
 #[doc(hidden)]
-pub const TOKEN: &'static str = "$serde_json::private::Number";
+pub const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
 #[derive(Clone, PartialEq)]
