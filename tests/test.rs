@@ -5,14 +5,6 @@
 trace_macros!(true);
 
 #[macro_use]
-extern crate serde_derive;
-
-extern crate serde;
-extern crate serde_bytes;
-#[macro_use]
-extern crate serde_json;
-
-#[macro_use]
 mod macros;
 
 use std::collections::BTreeMap;
@@ -26,14 +18,15 @@ use std::{f32, f64};
 use std::{i16, i32, i64, i8};
 use std::{u16, u32, u64, u8};
 
-use serde::de::{self, Deserialize, IgnoredAny, IntoDeserializer};
-use serde::ser::{self, Serialize, Serializer};
+use serde::de::{self, IgnoredAny, IntoDeserializer};
+use serde::ser::{self, Serializer};
+use serde::{Deserialize, Serialize};
 
 use serde_bytes::{ByteBuf, Bytes};
 
 use serde_json::{
-    from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
-    to_writer, Deserializer, Number, Value,
+    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
+    to_vec, to_writer, Deserializer, Number, Value,
 };
 
 macro_rules! treemap {

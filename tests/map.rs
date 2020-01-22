@@ -1,5 +1,3 @@
-extern crate serde_json;
-
 use serde_json::{from_str, Map, Value};
 
 #[test]

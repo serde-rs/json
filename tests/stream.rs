@@ -1,11 +1,6 @@
 #![cfg(not(feature = "preserve_order"))]
 
-extern crate serde;
-
-#[macro_use]
-extern crate serde_json;
-
-use serde_json::{Deserializer, Value};
+use serde_json::{json, Deserializer, Value};
 
 // Rustfmt issue https://github.com/rust-lang-nursery/rustfmt/issues/2740
 #[cfg_attr(rustfmt, rustfmt_skip)]

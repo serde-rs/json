@@ -1,7 +1,4 @@
-#[macro_use]
-extern crate serde_json;
-
-use serde_json::{Number, Value};
+use serde_json::{json, Number, Value};
 
 #[test]
 fn number() {
