@@ -22,8 +22,6 @@ impl Debug for Error {
     }
 }
 
-impl serde::de::StdError for Error {}
-
 impl Error {
     pub(crate) fn new(kind: ErrorKind, error: &'static str) -> Error {
         let _ = kind;

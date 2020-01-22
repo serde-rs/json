@@ -334,7 +334,8 @@ impl Display for ErrorCode {
 }
 
 impl serde::de::StdError for Error {
-    fn source(&self) -> Option<&(serde::de::StdError + 'static)> {
+    #[cfg(feature = "std")]
+    fn source(&self) -> Option<&(error::Error + 'static)> {
         match self.err.code {
             ErrorCode::Io(ref err) => Some(err),
             _ => None,
