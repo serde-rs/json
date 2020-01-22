@@ -4,10 +4,8 @@
 use lib::*;
 
 pub enum ErrorKind {
-    InvalidData,
     WriteZero,
     Other,
-    UnexpectedEof,
 }
 
 pub struct Error {
