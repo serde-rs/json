@@ -28,7 +28,7 @@ pub struct Error {
 
 enum Repr {
     Simple(ErrorKind),
-    Custom(ErrorKind, Box<dyn serde::de::StdError + Send + Sync>),
+    Custom(ErrorKind, Box<dyn Display + Send + Sync>),
 }
 
 impl Display for Error {
@@ -58,13 +58,12 @@ impl From<ErrorKind> for Error {
 }
 
 impl Error {
-    #[inline]
-    pub fn new<E>(kind: ErrorKind, error: E) -> Error
+    pub(crate) fn new<E>(kind: ErrorKind, error: E) -> Error
     where
-        E: Into<Box<dyn serde::de::StdError + Send + Sync>>,
+        E: Display + Send + Sync + 'static,
     {
         Error {
-            repr: Repr::Custom(kind, error.into()),
+            repr: Repr::Custom(kind, Box::new(error)),
         }
     }
 }
