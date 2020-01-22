@@ -21,7 +21,7 @@ matrix:
     - rust: 1.31.0
     - rust: 1.36.0
       script:
-        - cargo build --no-default-features --features alloc
+        - cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc
 
     - rust: nightly
       name: Clippy
