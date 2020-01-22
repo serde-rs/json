@@ -7,7 +7,7 @@ macro_rules! hide_from_rustfmt {
     };
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(any(feature = "std", feature = "alloc")))]
 hide_from_rustfmt! {
     mod error;
 }
