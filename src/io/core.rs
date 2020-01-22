@@ -11,18 +11,12 @@ pub enum ErrorKind {
 }
 
 pub struct Error {
-    repr: Repr,
-}
-
-enum Repr {
-    Custom(ErrorKind, Box<dyn Display + Send + Sync>),
+    repr: Box<dyn Display + Send + Sync>,
 }
 
 impl Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.repr {
-            Repr::Custom(_, msg) => write!(fmt, "{}", msg),
-        }
+        Display::fmt(self.repr.as_ref(), fmt)
     }
 }
 
@@ -39,8 +33,9 @@ impl Error {
     where
         E: Display + Send + Sync + 'static,
     {
+        let _ = kind;
         Error {
-            repr: Repr::Custom(kind, Box::new(error)),
+            repr: Box::new(error),
         }
     }
 }
