@@ -1,9 +1,12 @@
-use lib::iter::FromIterator;
-use lib::*;
+use crate::lib::iter::FromIterator;
+use crate::lib::*;
 
 use super::Value;
-use map::Map;
-use number::Number;
+use crate::map::Map;
+use crate::number::Number;
+
+#[cfg(feature = "arbitrary_precision")]
+use serde::serde_if_integer128;
 
 macro_rules! from_integer {
     ($($ty:ident)*) => {

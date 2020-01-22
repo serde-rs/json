@@ -1,21 +1,20 @@
-use lib::str::FromStr;
-use lib::*;
+use crate::lib::str::FromStr;
+use crate::lib::*;
 
-use serde;
 use serde::de::{
     Deserialize, DeserializeSeed, EnumAccess, Expected, IntoDeserializer, MapAccess, SeqAccess,
     Unexpected, VariantAccess, Visitor,
 };
 
-use error::Error;
-use map::Map;
-use number::Number;
-use value::Value;
+use crate::error::Error;
+use crate::map::Map;
+use crate::number::Number;
+use crate::value::Value;
 
-use serde::de;
+use serde::{de, forward_to_deserialize_any, serde_if_integer128};
 
 #[cfg(feature = "arbitrary_precision")]
-use number::NumberFromString;
+use crate::number::NumberFromString;
 
 impl<'de> Deserialize<'de> for Value {
     #[inline]
@@ -109,8 +108,8 @@ impl<'de> Deserialize<'de> for Value {
                     }
                     #[cfg(feature = "raw_value")]
                     Some(KeyClass::RawValue) => {
-                        let value = visitor.next_value_seed(::raw::BoxedFromString)?;
-                        ::from_str(value.get()).map_err(de::Error::custom)
+                        let value = visitor.next_value_seed(crate::raw::BoxedFromString)?;
+                        crate::from_str(value.get()).map_err(de::Error::custom)
                     }
                     Some(KeyClass::Map(first_key)) => {
                         let mut values = Map::new();
@@ -302,8 +301,8 @@ impl<'de> serde::Deserializer<'de> for Value {
     {
         #[cfg(feature = "raw_value")]
         {
-            if name == ::raw::TOKEN {
-                return visitor.visit_map(::raw::OwnedRawDeserializer {
+            if name == crate::raw::TOKEN {
+                return visitor.visit_map(crate::raw::OwnedRawDeserializer {
                     raw_value: Some(self.to_string()),
                 });
             }
@@ -849,8 +848,8 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     {
         #[cfg(feature = "raw_value")]
         {
-            if name == ::raw::TOKEN {
-                return visitor.visit_map(::raw::OwnedRawDeserializer {
+            if name == crate::raw::TOKEN {
+                return visitor.visit_map(crate::raw::OwnedRawDeserializer {
                     raw_value: Some(self.to_string()),
                 });
             }
@@ -1342,9 +1341,9 @@ impl<'de> Visitor<'de> for KeyClassifier {
     {
         match s {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::TOKEN => Ok(KeyClass::Number),
+            crate::number::TOKEN => Ok(KeyClass::Number),
             #[cfg(feature = "raw_value")]
-            ::raw::TOKEN => Ok(KeyClass::RawValue),
+            crate::raw::TOKEN => Ok(KeyClass::RawValue),
             _ => Ok(KeyClass::Map(s.to_owned())),
         }
     }
@@ -1355,9 +1354,9 @@ impl<'de> Visitor<'de> for KeyClassifier {
     {
         match s.as_str() {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::TOKEN => Ok(KeyClass::Number),
+            crate::number::TOKEN => Ok(KeyClass::Number),
             #[cfg(feature = "raw_value")]
-            ::raw::TOKEN => Ok(KeyClass::RawValue),
+            crate::raw::TOKEN => Ok(KeyClass::RawValue),
             _ => Ok(KeyClass::Map(s)),
         }
     }

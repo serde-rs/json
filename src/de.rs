@@ -1,25 +1,26 @@
 //! Deserialize JSON data to a Rust data structure.
 
-use lib::str::FromStr;
-use lib::*;
+use crate::lib::str::FromStr;
+use crate::lib::*;
 
 #[cfg(feature = "std")]
-use io;
+use crate::io;
 
 use serde::de::{self, Expected, Unexpected};
+use serde::{forward_to_deserialize_any, serde_if_integer128};
 
-use super::error::{Error, ErrorCode, Result};
+use crate::error::{Error, ErrorCode, Result};
 
-use read::{self, Reference};
+use crate::read::{self, Reference};
 
-pub use read::{Read, SliceRead, StrRead};
+pub use crate::read::{Read, SliceRead, StrRead};
 
 #[cfg(feature = "std")]
-pub use read::IoRead;
+pub use crate::read::IoRead;
 
-use number::Number;
+use crate::number::Number;
 #[cfg(feature = "arbitrary_precision")]
-use number::NumberDeserializer;
+use crate::number::NumberDeserializer;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -1502,7 +1503,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         #[cfg(feature = "raw_value")]
         {
-            if name == ::raw::TOKEN {
+            if name == crate::raw::TOKEN {
                 return self.deserialize_raw_value(visitor);
             }
         }

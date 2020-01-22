@@ -1,7 +1,7 @@
-use lib::*;
+use crate::lib::*;
 
 use super::Value;
-use map::Map;
+use crate::map::Map;
 
 /// A type that can be used to index into a `serde_json::Value`.
 ///

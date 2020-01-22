@@ -90,19 +90,19 @@
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
-use lib::*;
+use crate::lib::*;
 
-use io;
+use crate::io;
 
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 
-use error::Error;
-pub use map::Map;
-pub use number::Number;
+use crate::error::Error;
+pub use crate::map::Map;
+pub use crate::number::Number;
 
 #[cfg(feature = "raw_value")]
-pub use raw::RawValue;
+pub use crate::raw::RawValue;
 
 pub use self::index::Index;
 

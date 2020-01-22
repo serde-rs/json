@@ -1,12 +1,15 @@
-use lib::*;
+use crate::lib::*;
 
 use serde::ser::Impossible;
 use serde::{self, Serialize};
 
-use error::{Error, ErrorCode};
-use map::Map;
-use number::Number;
-use value::{to_value, Value};
+use crate::error::{Error, ErrorCode};
+use crate::map::Map;
+use crate::number::Number;
+use crate::value::{to_value, Value};
+
+#[cfg(feature = "arbitrary_precision")]
+use serde::serde_if_integer128;
 
 impl Serialize for Value {
     #[inline]
@@ -237,9 +240,9 @@ impl serde::Serializer for Serializer {
     ) -> Result<Self::SerializeStruct, Error> {
         match name {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::TOKEN => Ok(SerializeMap::Number { out_value: None }),
+            crate::number::TOKEN => Ok(SerializeMap::Number { out_value: None }),
             #[cfg(feature = "raw_value")]
-            ::raw::TOKEN => Ok(SerializeMap::RawValue { out_value: None }),
+            crate::raw::TOKEN => Ok(SerializeMap::RawValue { out_value: None }),
             _ => self.serialize_map(Some(len)),
         }
     }
@@ -607,7 +610,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
             }
             #[cfg(feature = "arbitrary_precision")]
             SerializeMap::Number { ref mut out_value } => {
-                if key == ::number::TOKEN {
+                if key == crate::number::TOKEN {
                     *out_value = Some(value.serialize(NumberValueEmitter)?);
                     Ok(())
                 } else {
@@ -616,7 +619,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
             }
             #[cfg(feature = "raw_value")]
             SerializeMap::RawValue { ref mut out_value } => {
-                if key == ::raw::TOKEN {
+                if key == crate::raw::TOKEN {
                     *out_value = Some(value.serialize(RawValueEmitter)?);
                     Ok(())
                 } else {
@@ -911,7 +914,7 @@ impl serde::ser::Serializer for RawValueEmitter {
     }
 
     fn serialize_str(self, value: &str) -> Result<Self::Ok, Self::Error> {
-        ::from_str(value)
+        crate::from_str(value)
     }
 
     fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok, Self::Error> {

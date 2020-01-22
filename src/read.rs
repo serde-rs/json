@@ -1,21 +1,21 @@
-use lib::ops::Deref;
-use lib::*;
+use crate::lib::ops::Deref;
+use crate::lib::*;
 
 #[cfg(feature = "std")]
-use io;
+use crate::io;
 
 #[cfg(feature = "raw_value")]
 use serde::de::Visitor;
 
 #[cfg(feature = "std")]
-use iter::LineColIterator;
+use crate::iter::LineColIterator;
 
-use error::{Error, ErrorCode, Result};
+use crate::error::{Error, ErrorCode, Result};
 
 #[cfg(feature = "raw_value")]
-use raw::BorrowedRawDeserializer;
+use crate::raw::BorrowedRawDeserializer;
 #[cfg(all(feature = "raw_value", feature = "std"))]
-use raw::OwnedRawDeserializer;
+use crate::raw::OwnedRawDeserializer;
 
 /// Trait used by the deserializer for iterating over input. This is manually
 /// "specialized" for iterating over &[u8]. Once feature(specialization) is

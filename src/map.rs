@@ -6,11 +6,11 @@
 //! [`BTreeMap`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
 //! [`IndexMap`]: https://docs.rs/indexmap/*/indexmap/map/struct.IndexMap.html
 
-use lib::borrow::Borrow;
-use lib::iter::FromIterator;
-use lib::*;
+use crate::lib::borrow::Borrow;
+use crate::lib::iter::FromIterator;
+use crate::lib::*;
 
-use value::Value;
+use crate::value::Value;
 
 use serde::{de, ser};
 
@@ -146,10 +146,10 @@ impl Map<String, Value> {
     where
         S: Into<String>,
     {
+        #[cfg(not(feature = "preserve_order"))]
+        use crate::lib::btree_map::Entry as EntryImpl;
         #[cfg(feature = "preserve_order")]
         use indexmap::map::Entry as EntryImpl;
-        #[cfg(not(feature = "preserve_order"))]
-        use lib::btree_map::Entry as EntryImpl;
 
         match self.map.entry(key.into()) {
             EntryImpl::Vacant(vacant) => Entry::Vacant(VacantEntry { vacant: vacant }),

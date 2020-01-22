@@ -1,15 +1,13 @@
 //! Serialize a Rust data structure into JSON data.
 
-use lib::num::FpCategory;
-use lib::*;
+use crate::lib::num::FpCategory;
+use crate::lib::*;
 
-use io;
+use crate::io;
 
-use super::error::{Error, ErrorCode, Result};
+use crate::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
-
-use itoa;
-use ryu;
+use serde::serde_if_integer128;
 
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F = CompactFormatter> {
@@ -421,9 +419,9 @@ where
     fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         match name {
             #[cfg(feature = "arbitrary_precision")]
-            ::number::TOKEN => Ok(Compound::Number { ser: self }),
+            crate::number::TOKEN => Ok(Compound::Number { ser: self }),
             #[cfg(feature = "raw_value")]
-            ::raw::TOKEN => Ok(Compound::RawValue { ser: self }),
+            crate::raw::TOKEN => Ok(Compound::RawValue { ser: self }),
             _ => self.serialize_map(Some(len)),
         }
     }
@@ -772,7 +770,7 @@ where
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { ref mut ser, .. } => {
-                if key == ::number::TOKEN {
+                if key == crate::number::TOKEN {
                     tri!(value.serialize(NumberStrEmitter(&mut *ser)));
                     Ok(())
                 } else {
@@ -781,7 +779,7 @@ where
             }
             #[cfg(feature = "raw_value")]
             Compound::RawValue { ref mut ser, .. } => {
-                if key == ::raw::TOKEN {
+                if key == crate::raw::TOKEN {
                     tri!(value.serialize(RawValueStrEmitter(&mut *ser)));
                     Ok(())
                 } else {

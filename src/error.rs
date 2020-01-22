@@ -1,9 +1,9 @@
 //! When serializing or deserializing JSON goes wrong.
 
-use lib::str::FromStr;
-use lib::*;
+use crate::lib::str::FromStr;
+use crate::lib::*;
 
-use io;
+use crate::io;
 
 use serde::de;
 use serde::ser;

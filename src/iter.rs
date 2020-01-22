@@ -1,4 +1,4 @@
-use io;
+use crate::io;
 
 pub struct LineColIterator<I> {
     iter: I,

@@ -333,13 +333,6 @@
 #![deny(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[macro_use]
-extern crate serde;
-#[cfg(feature = "preserve_order")]
-extern crate indexmap;
-extern crate itoa;
-extern crate ryu;
-
 ////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(not(feature = "std"))]
@@ -403,26 +396,26 @@ mod lib {
 
 #[cfg(feature = "std")]
 #[doc(inline)]
-pub use self::de::from_reader;
+pub use crate::de::from_reader;
 #[doc(inline)]
-pub use self::de::{from_slice, from_str, Deserializer, StreamDeserializer};
+pub use crate::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
-pub use self::error::{Error, Result};
+pub use crate::error::{Error, Result};
 #[doc(inline)]
-pub use self::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty};
+pub use crate::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty};
 #[cfg(feature = "std")]
 #[doc(inline)]
-pub use self::ser::{to_writer, to_writer_pretty, Serializer};
+pub use crate::ser::{to_writer, to_writer_pretty, Serializer};
 #[doc(inline)]
-pub use self::value::{from_value, to_value, Map, Number, Value};
+pub use crate::value::{from_value, to_value, Map, Number, Value};
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
 macro_rules! tri {
     ($e:expr) => {
         match $e {
-            ::lib::Result::Ok(val) => val,
-            ::lib::Result::Err(err) => return ::lib::Result::Err(err),
+            crate::lib::Result::Ok(val) => val,
+            crate::lib::Result::Err(err) => return crate::lib::Result::Err(err),
         }
     };
 }
