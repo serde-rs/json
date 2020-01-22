@@ -4,7 +4,6 @@
 use lib::*;
 
 pub enum ErrorKind {
-    WriteZero,
     Other,
 }
 
@@ -34,19 +33,12 @@ pub type Result<T> = result::Result<T, Error>;
 pub trait Write {
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
 
-    fn write_all(&mut self, mut buf: &[u8]) -> Result<()> {
-        while !buf.is_empty() {
-            match self.write(buf) {
-                Ok(0) => {
-                    return Err(Error::new(
-                        ErrorKind::WriteZero,
-                        "failed to write whole buffer",
-                    ))
-                }
-                Ok(n) => buf = &buf[n..],
-                Err(e) => return Err(e),
-            }
-        }
+    fn write_all(&mut self, buf: &[u8]) -> Result<()> {
+        // All our Write impls in no_std mode always write the whole buffer in
+        // one call infallibly.
+        let result = self.write(buf);
+        debug_assert!(result.is_ok());
+        debug_assert_eq!(result.unwrap(), buf.len());
         Ok(())
     }
 
