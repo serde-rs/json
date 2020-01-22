@@ -435,7 +435,7 @@ impl<'de> de::Deserialize<'de> for NumberFromString {
             where
                 E: de::Error,
             {
-                let n = try!(s.parse().map_err(de::Error::custom));
+                let n = tri!(s.parse().map_err(de::Error::custom));
                 Ok(NumberFromString { value: n })
             }
         }

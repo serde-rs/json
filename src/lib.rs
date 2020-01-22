@@ -418,7 +418,7 @@ pub use self::value::{from_value, to_value, Map, Number, Value};
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
-macro_rules! try {
+macro_rules! tri {
     ($e:expr) => {
         match $e {
             ::lib::Result::Ok(val) => val,

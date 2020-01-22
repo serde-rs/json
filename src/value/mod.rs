@@ -198,8 +198,8 @@ impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
             // maps it to fmt::Error
             io::Error::new(io::ErrorKind::Other, "fmt error")
         }
-        let s = try!(str::from_utf8(buf).map_err(io_error));
-        try!(self.inner.write_str(s).map_err(io_error));
+        let s = tri!(str::from_utf8(buf).map_err(io_error));
+        tri!(self.inner.write_str(s).map_err(io_error));
         Ok(buf.len())
     }
 
