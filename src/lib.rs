@@ -292,7 +292,7 @@
 //! [`serde-json-core`]: https://japaric.github.io/serde-json-core/serde_json_core/
 
 #![doc(html_root_url = "https://docs.rs/serde_json/1.0.44")]
-#![allow(bare_trait_objects, ellipsis_inclusive_range_patterns)]
+#![allow(bare_trait_objects)]
 #![deny(clippy::all, clippy::pedantic)]
 // Ignored clippy lints
 #![allow(
