@@ -438,6 +438,7 @@ pub mod value;
 mod features_check;
 
 mod io;
+#[cfg(feature = "std")]
 mod iter;
 mod number;
 mod read;

@@ -3,6 +3,7 @@
 use lib::str::FromStr;
 use lib::*;
 
+#[cfg(feature = "std")]
 use io;
 
 use serde::de::{self, Expected, Unexpected};
@@ -11,7 +12,10 @@ use super::error::{Error, ErrorCode, Result};
 
 use read::{self, Reference};
 
-pub use read::{IoRead, Read, SliceRead, StrRead};
+pub use read::{Read, SliceRead, StrRead};
+
+#[cfg(feature = "std")]
+pub use read::IoRead;
 
 use number::Number;
 #[cfg(feature = "arbitrary_precision")]
@@ -62,6 +66,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<R> Deserializer<read::IoRead<R>>
 where
     R: io::Read,

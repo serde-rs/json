@@ -7,7 +7,7 @@
 //! `std::io::Error`, which may contain internally a heap-allocated `Box<Error>`
 //! and/or now relying on OS-specific `std::backtrace::Backtrace`.
 
-pub use self::imp::{Bytes, Error, ErrorKind, Read, Result, Write};
+pub use self::imp::{Error, ErrorKind, Result, Write};
 
 #[cfg(not(feature = "std"))]
 #[path = "core.rs"]
@@ -15,3 +15,6 @@ mod imp;
 
 #[cfg(feature = "std")]
 use std::io as imp;
+
+#[cfg(feature = "std")]
+pub use std::io::{Bytes, Read};
