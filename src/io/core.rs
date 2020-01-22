@@ -15,12 +15,6 @@ impl Display for Error {
     }
 }
 
-impl Debug for Error {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Debug::fmt(self.0, formatter)
-    }
-}
-
 impl Error {
     pub(crate) fn new(kind: ErrorKind, error: &'static str) -> Error {
         let _ = kind;
@@ -38,7 +32,7 @@ pub trait Write {
         // one call infallibly.
         let result = self.write(buf);
         debug_assert!(result.is_ok());
-        debug_assert_eq!(result.unwrap(), buf.len());
+        debug_assert_eq!(result.unwrap_or(0), buf.len());
         Ok(())
     }
 
