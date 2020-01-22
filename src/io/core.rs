@@ -11,18 +11,21 @@ pub enum ErrorKind {
 }
 
 pub struct Error {
-    repr: Box<dyn Display + Send + Sync>,
+    repr: Box<dyn ErrorRepr + Send + Sync>,
 }
 
+trait ErrorRepr: Display + Debug {}
+impl<T: Display + Debug> ErrorRepr for T {}
+
 impl Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(self.repr.as_ref(), fmt)
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Display::fmt(self.repr.as_ref(), formatter)
     }
 }
 
 impl Debug for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(self, fmt)
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self.repr.as_ref(), formatter)
     }
 }
 
@@ -31,7 +34,7 @@ impl serde::de::StdError for Error {}
 impl Error {
     pub(crate) fn new<E>(kind: ErrorKind, error: E) -> Error
     where
-        E: Display + Send + Sync + 'static,
+        E: Display + Debug + Send + Sync + 'static,
     {
         let _ = kind;
         Error {
