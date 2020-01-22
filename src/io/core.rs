@@ -10,24 +10,11 @@ pub enum ErrorKind {
     UnexpectedEof,
 }
 
-impl ErrorKind {
-    #[inline]
-    fn as_str(&self) -> &'static str {
-        match self {
-            ErrorKind::InvalidData => "invalid data",
-            ErrorKind::WriteZero => "write zero",
-            ErrorKind::Other => "other os error",
-            ErrorKind::UnexpectedEof => "unexpected end of file",
-        }
-    }
-}
-
 pub struct Error {
     repr: Repr,
 }
 
 enum Repr {
-    Simple(ErrorKind),
     Custom(ErrorKind, Box<dyn Display + Send + Sync>),
 }
 
@@ -35,7 +22,6 @@ impl Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.repr {
             Repr::Custom(_, msg) => write!(fmt, "{}", msg),
-            Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
         }
     }
 }
@@ -47,15 +33,6 @@ impl Debug for Error {
 }
 
 impl serde::de::StdError for Error {}
-
-impl From<ErrorKind> for Error {
-    #[inline]
-    fn from(kind: ErrorKind) -> Error {
-        Error {
-            repr: Repr::Simple(kind),
-        }
-    }
-}
 
 impl Error {
     pub(crate) fn new<E>(kind: ErrorKind, error: E) -> Error
