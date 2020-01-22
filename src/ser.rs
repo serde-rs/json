@@ -506,16 +506,16 @@ where
     }
 }
 
-#[derive(Eq, PartialEq)]
-/// Not public API. Should be pub(crate).
+// Not public API. Should be pub(crate).
 #[doc(hidden)]
+#[derive(Eq, PartialEq)]
 pub enum State {
     Empty,
     First,
     Rest,
 }
 
-/// Not public API. Should be pub(crate).
+// Not public API. Should be pub(crate).
 #[doc(hidden)]
 pub enum Compound<'a, W: 'a, F: 'a> {
     Map {

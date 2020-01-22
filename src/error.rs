@@ -175,9 +175,7 @@ struct ErrorImpl {
     column: usize,
 }
 
-// Not public API. Should be pub(crate).
-#[doc(hidden)]
-pub enum ErrorCode {
+pub(crate) enum ErrorCode {
     /// Catchall for syntax error messages
     Message(Box<str>),
 
@@ -252,10 +250,8 @@ pub enum ErrorCode {
 }
 
 impl Error {
-    // Not public API. Should be pub(crate).
-    #[doc(hidden)]
     #[cold]
-    pub fn syntax(code: ErrorCode, line: usize, column: usize) -> Self {
+    pub(crate) fn syntax(code: ErrorCode, line: usize, column: usize) -> Self {
         Error {
             err: Box::new(ErrorImpl {
                 code: code,
@@ -280,10 +276,8 @@ impl Error {
         }
     }
 
-    // Not public API. Should be pub(crate).
-    #[doc(hidden)]
     #[cold]
-    pub fn fix_position<F>(self, f: F) -> Self
+    pub(crate) fn fix_position<F>(self, f: F) -> Self
     where
         F: FnOnce(ErrorCode) -> Error,
     {

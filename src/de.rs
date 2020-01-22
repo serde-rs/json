@@ -96,9 +96,7 @@ macro_rules! overflow {
     };
 }
 
-// Not public API. Should be pub(crate).
-#[doc(hidden)]
-pub enum ParserNumber {
+pub(crate) enum ParserNumber {
     F64(f64),
     U64(u64),
     I64(i64),

@@ -13,9 +13,7 @@ use crate::error::ErrorCode;
 use serde::de::{IntoDeserializer, MapAccess};
 
 #[cfg(feature = "arbitrary_precision")]
-/// Not public API. Should be pub(crate).
-#[doc(hidden)]
-pub const TOKEN: &str = "$serde_json::private::Number";
+pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
 #[derive(Clone, PartialEq)]
@@ -567,9 +565,7 @@ impl<'de, 'a> Deserializer<'de> for &'a Number {
 }
 
 #[cfg(feature = "arbitrary_precision")]
-// Not public API. Should be pub(crate).
-#[doc(hidden)]
-pub struct NumberDeserializer {
+pub(crate) struct NumberDeserializer {
     pub number: Option<String>,
 }
 
@@ -728,10 +724,8 @@ serde_if_integer128! {
 
 impl Number {
     #[cfg(not(feature = "arbitrary_precision"))]
-    // Not public API. Should be pub(crate).
-    #[doc(hidden)]
     #[cold]
-    pub fn unexpected(&self) -> Unexpected {
+    pub(crate) fn unexpected(&self) -> Unexpected {
         match self.n {
             N::PosInt(u) => Unexpected::Unsigned(u),
             N::NegInt(i) => Unexpected::Signed(i),
@@ -740,10 +734,8 @@ impl Number {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    // Not public API. Should be pub(crate).
-    #[doc(hidden)]
     #[cold]
-    pub fn unexpected(&self) -> Unexpected {
+    pub(crate) fn unexpected(&self) -> Unexpected {
         Unexpected::Other("number")
     }
 }
