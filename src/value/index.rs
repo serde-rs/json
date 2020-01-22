@@ -19,7 +19,7 @@ use crate::map::Map;
 ///
 /// # Examples
 ///
-/// ```edition2018
+/// ```
 /// # use serde_json::json;
 /// #
 /// let data = json!({ "inner": [1, 2, 3] });
@@ -192,7 +192,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let data = json!({
@@ -231,7 +231,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let mut data = json!({ "x": 0 });

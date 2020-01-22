@@ -46,7 +46,7 @@ impl Number {
     /// For any Number on which `is_i64` returns true, `as_i64` is guaranteed to
     /// return the integer value.
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let big = i64::max_value() as u64 + 10;
@@ -77,7 +77,7 @@ impl Number {
     /// For any Number on which `is_u64` returns true, `as_u64` is guaranteed to
     /// return the integer value.
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
@@ -109,7 +109,7 @@ impl Number {
     /// Currently this function returns true if and only if both `is_i64` and
     /// `is_u64` return false but this is not a guarantee in the future.
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
@@ -141,7 +141,7 @@ impl Number {
     /// If the `Number` is an integer, represent it as i64 if possible. Returns
     /// None otherwise.
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let big = i64::max_value() as u64 + 10;
@@ -172,7 +172,7 @@ impl Number {
     /// If the `Number` is an integer, represent it as u64 if possible. Returns
     /// None otherwise.
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
@@ -194,7 +194,7 @@ impl Number {
 
     /// Represents the number as f64 if possible. Returns None otherwise.
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
@@ -218,7 +218,7 @@ impl Number {
     /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not JSON
     /// numbers.
     ///
-    /// ```edition2018
+    /// ```
     /// # use std::f64;
     /// #
     /// # use serde_json::Number;

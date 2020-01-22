@@ -137,7 +137,7 @@ impl From<Error> for io::Error {
     /// JSON syntax and data errors are turned into `InvalidData` IO errors.
     /// EOF errors are turned into `UnexpectedEof` IO errors.
     ///
-    /// ```edition2018
+    /// ```
     /// use std::io;
     ///
     /// enum MyError {

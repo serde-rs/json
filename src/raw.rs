@@ -32,7 +32,7 @@ use crate::error::Error;
 ///
 /// # Example
 ///
-/// ```edition2018
+/// ```
 /// use serde::{Deserialize, Serialize};
 /// use serde_json::{Result, value::RawValue};
 ///
@@ -78,7 +78,7 @@ use crate::error::Error;
 ///
 /// The typical usage of `RawValue` will be in the borrowed form:
 ///
-/// ```edition2018
+/// ```
 /// # use serde::Deserialize;
 /// # use serde_json::value::RawValue;
 /// #
@@ -101,7 +101,7 @@ use crate::error::Error;
 /// [`serde_json::from_slice`]: ../fn.from_slice.html
 /// [`serde_json::from_reader`]: ../fn.from_reader.html
 ///
-/// ```edition2018
+/// ```
 /// # use serde::Deserialize;
 /// # use serde_json::value::RawValue;
 /// #
@@ -183,7 +183,7 @@ impl RawValue {
     ///
     /// # Example
     ///
-    /// ```edition2018
+    /// ```
     /// use serde::Deserialize;
     /// use serde_json::{Result, value::RawValue};
     ///

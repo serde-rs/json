@@ -247,7 +247,7 @@ impl PartialEq for Map<String, Value> {
 /// Access an element of this map. Panics if the given key is not present in the
 /// map.
 ///
-/// ```edition2018
+/// ```
 /// # use serde_json::Value;
 /// #
 /// # let val = &Value::String("".to_owned());
@@ -275,7 +275,7 @@ where
 /// Mutably access an element of this map. Panics if the given key is not
 /// present in the map.
 ///
-/// ```edition2018
+/// ```
 /// # use serde_json::json;
 /// #
 /// # let mut map = serde_json::Map::new();
@@ -451,7 +451,7 @@ impl<'a> Entry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// let mut map = serde_json::Map::new();
     /// assert_eq!(map.entry("serde").key(), &"serde");
     /// ```
@@ -467,7 +467,7 @@ impl<'a> Entry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let mut map = serde_json::Map::new();
@@ -488,7 +488,7 @@ impl<'a> Entry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// let mut map = serde_json::Map::new();
@@ -513,7 +513,7 @@ impl<'a> VacantEntry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// use serde_json::map::Entry;
     ///
     /// let mut map = serde_json::Map::new();
@@ -535,7 +535,7 @@ impl<'a> VacantEntry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// use serde_json::map::Entry;
@@ -560,7 +560,7 @@ impl<'a> OccupiedEntry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// use serde_json::map::Entry;
@@ -584,7 +584,7 @@ impl<'a> OccupiedEntry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// use serde_json::map::Entry;
@@ -608,7 +608,7 @@ impl<'a> OccupiedEntry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// use serde_json::map::Entry;
@@ -634,7 +634,7 @@ impl<'a> OccupiedEntry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// use serde_json::map::Entry;
@@ -661,7 +661,7 @@ impl<'a> OccupiedEntry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// use serde_json::map::Entry;
@@ -686,7 +686,7 @@ impl<'a> OccupiedEntry<'a> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// # use serde_json::json;
     /// #
     /// use serde_json::map::Entry;

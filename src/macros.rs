@@ -1,6 +1,6 @@
 /// Construct a `serde_json::Value` from a JSON literal.
 ///
-/// ```edition2018
+/// ```
 /// # use serde_json::json;
 /// #
 /// let value = json!({
@@ -22,7 +22,7 @@
 /// interpolated type decides to fail, or if the interpolated type contains a
 /// map with non-string keys, the `json!` macro will panic.
 ///
-/// ```edition2018
+/// ```
 /// # use serde_json::json;
 /// #
 /// let code = 200;
@@ -39,7 +39,7 @@
 ///
 /// Trailing commas are allowed inside both arrays and objects.
 ///
-/// ```edition2018
+/// ```
 /// # use serde_json::json;
 /// #
 /// let value = json!([

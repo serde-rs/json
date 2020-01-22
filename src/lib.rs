@@ -40,7 +40,7 @@
 //! Any valid JSON data can be manipulated in the following recursive enum
 //! representation. This data structure is [`serde_json::Value`][value].
 //!
-//! ```edition2018
+//! ```
 //! # use serde_json::{Number, Map};
 //! #
 //! # #[allow(dead_code)]
@@ -60,7 +60,7 @@
 //! [`from_reader`][from_reader] for parsing from any `io::Read` like a File or
 //! a TCP stream.
 //!
-//! ```edition2018
+//! ```
 //! use serde_json::{Result, Value};
 //!
 //! fn untyped_example() -> Result<()> {
@@ -118,7 +118,7 @@
 //! Serde provides a powerful way of mapping JSON data into Rust data structures
 //! largely automatically.
 //!
-//! ```edition2018
+//! ```
 //! use serde::{Deserialize, Serialize};
 //! use serde_json::Result;
 //!
@@ -180,7 +180,7 @@
 //! Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
 //! objects with very natural JSON syntax.
 //!
-//! ```edition2018
+//! ```
 //! use serde_json::json;
 //!
 //! fn main() {
@@ -209,7 +209,7 @@
 //! will check at compile time that the value you are interpolating is able to
 //! be represented as JSON.
 //!
-//! ```edition2018
+//! ```
 //! # use serde_json::json;
 //! #
 //! # fn random_phone() -> u16 { 0 }
@@ -240,7 +240,7 @@
 //! [`serde_json::to_writer`][to_writer] which serializes to any `io::Write`
 //! such as a File or a TCP stream.
 //!
-//! ```edition2018
+//! ```
 //! use serde::{Deserialize, Serialize};
 //! use serde_json::Result;
 //!

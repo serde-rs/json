@@ -180,7 +180,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     ///
     /// # Examples
     ///
-    /// ```edition2018
+    /// ```
     /// use serde::Deserialize;
     /// use serde_json::Value;
     ///
@@ -1372,7 +1372,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ///
     /// You can use this to parse JSON strings containing invalid UTF-8 bytes.
     ///
-    /// ```edition2018
+    /// ```
     /// use serde_bytes::ByteBuf;
     ///
     /// fn look_at_bytes() -> Result<(), serde_json::Error> {
@@ -1393,7 +1393,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     /// to be valid, and `\u` escape sequences are required to represent valid
     /// Unicode code points.
     ///
-    /// ```edition2018
+    /// ```
     /// use serde_bytes::ByteBuf;
     ///
     /// fn look_at_bytes() {
@@ -2036,7 +2036,7 @@ where
 /// The data can consist of any JSON value. Values need to be a self-delineating value e.g.
 /// arrays, objects, or strings, or be followed by whitespace or a self-delineating value.
 ///
-/// ```edition2018
+/// ```
 /// use serde_json::{Deserializer, Value};
 ///
 /// fn main() {
@@ -2084,7 +2084,7 @@ where
     /// If a stream deserializer returns an EOF error, new data can be joined to
     /// `old_data[stream.byte_offset()..]` to try again.
     ///
-    /// ```edition2018
+    /// ```
     /// let data = b"[0] [1] [";
     ///
     /// let de = serde_json::Deserializer::from_slice(data);
@@ -2217,7 +2217,7 @@ where
 ///
 /// Reading the contents of a file.
 ///
-/// ```edition2018
+/// ```
 /// use serde::Deserialize;
 ///
 /// use std::error::Error;
@@ -2253,7 +2253,7 @@ where
 ///
 /// Reading from a persistent socket connection.
 ///
-/// ```edition2018
+/// ```
 /// use serde::Deserialize;
 ///
 /// use std::error::Error;
@@ -2305,7 +2305,7 @@ where
 ///
 /// # Example
 ///
-/// ```edition2018
+/// ```
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize, Debug)]
@@ -2347,7 +2347,7 @@ where
 ///
 /// # Example
 ///
-/// ```edition2018
+/// ```
 /// use serde::Deserialize;
 ///
 /// #[derive(Deserialize, Debug)]
