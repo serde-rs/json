@@ -1,17 +1,14 @@
+use crate::error::Error;
 use crate::lib::str::FromStr;
 use crate::lib::*;
-
-use serde::de::{
-    Deserialize, DeserializeSeed, EnumAccess, Expected, IntoDeserializer, MapAccess, SeqAccess,
-    Unexpected, VariantAccess, Visitor,
-};
-
-use crate::error::Error;
 use crate::map::Map;
 use crate::number::Number;
 use crate::value::Value;
-
-use serde::{de, forward_to_deserialize_any, serde_if_integer128};
+use serde::de::{
+    self, Deserialize, DeserializeSeed, EnumAccess, Expected, IntoDeserializer, MapAccess,
+    SeqAccess, Unexpected, VariantAccess, Visitor,
+};
+use serde::{forward_to_deserialize_any, serde_if_integer128};
 
 #[cfg(feature = "arbitrary_precision")]
 use crate::number::NumberFromString;

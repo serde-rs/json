@@ -1,12 +1,9 @@
 //! When serializing or deserializing JSON goes wrong.
 
+use crate::io;
 use crate::lib::str::FromStr;
 use crate::lib::*;
-
-use crate::io;
-
-use serde::de;
-use serde::ser;
+use serde::{de, ser};
 
 /// This type represents all possible errors that can occur when serializing or
 /// deserializing JSON data.

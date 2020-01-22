@@ -90,23 +90,19 @@
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
-use crate::lib::*;
-
+use self::ser::Serializer;
+use crate::error::Error;
 use crate::io;
-
+use crate::lib::*;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 
-use crate::error::Error;
+pub use self::index::Index;
 pub use crate::map::Map;
 pub use crate::number::Number;
 
 #[cfg(feature = "raw_value")]
 pub use crate::raw::RawValue;
-
-pub use self::index::Index;
-
-use self::ser::Serializer;
 
 /// Represents any valid JSON value.
 ///

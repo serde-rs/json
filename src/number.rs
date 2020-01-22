@@ -1,6 +1,6 @@
-use crate::lib::*;
-
+use crate::de::ParserNumber;
 use crate::error::Error;
+use crate::lib::*;
 use serde::de::{self, Unexpected, Visitor};
 use serde::{
     forward_to_deserialize_any, serde_if_integer128, Deserialize, Deserializer, Serialize,
@@ -8,12 +8,9 @@ use serde::{
 };
 
 #[cfg(feature = "arbitrary_precision")]
-use serde::de::{IntoDeserializer, MapAccess};
-
-use crate::de::ParserNumber;
-
-#[cfg(feature = "arbitrary_precision")]
 use crate::error::ErrorCode;
+#[cfg(feature = "arbitrary_precision")]
+use serde::de::{IntoDeserializer, MapAccess};
 
 #[cfg(feature = "arbitrary_precision")]
 /// Not public API. Should be pub(crate).

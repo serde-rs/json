@@ -1,5 +1,5 @@
+use crate::error::Error;
 use crate::lib::*;
-
 use serde::de::value::BorrowedStrDeserializer;
 use serde::de::{
     self, Deserialize, DeserializeSeed, Deserializer, IntoDeserializer, MapAccess, Unexpected,
@@ -7,8 +7,6 @@ use serde::de::{
 };
 use serde::forward_to_deserialize_any;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
-
-use crate::error::Error;
 
 /// Reference to a range of bytes encompassing a single valid JSON value in the
 /// input data.

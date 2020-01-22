@@ -1,26 +1,20 @@
 //! Deserialize JSON data to a Rust data structure.
 
+use crate::error::{Error, ErrorCode, Result};
 use crate::lib::str::FromStr;
 use crate::lib::*;
-
-#[cfg(feature = "std")]
-use crate::io;
-
+use crate::number::Number;
+use crate::read::{self, Reference};
 use serde::de::{self, Expected, Unexpected};
 use serde::{forward_to_deserialize_any, serde_if_integer128};
 
-use crate::error::{Error, ErrorCode, Result};
-
-use crate::read::{self, Reference};
+#[cfg(feature = "arbitrary_precision")]
+use crate::number::NumberDeserializer;
 
 pub use crate::read::{Read, SliceRead, StrRead};
 
 #[cfg(feature = "std")]
 pub use crate::read::IoRead;
-
-use crate::number::Number;
-#[cfg(feature = "arbitrary_precision")]
-use crate::number::NumberDeserializer;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -70,7 +64,7 @@ where
 #[cfg(feature = "std")]
 impl<R> Deserializer<read::IoRead<R>>
 where
-    R: io::Read,
+    R: crate::io::Read,
 {
     /// Creates a JSON deserializer from an `io::Read`.
     ///
@@ -2295,7 +2289,7 @@ where
 #[cfg(feature = "std")]
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
 where
-    R: io::Read,
+    R: crate::io::Read,
     T: de::DeserializeOwned,
 {
     from_trait(read::IoRead::new(rdr))

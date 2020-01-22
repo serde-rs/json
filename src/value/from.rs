@@ -1,7 +1,6 @@
+use super::Value;
 use crate::lib::iter::FromIterator;
 use crate::lib::*;
-
-use super::Value;
 use crate::map::Map;
 use crate::number::Number;
 

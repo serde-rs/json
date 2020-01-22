@@ -1,12 +1,9 @@
-use crate::lib::*;
-
-use serde::ser::Impossible;
-use serde::{self, Serialize};
-
 use crate::error::{Error, ErrorCode};
+use crate::lib::*;
 use crate::map::Map;
 use crate::number::Number;
 use crate::value::{to_value, Value};
+use serde::ser::{Impossible, Serialize};
 
 #[cfg(feature = "arbitrary_precision")]
 use serde::serde_if_integer128;

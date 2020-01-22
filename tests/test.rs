@@ -7,6 +7,14 @@ trace_macros!(true);
 #[macro_use]
 mod macros;
 
+use serde::de::{self, IgnoredAny, IntoDeserializer};
+use serde::ser::{self, Serializer};
+use serde::{Deserialize, Serialize};
+use serde_bytes::{ByteBuf, Bytes};
+use serde_json::{
+    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
+    to_vec, to_writer, Deserializer, Number, Value,
+};
 use std::collections::BTreeMap;
 use std::fmt::{self, Debug};
 use std::io;
@@ -17,17 +25,6 @@ use std::string::ToString;
 use std::{f32, f64};
 use std::{i16, i32, i64, i8};
 use std::{u16, u32, u64, u8};
-
-use serde::de::{self, IgnoredAny, IntoDeserializer};
-use serde::ser::{self, Serializer};
-use serde::{Deserialize, Serialize};
-
-use serde_bytes::{ByteBuf, Bytes};
-
-use serde_json::{
-    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
-    to_vec, to_writer, Deserializer, Number, Value,
-};
 
 macro_rules! treemap {
     () => {
