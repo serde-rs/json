@@ -1,3 +1,5 @@
+use lib::*;
+
 use serde::ser::Impossible;
 use serde::{self, Serialize};
 

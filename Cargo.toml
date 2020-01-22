@@ -16,9 +16,9 @@ travis-ci = { repository = "serde-rs/json" }
 appveyor = { repository = "serde-rs/json" }
 
 [dependencies]
-serde = "1.0.60"
+serde = { version = "1.0.60", default-features = false }
 indexmap = { version = "1.2", optional = true }
-itoa = "0.4.3"
+itoa = { version = "0.4.3", default-features = false }
 ryu = "1.0"
 
 [dev-dependencies]
@@ -42,7 +42,15 @@ features = ["raw_value"]
 ### FEATURES #################################################################
 
 [features]
-default = []
+default = ["std"]
+
+std = ["serde/std", "itoa/std"]
+
+# Provide integration for heap-allocated collections without depending on the
+# rest of the Rust standard library.
+# NOTE: Disabling both `std` *and* `alloc` features is not supported yet.
+# Available on Rust 1.36+.
+alloc = ["serde/alloc"]
 
 # Use a different representation for the map type of serde_json::Value.
 # This allows data to be read into a Value and written back to a JSON string

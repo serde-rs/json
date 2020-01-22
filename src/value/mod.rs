@@ -90,10 +90,9 @@
 //! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
-use std::fmt::{self, Debug};
-use std::io;
-use std::mem;
-use std::str;
+use lib::*;
+
+use io;
 
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;

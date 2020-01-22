@@ -1,4 +1,5 @@
-use std::borrow::Cow;
+use lib::iter::FromIterator;
+use lib::*;
 
 use super::Value;
 use map::Map;
@@ -182,7 +183,7 @@ impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     }
 }
 
-impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
+impl<T: Into<Value>> FromIterator<T> for Value {
     /// Convert an iteratable type to a `Value`
     ///
     /// # Examples

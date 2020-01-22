@@ -1,9 +1,9 @@
 //! Serialize a Rust data structure into JSON data.
 
-use std::fmt;
-use std::io;
-use std::num::FpCategory;
-use std::str;
+use lib::num::FpCategory;
+use lib::*;
+
+use io;
 
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
@@ -460,7 +460,7 @@ where
     where
         T: fmt::Display,
     {
-        use std::fmt::Write;
+        use self::fmt::Write;
 
         struct Adapter<'ser, W: 'ser, F: 'ser> {
             writer: &'ser mut W,
@@ -1638,7 +1638,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -1647,7 +1649,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -1656,7 +1660,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -1665,7 +1671,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -1674,7 +1682,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -1683,7 +1693,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -1692,7 +1704,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -1701,7 +1715,9 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.

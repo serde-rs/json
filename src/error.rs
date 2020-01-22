@@ -1,10 +1,9 @@
 //! When serializing or deserializing JSON goes wrong.
 
-use std::error;
-use std::fmt::{self, Debug, Display};
-use std::io;
-use std::result;
-use std::str::FromStr;
+use lib::str::FromStr;
+use lib::*;
+
+use io;
 
 use serde::de;
 use serde::ser;
@@ -333,8 +332,8 @@ impl Display for ErrorCode {
     }
 }
 
-impl error::Error for Error {
-    fn source(&self) -> Option<&(error::Error + 'static)> {
+impl serde::de::StdError for Error {
+    fn source(&self) -> Option<&(serde::de::StdError + 'static)> {
         match self.err.code {
             ErrorCode::Io(ref err) => Some(err),
             _ => None,

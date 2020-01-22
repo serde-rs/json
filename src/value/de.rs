@@ -1,8 +1,5 @@
-use std::borrow::Cow;
-use std::fmt;
-use std::slice;
-use std::str;
-use std::vec;
+use lib::str::FromStr;
+use lib::*;
 
 use serde;
 use serde::de::{
@@ -134,7 +131,7 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
-impl str::FromStr for Value {
+impl FromStr for Value {
     type Err = Error;
     fn from_str(s: &str) -> Result<Value, Error> {
         super::super::de::from_str(s)

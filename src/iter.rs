@@ -1,4 +1,4 @@
-use std::io;
+use io;
 
 pub struct LineColIterator<I> {
     iter: I,
