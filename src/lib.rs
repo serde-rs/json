@@ -409,9 +409,10 @@ pub use self::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
 pub use self::error::{Error, Result};
 #[doc(inline)]
-pub use self::ser::{
-    to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer, to_writer_pretty, Serializer,
-};
+pub use self::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty};
+#[cfg(feature = "std")]
+#[doc(inline)]
+pub use self::ser::{to_writer, to_writer_pretty, Serializer};
 #[doc(inline)]
 pub use self::value::{from_value, to_value, Map, Number, Value};
 
@@ -432,7 +433,10 @@ mod macros;
 pub mod de;
 pub mod error;
 pub mod map;
+#[cfg(feature = "std")]
 pub mod ser;
+#[cfg(not(feature = "std"))]
+mod ser;
 pub mod value;
 
 mod features_check;
