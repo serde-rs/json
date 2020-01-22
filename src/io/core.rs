@@ -7,18 +7,19 @@ pub enum ErrorKind {
     Other,
 }
 
-pub struct Error(&'static str);
+// IO errors can never occur in no-std mode. All our no-std IO implementations
+// are infallible.
+pub struct Error;
 
 impl Display for Error {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(self.0, formatter)
+    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        unreachable!()
     }
 }
 
 impl Error {
-    pub(crate) fn new(kind: ErrorKind, error: &'static str) -> Error {
-        let _ = kind;
-        Error(error)
+    pub(crate) fn new(_kind: ErrorKind, _error: &'static str) -> Error {
+        Error
     }
 }
 
