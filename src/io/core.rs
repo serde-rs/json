@@ -1,6 +1,5 @@
 //! Reimplements core logic and types from `std::io` in an `alloc`-friendly
 //! fashion.
-#![cfg(not(feature = "std"))]
 
 use lib::*;
 

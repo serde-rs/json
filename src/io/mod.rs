@@ -9,11 +9,9 @@
 
 pub use self::imp::{Bytes, Error, ErrorKind, Read, Result, Write};
 
-mod core;
+#[cfg(not(feature = "std"))]
+#[path = "core.rs"]
+mod imp;
 
-mod imp {
-    #[cfg(not(feature = "std"))]
-    pub use super::core::*;
-    #[cfg(feature = "std")]
-    pub use std::io::*;
-}
+#[cfg(feature = "std")]
+use std::io as imp;
