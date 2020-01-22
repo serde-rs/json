@@ -2286,6 +2286,7 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
+#[cfg(feature = "std")]
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
 where
     R: io::Read,

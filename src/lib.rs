@@ -401,8 +401,11 @@ mod lib {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[cfg(feature = "std")]
 #[doc(inline)]
-pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
+pub use self::de::from_reader;
+#[doc(inline)]
+pub use self::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
 pub use self::error::{Error, Result};
 #[doc(inline)]
