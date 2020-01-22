@@ -8,36 +8,26 @@ pub enum ErrorKind {
     Other,
 }
 
-pub struct Error {
-    repr: Box<dyn ErrorRepr + Send + Sync>,
-}
-
-trait ErrorRepr: Display + Debug {}
-impl<T: Display + Debug> ErrorRepr for T {}
+pub struct Error(&'static str);
 
 impl Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(self.repr.as_ref(), formatter)
+        Display::fmt(self.0, formatter)
     }
 }
 
 impl Debug for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Debug::fmt(self.repr.as_ref(), formatter)
+        Debug::fmt(self.0, formatter)
     }
 }
 
 impl serde::de::StdError for Error {}
 
 impl Error {
-    pub(crate) fn new<E>(kind: ErrorKind, error: E) -> Error
-    where
-        E: Display + Debug + Send + Sync + 'static,
-    {
+    pub(crate) fn new(kind: ErrorKind, error: &'static str) -> Error {
         let _ = kind;
-        Error {
-            repr: Box::new(error),
-        }
+        Error(error)
     }
 }
 
