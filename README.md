@@ -321,8 +321,11 @@ issues](https://github.com/serde-rs/json/issues/new) as well.
 
 ## No-std support
 
-This crate currently requires the Rust standard library. For JSON support in
-Serde without a standard library, please see the [`serde-json-core`] crate.
+It is possible to opt out of the Rust standard library by enabling the `alloc`
+feature (and disabling the default `std` one). This is supported on Rust 1.36+.
+
+For JSON support in Serde without a memory allocator, please see the
+[`serde-json-core`] crate.
 
 [`serde-json-core`]: https://japaric.github.io/serde-json-core/serde_json_core/
 
