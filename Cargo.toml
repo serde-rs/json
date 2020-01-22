@@ -44,7 +44,7 @@ features = ["raw_value"]
 [features]
 default = ["std"]
 
-std = ["serde/std", "itoa/std"]
+std = ["serde/std"]
 
 # Provide integration for heap-allocated collections without depending on the
 # rest of the Rust standard library.
