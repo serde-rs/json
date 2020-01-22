@@ -1361,7 +1361,7 @@ impl<'de> Visitor<'de> for KeyClassifier {
 
 impl Value {
     #[cold]
-    fn invalid_type<E>(&self, exp: &Expected) -> E
+    fn invalid_type<E>(&self, exp: &dyn Expected) -> E
     where
         E: serde::de::Error,
     {

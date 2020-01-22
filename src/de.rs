@@ -118,7 +118,7 @@ impl ParserNumber {
         }
     }
 
-    fn invalid_type(self, exp: &Expected) -> Error {
+    fn invalid_type(self, exp: &dyn Expected) -> Error {
         match self {
             ParserNumber::F64(x) => de::Error::invalid_type(Unexpected::Float(x), exp),
             ParserNumber::U64(x) => de::Error::invalid_type(Unexpected::Unsigned(x), exp),
@@ -254,7 +254,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cold]
-    fn peek_invalid_type(&mut self, exp: &Expected) -> Error {
+    fn peek_invalid_type(&mut self, exp: &dyn Expected) -> Error {
         let err = match self.peek_or_null().unwrap_or(b'\x00') {
             b'n' => {
                 self.eat_char();

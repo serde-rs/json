@@ -316,7 +316,7 @@ impl Display for ErrorCode {
 
 impl serde::de::StdError for Error {
     #[cfg(feature = "std")]
-    fn source(&self) -> Option<&(error::Error + 'static)> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self.err.code {
             ErrorCode::Io(ref err) => Some(err),
             _ => None,
@@ -365,7 +365,7 @@ impl de::Error for Error {
     }
 
     #[cold]
-    fn invalid_type(unexp: de::Unexpected, exp: &de::Expected) -> Self {
+    fn invalid_type(unexp: de::Unexpected, exp: &dyn de::Expected) -> Self {
         if let de::Unexpected::Unit = unexp {
             Error::custom(format_args!("invalid type: null, expected {}", exp))
         } else {
