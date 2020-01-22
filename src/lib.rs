@@ -292,44 +292,40 @@
 //! [`serde-json-core`]: https://japaric.github.io/serde-json-core/serde_json_core/
 
 #![doc(html_root_url = "https://docs.rs/serde_json/1.0.44")]
-#![allow(unknown_lints, bare_trait_objects, ellipsis_inclusive_range_patterns)]
-#![cfg_attr(feature = "cargo-clippy", allow(renamed_and_removed_lints))]
-#![cfg_attr(feature = "cargo-clippy", deny(clippy, clippy_pedantic))]
+#![allow(bare_trait_objects, ellipsis_inclusive_range_patterns)]
+#![deny(clippy::all, clippy::pedantic)]
 // Ignored clippy lints
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(
-        deprecated_cfg_attr,
-        doc_markdown,
-        needless_doctest_main,
-        transmute_ptr_to_ptr,
-    )
+#![allow(
+    clippy::deprecated_cfg_attr,
+    clippy::doc_markdown,
+    clippy::needless_doctest_main,
+    clippy::transmute_ptr_to_ptr
 )]
 // Ignored clippy_pedantic lints
-#![cfg_attr(feature = "cargo-clippy", allow(
+#![allow(
     // Deserializer::from_str, into_iter
-    should_implement_trait,
+    clippy::should_implement_trait,
     // integer and float ser/de requires these sorts of casts
-    cast_possible_wrap,
-    cast_precision_loss,
-    cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
     // correctly used
-    integer_division,
+    clippy::integer_division,
     // things are often more readable this way
-    cast_lossless,
-    module_name_repetitions,
-    shadow_unrelated,
-    single_match_else,
-    too_many_lines,
-    use_self,
-    zero_prefixed_literal,
+    clippy::cast_lossless,
+    clippy::module_name_repetitions,
+    clippy::shadow_unrelated,
+    clippy::single_match_else,
+    clippy::too_many_lines,
+    clippy::use_self,
+    clippy::zero_prefixed_literal,
     // we support older compilers
-    checked_conversions,
-    redundant_field_names,
+    clippy::checked_conversions,
+    clippy::redundant_field_names,
     // noisy
-    missing_errors_doc,
-    must_use_candidate,
-))]
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+)]
 #![deny(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
