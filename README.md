@@ -321,8 +321,14 @@ issues](https://github.com/serde-rs/json/issues/new) as well.
 
 ## No-std support
 
-It is possible to opt out of the Rust standard library by enabling the `alloc`
-feature (and disabling the default `std` one). This is supported on Rust 1.36+.
+As long as there is a memory allocator, it is possible to use serde_json without
+the rest of the Rust standard library. This is supported on Rust 1.36+. Disable
+the default "std" feature and enable the "alloc" feature:
+
+```toml
+[dependencies]
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+```
 
 For JSON support in Serde without a memory allocator, please see the
 [`serde-json-core`] crate.
