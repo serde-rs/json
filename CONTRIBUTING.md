@@ -37,21 +37,10 @@ tests for you.
 
 The test suite requires a nightly compiler.
 
-##### In the [`tests/deps`] directory
-
-```sh
-# This is a prerequisite for running the full test suite
-cargo clean && cargo update && cargo build
-```
-
-##### In the top level serde-json directory
-
 ```sh
 # Run the full test suite, including doc test and compile-tests
 cargo test
 ```
-
-[`tests/deps`]: https://github.com/serde-rs/json/tree/master/tests/deps
 
 ## Conduct
 
