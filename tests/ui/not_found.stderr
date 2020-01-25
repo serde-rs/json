@@ -3,5 +3,3 @@ error[E0425]: cannot find value `x` in this scope
   |
 4 |     json!({ "a" : x });
   |                   ^ not found in this scope
-
-For more information about this error, try `rustc --explain E0425`.
