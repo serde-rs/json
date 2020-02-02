@@ -204,6 +204,19 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.disable_recursion_limit = true;
     }
 
+    /// Sets the recursion limit.
+    ///
+    /// serde_json sets an upper limit to how deep into the structure it will
+    /// recurse, to avoid exhausting the stack. A sensible default is set, but it
+    /// can be overridden by this function.
+    ///
+    /// If you wish to have no limit at all, see `disable_recursion_limit`
+    /// which is only available when serde_json is built with the `"unbounded_depth"`
+    /// feature.
+    pub fn set_recursion_limit(&mut self, depth: u8) {
+        self.remaining_depth = depth;
+    }
+
     fn peek(&mut self) -> Result<Option<u8>> {
         self.read.peek()
     }
