@@ -1467,8 +1467,7 @@ fn test_serialize_map_with_no_len() {
             use serde::ser::SerializeMap;
             let mut map = serializer.serialize_map(None)?;
             for (k, v) in &self.0 {
-                map.serialize_key(k)?;
-                map.serialize_value(v)?;
+                map.serialize_entry(k, v)?;
             }
             map.end()
         }

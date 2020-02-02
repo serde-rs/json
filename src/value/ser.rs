@@ -24,8 +24,7 @@ impl Serialize for Value {
                 use serde::ser::SerializeMap;
                 let mut map = tri!(serializer.serialize_map(Some(m.len())));
                 for (k, v) in m {
-                    tri!(map.serialize_key(k));
-                    tri!(map.serialize_value(v));
+                    map.serialize_entry(k, v)?;
                 }
                 map.end()
             }
@@ -601,10 +600,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
         T: Serialize,
     {
         match *self {
-            SerializeMap::Map { .. } => {
-                tri!(serde::ser::SerializeMap::serialize_key(self, key));
-                serde::ser::SerializeMap::serialize_value(self, value)
-            }
+            SerializeMap::Map { .. } => serde::ser::SerializeMap::serialize_entry(self, key, value),
             #[cfg(feature = "arbitrary_precision")]
             SerializeMap::Number { ref mut out_value } => {
                 if key == crate::number::TOKEN {

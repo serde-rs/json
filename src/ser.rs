@@ -731,6 +731,17 @@ where
     }
 
     #[inline]
+    fn serialize_entry<K: ?Sized, V: ?Sized>(&mut self, key: &K, value: &V) -> Result<()>
+    where
+        K: Serialize,
+        V: Serialize,
+    {
+        self.serialize_key(key)?;
+        self.serialize_value(value)?;
+        Ok(())
+    }
+
+    #[inline]
     fn end(self) -> Result<()> {
         match self {
             Compound::Map { ser, state } => {
@@ -762,10 +773,7 @@ where
         T: Serialize,
     {
         match *self {
-            Compound::Map { .. } => {
-                tri!(ser::SerializeMap::serialize_key(self, key));
-                ser::SerializeMap::serialize_value(self, value)
-            }
+            Compound::Map { .. } => ser::SerializeMap::serialize_entry(self, key, value),
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { ref mut ser, .. } => {
                 if key == crate::number::TOKEN {
