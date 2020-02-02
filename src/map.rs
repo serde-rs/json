@@ -307,8 +307,7 @@ impl ser::Serialize for Map<String, Value> {
         use serde::ser::SerializeMap;
         let mut map = tri!(serializer.serialize_map(Some(self.len())));
         for (k, v) in self {
-            tri!(map.serialize_key(k));
-            tri!(map.serialize_value(v));
+            map.serialize_entry(k, v)?;
         }
         map.end()
     }
