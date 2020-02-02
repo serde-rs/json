@@ -731,17 +731,6 @@ where
     }
 
     #[inline]
-    fn serialize_entry<K: ?Sized, V: ?Sized>(&mut self, key: &K, value: &V) -> Result<()>
-    where
-        K: Serialize,
-        V: Serialize,
-    {
-        self.serialize_key(key)?;
-        self.serialize_value(value)?;
-        Ok(())
-    }
-
-    #[inline]
     fn end(self) -> Result<()> {
         match self {
             Compound::Map { ser, state } => {

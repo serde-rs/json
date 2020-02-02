@@ -24,7 +24,7 @@ impl Serialize for Value {
                 use serde::ser::SerializeMap;
                 let mut map = tri!(serializer.serialize_map(Some(m.len())));
                 for (k, v) in m {
-                    map.serialize_entry(k, v)?;
+                    tri!(map.serialize_entry(k, v));
                 }
                 map.end()
             }
