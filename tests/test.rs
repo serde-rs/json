@@ -732,19 +732,9 @@ fn test_parse_number_errors() {
         ("0x80", "trailing characters at line 1 column 2"),
         ("\\0", "expected value at line 1 column 1"),
         ("1.", "EOF while parsing a value at line 1 column 2"),
-        ("1.a", "invalid number at line 1 column 3"),
-        ("1.e1", "invalid number at line 1 column 3"),
         ("1e", "EOF while parsing a value at line 1 column 2"),
         ("1e+", "EOF while parsing a value at line 1 column 3"),
         ("1a", "trailing characters at line 1 column 2"),
-        (
-            "100e777777777777777777777777777",
-            "number out of range at line 1 column 14",
-        ),
-        (
-            "-100e777777777777777777777777777",
-            "number out of range at line 1 column 15",
-        ),
         (
             "1000000000000000000000000000000000000000000000000000000000000\
              000000000000000000000000000000000000000000000000000000000000\
@@ -771,6 +761,38 @@ fn test_parse_number_errors() {
              000000000000000000000000000000000000000000000000000000000000\
              e9", // 1e309
             "number out of range at line 1 column 303",
+        ),
+    ]);
+
+    // the error messages here vary by implementation
+    test_parse_err::<f64>(&[
+        (
+            "1.a",
+            #[cfg(not(feature = "perfect_float"))]
+            "invalid number at line 1 column 3",
+            #[cfg(feature = "perfect_float")]
+            "EOF while parsing a value at line 1 column 2",
+        ),
+        (
+            "1.e1",
+            #[cfg(not(feature = "perfect_float"))]
+            "invalid number at line 1 column 3",
+            #[cfg(feature = "perfect_float")]
+            "EOF while parsing a value at line 1 column 4",
+        ),
+        (
+            "100e777777777777777777777777777",
+            #[cfg(not(feature = "perfect_float"))]
+            "number out of range at line 1 column 14",
+            #[cfg(feature = "perfect_float")]
+            "number out of range at line 1 column 31",
+        ),
+        (
+            "-100e777777777777777777777777777",
+            #[cfg(not(feature = "perfect_float"))]
+            "number out of range at line 1 column 15",
+            #[cfg(feature = "perfect_float")]
+            "number out of range at line 1 column 32",
         ),
     ]);
 }
@@ -840,14 +862,10 @@ fn test_parse_f64() {
         ("0.00e+00", 0.0),
         ("0.00e-00", 0.0),
         ("3.5E-2147483647", 0.0),
-        (
-            &format!("{}", (i64::MIN as f64) - 1.0),
-            (i64::MIN as f64) - 1.0,
-        ),
-        (
-            &format!("{}", (u64::MAX as f64) + 1.0),
-            (u64::MAX as f64) + 1.0,
-        ),
+        // (i64::MIN as f64) - 1.0
+        ("-9223372036854776000.0", -9223372036854776000.0),
+        // (u64::MAX as f64) + 1.0
+        ("18446744073709552000.0", 18446744073709552000.0),
         (&format!("{}", f64::EPSILON), f64::EPSILON),
         (
             "0.0000000000000000000000000000000000000000000000000123e50",
@@ -899,6 +917,28 @@ fn test_parse_f64() {
              000000000000000000e-10",
             1e308,
         ),
+    ]);
+
+    #[cfg(not(feature = "perfect_float"))]
+    #[cfg(not(feature = "arbitrary_precision"))]
+    test_parse_ok(vec![
+        (
+            // "-9223372036854776000", note it formats with no trailing ".0"
+            &format!("{}", (i64::MIN as f64) - 1.0),
+            (i64::MIN as f64) - 1.0,
+        ),
+        (
+            // "18446744073709552000", note it formats with no trailing ".0"
+            &format!("{}", (u64::MAX as f64) + 1.0),
+            (u64::MAX as f64) + 1.0,
+        ),
+    ]);
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    #[cfg(feature = "perfect_float")]
+    test_parse_ok(vec![
+        ("31.245270191439438", 31.245270191439438),
+        ("121.48791951161945", 121.48791951161945),
     ]);
 }
 

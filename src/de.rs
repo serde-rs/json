@@ -90,6 +90,7 @@ impl<'a> Deserializer<read::StrRead<'a>> {
     }
 }
 
+#[cfg(not(feature = "perfect_float"))]
 macro_rules! overflow {
     ($a:ident * 10 + $b:ident, $c:expr) => {
         $a >= $c / 10 && ($a > $c / 10 || $b > $c % 10)
@@ -304,6 +305,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.fix_position(err)
     }
 
+    #[cfg(not(feature = "perfect_float"))]
     fn deserialize_prim_number<V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
@@ -321,6 +323,33 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 tri!(self.parse_integer(false)).visit(visitor)
             }
             b'0'..=b'9' => tri!(self.parse_integer(true)).visit(visitor),
+            _ => Err(self.peek_invalid_type(&visitor)),
+        };
+
+        match value {
+            Ok(value) => Ok(value),
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+
+    #[cfg(feature = "perfect_float")]
+    fn deserialize_prim_number<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        let peek = match tri!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        let value = match peek {
+            b'-' => {
+                self.eat_char();
+                tri!(self.parse_any_number(false)).visit(visitor)
+            }
+            b'0'..=b'9' => tri!(self.parse_any_number(true)).visit(visitor),
             _ => Err(self.peek_invalid_type(&visitor)),
         };
 
@@ -380,6 +409,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(())
     }
 
+    #[cfg(not(feature = "perfect_float"))]
     fn parse_integer(&mut self, positive: bool) -> Result<ParserNumber> {
         let next = match tri!(self.next_char()) {
             Some(b) => b,
@@ -428,6 +458,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[cfg(not(feature = "perfect_float"))]
     fn parse_long_integer(
         &mut self,
         positive: bool,
@@ -455,6 +486,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[cfg(not(feature = "perfect_float"))]
     fn parse_number(&mut self, positive: bool, significand: u64) -> Result<ParserNumber> {
         Ok(match tri!(self.peek_or_null()) {
             b'.' => ParserNumber::F64(tri!(self.parse_decimal(positive, significand, 0))),
@@ -476,6 +508,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         })
     }
 
+    #[cfg(not(feature = "perfect_float"))]
     fn parse_decimal(
         &mut self,
         positive: bool,
@@ -516,6 +549,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[cfg(not(feature = "perfect_float"))]
     fn parse_exponent(
         &mut self,
         positive: bool,
@@ -573,6 +607,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     // This cold code should not be inlined into the middle of the hot
     // exponent-parsing loop above.
+    #[cfg(not(feature = "perfect_float"))]
     #[cold]
     #[inline(never)]
     fn parse_exponent_overflow(
@@ -626,6 +661,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(not(feature = "arbitrary_precision"))]
+    #[cfg(not(feature = "perfect_float"))]
     fn parse_any_number(&mut self, positive: bool) -> Result<ParserNumber> {
         self.parse_integer(positive)
     }
@@ -638,6 +674,88 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
         self.scan_integer(&mut buf)?;
         Ok(ParserNumber::String(buf))
+    }
+
+    #[cfg(feature = "perfect_float")]
+    fn parse_any_number(&mut self, positive: bool) -> Result<ParserNumber> {
+        let mut float = false;
+        self.scratch.clear();
+        if !positive {
+            self.scratch.push(b'-');
+        }
+
+        loop {
+            match self.peek_or_null()? {
+                c @ b'0'..=b'9' => {
+                    self.eat_char();
+                    self.scratch.push(c);
+                }
+                c @ b'e' | c @ b'E' | c @ b'+' | c @ b'-' | c @ b'.' => {
+                    self.eat_char();
+                    self.scratch.push(c);
+                    float = true;
+                }
+                _ => break,
+            }
+        }
+        if self.scratch.len() > 20 {
+            float = true;
+        }
+        match (float, positive) {
+            (true, _) => {
+                match lexical_core::parse_format::<f64>(
+                    &self.scratch[..],
+                    lexical_core::NumberFormat::JSON,
+                ) {
+                    Ok(val) => {
+                        if val.is_infinite() {
+                            Err(self.error(ErrorCode::NumberOutOfRange))
+                        } else {
+                            Ok(ParserNumber::F64(val))
+                        }
+                    }
+                    Err(err) => match err.code {
+                        lexical_core::ErrorCode::ExponentWithoutFraction
+                        | lexical_core::ErrorCode::MissingExponentSign
+                        | lexical_core::ErrorCode::EmptyFraction
+                        | lexical_core::ErrorCode::EmptyMantissa
+                        | lexical_core::ErrorCode::EmptyExponent
+                        | lexical_core::ErrorCode::MissingMantissaSign => {
+                            Err(self.error(ErrorCode::EofWhileParsingValue))
+                        }
+                        _ => Err(self.error(ErrorCode::InvalidNumber)),
+                    },
+                }
+            }
+            (false, false) => {
+                match lexical_core::parse_format::<i64>(
+                    &self.scratch[..],
+                    lexical_core::NumberFormat::JSON,
+                ) {
+                    Ok(val) => Ok(ParserNumber::I64(val)),
+                    Err(err) => match err.code {
+                        lexical_core::ErrorCode::Empty => {
+                            Err(self.error(ErrorCode::EofWhileParsingValue))
+                        }
+                        _ => Err(self.error(ErrorCode::InvalidNumber)),
+                    },
+                }
+            }
+            (false, true) => {
+                match lexical_core::parse_format::<u64>(
+                    &self.scratch[..],
+                    lexical_core::NumberFormat::JSON,
+                ) {
+                    Ok(val) => Ok(ParserNumber::U64(val)),
+                    Err(err) => match err.code {
+                        lexical_core::ErrorCode::Empty => {
+                            Err(self.error(ErrorCode::EofWhileParsingValue))
+                        }
+                        _ => Err(self.error(ErrorCode::InvalidNumber)),
+                    },
+                }
+            }
+        }
     }
 
     #[cfg(feature = "arbitrary_precision")]
@@ -742,6 +860,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(())
     }
 
+    #[cfg(not(feature = "perfect_float"))]
     fn f64_from_parts(
         &mut self,
         positive: bool,
@@ -1022,6 +1141,7 @@ impl FromStr for Number {
     }
 }
 
+#[cfg(not(feature = "perfect_float"))]
 static POW10: [f64; 309] = [
     1e000, 1e001, 1e002, 1e003, 1e004, 1e005, 1e006, 1e007, 1e008, 1e009, //
     1e010, 1e011, 1e012, 1e013, 1e014, 1e015, 1e016, 1e017, 1e018, 1e019, //

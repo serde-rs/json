@@ -20,6 +20,7 @@ appveyor = { repository = "serde-rs/json" }
 serde = { version = "1.0.60", default-features = false }
 indexmap = { version = "1.2", optional = true }
 itoa = { version = "0.4.3", default-features = false }
+lexical-core = { version = "0.7", optional = true, features = ["format"] }
 ryu = "1.0"
 
 [dev-dependencies]
@@ -62,6 +63,13 @@ preserve_order = ["indexmap"]
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
 # written back to a JSON string without loss of precision.
 arbitrary_precision = []
+
+# Deserialize floats with perfect accuracy and consistent rounding. This
+# changes the implementation for parsing both floats and integers. This
+# implementation is slower than the default and contains a lookup table that
+# increases artifact size. It does not affect serialization. This
+# feature has no effect if arbitrary_precision is enabled.
+perfect_float = ["lexical-core"]
 
 # Provide a RawValue type that can hold unprocessed JSON during deserialization.
 raw_value = []

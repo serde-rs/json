@@ -9,10 +9,17 @@ matrix:
         - cargo test --features arbitrary_precision
         - cargo test --features raw_value
         - cargo test --features unbounded_depth
+        - cargo test --features perfect_float
 
     - rust: stable
     - rust: beta
+
     - rust: 1.31.0
+      script:
+        - cargo build
+        - cargo build --features preserve_order
+        - cargo build --features arbitrary_precision
+
     - rust: 1.36.0
       script:
         - cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc
@@ -27,3 +34,4 @@ script:
   - cargo build
   - cargo build --features preserve_order
   - cargo build --features arbitrary_precision
+  - cargo build --features perfect_float
