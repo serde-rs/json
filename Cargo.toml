@@ -17,7 +17,7 @@ travis-ci = { repository = "serde-rs/json" }
 appveyor = { repository = "serde-rs/json" }
 
 [dependencies]
-serde = { version = "1.0.60", default-features = false }
+serde = { version = "1.0.100", default-features = false }
 indexmap = { version = "1.2", optional = true }
 itoa = { version = "0.4.3", default-features = false }
 ryu = "1.0"
