@@ -423,7 +423,7 @@ impl<'a> SliceRead<'a> {
 
         loop {
             while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
-                self.index += 1;
+                self.discard();
             }
             if self.index == self.slice.len() {
                 return error(self, ErrorCode::EofWhileParsingString);
@@ -434,22 +434,22 @@ impl<'a> SliceRead<'a> {
                         // Fast path: return a slice of the raw JSON without any
                         // copying.
                         let borrowed = &self.slice[start..self.index];
-                        self.index += 1;
+                        self.discard();
                         return result(self, borrowed).map(Reference::Borrowed);
                     } else {
                         scratch.extend_from_slice(&self.slice[start..self.index]);
-                        self.index += 1;
+                        self.discard();
                         return result(self, scratch).map(Reference::Copied);
                     }
                 }
                 b'\\' => {
                     scratch.extend_from_slice(&self.slice[start..self.index]);
-                    self.index += 1;
+                    self.discard();
                     try!(parse_escape(self, scratch));
                     start = self.index;
                 }
                 _ => {
-                    self.index += 1;
+                    self.discard();
                     if validate {
                         return error(self, ErrorCode::ControlCharacterWhileParsingString);
                     }
@@ -464,11 +464,11 @@ impl<'a> private::Sealed for SliceRead<'a> {}
 impl<'a> Read<'a> for SliceRead<'a> {
     #[inline]
     fn next(&mut self) -> Result<Option<u8>> {
-        // `Ok(self.slice.get(self.index).map(|ch| { self.index += 1; *ch }))`
+        // `Ok(self.slice.get(self.index).map(|ch| { self.discard(); *ch }))`
         // is about 10% slower.
         Ok(if self.index < self.slice.len() {
             let ch = self.slice[self.index];
-            self.index += 1;
+            self.discard();
             Some(ch)
         } else {
             None
@@ -519,18 +519,18 @@ impl<'a> Read<'a> for SliceRead<'a> {
     fn ignore_str(&mut self) -> Result<()> {
         loop {
             while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
-                self.index += 1;
+                self.discard();
             }
             if self.index == self.slice.len() {
                 return error(self, ErrorCode::EofWhileParsingString);
             }
             match self.slice[self.index] {
                 b'"' => {
-                    self.index += 1;
+                    self.discard();
                     return Ok(());
                 }
                 b'\\' => {
-                    self.index += 1;
+                    self.discard();
                     try!(ignore_escape(self));
                 }
                 _ => {
@@ -549,7 +549,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
         let mut n = 0;
         for _ in 0..4 {
             let ch = decode_hex_val(self.slice[self.index]);
-            self.index += 1;
+            self.discard();
             match ch {
                 None => return error(self, ErrorCode::InvalidEscape),
                 Some(val) => {
