@@ -306,6 +306,7 @@
 #![allow(
     clippy::deprecated_cfg_attr,
     clippy::doc_markdown,
+    clippy::match_single_binding,
     clippy::needless_doctest_main,
     clippy::transmute_ptr_to_ptr
 )]
