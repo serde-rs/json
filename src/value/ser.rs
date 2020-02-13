@@ -32,6 +32,7 @@ impl Serialize for Value {
     }
 }
 
+/// Serializer type for `Value`.
 pub struct Serializer;
 
 impl serde::Serializer for Serializer {
