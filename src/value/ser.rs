@@ -32,7 +32,12 @@ impl Serialize for Value {
     }
 }
 
-/// Serializer type for `Value`.
+/// Serializer whose output is a `Value`.
+///
+/// This is the serializer that backs [`serde_json::to_value`][crate::to_value].
+/// Unlike the main serde_json serializer which goes from some serializable
+/// value of type `T` to JSON text, this one goes from `T` to
+/// `serde_json::Value`.
 pub struct Serializer;
 
 impl serde::Serializer for Serializer {
