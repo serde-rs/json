@@ -38,6 +38,20 @@ impl Serialize for Value {
 /// Unlike the main serde_json serializer which goes from some serializable
 /// value of type `T` to JSON text, this one goes from `T` to
 /// `serde_json::Value`.
+///
+/// The `to_value` function is implementable as:
+///
+/// ```
+/// use serde::Serialize;
+/// use serde_json::{Error, Value};
+///
+/// pub fn to_value<T>(input: T) -> Result<Value, Error>
+/// where
+///     T: Serialize,
+/// {
+///     input.serialize(serde_json::value::Serializer)
+/// }
+/// ```
 pub struct Serializer;
 
 impl serde::Serializer for Serializer {
