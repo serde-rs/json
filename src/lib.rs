@@ -319,7 +319,9 @@
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
     // correctly used
+    clippy::enum_glob_use,
     clippy::integer_division,
+    clippy::wildcard_imports,
     // things are often more readable this way
     clippy::cast_lossless,
     clippy::module_name_repetitions,
