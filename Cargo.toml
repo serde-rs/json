@@ -21,6 +21,7 @@ serde = { version = "1.0.100", default-features = false }
 indexmap = { version = "1.2", optional = true }
 itoa = { version = "0.4.3", default-features = false }
 ryu = "1.0"
+value-trait = { version = "0.1", optional = true }
 
 [dev-dependencies]
 automod = "0.1"
