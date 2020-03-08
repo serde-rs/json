@@ -12,8 +12,8 @@ use serde::ser::{self, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_bytes::{ByteBuf, Bytes};
 use serde_json::{
-    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
-    to_vec, to_writer, Deserializer, Number, Value,
+    from_json, from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty,
+    to_value, to_vec, to_writer, Deserializer, Number, Value,
 };
 use std::collections::BTreeMap;
 use std::fmt::{self, Debug};
@@ -1875,6 +1875,32 @@ fn test_json_macro() {
 
     #[deny(unused_results)]
     let _ = json!({ "architecture": [true, null] });
+}
+
+#[test]
+fn test_from_json_macro() {
+    // This is tricky because the <...> is not a single TT and the comma inside
+    // looks like an array element separator.
+    let _: Vec<Result<(), ()>> = from_json!([
+        <Result<(), ()> as Clone>::clone(&Ok(())),
+        <Result<(), ()> as Clone>::clone(&Err(()))
+    ]).unwrap();
+
+    // Same thing but in the map values.
+    let _: BTreeMap<String, Result<(), ()>> = from_json!({
+        "ok": <Result<(), ()> as Clone>::clone(&Ok(())),
+        "err": <Result<(), ()> as Clone>::clone(&Err(()))
+    }).unwrap();
+
+    // It works in map keys but only if they are parenthesized.
+    let _: BTreeMap<String, String> = from_json!({
+        (<Result<&str, ()> as Clone>::clone(&Ok("")).unwrap()): "ok",
+        (<Result<(), &str> as Clone>::clone(&Err("")).unwrap_err()): "err"
+    }).unwrap();
+
+    #[deny(unused_results)]
+    let _: BTreeMap<String, Vec<Option<bool>>> =
+        from_json!({ "architecture": [true, null] }).unwrap();
 }
 
 #[test]

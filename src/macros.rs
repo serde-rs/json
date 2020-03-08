@@ -1,3 +1,32 @@
+/// Construct a JSON literal as an instance of type `T`.
+///
+/// ```
+/// use serde::Deserialize;
+/// use serde_json::from_json;
+///
+/// #[derive(Deserialize, Debug)]
+/// struct User {
+///     fingerprint: String,
+///     location: String,
+/// }
+///
+/// let u: User = from_json!({
+///     "fingerprint": "0xF9BA143B95FF6D82",
+///     "location": "Menlo Park, CA"
+/// }).unwrap();
+/// println!("{:#?}", u);
+/// ```
+///
+/// # Errors
+///
+/// See the `serde_json::value` module documentation.
+#[macro_export(local_inner_macros)]
+macro_rules! from_json {
+    ($($json:tt)+) => {
+        $crate::from_value($crate::json!($($json)+))
+    };
+}
+
 /// Construct a `serde_json::Value` from a JSON literal.
 ///
 /// ```

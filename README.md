@@ -252,10 +252,48 @@ let john = json!({
 });
 ```
 
-This is amazingly convenient but we have the problem we had before with
-`Value` which is that the IDE and Rust compiler cannot help us if we get it
-wrong. Serde JSON provides a better way of serializing strongly-typed data
-structures into JSON text.
+## Constructing JSON values as strongly typed data structures directly
+
+Mapping JSON data to Rust data structures occurs frequently enough that
+Serde provides a macro, `serde_json::from_json`, that first constructs a
+`serde_json::Value` and then adapts it to the annotation type.
+
+<!-- Fix me! -->
+<a href="https://play.rust-lang.org/?edition=2018&gist=15cfab66d38ff8a15a9cf1d8d897ac68" target="_blank">
+<img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
+</a>
+
+```rust
+use serde::{Deserialize, Serialize};
+use serde_json::Result;
+
+#[derive(Serialize, Deserialize)]
+struct Person {
+    name: String,
+    age: u8,
+    phones: Vec<String>,
+}
+
+fn typed_example() -> Result<()> {
+    let p: Person = serde_json::from_json!({
+        "name": "John Doe",
+        "age": 43,
+        "phones": [
+            "+44 1234567",
+            "+44 2345678"
+        ]
+    })?;
+
+    println!("Please call {} at the number {}", p.name, p.phones[0]);
+
+    Ok(())
+}
+```
+
+This is amazingly convenient for deserialization but for serialization we
+have the problem we had before with `Value` which is that the IDE and Rust
+compiler cannot help us if we get it wrong. Serde JSON provides a better
+way of serializing strongly-typed data structures into JSON text.
 
 ## Creating JSON by serializing data structures
 
