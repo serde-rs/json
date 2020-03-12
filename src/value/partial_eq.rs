@@ -21,6 +21,32 @@ fn eq_str(value: &Value, other: &str) -> bool {
     value.as_str().map_or(false, |i| i == other)
 }
 
+impl PartialEq<i128> for Value {
+    fn eq(&self, other: &i128) -> bool {
+        if let Value::Number(n) = self {
+            n.as_i64().map(|v| v as i128 == *other).unwrap_or_default()
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<u128> for Value {
+    fn eq(&self, other: &u128) -> bool {
+        if let Value::Number(n) = self {
+            n.as_u64().map(|v| v as u128 == *other).unwrap_or_default()
+        } else {
+            false
+        }
+    }
+}
+
+impl PartialEq<()> for Value {
+    fn eq(&self, _other: &()) -> bool {
+        self == &Value::Null
+    }
+}
+
 impl PartialEq<str> for Value {
     fn eq(&self, other: &str) -> bool {
         eq_str(self, other)
