@@ -21,7 +21,7 @@ You may be looking for:
 - [JSON API documentation](https://docs.serde.rs/serde_json/)
 - [Serde API documentation](https://docs.serde.rs/serde/)
 - [Detailed documentation about Serde](https://serde.rs/)
-- [Setting up `#[derive(Serialize, Deserialize)]`](https://serde.rs/codegen.html)
+- [Setting up `#[derive(Serialize, Deserialize)]`](https://serde.rs/derive.html)
 - [Release notes](https://github.com/serde-rs/json/releases)
 
 JSON is a ubiquitous open-standard format that uses human-readable text to
