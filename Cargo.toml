@@ -35,6 +35,7 @@ members = ["tests/crate"]
 
 [package.metadata.docs.rs]
 features = ["raw_value", "unbounded_depth"]
+targets = ["x86_64-unknown-linux-gnu"]
 
 [package.metadata.playground]
 features = ["raw_value"]
