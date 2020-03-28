@@ -48,6 +48,7 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
             }
 
+            #[cfg(any(feature = "std", feature = "alloc"))]
             #[inline]
             fn visit_str<E>(self, value: &str) -> Result<Value, E>
             where
@@ -56,6 +57,7 @@ impl<'de> Deserialize<'de> for Value {
                 self.visit_string(String::from(value))
             }
 
+            #[cfg(any(feature = "std", feature = "alloc"))]
             #[inline]
             fn visit_string<E>(self, value: String) -> Result<Value, E> {
                 Ok(Value::String(value))
@@ -93,6 +95,7 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(Value::Array(vec))
             }
 
+            #[cfg(any(feature = "std", feature = "alloc"))]
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
             where
                 V: MapAccess<'de>,
@@ -208,6 +211,7 @@ impl<'de> serde::Deserializer<'de> for Value {
             Value::Null => visitor.visit_unit(),
             Value::Bool(v) => visitor.visit_bool(v),
             Value::Number(n) => n.deserialize_any(visitor),
+            #[cfg(any(feature = "std", feature = "alloc"))]
             Value::String(v) => visitor.visit_string(v),
             Value::Array(v) => visit_array(v, visitor),
             Value::Object(v) => visit_object(v, visitor),
@@ -338,6 +342,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
+            #[cfg(any(feature = "std", feature = "alloc"))]
             Value::String(v) => visitor.visit_string(v),
             _ => Err(self.invalid_type(&visitor)),
         }
@@ -355,6 +360,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
+            #[cfg(any(feature = "std", feature = "alloc"))]
             Value::String(v) => visitor.visit_string(v),
             Value::Array(v) => visit_array(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
@@ -1225,6 +1231,7 @@ macro_rules! deserialize_integer_key {
             match (self.key.parse(), self.key) {
                 (Ok(integer), _) => visitor.$visit(integer),
                 (Err(_), Cow::Borrowed(s)) => visitor.visit_borrowed_str(s),
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 (Err(_), Cow::Owned(s)) => visitor.visit_string(s),
             }
         }
@@ -1337,6 +1344,7 @@ impl<'de> Visitor<'de> for KeyClassifier {
         }
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn visit_string<E>(self, s: String) -> Result<Self::Value, E>
     where
         E: de::Error,
@@ -1392,6 +1400,7 @@ impl<'de> de::Deserializer<'de> for BorrowedCowStrDeserializer<'de> {
     {
         match self.value {
             Cow::Borrowed(string) => visitor.visit_borrowed_str(string),
+            #[cfg(any(feature = "std", feature = "alloc"))]
             Cow::Owned(string) => visitor.visit_string(string),
         }
     }

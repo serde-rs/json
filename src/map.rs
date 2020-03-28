@@ -10,7 +10,7 @@ use crate::lib::borrow::Borrow;
 use crate::lib::iter::FromIterator;
 use crate::lib::*;
 use crate::value::Value;
-use serde::{de, ser};
+use serde::de;
 
 #[cfg(feature = "preserve_order")]
 use indexmap::{self, IndexMap};
@@ -289,11 +289,12 @@ impl Debug for Map<String, Value> {
     }
 }
 
-impl ser::Serialize for Map<String, Value> {
+#[cfg(any(feature = "std", feature = "alloc"))]
+impl serde::ser::Serialize for Map<String, Value> {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: ser::Serializer,
+        S: serde::ser::Serializer,
     {
         use serde::ser::SerializeMap;
         let mut map = tri!(serializer.serialize_map(Some(self.len())));
@@ -327,6 +328,7 @@ impl<'de> de::Deserialize<'de> for Map<String, Value> {
                 Ok(Map::new())
             }
 
+            #[cfg(any(feature = "std", feature = "alloc"))]
             #[inline]
             fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
             where

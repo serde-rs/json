@@ -20,6 +20,7 @@ impl Serialize for Value {
             Value::Number(ref n) => n.serialize(serializer),
             Value::String(ref s) => serializer.serialize_str(s),
             Value::Array(ref v) => v.serialize(serializer),
+            #[cfg(any(feature = "std", feature = "alloc"))]
             Value::Object(ref m) => {
                 use serde::ser::SerializeMap;
                 let mut map = tri!(serializer.serialize_map(Some(m.len())));
