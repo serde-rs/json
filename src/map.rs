@@ -233,6 +233,8 @@ impl PartialEq for Map<String, Value> {
     }
 }
 
+impl Eq for Map<String, Value> {}
+
 /// Access an element of this map. Panics if the given key is not present in the
 /// map.
 ///

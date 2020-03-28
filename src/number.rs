@@ -16,7 +16,7 @@ use serde::de::{IntoDeserializer, MapAccess};
 pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Number {
     n: N,
 }
@@ -30,6 +30,10 @@ enum N {
     /// Always finite.
     Float(f64),
 }
+
+// Implementing Eq is fine since any float values are always finite.
+#[cfg(not(feature = "arbitrary_precision"))]
+impl Eq for N {}
 
 #[cfg(feature = "arbitrary_precision")]
 type N = String;
