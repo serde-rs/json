@@ -267,6 +267,13 @@ impl serde::Serializer for Serializer {
             map: Map::new(),
         })
     }
+
+    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Value>
+    where
+        T: Display,
+    {
+        Ok(Value::String(value.to_string()))
+    }
 }
 
 pub struct SerializeVec {
@@ -592,6 +599,13 @@ impl serde::Serializer for MapKeySerializer {
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
         Err(key_must_be_a_string())
+    }
+
+    fn collect_str<T: ?Sized>(self, value: &T) -> Result<String>
+    where
+        T: Display,
+    {
+        Ok(value.to_string())
     }
 }
 
