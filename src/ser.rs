@@ -452,7 +452,7 @@ where
         self.serialize_map(Some(len))
     }
 
-    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok>
+    fn collect_str<T: ?Sized>(self, value: &T) -> Result<()>
     where
         T: fmt::Display,
     {
@@ -1205,67 +1205,67 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
     type SerializeStruct = Impossible<(), Error>;
     type SerializeStructVariant = Impossible<(), Error>;
 
-    fn serialize_bool(self, _v: bool) -> Result<Self::Ok> {
+    fn serialize_bool(self, _v: bool) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_i8(self, _v: i8) -> Result<Self::Ok> {
+    fn serialize_i8(self, _v: i8) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_i16(self, _v: i16) -> Result<Self::Ok> {
+    fn serialize_i16(self, _v: i16) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_i32(self, _v: i32) -> Result<Self::Ok> {
+    fn serialize_i32(self, _v: i32) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_i64(self, _v: i64) -> Result<Self::Ok> {
-        Err(invalid_number())
-    }
-
-    serde_if_integer128! {
-        fn serialize_i128(self, _v: i128) -> Result<Self::Ok> {
-            Err(invalid_number())
-        }
-    }
-
-    fn serialize_u8(self, _v: u8) -> Result<Self::Ok> {
-        Err(invalid_number())
-    }
-
-    fn serialize_u16(self, _v: u16) -> Result<Self::Ok> {
-        Err(invalid_number())
-    }
-
-    fn serialize_u32(self, _v: u32) -> Result<Self::Ok> {
-        Err(invalid_number())
-    }
-
-    fn serialize_u64(self, _v: u64) -> Result<Self::Ok> {
+    fn serialize_i64(self, _v: i64) -> Result<()> {
         Err(invalid_number())
     }
 
     serde_if_integer128! {
-        fn serialize_u128(self, _v: u128) -> Result<Self::Ok> {
+        fn serialize_i128(self, _v: i128) -> Result<()> {
             Err(invalid_number())
         }
     }
 
-    fn serialize_f32(self, _v: f32) -> Result<Self::Ok> {
+    fn serialize_u8(self, _v: u8) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_f64(self, _v: f64) -> Result<Self::Ok> {
+    fn serialize_u16(self, _v: u16) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_char(self, _v: char) -> Result<Self::Ok> {
+    fn serialize_u32(self, _v: u32) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_str(self, value: &str) -> Result<Self::Ok> {
+    fn serialize_u64(self, _v: u64) -> Result<()> {
+        Err(invalid_number())
+    }
+
+    serde_if_integer128! {
+        fn serialize_u128(self, _v: u128) -> Result<()> {
+            Err(invalid_number())
+        }
+    }
+
+    fn serialize_f32(self, _v: f32) -> Result<()> {
+        Err(invalid_number())
+    }
+
+    fn serialize_f64(self, _v: f64) -> Result<()> {
+        Err(invalid_number())
+    }
+
+    fn serialize_char(self, _v: char) -> Result<()> {
+        Err(invalid_number())
+    }
+
+    fn serialize_str(self, value: &str) -> Result<()> {
         let NumberStrEmitter(serializer) = self;
         serializer
             .formatter
@@ -1273,26 +1273,26 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
             .map_err(Error::io)
     }
 
-    fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok> {
+    fn serialize_bytes(self, _value: &[u8]) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_none(self) -> Result<Self::Ok> {
+    fn serialize_none(self) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok>
+    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<()>
     where
         T: Serialize,
     {
         Err(invalid_number())
     }
 
-    fn serialize_unit(self) -> Result<Self::Ok> {
+    fn serialize_unit(self) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok> {
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<()> {
         Err(invalid_number())
     }
 
@@ -1301,15 +1301,11 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
         _name: &'static str,
         _variant_index: u32,
         _variant: &'static str,
-    ) -> Result<Self::Ok> {
+    ) -> Result<()> {
         Err(invalid_number())
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(
-        self,
-        _name: &'static str,
-        _value: &T,
-    ) -> Result<Self::Ok>
+    fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, _value: &T) -> Result<()>
     where
         T: Serialize,
     {
@@ -1322,7 +1318,7 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
         _variant_index: u32,
         _variant: &'static str,
         _value: &T,
-    ) -> Result<Self::Ok>
+    ) -> Result<()>
     where
         T: Serialize,
     {
@@ -1390,67 +1386,67 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
     type SerializeStruct = Impossible<(), Error>;
     type SerializeStructVariant = Impossible<(), Error>;
 
-    fn serialize_bool(self, _v: bool) -> Result<Self::Ok> {
+    fn serialize_bool(self, _v: bool) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_i8(self, _v: i8) -> Result<Self::Ok> {
+    fn serialize_i8(self, _v: i8) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_i16(self, _v: i16) -> Result<Self::Ok> {
+    fn serialize_i16(self, _v: i16) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_i32(self, _v: i32) -> Result<Self::Ok> {
+    fn serialize_i32(self, _v: i32) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_i64(self, _v: i64) -> Result<Self::Ok> {
-        Err(ser::Error::custom("expected RawValue"))
-    }
-
-    serde_if_integer128! {
-        fn serialize_i128(self, _v: i128) -> Result<Self::Ok> {
-            Err(ser::Error::custom("expected RawValue"))
-        }
-    }
-
-    fn serialize_u8(self, _v: u8) -> Result<Self::Ok> {
-        Err(ser::Error::custom("expected RawValue"))
-    }
-
-    fn serialize_u16(self, _v: u16) -> Result<Self::Ok> {
-        Err(ser::Error::custom("expected RawValue"))
-    }
-
-    fn serialize_u32(self, _v: u32) -> Result<Self::Ok> {
-        Err(ser::Error::custom("expected RawValue"))
-    }
-
-    fn serialize_u64(self, _v: u64) -> Result<Self::Ok> {
+    fn serialize_i64(self, _v: i64) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
     serde_if_integer128! {
-        fn serialize_u128(self, _v: u128) -> Result<Self::Ok> {
+        fn serialize_i128(self, _v: i128) -> Result<()> {
             Err(ser::Error::custom("expected RawValue"))
         }
     }
 
-    fn serialize_f32(self, _v: f32) -> Result<Self::Ok> {
+    fn serialize_u8(self, _v: u8) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_f64(self, _v: f64) -> Result<Self::Ok> {
+    fn serialize_u16(self, _v: u16) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_char(self, _v: char) -> Result<Self::Ok> {
+    fn serialize_u32(self, _v: u32) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_str(self, value: &str) -> Result<Self::Ok> {
+    fn serialize_u64(self, _v: u64) -> Result<()> {
+        Err(ser::Error::custom("expected RawValue"))
+    }
+
+    serde_if_integer128! {
+        fn serialize_u128(self, _v: u128) -> Result<()> {
+            Err(ser::Error::custom("expected RawValue"))
+        }
+    }
+
+    fn serialize_f32(self, _v: f32) -> Result<()> {
+        Err(ser::Error::custom("expected RawValue"))
+    }
+
+    fn serialize_f64(self, _v: f64) -> Result<()> {
+        Err(ser::Error::custom("expected RawValue"))
+    }
+
+    fn serialize_char(self, _v: char) -> Result<()> {
+        Err(ser::Error::custom("expected RawValue"))
+    }
+
+    fn serialize_str(self, value: &str) -> Result<()> {
         let RawValueStrEmitter(serializer) = self;
         serializer
             .formatter
@@ -1458,26 +1454,26 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
             .map_err(Error::io)
     }
 
-    fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok> {
+    fn serialize_bytes(self, _value: &[u8]) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_none(self) -> Result<Self::Ok> {
+    fn serialize_none(self) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok>
+    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<()>
     where
         T: Serialize,
     {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_unit(self) -> Result<Self::Ok> {
+    fn serialize_unit(self) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok> {
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
@@ -1486,15 +1482,11 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
         _name: &'static str,
         _variant_index: u32,
         _variant: &'static str,
-    ) -> Result<Self::Ok> {
+    ) -> Result<()> {
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(
-        self,
-        _name: &'static str,
-        _value: &T,
-    ) -> Result<Self::Ok>
+    fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, _value: &T) -> Result<()>
     where
         T: Serialize,
     {
@@ -1507,7 +1499,7 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
         _variant_index: u32,
         _variant: &'static str,
         _value: &T,
-    ) -> Result<Self::Ok>
+    ) -> Result<()>
     where
         T: Serialize,
     {
