@@ -454,7 +454,7 @@ where
 
     fn collect_str<T: ?Sized>(self, value: &T) -> Result<()>
     where
-        T: fmt::Display,
+        T: Display,
     {
         use self::fmt::Write;
 
@@ -1186,6 +1186,13 @@ where
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
         Err(key_must_be_a_string())
+    }
+
+    fn collect_str<T: ?Sized>(self, value: &T) -> Result<()>
+    where
+        T: Display,
+    {
+        self.ser.collect_str(value)
     }
 }
 
