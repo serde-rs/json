@@ -138,7 +138,7 @@ impl serde::Serializer for Serializer {
     fn serialize_char(self, value: char) -> Result<Value> {
         let mut s = String::new();
         s.push(value);
-        self.serialize_str(&s)
+        Ok(Value::String(s))
     }
 
     #[inline]
