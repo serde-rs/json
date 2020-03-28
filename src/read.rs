@@ -104,12 +104,18 @@ pub struct Position {
     pub column: usize,
 }
 
-pub enum Reference<'b, 'c, T: ?Sized + 'static> {
+pub enum Reference<'b, 'c, T>
+where
+    T: ?Sized + 'static,
+{
     Borrowed(&'b T),
     Copied(&'c T),
 }
 
-impl<'b, 'c, T: ?Sized + 'static> Deref for Reference<'b, 'c, T> {
+impl<'b, 'c, T> Deref for Reference<'b, 'c, T>
+where
+    T: ?Sized + 'static,
+{
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -416,14 +422,14 @@ impl<'a> SliceRead<'a> {
     /// The big optimization here over IoRead is that if the string contains no
     /// backslash escape sequences, the returned &str is a slice of the raw JSON
     /// data so we avoid copying into the scratch space.
-    fn parse_str_bytes<'s, T: ?Sized, F>(
+    fn parse_str_bytes<'s, T, F>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,
         validate: bool,
         result: F,
     ) -> Result<Reference<'a, 's, T>>
     where
-        T: 's,
+        T: ?Sized + 's,
         F: for<'f> FnOnce(&'s Self, &'f [u8]) -> Result<&'f T>,
     {
         // Index of the first byte not yet copied into the scratch space.
@@ -707,14 +713,20 @@ static ESCAPE: [bool; 256] = {
     ]
 };
 
-fn next_or_eof<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<u8> {
+fn next_or_eof<'de, R>(read: &mut R) -> Result<u8>
+where
+    R: ?Sized + Read<'de>,
+{
     match tri!(read.next()) {
         Some(b) => Ok(b),
         None => error(read, ErrorCode::EofWhileParsingString),
     }
 }
 
-fn error<'de, R: ?Sized + Read<'de>, T>(read: &R, reason: ErrorCode) -> Result<T> {
+fn error<'de, R, T>(read: &R, reason: ErrorCode) -> Result<T>
+where
+    R: ?Sized + Read<'de>,
+{
     let position = read.position();
     Err(Error::syntax(reason, position.line, position.column))
 }
@@ -789,7 +801,10 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
 
 /// Parses a JSON escape sequence and discards the value. Assumes the previous
 /// byte read was a backslash.
-fn ignore_escape<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<()> {
+fn ignore_escape<'de, R>(read: &mut R) -> Result<()>
+where
+    R: ?Sized + Read<'de>,
+{
     let ch = tri!(next_or_eof(read));
 
     match ch {

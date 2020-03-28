@@ -113,9 +113,9 @@ impl Index for String {
     }
 }
 
-impl<'a, T: ?Sized> Index for &'a T
+impl<'a, T> Index for &'a T
 where
-    T: Index,
+    T: ?Sized + Index,
 {
     fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
         (**self).index_into(v)
@@ -134,7 +134,7 @@ mod private {
     impl Sealed for usize {}
     impl Sealed for str {}
     impl Sealed for super::String {}
-    impl<'a, T: ?Sized> Sealed for &'a T where T: Sealed {}
+    impl<'a, T> Sealed for &'a T where T: ?Sized + Sealed {}
 }
 
 /// Used in panic messages.
