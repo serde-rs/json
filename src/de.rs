@@ -1066,7 +1066,7 @@ macro_rules! deserialize_prim_number {
         {
             self.deserialize_prim_number(visitor)
         }
-    }
+    };
 }
 
 #[cfg(not(feature = "unbounded_depth"))]
@@ -1932,7 +1932,7 @@ macro_rules! deserialize_integer_key {
                 (Err(_), Reference::Copied(s)) => visitor.visit_str(s),
             }
         }
-    }
+    };
 }
 
 impl<'de, 'a, R> de::Deserializer<'de> for MapKey<'a, R>

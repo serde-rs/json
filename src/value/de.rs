@@ -157,7 +157,7 @@ macro_rules! deserialize_prim_number {
                 _ => self.deserialize_any(visitor),
             }
         }
-    }
+    };
 }
 
 fn visit_array<'de, V>(array: Vec<Value>, visitor: V) -> Result<V::Value, Error>
@@ -707,7 +707,7 @@ macro_rules! deserialize_value_ref_number {
                 _ => self.deserialize_any(visitor),
             }
         }
-    }
+    };
 }
 
 fn visit_array_ref<'de, V>(array: &'de [Value], visitor: V) -> Result<V::Value, Error>
@@ -1236,7 +1236,7 @@ macro_rules! deserialize_integer_key {
                 (Err(_), Cow::Owned(s)) => visitor.visit_string(s),
             }
         }
-    }
+    };
 }
 
 impl<'de> serde::Deserializer<'de> for MapKeyDeserializer<'de> {

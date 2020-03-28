@@ -505,7 +505,7 @@ macro_rules! deserialize_number {
         {
             visitor.$visit(self.n.parse().map_err(|_| invalid_number())?)
         }
-    }
+    };
 }
 
 impl<'de> Deserializer<'de> for Number {
