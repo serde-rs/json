@@ -363,6 +363,7 @@ mod lib {
     pub use self::core::default::{self, Default};
     pub use self::core::fmt::{self, Debug, Display};
     pub use self::core::hash::{self, Hash};
+    pub use self::core::iter::FusedIterator;
     pub use self::core::marker::{self, PhantomData};
     pub use self::core::result::{self, Result};
     pub use self::core::{borrow, char, cmp, iter, mem, num, ops, slice, str};
