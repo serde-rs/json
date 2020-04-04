@@ -395,6 +395,7 @@ where
     const should_early_return_if_failed: bool = true;
 
     #[inline]
+    #[cold]
     fn set_failed(&mut self, failed: &mut bool) {
         *failed = true;
     }
@@ -613,6 +614,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
     const should_early_return_if_failed: bool = false;
 
     #[inline]
+    #[cold]
     fn set_failed(&mut self, _failed: &mut bool) {
         self.slice = &self.slice[..self.index];
     }
@@ -711,6 +713,7 @@ impl<'a> Read<'a> for StrRead<'a> {
     const should_early_return_if_failed: bool = false;
 
     #[inline]
+    #[cold]
     fn set_failed(&mut self, failed: &mut bool) {
         self.delegate.set_failed(failed);
     }
