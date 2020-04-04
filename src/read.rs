@@ -718,6 +718,11 @@ impl<'a> Read<'a> for StrRead<'a> {
 
 //////////////////////////////////////////////////////////////////////////////
 
+/// Marker for whether StreamDeserializer can implement FusedIterator.
+pub trait Fused: private::Sealed {}
+impl<'a> Fused for SliceRead<'a> {}
+impl<'a> Fused for StrRead<'a> {}
+
 // Lookup table of bytes that must be escaped. A value of true at index i means
 // that byte i requires an escape sequence in the input.
 static ESCAPE: [bool; 256] = {

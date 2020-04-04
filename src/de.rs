@@ -4,7 +4,7 @@ use crate::error::{Error, ErrorCode, Result};
 use crate::lib::str::FromStr;
 use crate::lib::*;
 use crate::number::Number;
-use crate::read::{self, Reference};
+use crate::read::{self, Fused, Reference};
 use serde::de::{self, Expected, Unexpected};
 use serde::{forward_to_deserialize_any, serde_if_integer128};
 
@@ -2179,6 +2179,13 @@ where
             }
         }
     }
+}
+
+impl<'de, R, T> FusedIterator for StreamDeserializer<'de, R, T>
+where
+    R: Read<'de> + Fused,
+    T: de::Deserialize<'de>,
+{
 }
 
 //////////////////////////////////////////////////////////////////////////////
