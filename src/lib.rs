@@ -337,6 +337,7 @@
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
 )]
+#![allow(non_upper_case_globals)]
 #![deny(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 

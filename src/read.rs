@@ -97,6 +97,18 @@ pub trait Read<'de>: private::Sealed {
     fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>;
+
+    /// Whether StreamDeserializer::next needs to check the failed flag. True
+    /// for IoRead, false for StrRead and SliceRead which can track failure by
+    /// truncating their input slice to avoid the extra check on every next
+    /// call.
+    #[doc(hidden)]
+    const should_early_return_if_failed: bool;
+
+    /// Mark a persistent failure of StreamDeserializer, either by setting the
+    /// flag or by truncating the input data.
+    #[doc(hidden)]
+    fn set_failed(&mut self, failed: &mut bool);
 }
 
 pub struct Position {
@@ -379,6 +391,13 @@ where
             raw_value: Some(raw),
         })
     }
+
+    const should_early_return_if_failed: bool = true;
+
+    #[inline]
+    fn set_failed(&mut self, failed: &mut bool) {
+        *failed = true;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -590,6 +609,13 @@ impl<'a> Read<'a> for SliceRead<'a> {
             raw_value: Some(raw),
         })
     }
+
+    const should_early_return_if_failed: bool = false;
+
+    #[inline]
+    fn set_failed(&mut self, _failed: &mut bool) {
+        self.slice = &self.slice[..self.index];
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -680,6 +706,13 @@ impl<'a> Read<'a> for StrRead<'a> {
         visitor.visit_map(BorrowedRawDeserializer {
             raw_value: Some(raw),
         })
+    }
+
+    const should_early_return_if_failed: bool = false;
+
+    #[inline]
+    fn set_failed(&mut self, failed: &mut bool) {
+        self.delegate.set_failed(failed);
     }
 }
 

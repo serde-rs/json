@@ -169,3 +169,14 @@ fn test_json_stream_invalid_number() {
         assert_eq!(second.to_string(), "trailing characters at line 1 column 2");
     });
 }
+
+#[test]
+fn test_error() {
+    let data = "true wrong false";
+
+    test_stream!(data, Value, |stream| {
+        assert_eq!(stream.next().unwrap().unwrap(), true);
+        assert!(stream.next().unwrap().is_err());
+        assert!(stream.next().is_none());
+    });
+}
