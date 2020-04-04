@@ -397,6 +397,8 @@ macro_rules! delegate_iterator {
                 self.iter.len()
             }
         }
+
+        impl $($generics)* FusedIterator for $name $($generics)* {}
     }
 }
 
