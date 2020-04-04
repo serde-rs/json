@@ -151,6 +151,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         StreamDeserializer {
             de: self,
             offset: offset,
+            failed: false,
             output: PhantomData,
             lifetime: PhantomData,
         }
@@ -2046,6 +2047,7 @@ where
 pub struct StreamDeserializer<'de, R, T> {
     de: Deserializer<R>,
     offset: usize,
+    failed: bool,
     output: PhantomData<T>,
     lifetime: PhantomData<&'de ()>,
 }
@@ -2068,6 +2070,7 @@ where
         StreamDeserializer {
             de: Deserializer::new(read),
             offset: offset,
+            failed: false,
             output: PhantomData,
             lifetime: PhantomData,
         }
@@ -2132,6 +2135,10 @@ where
     type Item = Result<T>;
 
     fn next(&mut self) -> Option<Result<T>> {
+        if R::should_early_return_if_failed && self.failed {
+            return None;
+        }
+
         // skip whitespaces, if any
         // this helps with trailing whitespaces, since whitespaces between
         // values are handled for us.
@@ -2160,10 +2167,16 @@ where
                             self.peek_end_of_value().map(|_| value)
                         }
                     }
-                    Err(e) => Err(e),
+                    Err(e) => {
+                        self.de.read.set_failed(&mut self.failed);
+                        Err(e)
+                    }
                 })
             }
-            Err(e) => Some(Err(e)),
+            Err(e) => {
+                self.de.read.set_failed(&mut self.failed);
+                Some(Err(e))
+            }
         }
     }
 }
