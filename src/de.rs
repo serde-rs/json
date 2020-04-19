@@ -154,6 +154,29 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             failed: false,
             output: PhantomData,
             lifetime: PhantomData,
+
+            array: false,
+            begin: true,
+        }
+    }
+
+    /// Turn a JSON deserializer into an iterator over an array of values of type T.
+    pub fn into_array<T>(self) -> StreamDeserializer<'de, R, T>
+    where
+        T: de::Deserialize<'de>,
+    {
+        // This cannot be an implementation of std::iter::IntoIterator because
+        // we need the caller to choose what T is.
+        let offset = self.read.byte_offset();
+        StreamDeserializer {
+            de: self,
+            offset: offset,
+            failed: false,
+            output: PhantomData,
+            lifetime: PhantomData,
+
+            array: true,
+            begin: true,
         }
     }
 
@@ -2050,6 +2073,8 @@ pub struct StreamDeserializer<'de, R, T> {
     failed: bool,
     output: PhantomData<T>,
     lifetime: PhantomData<&'de ()>,
+    array: bool,
+    begin: bool,
 }
 
 impl<'de, R, T> StreamDeserializer<'de, R, T>
@@ -2073,6 +2098,9 @@ where
             failed: false,
             output: PhantomData,
             lifetime: PhantomData,
+
+            array: false,
+            begin: true,
         }
     }
 
@@ -2147,7 +2175,90 @@ where
                 self.offset = self.de.read.byte_offset();
                 None
             }
-            Ok(Some(b)) => {
+            Ok(Some(mut b)) => {
+                if self.array {
+                    // First time we parse, try to eat the opening bracket
+                    if self.begin {
+                        match b {
+                            b'[' => (),
+                            _ => {
+                                self.failed = true;
+                                return Some(Err(self.de.peek_invalid_type(&"Array")));
+                            }
+                        };
+
+                        self.de.eat_char();
+                        b = match self.de.parse_whitespace() {
+                            Ok(None) => {
+                                self.offset = self.de.read.byte_offset();
+                                return None;
+                            }
+                            Ok(Some(b)) => b,
+                            Err(e) => {
+                                self.de.read.set_failed(&mut self.failed);
+                                return Some(Err(e));
+                            }
+                        }
+                    }
+
+                    // Detect end of array, and comma
+                    match b {
+                        // End of array, check that what is left is only empty
+                        b']' => {
+                            self.de.eat_char();
+                            return match self.de.parse_whitespace() {
+                                Ok(None) => {
+                                    self.offset = self.de.read.byte_offset();
+                                    None
+                                }
+                                Ok(Some(_)) => {
+                                    self.de.read.set_failed(&mut self.failed);
+                                    let position = self.de.read.position();
+                                    Some(Err(Error::syntax(
+                                        ErrorCode::TrailingCharacters,
+                                        position.line,
+                                        position.column,
+                                    )))
+                                }
+                                Err(e) => {
+                                    self.de.read.set_failed(&mut self.failed);
+                                    Some(Err(e))
+                                }
+                            };
+                        }
+
+                        // If it is the first time, allow anything (as it is the begining of the value)
+                        _ if self.begin => (),
+
+                        // Allow comma, only if not the the first time, to block `[,]`
+                        b',' if !self.begin => {
+                            self.de.eat_char();
+                            b = match self.de.parse_whitespace() {
+                                Ok(None) => {
+                                    self.offset = self.de.read.byte_offset();
+                                    return None;
+                                }
+                                Ok(Some(b)) => b,
+                                Err(e) => {
+                                    self.de.read.set_failed(&mut self.failed);
+                                    return Some(Err(e));
+                                }
+                            }
+                        }
+
+                        // Either a comma or the end of the array was expected
+                        _ => {
+                            let position = self.de.read.position();
+                            return Some(Err(Error::syntax(
+                                ErrorCode::ExpectedListCommaOrEnd,
+                                position.line,
+                                position.column,
+                            )));
+                        }
+                    };
+                }
+                self.begin = false;
+
                 // If the value does not have a clear way to show the end of the value
                 // (like numbers, null, true etc.) we have to look for whitespace or
                 // the beginning of a self-delineated value.
