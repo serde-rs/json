@@ -21,7 +21,7 @@ serde = { version = "1.0.100", default-features = false }
 indexmap = { version = "1.2", optional = true }
 itoa = { version = "0.4.3", default-features = false }
 ryu = "1.0"
-b64-ct = { version = "0.1", default-features = false }
+b64-ct = { version = "0.1", default-features = false, optional = true }
 
 [dev-dependencies]
 automod = "0.1"
@@ -77,3 +77,9 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# Support alternate encoding modes for bytes. Available on Rust 1.40+
+bytes_mode = []
+
+# Support the Base64-encoding alternate bytes encoding mode
+base64 = ["bytes_mode", "b64-ct"]

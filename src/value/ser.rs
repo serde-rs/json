@@ -2,9 +2,11 @@ use crate::error::{Error, ErrorCode, Result};
 use crate::lib::*;
 use crate::map::Map;
 use crate::number::Number;
-use crate::value::{to_value, Value};
-use serde::ser::{Impossible, Serialize};
+use crate::value::Value;
+use crate::BytesMode;
+#[cfg(feature = "base64")]
 use b64_ct::{ToBase64, STANDARD};
+use serde::ser::{Impossible, Serialize};
 
 #[cfg(feature = "arbitrary_precision")]
 use serde::serde_if_integer128;
@@ -54,7 +56,33 @@ impl Serialize for Value {
 ///     input.serialize(serde_json::value::Serializer)
 /// }
 /// ```
-pub struct Serializer;
+pub struct Serializer {
+    bytes_mode: BytesMode,
+}
+
+/// Default `Serializer`.
+// This type used to be a unit struct, so code may be initializing this by
+// using the type's name. This constant makes that possible in a backwards
+// compatible manner.
+#[allow(non_upper_case_globals)]
+pub const Serializer: Serializer = Serializer {
+    bytes_mode: BytesMode::IntegerArray,
+};
+
+impl Serializer {
+    /// Create a serializer whose output is a `Value` with a specific encoding
+    /// mode for bytes.
+    #[cfg(feature = "bytes_mode")]
+    pub fn with_bytes_mode(bytes_mode: BytesMode) -> Self {
+        Serializer { bytes_mode }
+    }
+
+    fn clone(&self) -> Self {
+        Serializer {
+            bytes_mode: self.bytes_mode.clone(),
+        }
+    }
+}
 
 impl serde::Serializer for Serializer {
     type Ok = Value;
@@ -149,7 +177,14 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_bytes(self, value: &[u8]) -> Result<Value> {
-        Ok(Value::String(value.to_base64(STANDARD)))
+        match self.bytes_mode {
+            BytesMode::IntegerArray => {
+                let vec = value.iter().map(|&b| Value::Number(b.into())).collect();
+                Ok(Value::Array(vec))
+            }
+            #[cfg(feature = "base64")]
+            BytesMode::Base64 => Ok(Value::String(value.to_base64(STANDARD))),
+        }
     }
 
     #[inline]
@@ -191,7 +226,7 @@ impl serde::Serializer for Serializer {
         T: ?Sized + Serialize,
     {
         let mut values = Map::new();
-        values.insert(String::from(variant), tri!(to_value(&value)));
+        values.insert(String::from(variant), tri!(value.serialize(self.clone())));
         Ok(Value::Object(values))
     }
 
@@ -211,6 +246,7 @@ impl serde::Serializer for Serializer {
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         Ok(SerializeVec {
             vec: Vec::with_capacity(len.unwrap_or(0)),
+            ser: self.clone(),
         })
     }
 
@@ -236,6 +272,7 @@ impl serde::Serializer for Serializer {
         Ok(SerializeTupleVariant {
             name: String::from(variant),
             vec: Vec::with_capacity(len),
+            ser: self.clone(),
         })
     }
 
@@ -243,15 +280,22 @@ impl serde::Serializer for Serializer {
         Ok(SerializeMap::Map {
             map: Map::new(),
             next_key: None,
+            ser: self.clone(),
         })
     }
 
     fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         match name {
             #[cfg(feature = "arbitrary_precision")]
-            crate::number::TOKEN => Ok(SerializeMap::Number { out_value: None }),
+            crate::number::TOKEN => Ok(SerializeMap::Number {
+                out_value: None,
+                ser: self.clone(),
+            }),
             #[cfg(feature = "raw_value")]
-            crate::raw::TOKEN => Ok(SerializeMap::RawValue { out_value: None }),
+            crate::raw::TOKEN => Ok(SerializeMap::RawValue {
+                out_value: None,
+                ser: self.clone(),
+            }),
             _ => self.serialize_map(Some(len)),
         }
     }
@@ -266,6 +310,7 @@ impl serde::Serializer for Serializer {
         Ok(SerializeStructVariant {
             name: String::from(variant),
             map: Map::new(),
+            ser: self.clone(),
         })
     }
 
@@ -279,27 +324,37 @@ impl serde::Serializer for Serializer {
 
 pub struct SerializeVec {
     vec: Vec<Value>,
+    ser: Serializer,
 }
 
 pub struct SerializeTupleVariant {
     name: String,
     vec: Vec<Value>,
+    ser: Serializer,
 }
 
 pub enum SerializeMap {
     Map {
         map: Map<String, Value>,
         next_key: Option<String>,
+        ser: Serializer,
     },
     #[cfg(feature = "arbitrary_precision")]
-    Number { out_value: Option<Value> },
+    Number {
+        out_value: Option<Value>,
+        ser: Serializer,
+    },
     #[cfg(feature = "raw_value")]
-    RawValue { out_value: Option<Value> },
+    RawValue {
+        out_value: Option<Value>,
+        ser: Serializer,
+    },
 }
 
 pub struct SerializeStructVariant {
     name: String,
     map: Map<String, Value>,
+    ser: Serializer,
 }
 
 impl serde::ser::SerializeSeq for SerializeVec {
@@ -310,7 +365,7 @@ impl serde::ser::SerializeSeq for SerializeVec {
     where
         T: ?Sized + Serialize,
     {
-        self.vec.push(tri!(to_value(&value)));
+        self.vec.push(tri!(value.serialize(self.ser.clone())));
         Ok(())
     }
 
@@ -359,7 +414,7 @@ impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
     where
         T: ?Sized + Serialize,
     {
-        self.vec.push(tri!(to_value(&value)));
+        self.vec.push(tri!(value.serialize(self.ser.clone())));
         Ok(())
     }
 
@@ -402,12 +457,13 @@ impl serde::ser::SerializeMap for SerializeMap {
             SerializeMap::Map {
                 ref mut map,
                 ref mut next_key,
+                ref ser,
             } => {
                 let key = next_key.take();
                 // Panic because this indicates a bug in the program rather than an
                 // expected failure.
                 let key = key.expect("serialize_value called before serialize_key");
-                map.insert(key, tri!(to_value(&value)));
+                map.insert(key, tri!(value.serialize(ser.clone())));
                 Ok(())
             }
             #[cfg(feature = "arbitrary_precision")]
@@ -621,7 +677,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
         match *self {
             SerializeMap::Map { .. } => serde::ser::SerializeMap::serialize_entry(self, key, value),
             #[cfg(feature = "arbitrary_precision")]
-            SerializeMap::Number { ref mut out_value } => {
+            SerializeMap::Number { ref mut out_value, .. } => {
                 if key == crate::number::TOKEN {
                     *out_value = Some(value.serialize(NumberValueEmitter)?);
                     Ok(())
@@ -630,7 +686,7 @@ impl serde::ser::SerializeStruct for SerializeMap {
                 }
             }
             #[cfg(feature = "raw_value")]
-            SerializeMap::RawValue { ref mut out_value } => {
+            SerializeMap::RawValue { ref mut out_value, .. } => {
                 if key == crate::raw::TOKEN {
                     *out_value = Some(value.serialize(RawValueEmitter)?);
                     Ok(())
@@ -664,7 +720,8 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
     where
         T: ?Sized + Serialize,
     {
-        self.map.insert(String::from(key), tri!(to_value(&value)));
+        self.map
+            .insert(String::from(key), tri!(value.serialize(self.ser.clone())));
         Ok(())
     }
 

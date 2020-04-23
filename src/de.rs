@@ -5,8 +5,11 @@ use crate::lib::str::FromStr;
 use crate::lib::*;
 use crate::number::Number;
 use crate::read::{self, Fused, Reference};
+use crate::BytesMode;
 use serde::de::{self, Expected, Unexpected};
 use serde::{forward_to_deserialize_any, serde_if_integer128};
+
+#[cfg(feature = "base64")]
 use b64_ct::FromBase64;
 
 #[cfg(feature = "arbitrary_precision")]
@@ -26,6 +29,7 @@ pub struct Deserializer<R> {
     remaining_depth: u8,
     #[cfg(feature = "unbounded_depth")]
     disable_recursion_limit: bool,
+    bytes_mode: BytesMode,
 }
 
 impl<'de, R> Deserializer<R>
@@ -47,6 +51,7 @@ where
                 read: read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
+                bytes_mode: BytesMode::default(),
             }
         }
 
@@ -57,7 +62,17 @@ where
                 scratch: Vec::new(),
                 remaining_depth: 128,
                 disable_recursion_limit: false,
+                bytes_mode: BytesMode::default(),
             }
+        }
+    }
+
+    /// Create a JSON deserializer with a specified encoding mode for bytes.
+    #[cfg(feature = "bytes_mode")]
+    pub fn with_bytes_mode(read: R, bytes_mode: BytesMode) -> Self {
+        Deserializer {
+            bytes_mode,
+            ..Self::new(read)
         }
     }
 }
@@ -1333,7 +1348,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self.deserialize_str(visitor)
     }
 
-    /// Deserialize a base64-encoded string.
+    /// Deserialize bytes according to the deserializer's byte mode.
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
@@ -1349,9 +1364,24 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
-                let string = self.read.parse_str(&mut self.scratch)?;
-                visitor.visit_bytes(&string.from_base64()
-                    .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(&string), &"base64 encoded string"))?)
+                match self.bytes_mode {
+                    BytesMode::IntegerArray => {
+                        match tri!(self.read.parse_str_raw(&mut self.scratch)) {
+                            Reference::Borrowed(b) => visitor.visit_borrowed_bytes(b),
+                            Reference::Copied(b) => visitor.visit_bytes(b),
+                        }
+                    }
+                    #[cfg(feature = "base64")]
+                    BytesMode::Base64 => {
+                        let string = self.read.parse_str(&mut self.scratch)?;
+                        visitor.visit_bytes(&string.from_base64().map_err(|_| {
+                            de::Error::invalid_value(
+                                de::Unexpected::Str(&string),
+                                &"base64 encoded string",
+                            )
+                        })?)
+                    }
+                }
             }
             b'[' => self.deserialize_seq(visitor),
             _ => Err(self.peek_invalid_type(&visitor)),

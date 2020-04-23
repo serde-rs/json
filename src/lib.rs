@@ -428,6 +428,8 @@ macro_rules! tri {
 #[macro_use]
 mod macros;
 
+#[cfg(feature = "base64")]
+pub mod base64;
 pub mod de;
 pub mod error;
 pub mod map;
@@ -447,3 +449,132 @@ mod read;
 
 #[cfg(feature = "raw_value")]
 mod raw;
+
+/// Specifies how should bytes be (de)serialized
+///
+/// JSON does not natively support binary data. Protocols can specify their own
+/// mechanisms to handle binary data in JSON. Serde JSON supports different
+/// modes, see the details for each variant.
+///
+/// Note that the byte deserialization mode is only checked for types that are
+/// deserialized as bytes (when a type directly calls `deserialize_bytes` or
+/// `deserialize_byte_buf`). Types that are not self-describing (when a type
+/// calls `deserialize_any`) can't be deserialized as bytes.
+///
+/// The default mode is `IntegerArray`, which is the only format Serde JSON
+/// used to support.
+///
+/// The `Base64` mode is enabled with the `base64` crate feature.
+#[cfg(feature = "bytes_mode")]
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[non_exhaustive]
+pub enum BytesMode {
+    /// Use integer arrays to represent bytes
+    ///
+    /// # Serialization
+    /// Bytes are serialized as a JSON array of integers, each element
+    /// representing one byte.
+    ///
+    /// # Deserialization
+    /// JSON arrays are deserialized as an array of integers, each element
+    /// representing one byte.
+    ///
+    /// JSON strings are parsed as raw bytes. It's not checked whether the
+    /// bytes represent a valid UTF-8 string.
+    ///
+    /// The relevant part of the JSON specification is Section 8.2 of [RFC 7159]:
+    ///
+    /// > When all the strings represented in a JSON text are composed entirely
+    /// > of Unicode characters (however escaped), then that JSON text is
+    /// > interoperable in the sense that all software implementations that
+    /// > parse it will agree on the contents of names and of string values in
+    /// > objects and arrays.
+    /// >
+    /// > However, the ABNF in this specification allows member names and string
+    /// > values to contain bit sequences that cannot encode Unicode characters;
+    /// > for example, "\uDEAD" (a single unpaired UTF-16 surrogate). Instances
+    /// > of this have been observed, for example, when a library truncates a
+    /// > UTF-16 string without checking whether the truncation split a
+    /// > surrogate pair.  The behavior of software that receives JSON texts
+    /// > containing such values is unpredictable; for example, implementations
+    /// > might return different values for the length of a string value or even
+    /// > suffer fatal runtime exceptions.
+    ///
+    /// [RFC 7159]: https://tools.ietf.org/html/rfc7159
+    ///
+    /// The behavior of serde_json is specified to fail on non-UTF-8 strings
+    /// when deserializing into Rust UTF-8 string types such as String, and
+    /// succeed with non-UTF-8 bytes when deserializing as bytes.
+    ///
+    /// Escape sequences are processed as usual, and for `\uXXXX` escapes it is
+    /// still checked if the hex number represents a valid Unicode code point.
+    ///
+    /// # Examples
+    ///
+    /// You can use this to parse JSON strings containing invalid UTF-8 bytes.
+    ///
+    /// ```
+    /// use serde_bytes::ByteBuf;
+    ///
+    /// fn look_at_bytes() -> Result<(), serde_json::Error> {
+    ///     let json_data = b"\"some bytes: \xe5\x00\xe5\"";
+    ///     let bytes: ByteBuf = serde_json::from_slice(json_data)?;
+    ///
+    ///     assert_eq!(b'\xe5', bytes[12]);
+    ///     assert_eq!(b'\0', bytes[13]);
+    ///     assert_eq!(b'\xe5', bytes[14]);
+    ///
+    ///     Ok(())
+    /// }
+    /// #
+    /// # look_at_bytes().unwrap();
+    /// ```
+    ///
+    /// Backslash escape sequences like `\n` are still interpreted and required
+    /// to be valid, and `\u` escape sequences are required to represent valid
+    /// Unicode code points.
+    ///
+    /// ```
+    /// use serde_bytes::ByteBuf;
+    ///
+    /// fn look_at_bytes() {
+    ///     let json_data = b"\"invalid unicode surrogate: \\uD801\"";
+    ///     let parsed: Result<ByteBuf, _> = serde_json::from_slice(json_data);
+    ///
+    ///     assert!(parsed.is_err());
+    ///
+    ///     let expected_msg = "unexpected end of hex escape at line 1 column 35";
+    ///     assert_eq!(expected_msg, parsed.unwrap_err().to_string());
+    /// }
+    /// #
+    /// # look_at_bytes();
+    /// ```
+    IntegerArray,
+    /// Use base64-encoded strings to represent bytes
+    ///
+    /// Requires the `base64` crate feature.
+    ///
+    /// # Serialization
+    /// Bytes are serialized as a base64-encoded string.
+    ///
+    /// # Deserialization
+    /// JSON strings are deserialized as base64-encoded binary data.
+    ///
+    /// JSON arrays are deserialized as an array of integers, each element
+    /// representing one byte.
+    #[cfg(feature = "base64")]
+    Base64,
+}
+
+#[cfg(not(feature = "bytes_mode"))]
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+enum BytesMode {
+    IntegerArray,
+}
+
+impl Default for BytesMode {
+    /// Returns `BytesMode::IntegerArray`.
+    fn default() -> BytesMode {
+        BytesMode::IntegerArray
+    }
+}

@@ -4,21 +4,26 @@ use crate::error::{Error, ErrorCode, Result};
 use crate::io;
 use crate::lib::num::FpCategory;
 use crate::lib::*;
+use crate::BytesMode;
 use serde::ser::{self, Impossible, Serialize};
 use serde::serde_if_integer128;
+
+#[cfg(feature = "base64")]
 use b64_ct::{ToBase64, STANDARD};
 
 /// A structure for serializing Rust values into JSON.
 pub struct Serializer<W, F = CompactFormatter> {
     writer: W,
     formatter: F,
+    bytes_mode: BytesMode,
 }
 
 impl<W> Serializer<W>
 where
     W: io::Write,
 {
-    /// Creates a new JSON serializer.
+    /// Creates a new JSON serializer whose output will be written to the writer
+    /// specified.
     #[inline]
     pub fn new(writer: W) -> Self {
         Serializer::with_formatter(writer, CompactFormatter)
@@ -41,13 +46,14 @@ where
     W: io::Write,
     F: Formatter,
 {
-    /// Creates a new JSON visitor whose output will be written to the writer
-    /// specified.
+    /// Creates a new JSON serializer with the specified formatter whose output
+    /// will be written to the writer specified.
     #[inline]
     pub fn with_formatter(writer: W, formatter: F) -> Self {
         Serializer {
             writer: writer,
             formatter: formatter,
+            bytes_mode: BytesMode::default(),
         }
     }
 
@@ -55,6 +61,37 @@ where
     #[inline]
     pub fn into_inner(self) -> W {
         self.writer
+    }
+}
+
+/// Builder type to customize `Serializer` creation.
+pub struct SerializerBuilder<W, F> {
+    serializer: Serializer<W, F>,
+}
+
+impl<W, F> SerializerBuilder<W, F>
+where
+    W: io::Write,
+    F: Formatter,
+{
+    /// Creates a new JSON serializer with the specified formatter whose output
+    /// will be written to the writer specified.
+    pub fn with_formatter(writer: W, formatter: F) -> Self {
+        SerializerBuilder {
+            serializer: Serializer::with_formatter(writer, formatter),
+        }
+    }
+
+    /// Specify the encoding mode for bytes the serializer will use.
+    #[cfg(feature = "bytes_mode")]
+    pub fn bytes_mode(mut self, bytes_mode: BytesMode) -> Self {
+        self.serializer.bytes_mode = bytes_mode;
+        self
+    }
+
+    /// Complete the `Serializer` construction.
+    pub fn build(self) -> Serializer<W, F> {
+        self.serializer
     }
 }
 
@@ -222,10 +259,21 @@ where
         Ok(())
     }
 
-    /// Serialize a base64-encoded string.
     #[inline]
+    /// Serialize bytes according to the serializer's byte mode.
     fn serialize_bytes(self, value: &[u8]) -> Result<()> {
-        self.serialize_str(&value.to_base64(STANDARD))
+        match self.bytes_mode {
+            BytesMode::IntegerArray => {
+                use serde::ser::SerializeSeq;
+                let mut seq = tri!(self.serialize_seq(Some(value.len())));
+                for byte in value {
+                    tri!(seq.serialize_element(byte));
+                }
+                seq.end()
+            }
+            #[cfg(feature = "base64")]
+            BytesMode::Base64 => self.serialize_str(&value.to_base64(STANDARD)),
+        }
     }
 
     #[inline]
@@ -869,8 +917,12 @@ where
         self.ser.serialize_str(value)
     }
 
-    fn serialize_bytes(self, value: &[u8]) -> Result<()> {
-        self.ser.serialize_bytes(value)
+    fn serialize_bytes(self, _value: &[u8]) -> Result<()> {
+        match self.ser.bytes_mode {
+            BytesMode::IntegerArray => Err(key_must_be_a_string()),
+            #[cfg(feature = "base64")]
+            BytesMode::Base64 => self.ser.serialize_bytes(_value),
+        }
     }
 
     #[inline]

@@ -9,6 +9,8 @@ matrix:
         - cargo test --features arbitrary_precision
         - cargo test --features raw_value
         - cargo test --features unbounded_depth
+        - cargo test --features bytes_mode
+        - cargo test --features base64
 
     - rust: stable
     - rust: beta
