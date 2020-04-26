@@ -215,6 +215,66 @@ impl RawValue {
     }
 }
 
+/// Convert a `T` into a boxed `RawValue`.
+///
+/// # Example
+///
+/// ```
+/// // Upstream crate
+/// # #[derive(Serialize)]
+/// pub struct Thing {
+///     foo: String,
+///     bar: Option<String>,
+///     extra_data: Box<RawValue>,
+/// }
+///
+/// // Local crate
+/// use serde::Serialize;
+/// use serde_json::value::{to_raw_value, RawValue};
+///
+/// #[derive(Serialize)]
+/// struct MyExtraData {
+///     a: u32,
+///     b: u32,
+/// }
+///
+/// let my_thing = Thing {
+///     foo: "FooVal".into(),
+///     bar: None,
+///     extra_data: to_raw_value(&MyExtraData { a: 1, b: 2 }).unwrap(),
+/// };
+/// # assert_eq!(
+/// #     serde_json::to_value(my_thing).unwrap(),
+/// #     serde_json::json!({
+/// #         "foo": "FooVal",
+/// #         "bar": null,
+/// #         "extra_data": { "a": 1, "b": 2 }
+/// #     })
+/// # );
+/// ```
+///
+/// # Errors
+///
+/// This conversion can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+///
+/// ```
+/// use std::collections::BTreeMap;
+///
+/// // The keys in this map are vectors, not strings.
+/// let mut map = BTreeMap::new();
+/// map.insert(vec![32, 64], "x86");
+///
+/// println!("{}", serde_json::value::to_raw_value(&map).unwrap_err());
+/// ```
+pub fn to_raw_value<T>(value: &T) -> Result<Box<RawValue>, Error>
+where
+    T: Serialize,
+{
+    let json_string = crate::to_string(value)?;
+    Ok(RawValue::from_owned(json_string.into_boxed_str()))
+}
+
 pub const TOKEN: &str = "$serde_json::private::RawValue";
 
 impl Serialize for RawValue {
