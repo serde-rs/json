@@ -16,6 +16,7 @@ use serde::de;
 use indexmap::{self, IndexMap};
 
 /// Represents a JSON key/value type.
+#[derive(Hash)]
 pub struct Map<K, V> {
     map: MapImpl<K, V>,
 }

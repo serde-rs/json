@@ -16,13 +16,13 @@ use serde::de::{IntoDeserializer, MapAccess};
 pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Number {
     n: N,
 }
 
 #[cfg(not(feature = "arbitrary_precision"))]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Hash)]
 enum N {
     PosInt(u64),
     /// Always less than zero.
