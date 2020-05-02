@@ -12,10 +12,6 @@ readme = "README.md"
 include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 edition = "2018"
 
-[badges]
-travis-ci = { repository = "serde-rs/json" }
-appveyor = { repository = "serde-rs/json" }
-
 [dependencies]
 serde = { version = "1.0.100", default-features = false }
 indexmap = { version = "1.2", optional = true }
