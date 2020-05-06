@@ -401,7 +401,7 @@ mod lib {
 
 #[cfg(feature = "std")]
 #[doc(inline)]
-pub use crate::de::from_reader;
+pub use crate::de::{from_reader, Stream};
 #[doc(inline)]
 pub use crate::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]

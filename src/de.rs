@@ -8,6 +8,11 @@ use crate::read::{self, Fused, Reference};
 use serde::de::{self, Expected, Unexpected};
 use serde::{forward_to_deserialize_any, serde_if_integer128};
 
+#[cfg(feature = "std")]
+mod stream;
+#[cfg(feature = "std")]
+pub use stream::Stream;
+
 #[cfg(feature = "arbitrary_precision")]
 use crate::number::NumberDeserializer;
 

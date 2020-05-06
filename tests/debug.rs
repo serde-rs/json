@@ -1,5 +1,7 @@
 use serde_json::{json, Number, Value};
 
+mod full_stream;
+
 #[test]
 fn number() {
     assert_eq!(format!("{:?}", Number::from(1)), "Number(1)");
