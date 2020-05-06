@@ -13,10 +13,10 @@ jobs:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo test
-      - run: cargo test --features preserve_order
-      - run: cargo test --features arbitrary_precision
-      - run: cargo test --features raw_value
-      - run: cargo test --features unbounded_depth
+      - run: cargo test --features preserve_order --tests -- --skip ui --exact
+      - run: cargo test --features arbitrary_precision --tests -- --skip ui --exact
+      - run: cargo test --features raw_value --tests -- --skip ui --exact
+      - run: cargo test --features unbounded_depth --tests -- --skip ui --exact
 
   build:
     name: Rust ${{matrix.rust}}
