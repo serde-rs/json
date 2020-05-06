@@ -7,8 +7,12 @@ on:
 
 jobs:
   test:
-    name: Rust nightly
-    runs-on: ubuntu-latest
+    name: Rust nightly ${{matrix.os == 'windows' && '(windows)' || ''}}
+    runs-on: ${{matrix.os}}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, windows]
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@nightly
@@ -19,12 +23,16 @@ jobs:
       - run: cargo test --features unbounded_depth --tests -- --skip ui --exact
 
   build:
-    name: Rust ${{matrix.rust}}
-    runs-on: ubuntu-latest
+    name: Rust ${{matrix.rust}} ${{matrix.os == 'windows' && '(windows)' || ''}}
+    runs-on: ${{matrix.os}}-latest
     strategy:
       fail-fast: false
       matrix:
         rust: [beta, stable, 1.31.0]
+        os: [ubuntu]
+        include:
+          - rust: stable
+            os: windows
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@master
