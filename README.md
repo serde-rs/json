@@ -1,7 +1,7 @@
 # Serde JSON &emsp; [![Build Status]][travis] [![Latest Version]][crates.io] [![Rustc Version 1.31+]][rustc]
 
-[Build Status]: https://api.travis-ci.org/serde-rs/json.svg?branch=master
-[travis]: https://travis-ci.org/serde-rs/json
+[Build Status]: https://img.shields.io/github/workflow/status/serde-rs/json/CI/master
+[travis]: https://github.com/serde-rs/json/actions?query=branch%3Amaster
 [Latest Version]: https://img.shields.io/crates/v/serde_json.svg
 [crates.io]: https://crates.io/crates/serde\_json
 [Rustc Version 1.31+]: https://img.shields.io/badge/rustc-1.31+-lightgray.svg
