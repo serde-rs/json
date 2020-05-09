@@ -50,20 +50,16 @@ fn error() {
     assert_eq!(format!("{:?}", err), expected);
 }
 
-const INDENTED_EXPECTED: &str = r#"Object(
-    {
-        "array": Array(
-            [
-                Number(
-                    0,
-                ),
-                Number(
-                    1,
-                ),
-            ],
+const INDENTED_EXPECTED: &str = r#"Object({
+    "array": Array([
+        Number(
+            0,
         ),
-    },
-)"#;
+        Number(
+            1,
+        ),
+    ]),
+})"#;
 
 #[test]
 fn indented() {
