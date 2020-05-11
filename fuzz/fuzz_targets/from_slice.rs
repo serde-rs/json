@@ -1,4 +1,5 @@
 #![no_main]
+
 use libfuzzer_sys::fuzz_target;
 use serde_json::{from_slice, Value};
 
