@@ -5,7 +5,7 @@ use crate::lib::str::FromStr;
 use crate::lib::*;
 use crate::number::Number;
 use crate::read::{self, Fused, Reference};
-use serde::de::{self, Expected, Unexpected};
+use serde::de::{self, Unexpected};
 use serde::{forward_to_deserialize_any, serde_if_integer128};
 
 #[cfg(feature = "arbitrary_precision")]
@@ -115,16 +115,6 @@ impl ParserNumber {
             ParserNumber::I64(x) => visitor.visit_i64(x),
             #[cfg(feature = "arbitrary_precision")]
             ParserNumber::String(x) => visitor.visit_map(NumberDeserializer { number: x.into() }),
-        }
-    }
-
-    fn invalid_type(self, exp: &dyn Expected) -> Error {
-        match self {
-            ParserNumber::F64(x) => de::Error::invalid_type(Unexpected::Float(x), exp),
-            ParserNumber::U64(x) => de::Error::invalid_type(Unexpected::Unsigned(x), exp),
-            ParserNumber::I64(x) => de::Error::invalid_type(Unexpected::Signed(x), exp),
-            #[cfg(feature = "arbitrary_precision")]
-            ParserNumber::String(_) => de::Error::invalid_type(Unexpected::Other("number"), exp),
         }
     }
 }
@@ -251,83 +241,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     return Ok(other);
                 }
             }
-        }
-    }
-
-    #[cold]
-    fn peek_invalid_type(&mut self, exp: &dyn Expected) -> Error {
-        let err = match self.peek_or_null().unwrap_or(b'\x00') {
-            b'n' => {
-                self.eat_char();
-                if let Err(err) = self.parse_ident(b"ull") {
-                    return err;
-                }
-                de::Error::invalid_type(Unexpected::Unit, exp)
-            }
-            b't' => {
-                self.eat_char();
-                if let Err(err) = self.parse_ident(b"rue") {
-                    return err;
-                }
-                de::Error::invalid_type(Unexpected::Bool(true), exp)
-            }
-            b'f' => {
-                self.eat_char();
-                if let Err(err) = self.parse_ident(b"alse") {
-                    return err;
-                }
-                de::Error::invalid_type(Unexpected::Bool(false), exp)
-            }
-            b'-' => {
-                self.eat_char();
-                match self.parse_any_number(false) {
-                    Ok(n) => n.invalid_type(exp),
-                    Err(err) => return err,
-                }
-            }
-            b'0'..=b'9' => match self.parse_any_number(true) {
-                Ok(n) => n.invalid_type(exp),
-                Err(err) => return err,
-            },
-            b'"' => {
-                self.eat_char();
-                self.scratch.clear();
-                match self.read.parse_str(&mut self.scratch) {
-                    Ok(s) => de::Error::invalid_type(Unexpected::Str(&s), exp),
-                    Err(err) => return err,
-                }
-            }
-            b'[' => de::Error::invalid_type(Unexpected::Seq, exp),
-            b'{' => de::Error::invalid_type(Unexpected::Map, exp),
-            _ => self.peek_error(ErrorCode::ExpectedSomeValue),
-        };
-
-        self.fix_position(err)
-    }
-
-    fn deserialize_prim_number<V>(&mut self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
-
-        let value = match peek {
-            b'-' => {
-                self.eat_char();
-                tri!(self.parse_integer(false)).visit(visitor)
-            }
-            b'0'..=b'9' => tri!(self.parse_integer(true)).visit(visitor),
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
         }
     }
 
@@ -1059,17 +972,6 @@ static POW10: [f64; 309] = [
     1e300, 1e301, 1e302, 1e303, 1e304, 1e305, 1e306, 1e307, 1e308,
 ];
 
-macro_rules! deserialize_prim_number {
-    ($method:ident) => {
-        fn $method<V>(self, visitor: V) -> Result<V::Value>
-        where
-            V: de::Visitor<'de>,
-        {
-            self.deserialize_prim_number(visitor)
-        }
-    };
-}
-
 #[cfg(not(feature = "unbounded_depth"))]
 macro_rules! if_checking_recursion_limit {
     ($($body:tt)*) => {
@@ -1183,48 +1085,6 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
-    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
-
-        let value = match peek {
-            b't' => {
-                self.eat_char();
-                tri!(self.parse_ident(b"rue"));
-                visitor.visit_bool(true)
-            }
-            b'f' => {
-                self.eat_char();
-                tri!(self.parse_ident(b"alse"));
-                visitor.visit_bool(false)
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
-    }
-
-    deserialize_prim_number!(deserialize_i8);
-    deserialize_prim_number!(deserialize_i16);
-    deserialize_prim_number!(deserialize_i32);
-    deserialize_prim_number!(deserialize_i64);
-    deserialize_prim_number!(deserialize_u8);
-    deserialize_prim_number!(deserialize_u16);
-    deserialize_prim_number!(deserialize_u32);
-    deserialize_prim_number!(deserialize_u64);
-    deserialize_prim_number!(deserialize_f32);
-    deserialize_prim_number!(deserialize_f64);
-
     serde_if_integer128! {
         fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
         where
@@ -1237,7 +1097,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     self.eat_char();
                     buf.push('-');
                 }
-                Some(_) => {}
+                Some(b'0'..=b'9') => {}
+                Some(_) => return self.deserialize_any(visitor),
                 None => {
                     return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
                 }
@@ -1266,7 +1127,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 Some(b'-') => {
                     return Err(self.peek_error(ErrorCode::NumberOutOfRange));
                 }
-                Some(_) => {}
+                Some(b'0'..=b'9') => {}
+                Some(_) => return self.deserialize_any(visitor),
                 None => {
                     return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
                 }
@@ -1287,49 +1149,6 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 Err(err) => Err(self.fix_position(err)),
             }
         }
-    }
-
-    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        self.deserialize_str(visitor)
-    }
-
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
-
-        let value = match peek {
-            b'"' => {
-                self.eat_char();
-                self.scratch.clear();
-                match tri!(self.read.parse_str(&mut self.scratch)) {
-                    Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
-                    Reference::Copied(s) => visitor.visit_str(s),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
-    }
-
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        self.deserialize_str(visitor)
     }
 
     /// Parses a JSON string as bytes. Note that this function does not check
@@ -1424,7 +1243,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'[' => self.deserialize_seq(visitor),
-            _ => Err(self.peek_invalid_type(&visitor)),
+            _ => self.deserialize_any(visitor),
         };
 
         match value {
@@ -1457,39 +1276,6 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
-    fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
-
-        let value = match peek {
-            b'n' => {
-                self.eat_char();
-                tri!(self.parse_ident(b"ull"));
-                visitor.visit_unit()
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
-    }
-
-    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        self.deserialize_unit(visitor)
-    }
-
     /// Parses a newtype struct as the underlying value.
     #[inline]
     fn deserialize_newtype_struct<V>(self, name: &str, visitor: V) -> Result<V::Value>
@@ -1505,137 +1291,6 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
         let _ = name;
         visitor.visit_newtype_struct(self)
-    }
-
-    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
-
-        let value = match peek {
-            b'[' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_seq(SeqAccess::new(self));
-                }
-
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
-    }
-
-    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        self.deserialize_seq(visitor)
-    }
-
-    fn deserialize_tuple_struct<V>(
-        self,
-        _name: &'static str,
-        _len: usize,
-        visitor: V,
-    ) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        self.deserialize_seq(visitor)
-    }
-
-    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
-
-        let value = match peek {
-            b'{' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_map(MapAccess::new(self));
-                }
-
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
-    }
-
-    fn deserialize_struct<V>(
-        self,
-        _name: &'static str,
-        _fields: &'static [&'static str],
-        visitor: V,
-    ) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
-
-        let value = match peek {
-            b'[' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_seq(SeqAccess::new(self));
-                }
-
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            b'{' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_map(MapAccess::new(self));
-                }
-
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
     }
 
     /// Parses an enum as an object like `{"$KEY":$VALUE}`, where $VALUE is either a straight
@@ -1667,16 +1322,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             Some(b'"') => visitor.visit_enum(UnitVariantAccess::new(self)),
-            Some(_) => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
-            None => Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
+            _ => self.deserialize_any(visitor),
         }
-    }
-
-    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        self.deserialize_str(visitor)
     }
 
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
@@ -1685,6 +1332,11 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         tri!(self.ignore_value());
         visitor.visit_unit()
+    }
+
+    serde::forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string
+        unit unit_struct seq tuple tuple_struct map struct identifier
     }
 }
 
