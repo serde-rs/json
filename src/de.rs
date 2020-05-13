@@ -565,7 +565,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         positive_exp: bool,
     ) -> Result<f64> {
         // Error instead of +/- infinity.
-        if &self.scratch[..integer_end] != &[b'0'] && positive_exp {
+        if self.scratch[..integer_end] != [b'0'] && positive_exp {
             return Err(self.error(ErrorCode::NumberOutOfRange));
         }
 
