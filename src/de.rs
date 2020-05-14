@@ -23,6 +23,7 @@ pub struct Deserializer<R> {
     read: R,
     scratch: Vec<u8>,
     remaining_depth: u8,
+    requested_f32: bool,
     #[cfg(feature = "unbounded_depth")]
     disable_recursion_limit: bool,
 }
@@ -43,6 +44,7 @@ where
         #[cfg(not(feature = "unbounded_depth"))]
         {
             Deserializer {
+                requested_f32: false,
                 read: read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
@@ -52,6 +54,7 @@ where
         #[cfg(feature = "unbounded_depth")]
         {
             Deserializer {
+                requested_f32: false,
                 read: read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
@@ -743,7 +746,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let integer = &self.scratch[..integer_end];
         let fraction = &self.scratch[integer_end..];
 
-        let f: f64 = minimal_lexical::parse_float(integer.iter(), fraction.iter(), exponent);
+        let f = if self.requested_f32 {
+            minimal_lexical::parse_float::<f32, _, _>(integer.iter(), fraction.iter(), exponent) as f64
+        } else {
+            minimal_lexical::parse_float::<f64, _, _>(integer.iter(), fraction.iter(), exponent)
+        };
         self.scratch.clear();
 
         if f.is_infinite() {
@@ -1161,8 +1168,17 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     deserialize_prim_number!(deserialize_u16);
     deserialize_prim_number!(deserialize_u32);
     deserialize_prim_number!(deserialize_u64);
-    deserialize_prim_number!(deserialize_f32);
     deserialize_prim_number!(deserialize_f64);
+
+    fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.requested_f32 = true;
+        let val = self.deserialize_any(visitor);
+        self.requested_f32 = false;
+        val
+    }
 
     serde_if_integer128! {
         fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
