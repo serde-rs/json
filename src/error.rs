@@ -167,6 +167,15 @@ impl From<Error> for io::Error {
     }
 }
 
+#[cfg(feature = "std")]
+impl From<io::Error> for Error {
+    /// Convert an `io::Error` into a `serde_json::Error`.
+    #[inline]
+    fn from(err: io::Error) -> Self {
+        Error::io(err)
+    }
+}
+
 struct ErrorImpl {
     code: ErrorCode,
     line: usize,
