@@ -2,7 +2,7 @@ macro_rules! json_str {
     ([]) => {
         "[]"
     };
-    ([ $e0:tt $(, $e:tt)* ]) => {
+    ([ $e0:tt $(, $e:tt)* $(,)? ]) => {
         concat!("[",
             json_str!($e0),
             $(",", json_str!($e),)*
@@ -11,7 +11,7 @@ macro_rules! json_str {
     ({}) => {
         "{}"
     };
-    ({ $k0:tt : $v0:tt $(, $k:tt : $v:tt)* }) => {
+    ({ $k0:tt : $v0:tt $(, $k:tt : $v:tt)* $(,)? }) => {
         concat!("{",
             stringify!($k0), ":", json_str!($v0),
             $(",", stringify!($k), ":", json_str!($v),)*
@@ -35,7 +35,7 @@ macro_rules! pretty_str_impl {
     ($indent:expr, []) => {
         "[]"
     };
-    ($indent:expr, [ $e0:tt $(, $e:tt)* ]) => {
+    ($indent:expr, [ $e0:tt $(, $e:tt)* $(,)? ]) => {
         concat!("[\n  ",
             $indent, pretty_str_impl!(concat!("  ", $indent), $e0),
             $(",\n  ", $indent, pretty_str_impl!(concat!("  ", $indent), $e),)*
@@ -44,7 +44,7 @@ macro_rules! pretty_str_impl {
     ($indent:expr, {}) => {
         "{}"
     };
-    ($indent:expr, { $k0:tt : $v0:tt $(, $k:tt : $v:tt)* }) => {
+    ($indent:expr, { $k0:tt : $v0:tt $(, $k:tt : $v:tt)* $(,)? }) => {
         concat!("{\n  ",
             $indent, stringify!($k0), ": ", pretty_str_impl!(concat!("  ", $indent), $v0),
             $(",\n  ", $indent, stringify!($k), ": ", pretty_str_impl!(concat!("  ", $indent), $v),)*
