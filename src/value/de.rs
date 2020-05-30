@@ -544,7 +544,7 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
                 other.unexpected(),
                 &"struct variant",
             )),
-            _ => Err(serde::de::Error::invalid_type(
+            None => Err(serde::de::Error::invalid_type(
                 Unexpected::UnitVariant,
                 &"struct variant",
             )),
@@ -1078,7 +1078,7 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
                 other.unexpected(),
                 &"struct variant",
             )),
-            _ => Err(serde::de::Error::invalid_type(
+            None => Err(serde::de::Error::invalid_type(
                 Unexpected::UnitVariant,
                 &"struct variant",
             )),
