@@ -111,6 +111,84 @@ pub trait Read<'de>: private::Sealed {
     fn set_failed(&mut self, failed: &mut bool);
 }
 
+impl<'de, R: Read<'de>> private::Sealed for &mut R {}
+impl<'de, R: Read<'de>> Read<'de> for &mut R {
+    #[inline]
+    fn next(&mut self) -> Result<Option<u8>> {
+        R::next(self)
+    }
+
+    #[inline]
+    fn peek(&mut self) -> Result<Option<u8>> {
+        R::peek(self)
+    }
+
+    #[inline]
+    fn discard(&mut self) {
+        R::discard(self)
+    }
+
+    #[inline]
+    fn position(&self) -> Position {
+        R::position(self)
+    }
+
+    #[inline]
+    fn peek_position(&self) -> Position {
+        R::peek_position(self)
+    }
+
+    #[inline]
+    fn byte_offset(&self) -> usize {
+        R::byte_offset(self)
+    }
+
+    #[inline]
+    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
+        R::parse_str(self, scratch)
+    }
+
+    #[inline]
+    fn parse_str_raw<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+    ) -> Result<Reference<'de, 's, [u8]>> {
+        R::parse_str_raw(self, scratch)
+    }
+
+    #[inline]
+    fn ignore_str(&mut self) -> Result<()> {
+        R::ignore_str(self)
+    }
+
+    #[inline]
+    fn decode_hex_escape(&mut self) -> Result<u16> {
+        R::decode_hex_escape(self)
+    }
+
+    #[cfg(feature = "raw_value")]
+    #[inline]
+    fn begin_raw_buffering(&mut self) {
+        R::begin_raw_buffering(self)
+    }
+
+    #[cfg(feature = "raw_value")]
+    #[inline]
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        R::end_raw_buffering(self, visitor)
+    }
+
+    const should_early_return_if_failed: bool = R::should_early_return_if_failed;
+
+    #[inline]
+    fn set_failed(&mut self, failed: &mut bool) {
+        R::set_failed(self, failed)
+    }
+}
+
 pub struct Position {
     pub line: usize,
     pub column: usize,
