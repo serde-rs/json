@@ -41,6 +41,15 @@ jobs:
       - run: cargo build
       - run: cargo build --features preserve_order
       - run: cargo build --features arbitrary_precision
+      - name: Build without std
+        run: |
+          rustup target add aarch64-unknown-none
+          cargo check \
+              --manifest-path tests/crate/Cargo.toml \
+              --target aarch64-unknown-none \
+              --no-default-features \
+              --features alloc
+        if: matrix.rust == 'stable' && matrix.os == 'ubuntu'
 
   nostd:
     name: Rust 1.36.0
