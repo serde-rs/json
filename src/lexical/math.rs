@@ -246,10 +246,7 @@ impl Hi64<u64> for [u64] {
 /// warning. Smallvec is similarly licensed under an MIT/Apache dual license.
 ///
 /// [`smallvec`]: https://github.com/servo/rust-smallvec
-fn insert_many<Iter>(vec: &mut Vec<Limb>, index: usize, iterable: Iter)
-where
-    Iter: iter::IntoIterator<Item = Limb>,
-{
+fn insert_many(vec: &mut Vec<Limb>, index: usize, iterable: impl IntoIterator<Item = Limb>) {
     let iter = iterable.into_iter();
     if index == vec.len() {
         return vec.extend(iter);
@@ -275,7 +272,7 @@ where
             let mut cur = ptr.add(num_added);
             if num_added >= lower_size_bound {
                 // Iterator provided more elements than the hint.  Move trailing items again.
-                reserve(vec, 1);
+                vec.reserve(1);
                 ptr = vec.as_mut_ptr().add(index);
                 cur = ptr.add(num_added);
                 ptr::copy(cur, cur.add(1), old_len - index);
@@ -294,24 +291,6 @@ where
 
         vec.set_len(old_len + num_added);
     }
-}
-
-/// Resize vec to size.
-#[inline]
-fn resize(vec: &mut Vec<Limb>, len: usize, value: Limb) {
-    vec.resize(len, value)
-}
-
-/// Reserve vec capacity.
-#[inline]
-pub(crate) fn reserve(vec: &mut Vec<Limb>, capacity: usize) {
-    vec.reserve(capacity)
-}
-
-/// Reserve exact vec capacity.
-#[inline]
-fn reserve_exact(vec: &mut Vec<Limb>, capacity: usize) {
-    vec.reserve_exact(capacity)
 }
 
 // SCALAR
@@ -707,7 +686,7 @@ mod large {
         // that as the current range. If the effective y buffer is longer, need
         // to resize to that, + the start index.
         if y.len() > x.len() - xstart {
-            resize(x, y.len() + xstart, 0);
+            x.resize(y.len() + xstart, 0);
         }
 
         // Iteratively add elements from y to x.
@@ -793,7 +772,7 @@ mod large {
         // frequent reallocations. Handle the first case to avoid a redundant
         // addition, since we know y.len() >= 1.
         let mut z: Vec<Limb> = small::mul(x, y[0]);
-        resize(&mut z, x.len() + y.len(), 0);
+        z.resize(x.len() + y.len(), 0);
 
         // Handle the iterative cases.
         for (i, &yi) in y[1..].iter().enumerate() {
@@ -839,9 +818,8 @@ mod large {
             // [z0, z1 - z2 - z0, z2]
             //  z1 must be shifted m digits (2^(32m)) over.
             //  z2 must be shifted 2*m digits (2^(64m)) over.
-            let mut result = Vec::<Limb>::default();
             let len = z0.len().max(m + z1.len()).max(2 * m + z2.len());
-            reserve_exact(&mut result, len);
+            let mut result = Vec::<Limb>::with_capacity(len);
             result.extend(z0.iter().cloned());
             iadd_impl(&mut result, &z1, m);
             iadd_impl(&mut result, &z2, 2 * m);
@@ -855,7 +833,7 @@ mod large {
     /// Assumes `y.len() >= x.len()`.
     fn karatsuba_uneven_mul(x: &[Limb], mut y: &[Limb]) -> Vec<Limb> {
         let mut result = Vec::<Limb>::default();
-        resize(&mut result, x.len() + y.len(), 0);
+        result.resize(x.len() + y.len(), 0);
 
         // This effectively is like grade-school multiplication between
         // two numbers, except we're using splits on `y`, and the intermediate
