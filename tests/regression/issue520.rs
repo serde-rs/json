@@ -1,3 +1,5 @@
+#![allow(clippy::float_cmp)]
+
 use serde_derive::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
