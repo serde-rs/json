@@ -4,21 +4,50 @@ use crate::lib::ops;
 
 /// Precalculated values of radix**i for i in range [0, arr.len()-1].
 /// Each value can be **exactly** represented as that type.
-const F32_POW10: [f32; 11] = [1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0, 100000000.0, 1000000000.0, 10000000000.0];
+const F32_POW10: [f32; 11] = [
+    1.0,
+    10.0,
+    100.0,
+    1000.0,
+    10000.0,
+    100000.0,
+    1000000.0,
+    10000000.0,
+    100000000.0,
+    1000000000.0,
+    10000000000.0,
+];
 
 /// Precalculated values of radix**i for i in range [0, arr.len()-1].
 /// Each value can be **exactly** represented as that type.
-const F64_POW10: [f64; 23] = [1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0, 100000000.0, 1000000000.0, 10000000000.0, 100000000000.0, 1000000000000.0, 10000000000000.0, 100000000000000.0, 1000000000000000.0, 10000000000000000.0, 100000000000000000.0, 1000000000000000000.0, 10000000000000000000.0, 100000000000000000000.0, 1000000000000000000000.0, 10000000000000000000000.0];
+const F64_POW10: [f64; 23] = [
+    1.0,
+    10.0,
+    100.0,
+    1000.0,
+    10000.0,
+    100000.0,
+    1000000.0,
+    10000000.0,
+    100000000.0,
+    1000000000.0,
+    10000000000.0,
+    100000000000.0,
+    1000000000000.0,
+    10000000000000.0,
+    100000000000000.0,
+    1000000000000000.0,
+    10000000000000000.0,
+    100000000000000000.0,
+    1000000000000000000.0,
+    10000000000000000000.0,
+    100000000000000000000.0,
+    1000000000000000000000.0,
+    10000000000000000000000.0,
+];
 
 /// Type that can be converted to primitive with `as`.
-pub trait AsPrimitive:
-    Sized +
-    Copy +
-    PartialEq +
-    PartialOrd +
-    Send +
-    Sync
-{
+pub trait AsPrimitive: Sized + Copy + PartialEq + PartialOrd + Send + Sync {
     fn as_u8(self) -> u8;
     fn as_u16(self) -> u16;
     fn as_u32(self) -> u32;
@@ -148,18 +177,19 @@ as_cast_impl!(f64, as_f64);
 
 /// Numerical type trait.
 pub trait Number:
-    AsCast +
-    ops::Add<Output=Self> +
-    ops::AddAssign +
-    ops::Div<Output=Self> +
-    ops::DivAssign +
-    ops::Mul<Output=Self> +
-    ops::MulAssign +
-    ops::Rem<Output=Self> +
-    ops::RemAssign +
-    ops::Sub<Output=Self> +
-    ops::SubAssign
-{}
+    AsCast
+    + ops::Add<Output = Self>
+    + ops::AddAssign
+    + ops::Div<Output = Self>
+    + ops::DivAssign
+    + ops::Mul<Output = Self>
+    + ops::MulAssign
+    + ops::Rem<Output = Self>
+    + ops::RemAssign
+    + ops::Sub<Output = Self>
+    + ops::SubAssign
+{
+}
 
 macro_rules! number_impl {
     ($($t:tt)*) => ($(
@@ -172,10 +202,7 @@ number_impl! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize f32 f64 }
 
 /// Defines a trait that supports integral operations.
 pub trait Integer:
-    Number +
-    ops::BitAnd<Output=Self> +
-    ops::BitAndAssign +
-    ops::Shr<i32, Output=Self>
+    Number + ops::BitAnd<Output = Self> + ops::BitAndAssign + ops::Shr<i32, Output = Self>
 {
     const ZERO: Self;
 }
@@ -205,17 +232,14 @@ pub trait Mantissa: Integer {
 }
 
 impl Mantissa for u64 {
-    const NORMALIZED_MASK: u64  = 0x8000000000000000;
-    const HIMASK: u64           = 0xFFFFFFFF00000000;
-    const LOMASK: u64           = 0x00000000FFFFFFFF;
-    const FULL: i32             = 64;
+    const NORMALIZED_MASK: u64 = 0x8000000000000000;
+    const HIMASK: u64 = 0xFFFFFFFF00000000;
+    const LOMASK: u64 = 0x00000000FFFFFFFF;
+    const FULL: i32 = 64;
 }
 
 /// Get exact exponent limit for radix.
-pub trait Float:
-    Number +
-    ops::Neg<Output=Self>
-{
+pub trait Float: Number + ops::Neg<Output = Self> {
     /// Unsigned type of the same size.
     type Unsigned: Integer;
 
@@ -365,18 +389,18 @@ impl Float for f32 {
 
     const ZERO: f32 = 0.0;
     const MAX_DIGITS: usize = 114;
-    const SIGN_MASK: u32            = 0x80000000;
-    const EXPONENT_MASK: u32        = 0x7F800000;
-    const HIDDEN_BIT_MASK: u32      = 0x00800000;
-    const MANTISSA_MASK: u32        = 0x007FFFFF;
-    const INFINITY_BITS: u32        = 0x7F800000;
+    const SIGN_MASK: u32 = 0x80000000;
+    const EXPONENT_MASK: u32 = 0x7F800000;
+    const HIDDEN_BIT_MASK: u32 = 0x00800000;
+    const MANTISSA_MASK: u32 = 0x007FFFFF;
+    const INFINITY_BITS: u32 = 0x7F800000;
     const NEGATIVE_INFINITY_BITS: u32 = Self::INFINITY_BITS | Self::SIGN_MASK;
-    const MANTISSA_SIZE: i32        = 23;
-    const EXPONENT_BIAS: i32        = 127 + Self::MANTISSA_SIZE;
-    const DENORMAL_EXPONENT: i32    = 1 - Self::EXPONENT_BIAS;
-    const MAX_EXPONENT: i32         = 0xFF - Self::EXPONENT_BIAS;
-    const DEFAULT_SHIFT: i32        = u64::FULL - f32::MANTISSA_SIZE - 1;
-    const CARRY_MASK: u64           = 0x1000000;
+    const MANTISSA_SIZE: i32 = 23;
+    const EXPONENT_BIAS: i32 = 127 + Self::MANTISSA_SIZE;
+    const DENORMAL_EXPONENT: i32 = 1 - Self::EXPONENT_BIAS;
+    const MAX_EXPONENT: i32 = 0xFF - Self::EXPONENT_BIAS;
+    const DEFAULT_SHIFT: i32 = u64::FULL - f32::MANTISSA_SIZE - 1;
+    const CARRY_MASK: u64 = 0x1000000;
 
     #[inline]
     fn exponent_limit() -> (i32, i32) {
@@ -424,24 +448,23 @@ impl Float for f32 {
     }
 }
 
-
 impl Float for f64 {
     type Unsigned = u64;
 
     const ZERO: f64 = 0.0;
     const MAX_DIGITS: usize = 769;
-    const SIGN_MASK: u64            = 0x8000000000000000;
-    const EXPONENT_MASK: u64        = 0x7FF0000000000000;
-    const HIDDEN_BIT_MASK: u64      = 0x0010000000000000;
-    const MANTISSA_MASK: u64        = 0x000FFFFFFFFFFFFF;
-    const INFINITY_BITS: u64        = 0x7FF0000000000000;
+    const SIGN_MASK: u64 = 0x8000000000000000;
+    const EXPONENT_MASK: u64 = 0x7FF0000000000000;
+    const HIDDEN_BIT_MASK: u64 = 0x0010000000000000;
+    const MANTISSA_MASK: u64 = 0x000FFFFFFFFFFFFF;
+    const INFINITY_BITS: u64 = 0x7FF0000000000000;
     const NEGATIVE_INFINITY_BITS: u64 = Self::INFINITY_BITS | Self::SIGN_MASK;
-    const MANTISSA_SIZE: i32        = 52;
-    const EXPONENT_BIAS: i32        = 1023 + Self::MANTISSA_SIZE;
-    const DENORMAL_EXPONENT: i32    = 1 - Self::EXPONENT_BIAS;
-    const MAX_EXPONENT: i32         = 0x7FF - Self::EXPONENT_BIAS;
-    const DEFAULT_SHIFT: i32        = u64::FULL - f64::MANTISSA_SIZE - 1;
-    const CARRY_MASK: u64           = 0x20000000000000;
+    const MANTISSA_SIZE: i32 = 52;
+    const EXPONENT_BIAS: i32 = 1023 + Self::MANTISSA_SIZE;
+    const DENORMAL_EXPONENT: i32 = 1 - Self::EXPONENT_BIAS;
+    const MAX_EXPONENT: i32 = 0x7FF - Self::EXPONENT_BIAS;
+    const DEFAULT_SHIFT: i32 = u64::FULL - f64::MANTISSA_SIZE - 1;
+    const CARRY_MASK: u64 = 0x20000000000000;
 
     #[inline]
     fn exponent_limit() -> (i32, i32) {

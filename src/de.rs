@@ -747,7 +747,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let fraction = &self.scratch[integer_end..];
 
         let f = if self.requested_f32 {
-            minimal_lexical::parse_float::<f32, _, _>(integer.iter(), fraction.iter(), exponent) as f64
+            minimal_lexical::parse_float::<f32, _, _>(integer.iter(), fraction.iter(), exponent)
+                as f64
         } else {
             minimal_lexical::parse_float::<f64, _, _>(integer.iter(), fraction.iter(), exponent)
         };

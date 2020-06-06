@@ -12,7 +12,9 @@ pub(crate) struct Bigint {
 impl Default for Bigint {
     fn default() -> Self {
         // We want to repeated reallocations at smaller volumes.
-        let mut bigint = Bigint { data: LimbVecType::default() };
+        let mut bigint = Bigint {
+            data: LimbVecType::default(),
+        };
         reserve(&mut bigint.data, 20);
         bigint
     }

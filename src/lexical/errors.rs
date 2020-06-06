@@ -21,9 +21,7 @@ pub(crate) trait FloatErrors {
 
 /// Check if the error is accurate with a round-nearest rounding scheme.
 #[inline]
-fn nearest_error_is_accurate(errors: u64, fp: &ExtendedFloat, extrabits: u64)
-    -> bool
-{
+fn nearest_error_is_accurate(errors: u64, fp: &ExtendedFloat, extrabits: u64) -> bool {
     // Round-to-nearest, need to use the halfway point.
     if extrabits == 65 {
         // Underflow, we have a shift larger than the mantissa.
@@ -60,9 +58,7 @@ impl FloatErrors for u64 {
     }
 
     #[inline]
-    fn error_is_accurate<F: Float>(count: u32, fp: &ExtendedFloat)
-        -> bool
-    {
+    fn error_is_accurate<F: Float>(count: u32, fp: &ExtendedFloat) -> bool {
         // Determine if extended-precision float is a good approximation.
         // If the error has affected too many units, the float will be
         // inaccurate, or if the representation is too close to halfway
@@ -73,7 +69,7 @@ impl FloatErrors for u64 {
         // This is always a valid u32, since (denormal_exp - fp.exp)
         // will always be positive and the significand size is {23, 52}.
         let extrabits = match fp.exp <= denormal_exp {
-            true  => 64 - F::MANTISSA_SIZE + denormal_exp - fp.exp,
+            true => 64 - F::MANTISSA_SIZE + denormal_exp - fp.exp,
             false => 63 - F::MANTISSA_SIZE,
         };
 

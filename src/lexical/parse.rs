@@ -12,10 +12,10 @@ use super::num::*;
 ///
 /// * `integer`     - Slice containing the integer digits.
 /// * `fraction`    - Slice containing the fraction digits.
-fn parse_mantissa<'a, Iter1, Iter2>(mut integer: Iter1, mut fraction: Iter2)
-    -> (u64, usize)
-    where Iter1: Iterator<Item=&'a u8>,
-          Iter2: Iterator<Item=&'a u8>
+fn parse_mantissa<'a, Iter1, Iter2>(mut integer: Iter1, mut fraction: Iter2) -> (u64, usize)
+where
+    Iter1: Iterator<Item = &'a u8>,
+    Iter2: Iterator<Item = &'a u8>,
 {
     let mut value: u64 = 0;
     // On overflow, validate that all the remaining characters are valid
@@ -24,13 +24,13 @@ fn parse_mantissa<'a, Iter1, Iter2>(mut integer: Iter1, mut fraction: Iter2)
     while let Some(c) = integer.next() {
         value = match add_digit(value, to_digit(*c).unwrap()) {
             Some(v) => v,
-            None    => return (value, 1 + integer.count() + fraction.count()),
+            None => return (value, 1 + integer.count() + fraction.count()),
         };
     }
     while let Some(c) = fraction.next() {
         value = match add_digit(value, to_digit(*c).unwrap()) {
             Some(v) => v,
-            None    => return (value, 1 + fraction.count()),
+            None => return (value, 1 + fraction.count()),
         };
     }
     (value, 0)
@@ -48,14 +48,11 @@ fn parse_mantissa<'a, Iter1, Iter2>(mut integer: Iter1, mut fraction: Iter2)
 ///
 /// We cannot efficiently remove trailing zeros while only accepting a
 /// forward iterator.
-pub fn parse_float<'a, F, Iter1, Iter2>(
-    integer: Iter1,
-    fraction: Iter2,
-    exponent: i32
-) -> F
-    where F: Float,
-          Iter1: Iterator<Item=&'a u8> + Clone,
-          Iter2: Iterator<Item=&'a u8> + Clone
+pub fn parse_float<'a, F, Iter1, Iter2>(integer: Iter1, fraction: Iter2, exponent: i32) -> F
+where
+    F: Float,
+    Iter1: Iterator<Item = &'a u8> + Clone,
+    Iter2: Iterator<Item = &'a u8> + Clone,
 {
     // Parse the mantissa and attempt the fast and moderate-path algorithms.
     let (mantissa, truncated) = parse_mantissa(integer.clone(), fraction.clone());
@@ -73,11 +70,25 @@ pub fn parse_float<'a, F, Iter1, Iter2>(
         if let Some(float) = fast_path::<F>(mantissa, mant_exp) {
             float
         } else {
-            fallback_path::<F, _, _>(integer, fraction, mantissa, exponent, mant_exp, is_truncated)
+            fallback_path::<F, _, _>(
+                integer,
+                fraction,
+                mantissa,
+                exponent,
+                mant_exp,
+                is_truncated,
+            )
         }
     } else {
         let mant_exp = mantissa_exponent(exponent, fraction.clone().count(), truncated);
-        fallback_path::<F, _, _>(integer, fraction, mantissa, exponent, mant_exp, is_truncated)
+        fallback_path::<F, _, _>(
+            integer,
+            fraction,
+            mantissa,
+            exponent,
+            mant_exp,
+            is_truncated,
+        )
     }
 }
 
@@ -86,8 +97,8 @@ pub fn parse_float<'a, F, Iter1, Iter2>(
 
 #[cfg(test)]
 mod tests {
-    use crate::lib::f64;
     use super::*;
+    use crate::lib::f64;
 
     fn check_parse_float<F: Float>(integer: &str, fraction: &str, exponent: i32, expected: F) {
         let integer = integer.as_bytes().iter();
@@ -162,9 +173,24 @@ mod tests {
         check_parse_float("9223372036854776832", "", 0, 9223372036854775808.0_f64);
         check_parse_float("9223372036854777856", "", 0, 9223372036854777856.0_f64);
 
-        check_parse_float("11417981541647679048466287755595961091061972992", "", 0, 11417981541647679048466287755595961091061972992.0_f64);
-        check_parse_float("11417981541647680316116887983825362587765178368", "", 0, 11417981541647679048466287755595961091061972992.0_f64);
-        check_parse_float("11417981541647681583767488212054764084468383744", "", 0, 11417981541647681583767488212054764084468383744.0_f64);
+        check_parse_float(
+            "11417981541647679048466287755595961091061972992",
+            "",
+            0,
+            11417981541647679048466287755595961091061972992.0_f64,
+        );
+        check_parse_float(
+            "11417981541647680316116887983825362587765178368",
+            "",
+            0,
+            11417981541647679048466287755595961091061972992.0_f64,
+        );
+        check_parse_float(
+            "11417981541647681583767488212054764084468383744",
+            "",
+            0,
+            11417981541647681583767488212054764084468383744.0_f64,
+        );
 
         // Round-up, halfway
         check_parse_float("9007199254740994", "", 0, 9007199254740994.0_f64);
@@ -179,13 +205,33 @@ mod tests {
         check_parse_float("9223372036854778880", "", 0, 9223372036854779904.0_f64);
         check_parse_float("9223372036854779904", "", 0, 9223372036854779904.0_f64);
 
-        check_parse_float("11417981541647681583767488212054764084468383744", "", 0, 11417981541647681583767488212054764084468383744.0_f64);
-        check_parse_float("11417981541647682851418088440284165581171589120", "", 0, 11417981541647684119068688668513567077874794496.0_f64);
-        check_parse_float("11417981541647684119068688668513567077874794496", "", 0, 11417981541647684119068688668513567077874794496.0_f64);
+        check_parse_float(
+            "11417981541647681583767488212054764084468383744",
+            "",
+            0,
+            11417981541647681583767488212054764084468383744.0_f64,
+        );
+        check_parse_float(
+            "11417981541647682851418088440284165581171589120",
+            "",
+            0,
+            11417981541647684119068688668513567077874794496.0_f64,
+        );
+        check_parse_float(
+            "11417981541647684119068688668513567077874794496",
+            "",
+            0,
+            11417981541647684119068688668513567077874794496.0_f64,
+        );
 
         // Round-up, above halfway
         check_parse_float("9223372036854776833", "", 0, 9223372036854777856.0_f64);
-        check_parse_float("11417981541647680316116887983825362587765178369", "", 0, 11417981541647681583767488212054764084468383744.0_f64);
+        check_parse_float(
+            "11417981541647680316116887983825362587765178369",
+            "",
+            0,
+            11417981541647681583767488212054764084468383744.0_f64,
+        );
 
         // Rounding error
         // Adapted from failures in strtod.
@@ -217,11 +263,21 @@ mod tests {
 
         // Check other cases similar to @dangrabcad's issue #20.
         check_parse_float("9223372036854776833", "0", 0, 9223372036854777856.0_f64);
-        check_parse_float("11417981541647680316116887983825362587765178369", "0", 0, 11417981541647681583767488212054764084468383744.0_f64);
+        check_parse_float(
+            "11417981541647680316116887983825362587765178369",
+            "0",
+            0,
+            11417981541647681583767488212054764084468383744.0_f64,
+        );
         check_parse_float("9007199254740995", "0", 0, 9007199254740996.0_f64);
         check_parse_float("18014398509481990", "0", 0, 18014398509481992.0_f64);
         check_parse_float("9223372036854778880", "0", 0, 9223372036854779904.0_f64);
-        check_parse_float("11417981541647682851418088440284165581171589120", "0", 0, 11417981541647684119068688668513567077874794496.0_f64);
+        check_parse_float(
+            "11417981541647682851418088440284165581171589120",
+            "0",
+            0,
+            11417981541647684119068688668513567077874794496.0_f64,
+        );
 
         // Check other cases ostensibly identified via proptest.
         check_parse_float("71610528364411830000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", "0", 0, 71610528364411830000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0_f64);

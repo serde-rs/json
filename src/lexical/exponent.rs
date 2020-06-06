@@ -19,9 +19,11 @@ fn into_i32(value: usize) -> i32 {
 //
 // For example, 0.1 would be -1, and 10 would be 1 in base 10.
 #[inline]
-pub(crate) fn scientific_exponent(exponent: i32, integer_digits: usize, fraction_start: usize)
-    -> i32
-{
+pub(crate) fn scientific_exponent(
+    exponent: i32,
+    integer_digits: usize,
+    fraction_start: usize,
+) -> i32 {
     if integer_digits == 0 {
         let fraction_start = into_i32(fraction_start);
         exponent.saturating_sub(fraction_start).saturating_sub(1)
@@ -37,9 +39,7 @@ pub(crate) fn scientific_exponent(exponent: i32, integer_digits: usize, fraction
 // the dot, and add the number of truncated digits from the mantissa,
 // to calculate the scaling factor for the mantissa from a raw exponent.
 #[inline]
-pub(crate) fn mantissa_exponent(exponent: i32, fraction_digits: usize, truncated: usize)
-    -> i32
-{
+pub(crate) fn mantissa_exponent(exponent: i32, fraction_digits: usize, truncated: usize) -> i32 {
     if fraction_digits > truncated {
         exponent.saturating_sub(into_i32(fraction_digits - truncated))
     } else {
@@ -69,21 +69,39 @@ mod test {
         assert_eq!(scientific_exponent(-10, 2, 20), -9);
 
         // Underflow
-        assert_eq!(scientific_exponent(i32::min_value(), 0, 0), i32::min_value());
-        assert_eq!(scientific_exponent(i32::min_value(), 0, 5), i32::min_value());
+        assert_eq!(
+            scientific_exponent(i32::min_value(), 0, 0),
+            i32::min_value()
+        );
+        assert_eq!(
+            scientific_exponent(i32::min_value(), 0, 5),
+            i32::min_value()
+        );
 
         // Overflow
-        assert_eq!(scientific_exponent(i32::max_value(), 0, 0), i32::max_value()-1);
-        assert_eq!(scientific_exponent(i32::max_value(), 5, 0), i32::max_value());
+        assert_eq!(
+            scientific_exponent(i32::max_value(), 0, 0),
+            i32::max_value() - 1
+        );
+        assert_eq!(
+            scientific_exponent(i32::max_value(), 5, 0),
+            i32::max_value()
+        );
     }
 
     #[test]
     fn mantissa_exponent_test() {
         assert_eq!(mantissa_exponent(10, 5, 0), 5);
         assert_eq!(mantissa_exponent(0, 5, 0), -5);
-        assert_eq!(mantissa_exponent(i32::max_value(), 5, 0), i32::max_value()-5);
+        assert_eq!(
+            mantissa_exponent(i32::max_value(), 5, 0),
+            i32::max_value() - 5
+        );
         assert_eq!(mantissa_exponent(i32::max_value(), 0, 5), i32::max_value());
         assert_eq!(mantissa_exponent(i32::min_value(), 5, 0), i32::min_value());
-        assert_eq!(mantissa_exponent(i32::min_value(), 0, 5), i32::min_value()+5);
+        assert_eq!(
+            mantissa_exponent(i32::min_value(), 0, 5),
+            i32::min_value() + 5
+        );
     }
 }

@@ -3,7 +3,6 @@
 //! Compares the actual significant digits of the mantissa to the
 //! theoretical digits from `b+h`, scaled into the proper range.
 
-use crate::lib::{cmp, mem};
 use super::bignum::*;
 use super::digit::*;
 use super::exponent::*;
@@ -11,6 +10,7 @@ use super::float::*;
 use super::math::*;
 use super::num::*;
 use super::rounding::*;
+use crate::lib::{cmp, mem};
 
 // MANTISSA
 
@@ -18,8 +18,9 @@ use super::rounding::*;
 ///
 /// Max digits is the maximum number of digits plus one.
 fn parse_mantissa<'a, F, Iter>(mut iter: Iter) -> Bigint
-    where F: Float,
-          Iter: Iterator<Item=&'a u8> + Clone
+where
+    F: Float,
+    Iter: Iterator<Item = &'a u8> + Clone,
 {
     // Main loop
     let small_powers = POW10_LIMB;
@@ -87,7 +88,7 @@ pub(super) fn bh_extended<F: Float>(f: F) -> ExtendedFloat {
     let b = b_extended(f);
     ExtendedFloat {
         mant: (b.mant << 1) + 1,
-        exp: b.exp - 1
+        exp: b.exp - 1,
     }
 }
 
@@ -108,8 +109,9 @@ fn round_nearest_tie_even(fp: &mut ExtendedFloat, shift: i32, is_truncated: bool
 
 /// Calculate the mantissa for a big integer with a positive exponent.
 fn large_atof<'a, F, Iter>(iter: Iter, exponent: i32) -> F
-    where F: Float,
-          Iter: Iterator<Item=&'a u8> + Clone
+where
+    F: Float,
+    Iter: Iterator<Item = &'a u8> + Clone,
 {
     let bits = mem::size_of::<u64>() * 8;
 
@@ -123,8 +125,11 @@ fn large_atof<'a, F, Iter>(iter: Iter, exponent: i32) -> F
     // Get the exact representation of the float from the big integer.
     let (mant, is_truncated) = bigmant.hi64();
     let exp = bigmant.bit_length().as_i32() - bits.as_i32();
-    let mut fp = ExtendedFloat { mant: mant, exp: exp };
-    fp.round_to_native::<F, _>(| fp, shift | round_nearest_tie_even(fp, shift, is_truncated));
+    let mut fp = ExtendedFloat {
+        mant: mant,
+        exp: exp,
+    };
+    fp.round_to_native::<F, _>(|fp, shift| round_nearest_tie_even(fp, shift, is_truncated));
     into_float(fp)
 }
 
@@ -132,8 +137,9 @@ fn large_atof<'a, F, Iter>(iter: Iter, exponent: i32) -> F
 ///
 /// This invokes the comparison with `b+h`.
 fn small_atof<'a, F, Iter>(iter: Iter, exponent: i32, f: F) -> F
-    where F: Float,
-          Iter: Iterator<Item=&'a u8> + Clone
+where
+    F: Float,
+    Iter: Iterator<Item = &'a u8> + Clone,
 {
     // Get the significant digits and radix exponent for the real digits.
     let mut real_digits = parse_mantissa::<F, _>(iter);
@@ -180,9 +186,9 @@ fn small_atof<'a, F, Iter>(iter: Iter, exponent: i32, f: F) -> F
 
     // Compare real digits to theoretical digits and round the float.
     match real_digits.compare(&theor_digits) {
-        cmp::Ordering::Greater  => f.next_positive(),
-        cmp::Ordering::Less     => f,
-        cmp::Ordering::Equal    => f.round_positive_even(),
+        cmp::Ordering::Greater => f.next_positive(),
+        cmp::Ordering::Less => f,
+        cmp::Ordering::Equal => f.round_positive_even(),
     }
 }
 
@@ -192,15 +198,11 @@ fn small_atof<'a, F, Iter>(iter: Iter, exponent: i32, f: F) -> F
 ///     The digits iterator must not have any trailing zeros (true for
 ///     `FloatState2`).
 ///     sci_exponent and digits.size_hint() must not overflow i32.
-pub(crate) fn bhcomp<'a, F, Iter1, Iter2>(
-    b: F,
-    integer: Iter1,
-    fraction: Iter2,
-    exponent: i32
-) -> F
-    where F: Float,
-          Iter1: Iterator<Item=&'a u8> + Clone,
-          Iter2: Iterator<Item=&'a u8> + Clone
+pub(crate) fn bhcomp<'a, F, Iter1, Iter2>(b: F, integer: Iter1, fraction: Iter2, exponent: i32) -> F
+where
+    F: Float,
+    Iter1: Iterator<Item = &'a u8> + Clone,
+    Iter2: Iterator<Item = &'a u8> + Clone,
 {
     // Calculate the number of integer digits and use that to determine
     // where the significant digits start in the fraction.
@@ -208,7 +210,7 @@ pub(crate) fn bhcomp<'a, F, Iter1, Iter2>(
     let fraction_digits = fraction.clone().count();
     let digits_start = match integer_digits {
         0 => fraction.clone().take_while(|&x| x == &b'0').count(),
-        _ => 0
+        _ => 0,
     };
     let sci_exp = scientific_exponent(exponent, integer_digits, digits_start);
     let count = F::MAX_DIGITS.min(integer_digits + fraction_digits - digits_start);

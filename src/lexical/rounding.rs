@@ -1,16 +1,15 @@
 //! Defines rounding schemes for floating-point numbers.
 
-use crate::lib::mem;
 use super::float::ExtendedFloat;
 use super::num::*;
 use super::shift::*;
+use crate::lib::mem;
 
 // MASKS
 
 /// Calculate a scalar factor of 2 above the halfway point.
 #[inline]
-fn nth_bit(n: u64) -> u64
-{
+fn nth_bit(n: u64) -> u64 {
     let bits: u64 = mem::size_of::<u64>() as u64 * 8;
     debug_assert!(n < bits, "nth_bit() overflow in shl.");
 
@@ -19,26 +18,24 @@ fn nth_bit(n: u64) -> u64
 
 /// Generate a bitwise mask for the lower `n` bits.
 #[inline]
-pub(crate) fn lower_n_mask(n: u64) -> u64
-{
+pub(crate) fn lower_n_mask(n: u64) -> u64 {
     let bits: u64 = mem::size_of::<u64>() as u64 * 8;
     debug_assert!(n <= bits, "lower_n_mask() overflow in shl.");
 
     match n == bits {
-        true  => u64::max_value(),
+        true => u64::max_value(),
         false => (1 << n) - 1,
     }
 }
 
 /// Calculate the halfway point for the lower `n` bits.
 #[inline]
-pub(crate) fn lower_n_halfway(n: u64) -> u64
-{
+pub(crate) fn lower_n_halfway(n: u64) -> u64 {
     let bits: u64 = mem::size_of::<u64>() as u64 * 8;
     debug_assert!(n <= bits, "lower_n_halfway() overflow in shl.");
 
     match n == 0 {
-        true  => 0,
+        true => 0,
         false => nth_bit(n - 1),
     }
 }
@@ -60,9 +57,7 @@ fn internal_n_mask(bit: u64, n: u64) -> u64 {
 //
 // Return if we are above halfway and if we are halfway.
 #[inline]
-pub(crate) fn round_nearest(fp: &mut ExtendedFloat, shift: i32)
-    -> (bool, bool)
-{
+pub(crate) fn round_nearest(fp: &mut ExtendedFloat, shift: i32) -> (bool, bool) {
     // Extract the truncated bits using mask.
     // Calculate if the value of the truncated bits are either above
     // the mid-way point, or equal to it.
@@ -84,8 +79,7 @@ pub(crate) fn round_nearest(fp: &mut ExtendedFloat, shift: i32)
 
 // Tie rounded floating point to event.
 #[inline]
-pub(crate) fn tie_even(fp: &mut ExtendedFloat, is_above: bool, is_halfway: bool)
-{
+pub(crate) fn tie_even(fp: &mut ExtendedFloat, is_above: bool, is_halfway: bool) {
     // Extract the last bit after shifting (and determine if it is odd).
     let is_odd = fp.mant & 1 == 1;
 
@@ -114,8 +108,7 @@ pub(crate) fn round_nearest_tie_even(fp: &mut ExtendedFloat, shift: i32) {
 //
 // Return if we have any truncated bytes.
 #[inline]
-fn round_toward(fp: &mut ExtendedFloat, shift: i32) -> bool
-{
+fn round_toward(fp: &mut ExtendedFloat, shift: i32) -> bool {
     let mask: u64 = lower_n_mask(shift as u64);
     let truncated_bits = fp.mant & mask;
 
@@ -127,16 +120,14 @@ fn round_toward(fp: &mut ExtendedFloat, shift: i32) -> bool
 
 // Round down.
 #[inline]
-fn downard(_: &mut ExtendedFloat, _: bool)
-{}
+fn downard(_: &mut ExtendedFloat, _: bool) {}
 
 // Shift right N-bytes and round toward zero.
 //
 // Floating-point arithmetic defines round toward zero, which rounds
 // towards positive zero.
 #[inline]
-pub(crate) fn round_downward(fp: &mut ExtendedFloat, shift: i32)
-{
+pub(crate) fn round_downward(fp: &mut ExtendedFloat, shift: i32) {
     // Bit shift so the leading bit is in the hidden bit.
     // No rounding schemes, so we just ignore everything else.
     let is_truncated = round_toward(fp, shift);
@@ -152,8 +143,9 @@ pub(crate) fn round_downward(fp: &mut ExtendedFloat, shift: i32)
 // round to an even value.
 #[inline]
 fn round_to_float<F, Algorithm>(fp: &mut ExtendedFloat, algorithm: Algorithm)
-    where F: Float,
-          Algorithm: FnOnce(&mut ExtendedFloat, i32)
+where
+    F: Float,
+    Algorithm: FnOnce(&mut ExtendedFloat, i32),
 {
     // Calculate the difference to allow a single calculation
     // rather than a loop, to minimize the number of ops required.
@@ -191,7 +183,8 @@ fn round_to_float<F, Algorithm>(fp: &mut ExtendedFloat, algorithm: Algorithm)
 // Shift until a 1-bit is in the hidden bit, if the mantissa is not 0.
 #[inline]
 fn avoid_overflow<F>(fp: &mut ExtendedFloat)
-    where F: Float
+where
+    F: Float,
 {
     // Calculate the difference to allow a single calculation
     // rather than a loop, minimizing the number of ops required.
@@ -219,8 +212,9 @@ fn avoid_overflow<F>(fp: &mut ExtendedFloat)
 // Round an extended-precision float to a native float representation.
 #[inline]
 pub(crate) fn round_to_native<F, Algorithm>(fp: &mut ExtendedFloat, algorithm: Algorithm)
-    where F: Float,
-          Algorithm: FnOnce(&mut ExtendedFloat, i32)
+where
+    F: Float,
+    Algorithm: FnOnce(&mut ExtendedFloat, i32),
 {
     // Shift all the way left, to ensure a consistent representation.
     // The following right-shifts do not work for a non-normalized number.
@@ -276,7 +270,10 @@ mod tests {
         assert_eq!(internal_n_mask(4u64, 2u64), 0b1100);
         assert_eq!(internal_n_mask(10u64, 2u64), 0b1100000000);
         assert_eq!(internal_n_mask(10u64, 4u64), 0b1111000000);
-        assert_eq!(internal_n_mask(32u64, 4u64), 0b11110000000000000000000000000000);
+        assert_eq!(
+            internal_n_mask(32u64, 4u64),
+            0b11110000000000000000000000000000
+        );
     }
 
     // NEAREST ROUNDING
@@ -366,122 +363,182 @@ mod tests {
     #[test]
     fn round_to_float_test() {
         // Denormal
-        let mut fp = ExtendedFloat { mant: 1<<63, exp: f64::DENORMAL_EXPONENT - 15 };
+        let mut fp = ExtendedFloat {
+            mant: 1 << 63,
+            exp: f64::DENORMAL_EXPONENT - 15,
+        };
         round_to_float::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, 1<<48);
+        assert_eq!(fp.mant, 1 << 48);
         assert_eq!(fp.exp, f64::DENORMAL_EXPONENT);
 
         // Halfway, round-down (b'1000000000000000000000000000000000000000000000000000010000000000')
-        let mut fp = ExtendedFloat { mant: 0x8000000000000400, exp: -63 };
+        let mut fp = ExtendedFloat {
+            mant: 0x8000000000000400,
+            exp: -63,
+        };
         round_to_float::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, 1<<52);
+        assert_eq!(fp.mant, 1 << 52);
         assert_eq!(fp.exp, -52);
 
         // Halfway, round-up (b'1000000000000000000000000000000000000000000000000000110000000000')
-        let mut fp = ExtendedFloat { mant: 0x8000000000000C00, exp: -63 };
+        let mut fp = ExtendedFloat {
+            mant: 0x8000000000000C00,
+            exp: -63,
+        };
         round_to_float::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, (1<<52) + 2);
+        assert_eq!(fp.mant, (1 << 52) + 2);
         assert_eq!(fp.exp, -52);
 
         // Above halfway
-        let mut fp = ExtendedFloat { mant: 0x8000000000000401, exp: -63 };
+        let mut fp = ExtendedFloat {
+            mant: 0x8000000000000401,
+            exp: -63,
+        };
         round_to_float::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, (1<<52)+1);
+        assert_eq!(fp.mant, (1 << 52) + 1);
         assert_eq!(fp.exp, -52);
 
-        let mut fp = ExtendedFloat { mant: 0x8000000000000C01, exp: -63 };
+        let mut fp = ExtendedFloat {
+            mant: 0x8000000000000C01,
+            exp: -63,
+        };
         round_to_float::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, (1<<52) + 2);
+        assert_eq!(fp.mant, (1 << 52) + 2);
         assert_eq!(fp.exp, -52);
 
         // Below halfway
-        let mut fp = ExtendedFloat { mant: 0x80000000000003FF, exp: -63 };
+        let mut fp = ExtendedFloat {
+            mant: 0x80000000000003FF,
+            exp: -63,
+        };
         round_to_float::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, 1<<52);
+        assert_eq!(fp.mant, 1 << 52);
         assert_eq!(fp.exp, -52);
 
-        let mut fp = ExtendedFloat { mant: 0x8000000000000BFF, exp: -63 };
+        let mut fp = ExtendedFloat {
+            mant: 0x8000000000000BFF,
+            exp: -63,
+        };
         round_to_float::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, (1<<52) + 1);
+        assert_eq!(fp.mant, (1 << 52) + 1);
         assert_eq!(fp.exp, -52);
     }
 
     #[test]
     fn avoid_overflow_test() {
         // Avoid overflow, fails by 1
-        let mut fp = ExtendedFloat { mant: 0xFFFFFFFFFFFF, exp: f64::MAX_EXPONENT + 5 };
+        let mut fp = ExtendedFloat {
+            mant: 0xFFFFFFFFFFFF,
+            exp: f64::MAX_EXPONENT + 5,
+        };
         avoid_overflow::<f64>(&mut fp);
         assert_eq!(fp.mant, 0xFFFFFFFFFFFF);
-        assert_eq!(fp.exp, f64::MAX_EXPONENT+5);
+        assert_eq!(fp.exp, f64::MAX_EXPONENT + 5);
 
         // Avoid overflow, succeeds
-        let mut fp = ExtendedFloat { mant: 0xFFFFFFFFFFFF, exp: f64::MAX_EXPONENT + 4 };
+        let mut fp = ExtendedFloat {
+            mant: 0xFFFFFFFFFFFF,
+            exp: f64::MAX_EXPONENT + 4,
+        };
         avoid_overflow::<f64>(&mut fp);
         assert_eq!(fp.mant, 0x1FFFFFFFFFFFE0);
-        assert_eq!(fp.exp, f64::MAX_EXPONENT-1);
+        assert_eq!(fp.exp, f64::MAX_EXPONENT - 1);
     }
 
     #[test]
     fn round_to_native_test() {
         // Overflow
-        let mut fp = ExtendedFloat { mant: 0xFFFFFFFFFFFF, exp: f64::MAX_EXPONENT + 4 };
+        let mut fp = ExtendedFloat {
+            mant: 0xFFFFFFFFFFFF,
+            exp: f64::MAX_EXPONENT + 4,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
         assert_eq!(fp.mant, 0x1FFFFFFFFFFFE0);
-        assert_eq!(fp.exp, f64::MAX_EXPONENT-1);
+        assert_eq!(fp.exp, f64::MAX_EXPONENT - 1);
 
         // Need denormal
-        let mut fp = ExtendedFloat { mant: 1, exp: f64::DENORMAL_EXPONENT +48 };
+        let mut fp = ExtendedFloat {
+            mant: 1,
+            exp: f64::DENORMAL_EXPONENT + 48,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, 1<<48);
+        assert_eq!(fp.mant, 1 << 48);
         assert_eq!(fp.exp, f64::DENORMAL_EXPONENT);
 
         // Halfway, round-down (b'10000000000000000000000000000000000000000000000000000100000')
-        let mut fp = ExtendedFloat { mant: 0x400000000000020, exp: -58 };
+        let mut fp = ExtendedFloat {
+            mant: 0x400000000000020,
+            exp: -58,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, 1<<52);
+        assert_eq!(fp.mant, 1 << 52);
         assert_eq!(fp.exp, -52);
 
         // Halfway, round-up (b'10000000000000000000000000000000000000000000000000001100000')
-        let mut fp = ExtendedFloat { mant: 0x400000000000060, exp: -58 };
+        let mut fp = ExtendedFloat {
+            mant: 0x400000000000060,
+            exp: -58,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, (1<<52) + 2);
+        assert_eq!(fp.mant, (1 << 52) + 2);
         assert_eq!(fp.exp, -52);
 
         // Above halfway
-        let mut fp = ExtendedFloat { mant: 0x400000000000021, exp: -58 };
+        let mut fp = ExtendedFloat {
+            mant: 0x400000000000021,
+            exp: -58,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, (1<<52)+1);
+        assert_eq!(fp.mant, (1 << 52) + 1);
         assert_eq!(fp.exp, -52);
 
-        let mut fp = ExtendedFloat { mant: 0x400000000000061, exp: -58 };
+        let mut fp = ExtendedFloat {
+            mant: 0x400000000000061,
+            exp: -58,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, (1<<52) + 2);
+        assert_eq!(fp.mant, (1 << 52) + 2);
         assert_eq!(fp.exp, -52);
 
         // Below halfway
-        let mut fp = ExtendedFloat { mant: 0x40000000000001F, exp: -58 };
+        let mut fp = ExtendedFloat {
+            mant: 0x40000000000001F,
+            exp: -58,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, 1<<52);
+        assert_eq!(fp.mant, 1 << 52);
         assert_eq!(fp.exp, -52);
 
-        let mut fp = ExtendedFloat { mant: 0x40000000000005F, exp: -58 };
+        let mut fp = ExtendedFloat {
+            mant: 0x40000000000005F,
+            exp: -58,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
-        assert_eq!(fp.mant, (1<<52) + 1);
+        assert_eq!(fp.mant, (1 << 52) + 1);
         assert_eq!(fp.exp, -52);
 
         // Underflow
         // Adapted from failures in strtod.
-        let mut fp = ExtendedFloat { exp: -1139, mant: 18446744073709550712 };
+        let mut fp = ExtendedFloat {
+            exp: -1139,
+            mant: 18446744073709550712,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
         assert_eq!(fp.mant, 0);
         assert_eq!(fp.exp, 0);
 
-        let mut fp = ExtendedFloat { exp: -1139, mant: 18446744073709551460 };
+        let mut fp = ExtendedFloat {
+            exp: -1139,
+            mant: 18446744073709551460,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
         assert_eq!(fp.mant, 0);
         assert_eq!(fp.exp, 0);
 
-        let mut fp = ExtendedFloat { exp: -1138, mant: 9223372036854776103 };
+        let mut fp = ExtendedFloat {
+            exp: -1138,
+            mant: 9223372036854776103,
+        };
         round_to_native::<f64, _>(&mut fp, round_nearest_tie_even);
         assert_eq!(fp.mant, 1);
         assert_eq!(fp.exp, -1074);

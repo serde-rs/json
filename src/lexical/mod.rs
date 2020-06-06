@@ -12,17 +12,17 @@
 
 /// Facade around the core features for name mangling.
 pub(crate) mod lib {
-#[cfg(feature = "std")]
-pub(crate) use std::*;
+    #[cfg(feature = "std")]
+    pub(crate) use std::*;
 
-#[cfg(not(feature = "std"))]
-pub(crate) use core::*;
+    #[cfg(not(feature = "std"))]
+    pub(crate) use core::*;
 
-#[cfg(all(not(no_alloc), feature = "std"))]
-pub(crate) use std::vec::Vec;
+    #[cfg(all(not(no_alloc), feature = "std"))]
+    pub(crate) use std::vec::Vec;
 
-#[cfg(all(not(no_alloc), not(feature = "std")))]
-pub(crate) use ::alloc::vec::Vec;
+    #[cfg(all(not(no_alloc), not(feature = "std")))]
+    pub(crate) use ::alloc::vec::Vec;
 }
 
 // MODULES
@@ -51,6 +51,5 @@ mod large_powers32;
 mod large_powers64;
 
 // API
-pub use self::parse::parse_float;
 pub use self::num::Float;
-
+pub use self::parse::parse_float;
