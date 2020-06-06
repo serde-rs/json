@@ -134,12 +134,6 @@ trait Hi64<T>: AsRef<[T]> {
     /// Get the hi64 bits from a 3-limb slice.
     fn hi64_3(&self) -> (u64, bool);
 
-    /// Get the hi64 bits from a 4-limb slice.
-    fn hi64_4(&self) -> (u64, bool);
-
-    /// Get the hi64 bits from a 5-limb slice.
-    fn hi64_5(&self) -> (u64, bool);
-
     /// High-level exporter to extract the high 64 bits from a little-endian slice.
     #[inline]
     fn hi64(&self) -> (u64, bool) {
@@ -147,9 +141,7 @@ trait Hi64<T>: AsRef<[T]> {
             0 => (0, false),
             1 => self.hi64_1(),
             2 => self.hi64_2(),
-            3 => self.hi64_3(),
-            4 => self.hi64_4(),
-            _ => self.hi64_5(),
+            _ => self.hi64_3(),
         }
     }
 }
@@ -179,16 +171,6 @@ impl Hi64<u32> for [u32] {
         let (v, n) = u64_to_hi64_2(r0, r1 | r2);
         (v, n || nonzero(self, 3))
     }
-
-    #[inline]
-    fn hi64_4(&self) -> (u64, bool) {
-        self.hi64_3()
-    }
-
-    #[inline]
-    fn hi64_5(&self) -> (u64, bool) {
-        self.hi64_3()
-    }
 }
 
 impl Hi64<u64> for [u64] {
@@ -210,16 +192,6 @@ impl Hi64<u64> for [u64] {
 
     #[inline]
     fn hi64_3(&self) -> (u64, bool) {
-        self.hi64_2()
-    }
-
-    #[inline]
-    fn hi64_4(&self) -> (u64, bool) {
-        self.hi64_2()
-    }
-
-    #[inline]
-    fn hi64_5(&self) -> (u64, bool) {
         self.hi64_2()
     }
 }
