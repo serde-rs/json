@@ -1,5 +1,9 @@
 #![cfg(not(feature = "preserve_order"))]
-#![allow(clippy::excessive_precision, clippy::float_cmp, clippy::unreadable_literal)]
+#![allow(
+    clippy::excessive_precision,
+    clippy::float_cmp,
+    clippy::unreadable_literal
+)]
 #![cfg_attr(feature = "trace-macros", feature(trace_macros))]
 #[cfg(feature = "trace-macros")]
 trace_macros!(true);
