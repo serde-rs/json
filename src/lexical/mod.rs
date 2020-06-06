@@ -10,14 +10,6 @@
 
 //! Fast, minimal float-parsing algorithm.
 
-// FEATURES
-
-// Require intrinsics in a no_std context.
-#![cfg_attr(not(feature = "std"), no_std)]
-
-#[cfg(all(not(no_alloc), not(feature = "std")))]
-extern crate alloc;
-
 /// Facade around the core features for name mangling.
 pub(crate) mod lib {
 #[cfg(feature = "std")]

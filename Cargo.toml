@@ -16,7 +16,6 @@ edition = "2018"
 serde = { version = "1.0.100", default-features = false }
 indexmap = { version = "1.2", optional = true }
 itoa = { version = "0.4.3", default-features = false }
-minimal-lexical = { git = "https://github.com/Alexhuszagh/minimal-lexical" }
 ryu = "1.0"
 
 [dev-dependencies]

@@ -442,6 +442,7 @@ mod features_check;
 mod io;
 #[cfg(feature = "std")]
 mod iter;
+mod lexical;
 mod number;
 mod read;
 
