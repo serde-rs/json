@@ -179,9 +179,9 @@ where
     let b = fp.into_downward_float::<F>();
     if b.is_special() {
         // We have a non-finite number, we get to leave early.
-        return b;
+        b
     } else {
-        return bhcomp(b, integer, fraction, exponent);
+        bhcomp(b, integer, fraction, exponent)
     }
 }
 
@@ -197,7 +197,7 @@ mod tests {
         // valid
         let mantissa = (1 << f32::MANTISSA_SIZE) - 1;
         let (min_exp, max_exp) = f32::exponent_limit();
-        for exp in min_exp..max_exp + 1 {
+        for exp in min_exp..=max_exp {
             let f = fast_path::<f32>(mantissa, exp);
             assert!(f.is_some(), "should be valid {:?}.", (mantissa, exp));
         }
@@ -236,7 +236,7 @@ mod tests {
         // valid
         let mantissa = (1 << f64::MANTISSA_SIZE) - 1;
         let (min_exp, max_exp) = f64::exponent_limit();
-        for exp in min_exp..max_exp + 1 {
+        for exp in min_exp..=max_exp {
             let f = fast_path::<f64>(mantissa, exp);
             assert!(f.is_some(), "should be valid {:?}.", (mantissa, exp));
         }

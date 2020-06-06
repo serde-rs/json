@@ -389,7 +389,7 @@ mod tests {
             1e-40, 2e-40, 1e-35, 2e-35, 1e-30, 2e-30, 1e-25, 2e-25, 1e-20, 2e-20, 1e-15, 2e-15,
             1e-10, 2e-10, 1e-5, 2e-5, 1.0, 2.0, 1e5, 2e5, 1e10, 2e10, 1e15, 2e15, 1e20, 2e20,
         ];
-        for value in values.iter() {
+        for value in &values {
             assert_normalized_eq(
                 ExtendedFloat::from_float(*value),
                 ExtendedFloat::from_float(*value as f64),
@@ -515,7 +515,7 @@ mod tests {
         assert_eq!(x.into_float::<f32>(), f32::INFINITY);
 
         // Integers.
-        for int in INTEGERS.iter() {
+        for int in &INTEGERS {
             let fp = ExtendedFloat { mant: *int, exp: 0 };
             assert_eq!(fp.into_float::<f32>(), *int as f32, "{:?} as f32", *int);
         }
@@ -656,7 +656,7 @@ mod tests {
         assert_eq!(x.into_float::<f64>(), 5e-324);
 
         // Integers.
-        for int in INTEGERS.iter() {
+        for int in &INTEGERS {
             let fp = ExtendedFloat { mant: *int, exp: 0 };
             assert_eq!(fp.into_float::<f64>(), *int as f64, "{:?} as f64", *int);
         }

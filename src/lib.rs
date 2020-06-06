@@ -304,8 +304,11 @@
 #![deny(clippy::all, clippy::pedantic)]
 // Ignored clippy lints
 #![allow(
+    clippy::comparison_chain,
     clippy::deprecated_cfg_attr,
     clippy::doc_markdown,
+    clippy::excessive_precision,
+    clippy::float_cmp,
     clippy::match_single_binding,
     clippy::needless_doctest_main,
     clippy::transmute_ptr_to_ptr
@@ -315,12 +318,15 @@
     // Deserializer::from_str, into_iter
     clippy::should_implement_trait,
     // integer and float ser/de requires these sorts of casts
+    clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
     // correctly used
     clippy::enum_glob_use,
+    clippy::if_not_else,
     clippy::integer_division,
+    clippy::similar_names,
     clippy::wildcard_imports,
     // things are often more readable this way
     clippy::cast_lossless,
@@ -328,6 +334,8 @@
     clippy::shadow_unrelated,
     clippy::single_match_else,
     clippy::too_many_lines,
+    clippy::unreadable_literal,
+    clippy::unseparated_literal_suffix,
     clippy::use_self,
     clippy::zero_prefixed_literal,
     // we support older compilers

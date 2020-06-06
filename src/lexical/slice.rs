@@ -108,7 +108,7 @@ pub trait Slice<T> {
 
     /// Create a reverse view of the vector for indexing.
     #[inline]
-    fn rview<'a>(&'a self) -> ReverseView<'a, T> {
+    fn rview(&self) -> ReverseView<T> {
         ReverseView {
             inner: self.as_slice(),
         }

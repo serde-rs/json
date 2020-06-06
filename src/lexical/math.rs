@@ -576,8 +576,7 @@ mod small {
         // minus leading zero bits.
         let nlz = leading_zeros(x);
         bits.checked_mul(x.len())
-            .map(|v| v - nlz)
-            .unwrap_or(usize::max_value())
+            .map_or_else(usize::max_value, |v| v - nlz)
     }
 
     // SHL
@@ -668,9 +667,9 @@ mod large {
     #[inline]
     pub fn compare(x: &[Limb], y: &[Limb]) -> cmp::Ordering {
         if x.len() > y.len() {
-            return cmp::Ordering::Greater;
+            cmp::Ordering::Greater
         } else if x.len() < y.len() {
-            return cmp::Ordering::Less;
+            cmp::Ordering::Less
         } else {
             let iter = x.iter().rev().zip(y.iter().rev());
             for (&xi, &yi) in iter {
@@ -681,7 +680,7 @@ mod large {
                 }
             }
             // Equal case.
-            return cmp::Ordering::Equal;
+            cmp::Ordering::Equal
         }
     }
 
@@ -809,7 +808,7 @@ mod large {
 
     /// Split two buffers into halfway, into (lo, hi).
     #[inline]
-    pub fn karatsuba_split<'a>(z: &'a [Limb], m: usize) -> (&'a [Limb], &'a [Limb]) {
+    pub fn karatsuba_split(z: &[Limb], m: usize) -> (&[Limb], &[Limb]) {
         (&z[..m], &z[m..])
     }
 
@@ -862,7 +861,7 @@ mod large {
         // two numbers, except we're using splits on `y`, and the intermediate
         // step is a Karatsuba multiplication.
         let mut start = 0;
-        while y.len() != 0 {
+        while !y.is_empty() {
             let m = x.len().min(y.len());
             let (yl, yh) = karatsuba_split(y, m);
             let prod = karatsuba_mul(x, yl);
@@ -912,10 +911,10 @@ pub(crate) trait Math: Clone + Sized + Default {
     // DATA
 
     /// Get access to the underlying data
-    fn data<'a>(&'a self) -> &'a Vec<Limb>;
+    fn data(&self) -> &Vec<Limb>;
 
     /// Get access to the underlying data
-    fn data_mut<'a>(&'a mut self) -> &'a mut Vec<Limb>;
+    fn data_mut(&mut self) -> &mut Vec<Limb>;
 
     // RELATIVE OPERATIONS
 
@@ -1019,12 +1018,12 @@ mod tests {
 
     impl Math for Bigint {
         #[inline]
-        fn data<'a>(&'a self) -> &'a Vec<Limb> {
+        fn data(&self) -> &Vec<Limb> {
             &self.data
         }
 
         #[inline]
-        fn data_mut<'a>(&'a mut self) -> &'a mut Vec<Limb> {
+        fn data_mut(&mut self) -> &mut Vec<Limb> {
             &mut self.data
         }
     }

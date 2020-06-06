@@ -25,9 +25,10 @@ pub(crate) fn overflowing_shr(fp: &mut ExtendedFloat, shift: i32) {
         "overflowing_shr() overflow in shift right."
     );
 
-    fp.mant = match shift as u64 == bits {
-        true => 0,
-        false => fp.mant >> shift,
+    fp.mant = if shift as u64 == bits {
+        0
+    } else {
+        fp.mant >> shift
     };
     fp.exp += shift;
 }

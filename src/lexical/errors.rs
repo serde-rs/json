@@ -68,9 +68,10 @@ impl FloatErrors for u64 {
         let denormal_exp = bias - 63;
         // This is always a valid u32, since (denormal_exp - fp.exp)
         // will always be positive and the significand size is {23, 52}.
-        let extrabits = match fp.exp <= denormal_exp {
-            true => 64 - F::MANTISSA_SIZE + denormal_exp - fp.exp,
-            false => 63 - F::MANTISSA_SIZE,
+        let extrabits = if fp.exp <= denormal_exp {
+            64 - F::MANTISSA_SIZE + denormal_exp - fp.exp
+        } else {
+            63 - F::MANTISSA_SIZE
         };
 
         // Our logic is as follows: we want to determine if the actual
