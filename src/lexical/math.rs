@@ -444,7 +444,7 @@ mod small {
     #[inline]
     pub fn mul(x: &[Limb], y: Limb) -> Vec<Limb> {
         let mut z = Vec::<Limb>::default();
-        z.extend(x.iter().cloned());
+        z.extend_from_slice(x);
         imul(&mut z, y);
         z
     }
@@ -718,7 +718,7 @@ mod large {
     #[inline]
     pub fn add(x: &[Limb], y: &[Limb]) -> Vec<Limb> {
         let mut z = Vec::<Limb>::default();
-        z.extend(x.iter().cloned());
+        z.extend_from_slice(x);
         iadd(&mut z, y);
         z
     }
@@ -819,8 +819,8 @@ mod large {
             //  z1 must be shifted m digits (2^(32m)) over.
             //  z2 must be shifted 2*m digits (2^(64m)) over.
             let len = z0.len().max(m + z1.len()).max(2 * m + z2.len());
-            let mut result = Vec::<Limb>::with_capacity(len);
-            result.extend(z0.iter().cloned());
+            let mut result = z0;
+            result.reserve_exact(len - result.len());
             iadd_impl(&mut result, &z1, m);
             iadd_impl(&mut result, &z2, 2 * m);
 
@@ -925,7 +925,7 @@ pub(crate) trait Math: Clone + Sized + Default {
     fn from_u64(x: u64) -> Self {
         let mut v = Self::default();
         let slc = split_u64(x);
-        v.data_mut().extend(slc.iter().cloned());
+        v.data_mut().extend_from_slice(&slc);
         v.normalize();
         v
     }
