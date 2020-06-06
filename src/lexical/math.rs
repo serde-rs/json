@@ -8,7 +8,7 @@ use super::large_powers;
 use super::num::*;
 use super::slice::*;
 use super::small_powers::*;
-use crate::lib::{cmp, iter, mem, ptr, Vec};
+use crate::lib::{cmp, iter, mem, Vec};
 
 // ALIASES
 // -------
@@ -227,69 +227,6 @@ impl Hi64<u64> for [u64] {
     #[inline]
     fn hi64_5(&self) -> (u64, bool) {
         self.hi64_2()
-    }
-}
-
-// SEQUENCES
-// ---------
-
-/// Insert multiple elements at position `index`.
-///
-/// Shifts all elements before index to the back of the iterator.
-/// It uses size hints to try to minimize the number of moves,
-/// however, it does not rely on them. We cannot internally allocate, so
-/// if we overstep the lower_size_bound, we have to do extensive
-/// moves to shift each item back incrementally.
-///
-/// This implementation is adapted from [`smallvec`], which has a battle-tested
-/// implementation that has been revised for at least a security advisory
-/// warning. Smallvec is similarly licensed under an MIT/Apache dual license.
-///
-/// [`smallvec`]: https://github.com/servo/rust-smallvec
-fn insert_many(vec: &mut Vec<Limb>, index: usize, iterable: impl IntoIterator<Item = Limb>) {
-    let iter = iterable.into_iter();
-    if index == vec.len() {
-        return vec.extend(iter);
-    }
-
-    let (lower_size_bound, _) = iter.size_hint();
-    assert!(lower_size_bound <= isize::max_value() as usize); // Ensure offset is indexable
-    assert!(index + lower_size_bound >= index); // Protect against overflow
-
-    unsafe {
-        let old_len = vec.len();
-        assert!(index <= old_len);
-        let mut ptr = vec.as_mut_ptr().add(index);
-
-        // Move the trailing elements.
-        ptr::copy(ptr, ptr.add(lower_size_bound), old_len - index);
-
-        // In case the iterator panics, don't double-drop the items we just copied above.
-        vec.set_len(index);
-
-        let mut num_added = 0;
-        for element in iter {
-            let mut cur = ptr.add(num_added);
-            if num_added >= lower_size_bound {
-                // Iterator provided more elements than the hint.  Move trailing items again.
-                vec.reserve(1);
-                ptr = vec.as_mut_ptr().add(index);
-                cur = ptr.add(num_added);
-                ptr::copy(cur, cur.add(1), old_len - index);
-            }
-            ptr::write(cur, element);
-            num_added += 1;
-        }
-        if num_added < lower_size_bound {
-            // Iterator provided fewer elements than the hint
-            ptr::copy(
-                ptr.add(lower_size_bound),
-                ptr.add(num_added),
-                old_len - index,
-            );
-        }
-
-        vec.set_len(old_len + num_added);
     }
 }
 
@@ -601,7 +538,8 @@ mod small {
     pub fn ishl_limbs(x: &mut Vec<Limb>, n: usize) {
         debug_assert!(n != 0);
         if !x.is_empty() {
-            insert_many(x, 0, iter::repeat(0).take(n));
+            x.reserve(n);
+            x.splice(..0, iter::repeat(0).take(n));
         }
     }
 

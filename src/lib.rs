@@ -374,7 +374,7 @@ mod lib {
     pub use self::core::iter::FusedIterator;
     pub use self::core::marker::{self, PhantomData};
     pub use self::core::result::{self, Result};
-    pub use self::core::{borrow, char, cmp, iter, mem, num, ops, ptr, slice, str};
+    pub use self::core::{borrow, char, cmp, iter, mem, num, ops, slice, str};
 
     #[cfg(not(feature = "std"))]
     pub use alloc::borrow::{Cow, ToOwned};
