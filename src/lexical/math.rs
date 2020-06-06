@@ -60,8 +60,6 @@ pub const POW10_LIMB: &[Limb] = &POW10_64;
 #[cfg(limb_width_64)]
 type Wide = u128;
 
-pub(crate) type LimbVecType = Vec<Limb>;
-
 /// Cast to limb type.
 #[inline]
 pub(crate) fn as_limb<T: Integer>(t: T) -> Limb {
@@ -248,7 +246,7 @@ impl Hi64<u64> for [u64] {
 /// warning. Smallvec is similarly licensed under an MIT/Apache dual license.
 ///
 /// [`smallvec`]: https://github.com/servo/rust-smallvec
-fn insert_many<Iter>(vec: &mut LimbVecType, index: usize, iterable: Iter)
+fn insert_many<Iter>(vec: &mut Vec<Limb>, index: usize, iterable: Iter)
 where
     Iter: iter::IntoIterator<Item = Limb>,
 {
@@ -300,19 +298,19 @@ where
 
 /// Resize vec to size.
 #[inline]
-fn resize(vec: &mut LimbVecType, len: usize, value: Limb) {
+fn resize(vec: &mut Vec<Limb>, len: usize, value: Limb) {
     vec.resize(len, value)
 }
 
 /// Reserve vec capacity.
 #[inline]
-pub(crate) fn reserve(vec: &mut LimbVecType, capacity: usize) {
+pub(crate) fn reserve(vec: &mut Vec<Limb>, capacity: usize) {
     vec.reserve(capacity)
 }
 
 /// Reserve exact vec capacity.
 #[inline]
-fn reserve_exact(vec: &mut LimbVecType, capacity: usize) {
+fn reserve_exact(vec: &mut Vec<Limb>, capacity: usize) {
     vec.reserve_exact(capacity)
 }
 
@@ -398,7 +396,7 @@ mod small {
     /// Allows us to choose a start-index in x to store, to allow incrementing
     /// from a non-zero start.
     #[inline]
-    pub fn iadd_impl(x: &mut LimbVecType, y: Limb, xstart: usize) {
+    pub fn iadd_impl(x: &mut Vec<Limb>, y: Limb, xstart: usize) {
         if x.len() <= xstart {
             x.push(y);
         } else {
@@ -422,7 +420,7 @@ mod small {
 
     /// AddAssign small integer to bigint.
     #[inline]
-    pub fn iadd(x: &mut LimbVecType, y: Limb) {
+    pub fn iadd(x: &mut Vec<Limb>, y: Limb) {
         iadd_impl(x, y, 0);
     }
 
@@ -431,7 +429,7 @@ mod small {
     /// SubAssign small integer to bigint.
     /// Does not do overflowing subtraction.
     #[inline]
-    pub fn isub_impl(x: &mut LimbVecType, y: Limb, xstart: usize) {
+    pub fn isub_impl(x: &mut Vec<Limb>, y: Limb, xstart: usize) {
         debug_assert!(x.len() > xstart && (x[xstart] >= y || x.len() > xstart + 1));
 
         // Initial subtraction
@@ -450,7 +448,7 @@ mod small {
 
     /// MulAssign small integer to bigint.
     #[inline]
-    pub fn imul(x: &mut LimbVecType, y: Limb) {
+    pub fn imul(x: &mut Vec<Limb>, y: Limb) {
         // Multiply iteratively over all elements, adding the carry each time.
         let mut carry: Limb = 0;
         for xi in x.iter_mut() {
@@ -465,8 +463,8 @@ mod small {
 
     /// Mul small integer to bigint.
     #[inline]
-    pub fn mul(x: &[Limb], y: Limb) -> LimbVecType {
-        let mut z = LimbVecType::default();
+    pub fn mul(x: &[Limb], y: Limb) -> Vec<Limb> {
+        let mut z = Vec::<Limb>::default();
         z.extend(x.iter().cloned());
         imul(&mut z, y);
         z
@@ -504,7 +502,7 @@ mod small {
     /// Even using worst-case scenarios, exponentiation by squaring is
     /// significantly slower for our workloads. Just multiply by small powers,
     /// in simple cases, and use precalculated large powers in other cases.
-    pub fn imul_pow5(x: &mut LimbVecType, n: u32) {
+    pub fn imul_pow5(x: &mut Vec<Limb>, n: u32) {
         use super::large::KARATSUBA_CUTOFF;
 
         let small_powers = POW5_LIMB;
@@ -588,7 +586,7 @@ mod small {
     ///
     /// Assumes `n < Limb::BITS`, IE, internally shifting bits.
     #[inline]
-    pub fn ishl_bits(x: &mut LimbVecType, n: usize) {
+    pub fn ishl_bits(x: &mut Vec<Limb>, n: usize) {
         // Need to shift by the number of `bits % Limb::BITS)`.
         let bits = mem::size_of::<Limb>() * 8;
         debug_assert!(n < bits);
@@ -622,7 +620,7 @@ mod small {
     ///
     /// Assumes `n` is not 0.
     #[inline]
-    pub fn ishl_limbs(x: &mut LimbVecType, n: usize) {
+    pub fn ishl_limbs(x: &mut Vec<Limb>, n: usize) {
         debug_assert!(n != 0);
         if !x.is_empty() {
             insert_many(x, 0, iter::repeat(0).take(n));
@@ -631,7 +629,7 @@ mod small {
 
     /// Shift-left buffer by n bits.
     #[inline]
-    pub fn ishl(x: &mut LimbVecType, n: usize) {
+    pub fn ishl(x: &mut Vec<Limb>, n: usize) {
         let bits = mem::size_of::<Limb>() * 8;
         // Need to pad with zeros for the number of `bits / Limb::BITS`,
         // and shift-left with carry for `bits % Limb::BITS`.
@@ -647,7 +645,7 @@ mod small {
 
     /// Normalize the container by popping any leading zeros.
     #[inline]
-    pub fn normalize(x: &mut LimbVecType) {
+    pub fn normalize(x: &mut Vec<Limb>) {
         // Remove leading zero if we cause underflow. Since we're dividing
         // by a small power, we have at max 1 int removed.
         while !x.is_empty() && *x.rindex(0) == 0 {
@@ -705,7 +703,7 @@ mod large {
     ///
     /// Allows us to choose a start-index in x to store, so we can avoid
     /// padding the buffer with zeros when not needed, optimized for vectors.
-    pub fn iadd_impl(x: &mut LimbVecType, y: &[Limb], xstart: usize) {
+    pub fn iadd_impl(x: &mut Vec<Limb>, y: &[Limb], xstart: usize) {
         // The effective x buffer is from `xstart..x.len()`, so we need to treat
         // that as the current range. If the effective y buffer is longer, need
         // to resize to that, + the start index.
@@ -734,14 +732,14 @@ mod large {
 
     /// AddAssign bigint to bigint.
     #[inline]
-    pub fn iadd(x: &mut LimbVecType, y: &[Limb]) {
+    pub fn iadd(x: &mut Vec<Limb>, y: &[Limb]) {
         iadd_impl(x, y, 0)
     }
 
     /// Add bigint to bigint.
     #[inline]
-    pub fn add(x: &[Limb], y: &[Limb]) -> LimbVecType {
-        let mut z = LimbVecType::default();
+    pub fn add(x: &[Limb], y: &[Limb]) -> Vec<Limb> {
+        let mut z = Vec::<Limb>::default();
         z.extend(x.iter().cloned());
         iadd(&mut z, y);
         z
@@ -750,7 +748,7 @@ mod large {
     // SUBTRACTION
 
     /// SubAssign bigint to bigint.
-    pub fn isub(x: &mut LimbVecType, y: &[Limb]) {
+    pub fn isub(x: &mut Vec<Limb>, y: &[Limb]) {
         // Basic underflow checks.
         debug_assert!(greater_equal(x, y));
 
@@ -790,17 +788,17 @@ mod large {
     /// but it's extremely simple, and works in O(n*m) time, which is fine
     /// by me. Each iteration, of which there are `m` iterations, requires
     /// `n` multiplications, and `n` additions, or grade-school multiplication.
-    fn long_mul(x: &[Limb], y: &[Limb]) -> LimbVecType {
+    fn long_mul(x: &[Limb], y: &[Limb]) -> Vec<Limb> {
         // Using the immutable value, multiply by all the scalars in y, using
         // the algorithm defined above. Use a single buffer to avoid
         // frequent reallocations. Handle the first case to avoid a redundant
         // addition, since we know y.len() >= 1.
-        let mut z: LimbVecType = small::mul(x, y[0]);
+        let mut z: Vec<Limb> = small::mul(x, y[0]);
         resize(&mut z, x.len() + y.len(), 0);
 
         // Handle the iterative cases.
         for (i, &yi) in y[1..].iter().enumerate() {
-            let zi: LimbVecType = small::mul(x, yi);
+            let zi: Vec<Limb> = small::mul(x, yi);
             iadd_impl(&mut z, &zi, i + 1);
         }
 
@@ -818,7 +816,7 @@ mod large {
     /// Karatsuba multiplication algorithm with roughly equal input sizes.
     ///
     /// Assumes `y.len() >= x.len()`.
-    fn karatsuba_mul(x: &[Limb], y: &[Limb]) -> LimbVecType {
+    fn karatsuba_mul(x: &[Limb], y: &[Limb]) -> Vec<Limb> {
         if y.len() <= KARATSUBA_CUTOFF {
             // Bottom-out to long division for small cases.
             long_mul(x, y)
@@ -842,7 +840,7 @@ mod large {
             // [z0, z1 - z2 - z0, z2]
             //  z1 must be shifted m digits (2^(32m)) over.
             //  z2 must be shifted 2*m digits (2^(64m)) over.
-            let mut result = LimbVecType::default();
+            let mut result = Vec::<Limb>::default();
             let len = z0.len().max(m + z1.len()).max(2 * m + z2.len());
             reserve_exact(&mut result, len);
             result.extend(z0.iter().cloned());
@@ -856,8 +854,8 @@ mod large {
     /// Karatsuba multiplication algorithm where y is substantially larger than x.
     ///
     /// Assumes `y.len() >= x.len()`.
-    fn karatsuba_uneven_mul(x: &[Limb], mut y: &[Limb]) -> LimbVecType {
-        let mut result = LimbVecType::default();
+    fn karatsuba_uneven_mul(x: &[Limb], mut y: &[Limb]) -> Vec<Limb> {
+        let mut result = Vec::<Limb>::default();
         resize(&mut result, x.len() + y.len(), 0);
 
         // This effectively is like grade-school multiplication between
@@ -879,7 +877,7 @@ mod large {
 
     /// Forwarder to the proper Karatsuba algorithm.
     #[inline]
-    fn karatsuba_mul_fwd(x: &[Limb], y: &[Limb]) -> LimbVecType {
+    fn karatsuba_mul_fwd(x: &[Limb], y: &[Limb]) -> Vec<Limb> {
         if x.len() < y.len() {
             karatsuba_mul(x, y)
         } else {
@@ -889,7 +887,7 @@ mod large {
 
     /// MulAssign bigint to bigint.
     #[inline]
-    pub fn imul(x: &mut LimbVecType, y: &[Limb]) {
+    pub fn imul(x: &mut Vec<Limb>, y: &[Limb]) {
         if y.len() == 1 {
             small::imul(x, y[0]);
         } else {
@@ -914,10 +912,10 @@ pub(crate) trait Math: Clone + Sized + Default {
     // DATA
 
     /// Get access to the underlying data
-    fn data<'a>(&'a self) -> &'a LimbVecType;
+    fn data<'a>(&'a self) -> &'a Vec<Limb>;
 
     /// Get access to the underlying data
-    fn data_mut<'a>(&'a mut self) -> &'a mut LimbVecType;
+    fn data_mut<'a>(&'a mut self) -> &'a mut Vec<Limb>;
 
     // RELATIVE OPERATIONS
 
@@ -1016,29 +1014,29 @@ mod tests {
 
     #[derive(Clone, Default)]
     struct Bigint {
-        data: LimbVecType,
+        data: Vec<Limb>,
     }
 
     impl Math for Bigint {
         #[inline]
-        fn data<'a>(&'a self) -> &'a LimbVecType {
+        fn data<'a>(&'a self) -> &'a Vec<Limb> {
             &self.data
         }
 
         #[inline]
-        fn data_mut<'a>(&'a mut self) -> &'a mut LimbVecType {
+        fn data_mut<'a>(&'a mut self) -> &'a mut Vec<Limb> {
             &mut self.data
         }
     }
 
     #[cfg(limb_width_32)]
-    pub(crate) fn from_u32(x: &[u32]) -> LimbVecType {
+    pub(crate) fn from_u32(x: &[u32]) -> Vec<Limb> {
         x.iter().cloned().collect()
     }
 
     #[cfg(limb_width_64)]
-    pub(crate) fn from_u32(x: &[u32]) -> LimbVecType {
-        let mut v = LimbVecType::default();
+    pub(crate) fn from_u32(x: &[u32]) -> Vec<Limb> {
+        let mut v = Vec::<Limb>::default();
         for xi in x.chunks(2) {
             match xi.len() {
                 1 => v.push(xi[0] as u64),
