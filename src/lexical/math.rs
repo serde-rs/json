@@ -8,7 +8,7 @@ use super::large_powers;
 use super::num::*;
 use super::slice::*;
 use super::small_powers::*;
-use crate::lib::{cmp, iter, mem, ptr};
+use crate::lib::{cmp, iter, mem, ptr, Vec};
 
 // ALIASES
 // -------
@@ -60,16 +60,7 @@ pub const POW10_LIMB: &[Limb] = &POW10_64;
 #[cfg(limb_width_64)]
 type Wide = u128;
 
-// Maximum denominator is 767 mantissa digits + 324 exponent,
-// or 1091 digits, or approximately 3600 bits (round up to 4k).
-#[cfg(all(no_alloc, limb_width_32))]
-pub(crate) type LimbVecType = arrayvec::ArrayVec<[Limb; 128]>;
-
-#[cfg(all(no_alloc, limb_width_64))]
-pub(crate) type LimbVecType = arrayvec::ArrayVec<[Limb; 64]>;
-
-#[cfg(not(no_alloc))]
-pub(crate) type LimbVecType = crate::lib::Vec<Limb>;
+pub(crate) type LimbVecType = Vec<Limb>;
 
 /// Cast to limb type.
 #[inline(always)]
@@ -307,50 +298,20 @@ where
     }
 }
 
-/// Resize arrayvec to size.
-#[inline]
-#[cfg(no_alloc)]
-fn resize(vec: &mut LimbVecType, len: usize, value: Limb) {
-    assert!(len <= vec.capacity());
-    let old_len = vec.len();
-    if len > old_len {
-        vec.extend(iter::repeat(value).take(len - old_len));
-    } else {
-        vec.truncate(len);
-    }
-}
-
 /// Resize vec to size.
 #[inline]
-#[cfg(not(no_alloc))]
 fn resize(vec: &mut LimbVecType, len: usize, value: Limb) {
     vec.resize(len, value)
 }
 
-/// Reserve arrayvec capacity.
-#[inline]
-#[cfg(no_alloc)]
-pub(crate) fn reserve(vec: &mut LimbVecType, capacity: usize) {
-    assert!(vec.len() + capacity <= vec.capacity());
-}
-
 /// Reserve vec capacity.
 #[inline]
-#[cfg(not(no_alloc))]
 pub(crate) fn reserve(vec: &mut LimbVecType, capacity: usize) {
     vec.reserve(capacity)
 }
 
-/// Reserve exact arrayvec capacity.
-#[inline]
-#[cfg(no_alloc)]
-fn reserve_exact(vec: &mut LimbVecType, capacity: usize) {
-    assert!(vec.len() + capacity <= vec.capacity());
-}
-
 /// Reserve exact vec capacity.
 #[inline]
-#[cfg(not(no_alloc))]
 fn reserve_exact(vec: &mut LimbVecType, capacity: usize) {
     vec.reserve_exact(capacity)
 }
