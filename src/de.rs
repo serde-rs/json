@@ -1,6 +1,7 @@
 //! Deserialize JSON data to a Rust data structure.
 
 use crate::error::{Error, ErrorCode, Result};
+use crate::lexical;
 use crate::lib::str::FromStr;
 use crate::lib::*;
 use crate::number::Number;
@@ -747,10 +748,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let fraction = &self.scratch[integer_end..];
 
         let f = if self.requested_f32 {
-            minimal_lexical::parse_float::<f32, _, _>(integer.iter(), fraction.iter(), exponent)
-                as f64
+            lexical::parse_float::<f32, _, _>(integer.iter(), fraction.iter(), exponent) as f64
         } else {
-            minimal_lexical::parse_float::<f64, _, _>(integer.iter(), fraction.iter(), exponent)
+            lexical::parse_float::<f64, _, _>(integer.iter(), fraction.iter(), exponent)
         };
         self.scratch.clear();
 
