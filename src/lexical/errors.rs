@@ -47,12 +47,12 @@ fn nearest_error_is_accurate(errors: u64, fp: &ExtendedFloat, extrabits: u64) ->
 }
 
 impl FloatErrors for u64 {
-    #[inline(always)]
+    #[inline]
     fn error_scale() -> u32 {
         8
     }
 
-    #[inline(always)]
+    #[inline]
     fn error_halfscale() -> u32 {
         u64::error_scale() / 2
     }

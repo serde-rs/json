@@ -21,12 +21,12 @@ impl Default for Bigint {
 }
 
 impl Math for Bigint {
-    #[inline(always)]
+    #[inline]
     fn data<'a>(&'a self) -> &'a LimbVecType {
         &self.data
     }
 
-    #[inline(always)]
+    #[inline]
     fn data_mut<'a>(&'a mut self) -> &'a mut LimbVecType {
         &mut self.data
     }

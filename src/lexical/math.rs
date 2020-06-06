@@ -63,13 +63,13 @@ type Wide = u128;
 pub(crate) type LimbVecType = Vec<Limb>;
 
 /// Cast to limb type.
-#[inline(always)]
+#[inline]
 pub(crate) fn as_limb<T: Integer>(t: T) -> Limb {
     Limb::as_cast(t)
 }
 
 /// Cast to wide type.
-#[inline(always)]
+#[inline]
 fn as_wide<T: Integer>(t: T) -> Wide {
     Wide::as_cast(t)
 }
