@@ -477,11 +477,7 @@ mod small {
     /// Get number of leading zero bits in the storage.
     #[inline]
     pub fn leading_zeros(x: &[Limb]) -> usize {
-        if x.is_empty() {
-            0
-        } else {
-            x.rindex(0).leading_zeros().as_usize()
-        }
+        x.last().map_or(0, |x| x.leading_zeros().as_usize())
     }
 
     /// Calculate the bit-length of the big-integer.
@@ -564,7 +560,7 @@ mod small {
     pub fn normalize(x: &mut Vec<Limb>) {
         // Remove leading zero if we cause underflow. Since we're dividing
         // by a small power, we have at max 1 int removed.
-        while !x.is_empty() && *x.rindex(0) == 0 {
+        while x.last() == Some(&0) {
             x.pop();
         }
     }
