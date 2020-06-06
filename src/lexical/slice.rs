@@ -9,62 +9,17 @@ pub trait RSliceIndex<T: ?Sized> {
     /// Output type for the index.
     type Output: ?Sized;
 
-    /// Get reference to element or subslice.
-    fn rget(self, slc: &T) -> Option<&Self::Output>;
-
-    /// Get mutable reference to element or subslice.
-    fn rget_mut(self, slc: &mut T) -> Option<&mut Self::Output>;
-
-    /// Get reference to element or subslice without bounds checking.
-    unsafe fn rget_unchecked(self, slc: &T) -> &Self::Output;
-
-    /// Get mutable reference to element or subslice without bounds checking.
-    unsafe fn rget_unchecked_mut(self, slc: &mut T) -> &mut Self::Output;
-
     /// Get reference to element or subslice, panic if out-of-bounds.
     fn rindex(self, slc: &T) -> &Self::Output;
-
-    /// Get mutable reference to element or subslice, panic if out-of-bounds.
-    fn rindex_mut(self, slc: &mut T) -> &mut Self::Output;
 }
 
 impl<T> RSliceIndex<[T]> for usize {
     type Output = T;
 
     #[inline]
-    fn rget(self, slc: &[T]) -> Option<&T> {
-        let len = slc.len();
-        slc.get(len - self - 1)
-    }
-
-    #[inline]
-    fn rget_mut(self, slc: &mut [T]) -> Option<&mut T> {
-        let len = slc.len();
-        slc.get_mut(len - self - 1)
-    }
-
-    #[inline]
-    unsafe fn rget_unchecked(self, slc: &[T]) -> &T {
-        let len = slc.len();
-        slc.get_unchecked(len - self - 1)
-    }
-
-    #[inline]
-    unsafe fn rget_unchecked_mut(self, slc: &mut [T]) -> &mut T {
-        let len = slc.len();
-        slc.get_unchecked_mut(len - self - 1)
-    }
-
-    #[inline]
     fn rindex(self, slc: &[T]) -> &T {
         let len = slc.len();
         &(*slc)[len - self - 1]
-    }
-
-    #[inline]
-    fn rindex_mut(self, slc: &mut [T]) -> &mut T {
-        let len = slc.len();
-        &mut (*slc)[len - self - 1]
     }
 }
 
