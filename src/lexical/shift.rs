@@ -1,7 +1,7 @@
 //! Bit-shift helpers.
 
 use super::float::ExtendedFloat;
-use super::lib::mem;
+use crate::lib::mem;
 
 // Shift extended-precision float right `shift` bytes.
 #[inline]

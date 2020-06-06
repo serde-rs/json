@@ -5,10 +5,10 @@
 //! and `0` is the least significant limb.
 
 use super::large_powers;
-use super::lib::{cmp, iter, mem, ptr};
 use super::num::*;
 use super::slice::*;
 use super::small_powers::*;
+use crate::lib::{cmp, iter, mem, ptr};
 
 // ALIASES
 // -------
@@ -69,7 +69,7 @@ pub(crate) type LimbVecType = arrayvec::ArrayVec<[Limb; 128]>;
 pub(crate) type LimbVecType = arrayvec::ArrayVec<[Limb; 64]>;
 
 #[cfg(not(no_alloc))]
-pub(crate) type LimbVecType = super::lib::Vec<Limb>;
+pub(crate) type LimbVecType = crate::lib::Vec<Limb>;
 
 /// Cast to limb type.
 #[inline(always)]

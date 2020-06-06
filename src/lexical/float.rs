@@ -186,7 +186,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lib::{f32, f64};
+    use core::{f32, f64};
 
     // NORMALIZE
 

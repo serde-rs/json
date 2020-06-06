@@ -98,7 +98,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lib::f64;
+    use core::f64;
 
     fn check_parse_float<F: Float>(integer: &str, fraction: &str, exponent: i32, expected: F) {
         let integer = integer.as_bytes().iter();
