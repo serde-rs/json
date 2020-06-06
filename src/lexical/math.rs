@@ -6,7 +6,6 @@
 
 use super::large_powers;
 use super::num::*;
-use super::slice::*;
 use super::small_powers::*;
 use crate::lib::{cmp, iter, mem, Vec};
 
@@ -125,7 +124,7 @@ fn u64_to_hi64_2(r0: u64, r1: u64) -> (u64, bool) {
 }
 
 /// Trait to export the high 64-bits from a little-endian slice.
-trait Hi64<T>: Slice<T> {
+trait Hi64<T>: AsRef<[T]> {
     /// Get the hi64 bits from a 1-limb slice.
     fn hi64_1(&self) -> (u64, bool);
 
@@ -144,7 +143,7 @@ trait Hi64<T>: Slice<T> {
     /// High-level exporter to extract the high 64 bits from a little-endian slice.
     #[inline]
     fn hi64(&self) -> (u64, bool) {
-        match self.len() {
+        match self.as_ref().len() {
             0 => (0, false),
             1 => self.hi64_1(),
             2 => self.hi64_2(),
@@ -159,27 +158,24 @@ impl Hi64<u32> for [u32] {
     #[inline]
     fn hi64_1(&self) -> (u64, bool) {
         debug_assert!(self.len() == 1);
-        let rview = self.rview();
-        let r0 = rview[0].as_u64();
+        let r0 = self[0].as_u64();
         u64_to_hi64_1(r0)
     }
 
     #[inline]
     fn hi64_2(&self) -> (u64, bool) {
         debug_assert!(self.len() == 2);
-        let rview = self.rview();
-        let r0 = rview[0].as_u64() << 32;
-        let r1 = rview[1].as_u64();
+        let r0 = self[1].as_u64() << 32;
+        let r1 = self[0].as_u64();
         u64_to_hi64_1(r0 | r1)
     }
 
     #[inline]
     fn hi64_3(&self) -> (u64, bool) {
         debug_assert!(self.len() >= 3);
-        let rview = self.rview();
-        let r0 = rview[0].as_u64();
-        let r1 = rview[1].as_u64() << 32;
-        let r2 = rview[2].as_u64();
+        let r0 = self[self.len() - 1].as_u64();
+        let r1 = self[self.len() - 2].as_u64() << 32;
+        let r2 = self[self.len() - 3].as_u64();
         let (v, n) = u64_to_hi64_2(r0, r1 | r2);
         (v, n || nonzero(self, 3))
     }
@@ -199,17 +195,15 @@ impl Hi64<u64> for [u64] {
     #[inline]
     fn hi64_1(&self) -> (u64, bool) {
         debug_assert!(self.len() == 1);
-        let rview = self.rview();
-        let r0 = rview[0];
+        let r0 = self[0];
         u64_to_hi64_1(r0)
     }
 
     #[inline]
     fn hi64_2(&self) -> (u64, bool) {
         debug_assert!(self.len() >= 2);
-        let rview = self.rview();
-        let r0 = rview[0];
-        let r1 = rview[1];
+        let r0 = self[self.len() - 1];
+        let r1 = self[self.len() - 2];
         let (v, n) = u64_to_hi64_2(r0, r1);
         (v, n || nonzero(self, 2))
     }

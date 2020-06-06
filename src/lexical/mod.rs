@@ -26,7 +26,6 @@ mod num;
 mod parse;
 mod rounding;
 mod shift;
-mod slice;
 mod small_powers;
 
 #[cfg(limb_width_32)]
