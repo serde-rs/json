@@ -4,11 +4,11 @@
 //! buffers, so for a `vec![0, 1, 2, 3]`, `3` is the most significant limb,
 //! and `0` is the least significant limb.
 
-use crate::large_powers;
-use crate::lib::{cmp, iter, mem, ptr};
-use crate::num::*;
-use crate::slice::*;
-use crate::small_powers::*;
+use super::large_powers;
+use super::lib::{cmp, iter, mem, ptr};
+use super::num::*;
+use super::slice::*;
+use super::small_powers::*;
 
 // ALIASES
 // -------
@@ -69,7 +69,7 @@ pub(crate) type LimbVecType = arrayvec::ArrayVec<[Limb; 128]>;
 pub(crate) type LimbVecType = arrayvec::ArrayVec<[Limb; 64]>;
 
 #[cfg(not(no_alloc))]
-pub(crate) type LimbVecType = crate::lib::Vec<Limb>;
+pub(crate) type LimbVecType = super::lib::Vec<Limb>;
 
 /// Cast to limb type.
 #[inline(always)]

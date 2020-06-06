@@ -1,9 +1,9 @@
 //! Defines rounding schemes for floating-point numbers.
 
 use super::float::ExtendedFloat;
+use super::lib::mem;
 use super::num::*;
 use super::shift::*;
-use crate::lib::mem;
 
 // MASKS
 

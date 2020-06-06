@@ -6,9 +6,9 @@
 //! found here:
 //!     https://golang.org/src/strconv/atof.go
 
-use crate::float::*;
-use crate::num::*;
-use crate::rounding::*;
+use super::float::*;
+use super::num::*;
+use super::rounding::*;
 
 pub(crate) trait FloatErrors {
     /// Get the full error scale.

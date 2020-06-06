@@ -1,6 +1,6 @@
 //! Traits to accept generic slices.
 
-use crate::lib::ops;
+use super::lib::ops;
 
 // RSLICE INDEX
 
@@ -141,7 +141,7 @@ impl<A: arrayvec::Array> Slice<A::Item> for arrayvec::ArrayVec<A> {
 }
 
 #[cfg(not(no_alloc))]
-impl<T> Slice<T> for crate::lib::Vec<T> {
+impl<T> Slice<T> for super::lib::Vec<T> {
     #[inline]
     fn as_slice(&self) -> &[T] {
         self
