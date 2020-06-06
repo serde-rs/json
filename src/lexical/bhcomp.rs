@@ -17,10 +17,9 @@ use crate::lib::{cmp, mem};
 /// Parse the full mantissa into a big integer.
 ///
 /// Max digits is the maximum number of digits plus one.
-fn parse_mantissa<'a, F, Iter>(mut iter: Iter) -> Bigint
+fn parse_mantissa<F>(integer: &[u8], fraction: &[u8]) -> Bigint
 where
     F: Float,
-    Iter: Iterator<Item = &'a u8> + Clone,
 {
     // Main loop
     let small_powers = POW10_LIMB;
@@ -32,7 +31,7 @@ where
     let mut result = Bigint::default();
 
     // Iteratively process all the data in the mantissa.
-    while let Some(&digit) = iter.next() {
+    for &digit in integer.iter().chain(fraction) {
         // We've parsed the max digits using small values, add to bignum
         if counter == step {
             result.imul_small(small_powers[counter]);
@@ -64,8 +63,7 @@ where
     // representation. We also need to return an index.
     // Since we already trimmed trailing zeros, we know there has
     // to be a non-zero digit if there are any left.
-    let is_consumed = iter.count() == 0;
-    if !is_consumed {
+    if i < integer.len() + fraction.len() {
         result.imul_small(10);
         result.iadd_small(1);
     }
@@ -108,10 +106,9 @@ fn round_nearest_tie_even(fp: &mut ExtendedFloat, shift: i32, is_truncated: bool
 // BHCOMP
 
 /// Calculate the mantissa for a big integer with a positive exponent.
-fn large_atof<'a, F, Iter>(iter: Iter, exponent: i32) -> F
+fn large_atof<F>(mantissa: Bigint, exponent: i32) -> F
 where
     F: Float,
-    Iter: Iterator<Item = &'a u8> + Clone,
 {
     let bits = mem::size_of::<u64>() * 8;
 
@@ -119,7 +116,7 @@ where
     // Now, we can calculate the mantissa and the exponent from this.
     // The binary exponent is the binary exponent for the mantissa
     // shifted to the hidden bit.
-    let mut bigmant = parse_mantissa::<F, _>(iter);
+    let mut bigmant = mantissa;
     bigmant.imul_pow10(exponent.as_u32());
 
     // Get the exact representation of the float from the big integer.
@@ -136,13 +133,12 @@ where
 /// Calculate the mantissa for a big integer with a negative exponent.
 ///
 /// This invokes the comparison with `b+h`.
-fn small_atof<'a, F, Iter>(iter: Iter, exponent: i32, f: F) -> F
+fn small_atof<F>(mantissa: Bigint, exponent: i32, f: F) -> F
 where
     F: Float,
-    Iter: Iterator<Item = &'a u8> + Clone,
 {
     // Get the significant digits and radix exponent for the real digits.
-    let mut real_digits = parse_mantissa::<F, _>(iter);
+    let mut real_digits = mantissa;
     let real_exp = exponent;
     debug_assert!(real_exp < 0);
 
@@ -198,32 +194,29 @@ where
 ///     The digits iterator must not have any trailing zeros (true for
 ///     `FloatState2`).
 ///     sci_exponent and digits.size_hint() must not overflow i32.
-pub(crate) fn bhcomp<'a, F, Iter1, Iter2>(b: F, integer: Iter1, fraction: Iter2, exponent: i32) -> F
+pub(crate) fn bhcomp<F>(b: F, integer: &[u8], mut fraction: &[u8], exponent: i32) -> F
 where
     F: Float,
-    Iter1: Iterator<Item = &'a u8> + Clone,
-    Iter2: Iterator<Item = &'a u8> + Clone,
 {
     // Calculate the number of integer digits and use that to determine
     // where the significant digits start in the fraction.
-    let integer_digits = integer.clone().count();
-    let fraction_digits = fraction.clone().count();
-    let digits_start = match integer_digits {
-        0 => fraction.clone().take_while(|&x| x == &b'0').count(),
-        _ => 0,
+    let integer_digits = integer.len();
+    let fraction_digits = fraction.len();
+    let digits_start = if integer_digits == 0 {
+        let start = fraction.iter().take_while(|&x| *x == b'0').count();
+        fraction = &fraction[start..];
+        start
+    } else {
+        0
     };
     let sci_exp = scientific_exponent(exponent, integer_digits, digits_start);
     let count = F::MAX_DIGITS.min(integer_digits + fraction_digits - digits_start);
     let scaled_exponent = sci_exp + 1 - count.as_i32();
 
-    // We have a finite conversions number of digits for base10.
-    // We need to then limit the iterator over that number of digits.
-    // Skip all leading zeros (can occur if fraction is empty).
-    let iter = integer.chain(fraction).skip(digits_start);
-
+    let mantissa = parse_mantissa::<F>(integer, fraction);
     if scaled_exponent >= 0 {
-        large_atof(iter, scaled_exponent)
+        large_atof(mantissa, scaled_exponent)
     } else {
-        small_atof(iter, scaled_exponent, b)
+        small_atof(mantissa, scaled_exponent, b)
     }
 }

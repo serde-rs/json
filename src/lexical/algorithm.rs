@@ -156,9 +156,9 @@ where
 ///
 /// Uses the moderate path, if applicable, otherwise, uses the slow path
 /// as required.
-pub(crate) fn fallback_path<'a, F, Iter1, Iter2>(
-    integer: Iter1,
-    fraction: Iter2,
+pub(crate) fn fallback_path<F>(
+    integer: &[u8],
+    fraction: &[u8],
     mantissa: u64,
     exponent: i32,
     mantissa_exponent: i32,
@@ -166,8 +166,6 @@ pub(crate) fn fallback_path<'a, F, Iter1, Iter2>(
 ) -> F
 where
     F: Float,
-    Iter1: Iterator<Item = &'a u8> + Clone,
-    Iter2: Iterator<Item = &'a u8> + Clone,
 {
     // Moderate path (use an extended 80-bit representation).
     let (fp, valid) = moderate_path::<F>(mantissa, mantissa_exponent, truncated);
