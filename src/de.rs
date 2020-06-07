@@ -718,20 +718,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn f64_from_parts(&mut self, positive: bool, integer_end: usize, exponent: i32) -> Result<f64> {
-        // remove trailing zeroes from the 'fraction' part
-        let mut nzeroes = 0;
-        for c in self.scratch[integer_end..].iter().rev() {
-            if *c == b'0' {
-                nzeroes += 1;
-            } else {
-                break;
-            }
-        }
-
-        for _ in 0..nzeroes {
-            self.scratch.pop();
-        }
-
         let integer = &self.scratch[..integer_end];
         let fraction = &self.scratch[integer_end..];
 

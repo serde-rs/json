@@ -40,13 +40,16 @@ fn parse_mantissa(integer: &[u8], fraction: &[u8]) -> (u64, usize) {
 /// * `fraction`    - Slice containing the fraction digits.
 /// * `exponent`    - Parsed, 32-bit exponent.
 ///
-/// # Preconditions
-/// 1). The integer should not have leading zeros.
-/// 2). The fraction should not have trailing zeros.
-pub fn parse_float<F>(integer: &[u8], fraction: &[u8], exponent: i32) -> F
+/// Precondition: The integer must not have leading zeros.
+pub fn parse_float<F>(integer: &[u8], mut fraction: &[u8], exponent: i32) -> F
 where
     F: Float,
 {
+    // Trim trailing zeroes from the fraction part.
+    while fraction.last() == Some(&b'0') {
+        fraction = &fraction[..fraction.len() - 1];
+    }
+
     // Parse the mantissa and attempt the fast and moderate-path algorithms.
     let (mantissa, truncated) = parse_mantissa(integer, fraction);
     let is_truncated = truncated != 0;
