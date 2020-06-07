@@ -735,6 +735,8 @@ fn test_parse_number_errors() {
         ("00", "invalid number at line 1 column 2"),
         ("0x80", "trailing characters at line 1 column 2"),
         ("\\0", "expected value at line 1 column 1"),
+        (".0", "expected value at line 1 column 1"),
+        ("0.", "EOF while parsing a value at line 1 column 2"),
         ("1.", "EOF while parsing a value at line 1 column 2"),
         ("1.a", "invalid number at line 1 column 3"),
         ("1.e1", "invalid number at line 1 column 3"),
