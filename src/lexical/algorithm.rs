@@ -153,6 +153,7 @@ where
     let valid = multiply_exponent_extended::<F>(&mut fp, exponent, truncated);
     (fp, valid)
 }
+
 // FALLBACK
 // --------
 

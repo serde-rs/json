@@ -187,10 +187,7 @@ where
 
 /// Calculate the exact value of the float.
 ///
-/// Notes:
-///     The digits iterator must not have any trailing zeros (true for
-///     `FloatState2`).
-///     sci_exponent and digits.size_hint() must not overflow i32.
+/// Note: fraction must not have trailing zeros.
 pub(crate) fn bhcomp<F>(b: F, integer: &[u8], mut fraction: &[u8], exponent: i32) -> F
 where
     F: Float,

@@ -1,5 +1,3 @@
-//! Parse byte iterators to float.
-
 use super::algorithm::*;
 use super::digit::*;
 use super::exponent::*;
