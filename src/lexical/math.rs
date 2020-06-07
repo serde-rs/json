@@ -150,24 +150,24 @@ impl Hi64<u32> for [u32] {
     #[inline]
     fn hi64_1(&self) -> (u64, bool) {
         debug_assert!(self.len() == 1);
-        let r0 = self[0].as_u64();
+        let r0 = self[0] as u64;
         u64_to_hi64_1(r0)
     }
 
     #[inline]
     fn hi64_2(&self) -> (u64, bool) {
         debug_assert!(self.len() == 2);
-        let r0 = self[1].as_u64() << 32;
-        let r1 = self[0].as_u64();
+        let r0 = (self[1] as u64) << 32;
+        let r1 = self[0] as u64;
         u64_to_hi64_1(r0 | r1)
     }
 
     #[inline]
     fn hi64_3(&self) -> (u64, bool) {
         debug_assert!(self.len() >= 3);
-        let r0 = self[self.len() - 1].as_u64();
-        let r1 = self[self.len() - 2].as_u64() << 32;
-        let r2 = self[self.len() - 3].as_u64();
+        let r0 = self[self.len() - 1] as u64;
+        let r1 = (self[self.len() - 2] as u64) << 32;
+        let r2 = self[self.len() - 3] as u64;
         let (v, n) = u64_to_hi64_2(r0, r1 | r2);
         (v, n || nonzero(self, 3))
     }
@@ -400,7 +400,7 @@ mod small {
         // We want to use the asymptotically faster algorithm if we're going
         // to be using Karabatsu multiplication sometime during the result,
         // otherwise, just use exponentiation by squaring.
-        let bit_length = 32 - n.leading_zeros().as_usize();
+        let bit_length = 32 - n.leading_zeros() as usize;
         debug_assert!(bit_length != 0 && bit_length <= large_powers.len());
         if x.len() + large_powers[bit_length - 1].len() < 2 * KARATSUBA_CUTOFF {
             // We can use iterative small powers to make this faster for the
@@ -409,7 +409,7 @@ mod small {
             // Multiply by the largest small power until n < step.
             let step = small_powers.len() - 1;
             let power = small_powers[step];
-            let mut n = n.as_usize();
+            let mut n = n as usize;
             while n >= step {
                 imul(x, power);
                 n -= step;
@@ -425,7 +425,7 @@ mod small {
             // Multiply by higher order powers.
             let mut idx: usize = 0;
             let mut bit: usize = 1;
-            let mut n = n.as_usize();
+            let mut n = n as usize;
             while n != 0 {
                 if n & bit != 0 {
                     debug_assert!(idx < large_powers.len());
@@ -443,7 +443,7 @@ mod small {
     /// Get number of leading zero bits in the storage.
     #[inline]
     pub fn leading_zeros(x: &[Limb]) -> usize {
-        x.last().map_or(0, |x| x.leading_zeros().as_usize())
+        x.last().map_or(0, |x| x.leading_zeros() as usize)
     }
 
     /// Calculate the bit-length of the big-integer.
@@ -857,7 +857,7 @@ pub(crate) trait Math: Clone + Sized + Default {
     /// Multiply by a power of 2.
     #[inline]
     fn imul_pow2(&mut self, n: u32) {
-        self.ishl(n.as_usize())
+        self.ishl(n as usize)
     }
 
     /// Multiply by a power of 5.

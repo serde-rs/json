@@ -348,7 +348,7 @@ impl Float for f32 {
         if n > 0 {
             self * F32_POW10[n as usize]
         } else {
-            self / F32_POW10[(-n) as usize]
+            self / F32_POW10[-n as usize]
         }
     }
 
@@ -412,7 +412,7 @@ impl Float for f64 {
         if n > 0 {
             self * F64_POW10[n as usize]
         } else {
-            self / F64_POW10[(-n) as usize]
+            self / F64_POW10[-n as usize]
         }
     }
 
