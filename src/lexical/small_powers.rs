@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Pre-computed small powers.
 
 // 32 BIT

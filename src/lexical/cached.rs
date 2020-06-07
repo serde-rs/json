@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Cached powers trait for extended-precision floats.
 
 use super::cached_float80;

@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Cached exponents for basen values with 80-bit extended floats.
 //!
 //! Exact versions of base**n as an extended-precision float, with both

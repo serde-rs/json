@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Estimate the error in an 80-bit approximation of a float.
 //!
 //! This estimates the error in a floating-point representation.

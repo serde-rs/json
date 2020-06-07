@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Precalculated large powers for limbs.
 
 #[cfg(limb_width_32)]

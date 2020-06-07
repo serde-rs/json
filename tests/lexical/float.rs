@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 use crate::lexical::float::ExtendedFloat;
 use crate::lexical::rounding::round_nearest_tie_even;
 use std::{f32, f64};

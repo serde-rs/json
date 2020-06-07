@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 use crate::lexical::num::{AsPrimitive, Float, Integer, Number};
 
 fn check_as_primitive<T: AsPrimitive>(t: T) {

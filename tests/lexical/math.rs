@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 use crate::lexical::math::{Limb, Math};
 use std::cmp;
 

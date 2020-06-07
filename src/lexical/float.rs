@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 // FLOAT TYPE
 
 use super::num::*;

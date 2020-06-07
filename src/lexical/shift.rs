@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Bit-shift helpers.
 
 use super::float::ExtendedFloat;

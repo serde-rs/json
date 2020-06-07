@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Defines rounding schemes for floating-point numbers.
 
 use super::float::ExtendedFloat;

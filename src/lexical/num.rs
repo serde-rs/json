@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Utilities for Rust numbers.
 
 use crate::lib::ops;

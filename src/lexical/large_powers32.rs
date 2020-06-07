@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Precalculated large powers for 32-bit limbs.
 
 /// Large powers (&[u32]) for base5 operations.

@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Algorithms to efficiently convert strings to floats.
 
 use super::bhcomp::*;

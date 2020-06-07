@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Helpers to convert and add digits from characters.
 
 // Convert u8 to digit.

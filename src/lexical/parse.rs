@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 use super::algorithm::*;
 use super::digit::*;
 use super::exponent::*;

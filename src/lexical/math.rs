@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Building-blocks for arbitrary-precision math.
 //!
 //! These algorithms assume little-endian order for the large integer

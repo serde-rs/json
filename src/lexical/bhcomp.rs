@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Compare the mantissa to the halfway representation of the float.
 //!
 //! Compares the actual significant digits of the mantissa to the

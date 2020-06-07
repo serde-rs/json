@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 use crate::lexical::float::ExtendedFloat;
 use crate::lexical::num::Float;
 use crate::lexical::rounding::*;

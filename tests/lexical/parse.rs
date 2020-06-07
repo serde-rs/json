@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 use crate::lexical::num::Float;
 use crate::lexical::parse::parse_float;
 use core::f64;

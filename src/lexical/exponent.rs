@@ -1,3 +1,5 @@
+// Adapted from https://github.com/Alexhuszagh/rust-lexical.
+
 //! Utilities to calculate exponents.
 
 /// Convert usize into i32 without overflow.
