@@ -906,6 +906,36 @@ fn test_parse_f64() {
     ]);
 }
 
+// test roundtrip with some values that failed with the old version of the f64 deserializer
+#[test]
+fn test_roundtrip_f64() {
+    let roundtrip = |input: &f64| {
+        let json = serde_json::to_string(input).unwrap();
+        let output: f64 = serde_json::from_str(&json).unwrap();
+        assert_eq!(input, &output);
+    };
+
+    [
+        // samples from quickcheck-ing `roundtrip` with `input: f64`
+        // comments on the right showed the value returned by the old deserializer
+        51.24817837550540_4,  // 51.2481783755054_1
+        -93.3113703768803_3,  // -93.3113703768803_2
+        -36.5739948427534_36, // -36.5739948427534_4
+        52.31400820410624_4,  // 52.31400820410624_
+        97.45365320034685,    // 97.4536532003468_4
+        // samples from `rng.next_u64` + `f64::from_bits` + `is_finite` filter
+        2.0030397744267762e-253,
+        7.101215824554616e260,
+        1.769268377902049e74,
+        -1.6727517818542075e58,
+        3.9287532173373315e299,
+        // edge case from https://github.com/serde-rs/json/issues/536#issuecomment-583714900
+        2.638344616030823e-256,
+    ]
+    .iter()
+    .for_each(roundtrip);
+}
+
 #[test]
 fn test_serialize_char() {
     let value = json!(

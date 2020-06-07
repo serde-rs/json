@@ -23,6 +23,7 @@ pub struct Deserializer<R> {
     read: R,
     scratch: Vec<u8>,
     remaining_depth: u8,
+    requested_f32: bool,
     #[cfg(feature = "unbounded_depth")]
     disable_recursion_limit: bool,
 }
@@ -43,6 +44,7 @@ where
         #[cfg(not(feature = "unbounded_depth"))]
         {
             Deserializer {
+                requested_f32: false,
                 read: read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
@@ -52,6 +54,7 @@ where
         #[cfg(feature = "unbounded_depth")]
         {
             Deserializer {
+                requested_f32: false,
                 read: read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
@@ -316,6 +319,18 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
         };
 
+        // to deserialize floats we'll first push the 'integer' and 'fraction' parts, both as byte
+        // strings, into the scratch buffer and then feed both slices to `minimal-lexical`. For
+        // example, if the input is "12.34e5" we'll push b"1234" into the scratch buffer and then
+        // we'll pass b"12" and b"34" as iterators to `minimal-lexical`. `integer_end` will be used
+        // to track where to split the `scratch` buffer
+        //
+        // Note that `minimal-lexical` expects the first string to contain *no* leading zeroes and
+        // the second string to contain *no* trailing zeroes. The first requirement is already
+        // handled by the integer parsing logic. The second requirement will be enforced just before
+        // passing the slices to `minimal-lexical`, in `f64_from_parts`
+        self.scratch.clear();
+
         let value = match peek {
             b'-' => {
                 self.eat_char();
@@ -391,6 +406,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
         match next {
             b'0' => {
+                self.scratch.push(next);
+
                 // There can be only one leading '0'.
                 match tri!(self.peek_or_null()) {
                     b'0'..=b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
@@ -398,11 +415,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
             }
             c @ b'1'..=b'9' => {
+                self.scratch.push(c);
                 let mut res = (c - b'0') as u64;
 
                 loop {
                     match tri!(self.peek_or_null()) {
                         c @ b'0'..=b'9' => {
+                            self.scratch.push(c);
                             self.eat_char();
                             let digit = (c - b'0') as u64;
 
@@ -410,11 +429,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             // number as a `u64` until we grow too large. At that point, switch to
                             // parsing the value as a `f64`.
                             if overflow!(res * 10 + digit, u64::max_value()) {
-                                return Ok(ParserNumber::F64(tri!(self.parse_long_integer(
-                                    positive,
-                                    res,
-                                    1, // res * 10^1
-                                ))));
+                                return Ok(ParserNumber::F64(tri!(
+                                    self.parse_long_integer(positive,)
+                                )));
                             }
 
                             res = res * 10 + digit;
@@ -429,37 +446,31 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    fn parse_long_integer(
-        &mut self,
-        positive: bool,
-        significand: u64,
-        mut exponent: i32,
-    ) -> Result<f64> {
+    fn parse_long_integer(&mut self, positive: bool) -> Result<f64> {
         loop {
             match tri!(self.peek_or_null()) {
-                b'0'..=b'9' => {
+                c @ b'0'..=b'9' => {
+                    self.scratch.push(c);
                     self.eat_char();
-                    // This could overflow... if your integer is gigabytes long.
-                    // Ignore that possibility.
-                    exponent += 1;
                 }
                 b'.' => {
-                    return self.parse_decimal(positive, significand, exponent);
+                    return self.parse_decimal(positive, self.scratch.len());
                 }
                 b'e' | b'E' => {
-                    return self.parse_exponent(positive, significand, exponent);
+                    return self.parse_exponent(positive, self.scratch.len());
                 }
                 _ => {
-                    return self.f64_from_parts(positive, significand, exponent);
+                    return self.f64_from_parts(positive, self.scratch.len(), 0);
                 }
             }
         }
     }
 
     fn parse_number(&mut self, positive: bool, significand: u64) -> Result<ParserNumber> {
+        let integer_end = self.scratch.len();
         Ok(match tri!(self.peek_or_null()) {
-            b'.' => ParserNumber::F64(tri!(self.parse_decimal(positive, significand, 0))),
-            b'e' | b'E' => ParserNumber::F64(tri!(self.parse_exponent(positive, significand, 0))),
+            b'.' => ParserNumber::F64(tri!(self.parse_decimal(positive, integer_end))),
+            b'e' | b'E' => ParserNumber::F64(tri!(self.parse_exponent(positive, integer_end))),
             _ => {
                 if positive {
                     ParserNumber::U64(significand)
@@ -477,31 +488,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         })
     }
 
-    fn parse_decimal(
-        &mut self,
-        positive: bool,
-        mut significand: u64,
-        mut exponent: i32,
-    ) -> Result<f64> {
+    fn parse_decimal(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
         self.eat_char();
 
         let mut at_least_one_digit = false;
         while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
+            self.scratch.push(c);
             self.eat_char();
-            let digit = (c - b'0') as u64;
             at_least_one_digit = true;
-
-            if overflow!(significand * 10 + digit, u64::max_value()) {
-                // The next multiply/add would overflow, so just ignore all
-                // further digits.
-                while let b'0'..=b'9' = tri!(self.peek_or_null()) {
-                    self.eat_char();
-                }
-                break;
-            }
-
-            significand = significand * 10 + digit;
-            exponent -= 1;
         }
 
         if !at_least_one_digit {
@@ -512,17 +506,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         match tri!(self.peek_or_null()) {
-            b'e' | b'E' => self.parse_exponent(positive, significand, exponent),
-            _ => self.f64_from_parts(positive, significand, exponent),
+            b'e' | b'E' => self.parse_exponent(positive, integer_end),
+            _ => self.f64_from_parts(positive, integer_end, 0),
         }
     }
 
-    fn parse_exponent(
-        &mut self,
-        positive: bool,
-        significand: u64,
-        starting_exp: i32,
-    ) -> Result<f64> {
+    fn parse_exponent(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
         self.eat_char();
 
         let positive_exp = match tri!(self.peek_or_null()) {
@@ -557,19 +546,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             let digit = (c - b'0') as i32;
 
             if overflow!(exp * 10 + digit, i32::max_value()) {
-                return self.parse_exponent_overflow(positive, significand, positive_exp);
+                return self.parse_exponent_overflow(positive, integer_end, positive_exp);
             }
 
             exp = exp * 10 + digit;
         }
 
-        let final_exp = if positive_exp {
-            starting_exp.saturating_add(exp)
-        } else {
-            starting_exp.saturating_sub(exp)
-        };
+        let final_exp = if positive_exp { exp } else { -exp };
 
-        self.f64_from_parts(positive, significand, final_exp)
+        self.f64_from_parts(positive, integer_end, final_exp)
     }
 
     // This cold code should not be inlined into the middle of the hot
@@ -579,11 +564,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn parse_exponent_overflow(
         &mut self,
         positive: bool,
-        significand: u64,
+        integer_end: usize,
         positive_exp: bool,
     ) -> Result<f64> {
         // Error instead of +/- infinity.
-        if significand != 0 && positive_exp {
+        if self.scratch[..integer_end] != [b'0'] && positive_exp {
             return Err(self.error(ErrorCode::NumberOutOfRange));
         }
 
@@ -743,39 +728,36 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(())
     }
 
-    fn f64_from_parts(
-        &mut self,
-        positive: bool,
-        significand: u64,
-        mut exponent: i32,
-    ) -> Result<f64> {
-        let mut f = significand as f64;
-        loop {
-            match POW10.get(exponent.wrapping_abs() as usize) {
-                Some(&pow) => {
-                    if exponent >= 0 {
-                        f *= pow;
-                        if f.is_infinite() {
-                            return Err(self.error(ErrorCode::NumberOutOfRange));
-                        }
-                    } else {
-                        f /= pow;
-                    }
-                    break;
-                }
-                None => {
-                    if f == 0.0 {
-                        break;
-                    }
-                    if exponent >= 0 {
-                        return Err(self.error(ErrorCode::NumberOutOfRange));
-                    }
-                    f /= 1e308;
-                    exponent += 308;
-                }
+    fn f64_from_parts(&mut self, positive: bool, integer_end: usize, exponent: i32) -> Result<f64> {
+        // remove trailing zeroes from the 'fraction' part
+        let mut nzeroes = 0;
+        for c in self.scratch[integer_end..].iter().rev() {
+            if *c == b'0' {
+                nzeroes += 1;
+            } else {
+                break;
             }
         }
-        Ok(if positive { f } else { -f })
+
+        for _ in 0..nzeroes {
+            self.scratch.pop();
+        }
+
+        let integer = &self.scratch[..integer_end];
+        let fraction = &self.scratch[integer_end..];
+
+        let f = if self.requested_f32 {
+            minimal_lexical::parse_float::<f32, _, _>(integer.iter(), fraction.iter(), exponent) as f64
+        } else {
+            minimal_lexical::parse_float::<f64, _, _>(integer.iter(), fraction.iter(), exponent)
+        };
+        self.scratch.clear();
+
+        if f.is_infinite() {
+            Err(self.error(ErrorCode::NumberOutOfRange))
+        } else {
+            Ok(if positive { f } else { -f })
+        }
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
@@ -1023,42 +1005,6 @@ impl FromStr for Number {
     }
 }
 
-// Clippy bug: https://github.com/rust-lang/rust-clippy/issues/5201
-#[allow(clippy::excessive_precision)]
-static POW10: [f64; 309] = [
-    1e000, 1e001, 1e002, 1e003, 1e004, 1e005, 1e006, 1e007, 1e008, 1e009, //
-    1e010, 1e011, 1e012, 1e013, 1e014, 1e015, 1e016, 1e017, 1e018, 1e019, //
-    1e020, 1e021, 1e022, 1e023, 1e024, 1e025, 1e026, 1e027, 1e028, 1e029, //
-    1e030, 1e031, 1e032, 1e033, 1e034, 1e035, 1e036, 1e037, 1e038, 1e039, //
-    1e040, 1e041, 1e042, 1e043, 1e044, 1e045, 1e046, 1e047, 1e048, 1e049, //
-    1e050, 1e051, 1e052, 1e053, 1e054, 1e055, 1e056, 1e057, 1e058, 1e059, //
-    1e060, 1e061, 1e062, 1e063, 1e064, 1e065, 1e066, 1e067, 1e068, 1e069, //
-    1e070, 1e071, 1e072, 1e073, 1e074, 1e075, 1e076, 1e077, 1e078, 1e079, //
-    1e080, 1e081, 1e082, 1e083, 1e084, 1e085, 1e086, 1e087, 1e088, 1e089, //
-    1e090, 1e091, 1e092, 1e093, 1e094, 1e095, 1e096, 1e097, 1e098, 1e099, //
-    1e100, 1e101, 1e102, 1e103, 1e104, 1e105, 1e106, 1e107, 1e108, 1e109, //
-    1e110, 1e111, 1e112, 1e113, 1e114, 1e115, 1e116, 1e117, 1e118, 1e119, //
-    1e120, 1e121, 1e122, 1e123, 1e124, 1e125, 1e126, 1e127, 1e128, 1e129, //
-    1e130, 1e131, 1e132, 1e133, 1e134, 1e135, 1e136, 1e137, 1e138, 1e139, //
-    1e140, 1e141, 1e142, 1e143, 1e144, 1e145, 1e146, 1e147, 1e148, 1e149, //
-    1e150, 1e151, 1e152, 1e153, 1e154, 1e155, 1e156, 1e157, 1e158, 1e159, //
-    1e160, 1e161, 1e162, 1e163, 1e164, 1e165, 1e166, 1e167, 1e168, 1e169, //
-    1e170, 1e171, 1e172, 1e173, 1e174, 1e175, 1e176, 1e177, 1e178, 1e179, //
-    1e180, 1e181, 1e182, 1e183, 1e184, 1e185, 1e186, 1e187, 1e188, 1e189, //
-    1e190, 1e191, 1e192, 1e193, 1e194, 1e195, 1e196, 1e197, 1e198, 1e199, //
-    1e200, 1e201, 1e202, 1e203, 1e204, 1e205, 1e206, 1e207, 1e208, 1e209, //
-    1e210, 1e211, 1e212, 1e213, 1e214, 1e215, 1e216, 1e217, 1e218, 1e219, //
-    1e220, 1e221, 1e222, 1e223, 1e224, 1e225, 1e226, 1e227, 1e228, 1e229, //
-    1e230, 1e231, 1e232, 1e233, 1e234, 1e235, 1e236, 1e237, 1e238, 1e239, //
-    1e240, 1e241, 1e242, 1e243, 1e244, 1e245, 1e246, 1e247, 1e248, 1e249, //
-    1e250, 1e251, 1e252, 1e253, 1e254, 1e255, 1e256, 1e257, 1e258, 1e259, //
-    1e260, 1e261, 1e262, 1e263, 1e264, 1e265, 1e266, 1e267, 1e268, 1e269, //
-    1e270, 1e271, 1e272, 1e273, 1e274, 1e275, 1e276, 1e277, 1e278, 1e279, //
-    1e280, 1e281, 1e282, 1e283, 1e284, 1e285, 1e286, 1e287, 1e288, 1e289, //
-    1e290, 1e291, 1e292, 1e293, 1e294, 1e295, 1e296, 1e297, 1e298, 1e299, //
-    1e300, 1e301, 1e302, 1e303, 1e304, 1e305, 1e306, 1e307, 1e308,
-];
-
 macro_rules! deserialize_prim_number {
     ($method:ident) => {
         fn $method<V>(self, visitor: V) -> Result<V::Value>
@@ -1222,8 +1168,17 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     deserialize_prim_number!(deserialize_u16);
     deserialize_prim_number!(deserialize_u32);
     deserialize_prim_number!(deserialize_u64);
-    deserialize_prim_number!(deserialize_f32);
     deserialize_prim_number!(deserialize_f64);
+
+    fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.requested_f32 = true;
+        let val = self.deserialize_any(visitor);
+        self.requested_f32 = false;
+        val
+    }
 
     serde_if_integer128! {
         fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
