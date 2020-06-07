@@ -421,7 +421,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             // parsing the value as a `f64`.
                             if overflow!(res * 10 + digit, u64::max_value()) {
                                 return Ok(ParserNumber::F64(tri!(
-                                    self.parse_long_integer(positive,)
+                                    self.parse_long_integer(positive),
                                 )));
                             }
 
