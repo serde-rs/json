@@ -14,9 +14,7 @@ use super::num::*;
 /// * `fraction`    - Slice containing the fraction digits.
 fn parse_mantissa(integer: &[u8], fraction: &[u8]) -> (u64, usize) {
     let mut value: u64 = 0;
-    // On overflow, validate that all the remaining characters are valid
-    // digits, if not, return the first invalid digit. Otherwise,
-    // calculate the number of truncated digits.
+    // On overflow, calculate the number of truncated digits.
     let mut integer = integer.iter();
     while let Some(c) = integer.next() {
         value = match add_digit(value, to_digit(*c).unwrap()) {
