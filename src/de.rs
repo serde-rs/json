@@ -1178,7 +1178,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         V: de::Visitor<'de>,
     {
         self.single_precision = true;
-        let val = self.deserialize_any(visitor);
+        let val = self.deserialize_prim_number(visitor);
         self.single_precision = false;
         val
     }
