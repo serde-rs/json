@@ -7,12 +7,10 @@ struct Bigint {
 }
 
 impl Math for Bigint {
-    #[inline]
     fn data(&self) -> &Vec<Limb> {
         &self.data
     }
 
-    #[inline]
     fn data_mut(&mut self) -> &mut Vec<Limb> {
         &mut self.data
     }
