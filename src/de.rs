@@ -397,8 +397,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
         match next {
             b'0' => {
-                self.scratch.push(next);
-
                 // There can be only one leading '0'.
                 match tri!(self.peek_or_null()) {
                     b'0'..=b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
@@ -559,7 +557,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         positive_exp: bool,
     ) -> Result<f64> {
         // Error instead of +/- infinity.
-        if self.scratch[..integer_end] != [b'0'] && positive_exp {
+        if integer_end > 0 && positive_exp {
             return Err(self.error(ErrorCode::NumberOutOfRange));
         }
 
