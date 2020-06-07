@@ -24,7 +24,7 @@ pub struct Deserializer<R> {
     read: R,
     scratch: Vec<u8>,
     remaining_depth: u8,
-    requested_f32: bool,
+    single_precision: bool,
     #[cfg(feature = "unbounded_depth")]
     disable_recursion_limit: bool,
 }
@@ -45,20 +45,20 @@ where
         #[cfg(not(feature = "unbounded_depth"))]
         {
             Deserializer {
-                requested_f32: false,
                 read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
+                single_precision: false,
             }
         }
 
         #[cfg(feature = "unbounded_depth")]
         {
             Deserializer {
-                requested_f32: false,
                 read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
+                single_precision: false,
                 disable_recursion_limit: false,
             }
         }
@@ -749,7 +749,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let integer = &self.scratch[..integer_end];
         let fraction = &self.scratch[integer_end..];
 
-        let f = if self.requested_f32 {
+        let f = if self.single_precision {
             lexical::parse_float::<f32>(integer, fraction, exponent) as f64
         } else {
             lexical::parse_float::<f64>(integer, fraction, exponent)
@@ -1177,9 +1177,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        self.requested_f32 = true;
+        self.single_precision = true;
         let val = self.deserialize_any(visitor);
-        self.requested_f32 = false;
+        self.single_precision = false;
         val
     }
 
