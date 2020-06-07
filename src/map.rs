@@ -34,22 +34,17 @@ impl Map<String, Value> {
         }
     }
 
-    #[cfg(not(feature = "preserve_order"))]
-    /// Makes a new empty Map with the given initial capacity.
-    #[inline]
-    pub fn with_capacity(capacity: usize) -> Self {
-        // does not support with_capacity
-        let _ = capacity;
-        Map {
-            map: BTreeMap::new(),
-        }
-    }
-
-    #[cfg(feature = "preserve_order")]
     /// Makes a new empty Map with the given initial capacity.
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         Map {
+            #[cfg(not(feature = "preserve_order"))]
+            map: {
+                // does not support with_capacity
+                let _ = capacity;
+                BTreeMap::new()
+            },
+            #[cfg(feature = "preserve_order")]
             map: IndexMap::with_capacity(capacity),
         }
     }

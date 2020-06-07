@@ -42,25 +42,13 @@ where
     ///   - Deserializer::from_bytes
     ///   - Deserializer::from_reader
     pub fn new(read: R) -> Self {
-        #[cfg(not(feature = "unbounded_depth"))]
-        {
-            Deserializer {
-                read,
-                scratch: Vec::new(),
-                remaining_depth: 128,
-                single_precision: false,
-            }
-        }
-
-        #[cfg(feature = "unbounded_depth")]
-        {
-            Deserializer {
-                read,
-                scratch: Vec::new(),
-                remaining_depth: 128,
-                single_precision: false,
-                disable_recursion_limit: false,
-            }
+        Deserializer {
+            read,
+            scratch: Vec::new(),
+            remaining_depth: 128,
+            single_precision: false,
+            #[cfg(feature = "unbounded_depth")]
+            disable_recursion_limit: false,
         }
     }
 }

@@ -186,20 +186,11 @@ where
 {
     /// Create a JSON input source to read from a std::io input stream.
     pub fn new(reader: R) -> Self {
-        #[cfg(not(feature = "raw_value"))]
-        {
-            IoRead {
-                iter: LineColIterator::new(reader.bytes()),
-                ch: None,
-            }
-        }
-        #[cfg(feature = "raw_value")]
-        {
-            IoRead {
-                iter: LineColIterator::new(reader.bytes()),
-                ch: None,
-                raw_buffer: None,
-            }
+        IoRead {
+            iter: LineColIterator::new(reader.bytes()),
+            ch: None,
+            #[cfg(feature = "raw_value")]
+            raw_buffer: None,
         }
     }
 }
@@ -406,17 +397,11 @@ where
 impl<'a> SliceRead<'a> {
     /// Create a JSON input source to read from a slice of bytes.
     pub fn new(slice: &'a [u8]) -> Self {
-        #[cfg(not(feature = "raw_value"))]
-        {
-            SliceRead { slice, index: 0 }
-        }
-        #[cfg(feature = "raw_value")]
-        {
-            SliceRead {
-                slice,
-                index: 0,
-                raw_buffering_start_index: 0,
-            }
+        SliceRead {
+            slice,
+            index: 0,
+            #[cfg(feature = "raw_value")]
+            raw_buffering_start_index: 0,
         }
     }
 
@@ -622,18 +607,10 @@ impl<'a> Read<'a> for SliceRead<'a> {
 impl<'a> StrRead<'a> {
     /// Create a JSON input source to read from a UTF-8 string.
     pub fn new(s: &'a str) -> Self {
-        #[cfg(not(feature = "raw_value"))]
-        {
-            StrRead {
-                delegate: SliceRead::new(s.as_bytes()),
-            }
-        }
-        #[cfg(feature = "raw_value")]
-        {
-            StrRead {
-                delegate: SliceRead::new(s.as_bytes()),
-                data: s,
-            }
+        StrRead {
+            delegate: SliceRead::new(s.as_bytes()),
+            #[cfg(feature = "raw_value")]
+            data: s,
         }
     }
 }
