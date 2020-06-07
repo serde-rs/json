@@ -308,20 +308,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
         };
 
-        // To deserialize floats we'll first push the integer and fraction
-        // parts, both as byte strings, into the scratch buffer and then feed
-        // both slices to lexical's parser. For example if the input is
-        // `12.34e5` we'll push b"1234" into scratch and then pass b"12" and
-        // b"34" to lexical. `integer_end` will be used to track where to split
-        // the scratch buffer.
-        //
-        // Note that lexical expects the integer part to contain *no* leading
-        // zeroes and the fraction part to contain *no* trailing zeroes. The
-        // first requirement is already handled by the integer parsing logic.
-        // The second requirement will be enforced just before passing the
-        // slices to lexical in f64_from_parts.
-        self.scratch.clear();
-
         let value = match peek {
             b'-' => {
                 self.eat_char();
@@ -394,6 +380,20 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 return Err(self.error(ErrorCode::EofWhileParsingValue));
             }
         };
+
+        // To deserialize floats we'll first push the integer and fraction
+        // parts, both as byte strings, into the scratch buffer and then feed
+        // both slices to lexical's parser. For example if the input is
+        // `12.34e5` we'll push b"1234" into scratch and then pass b"12" and
+        // b"34" to lexical. `integer_end` will be used to track where to split
+        // the scratch buffer.
+        //
+        // Note that lexical expects the integer part to contain *no* leading
+        // zeroes and the fraction part to contain *no* trailing zeroes. The
+        // first requirement is already handled by the integer parsing logic.
+        // The second requirement will be enforced just before passing the
+        // slices to lexical in f64_from_parts.
+        self.scratch.clear();
 
         match next {
             b'0' => {
