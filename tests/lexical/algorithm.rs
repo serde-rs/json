@@ -23,14 +23,6 @@ fn float_fast_path_test() {
     let f = fast_path::<f32>(mantissa, 11);
     assert!(f.is_none());
 
-    // invalid mantissa
-    #[cfg(feature = "radix")]
-    {
-        let (_, max_exp) = f64::exponent_limit(3);
-        let f = fast_path::<f32>(1 << f32::MANTISSA_SIZE, 3, max_exp + 1);
-        assert!(f.is_none(), "invalid mantissa");
-    }
-
     // invalid exponents
     let (min_exp, max_exp) = f32::exponent_limit();
     let f = fast_path::<f32>(mantissa, min_exp - 1);
@@ -48,14 +40,6 @@ fn double_fast_path_test() {
     for exp in min_exp..=max_exp {
         let f = fast_path::<f64>(mantissa, exp);
         assert!(f.is_some(), "should be valid {:?}.", (mantissa, exp));
-    }
-
-    // invalid mantissa
-    #[cfg(feature = "radix")]
-    {
-        let (_, max_exp) = f64::exponent_limit(3);
-        let f = fast_path::<f64>(1 << f64::MANTISSA_SIZE, 3, max_exp + 1);
-        assert!(f.is_none(), "invalid mantissa");
     }
 
     // invalid exponents
