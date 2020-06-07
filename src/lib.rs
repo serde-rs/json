@@ -430,6 +430,9 @@ macro_rules! tri {
             crate::lib::Result::Err(err) => return crate::lib::Result::Err(err),
         }
     };
+    ($e:expr,) => {
+        tri!($e)
+    };
 }
 
 #[macro_use]
