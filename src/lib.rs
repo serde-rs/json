@@ -326,7 +326,9 @@
     clippy::enum_glob_use,
     clippy::if_not_else,
     clippy::integer_division,
+    clippy::match_same_arms,
     clippy::similar_names,
+    clippy::unused_self,
     clippy::wildcard_imports,
     // things are often more readable this way
     clippy::cast_lossless,
@@ -340,6 +342,7 @@
     clippy::zero_prefixed_literal,
     // we support older compilers
     clippy::checked_conversions,
+    clippy::mem_replace_with_default,
     // noisy
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
