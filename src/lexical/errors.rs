@@ -119,7 +119,7 @@ impl FloatErrors for u64 {
         // if the representation is accurate, we need to use an **unsigned**
         // type for comparisons.
 
-        let extrabits = extrabits.as_u64();
+        let extrabits = extrabits as u64;
         let errors = count.as_u64();
         if extrabits > 65 {
             // Underflow, we have a literal 0.

@@ -42,7 +42,7 @@ where
         // https://www.exploringbinary.com/fast-path-decimal-to-floating-point-conversion/
         let small_powers = POW10_64;
         let shift = exponent - max_exp;
-        let power = small_powers[shift.as_usize()];
+        let power = small_powers[shift as usize];
 
         // Compute the product of the power, if it overflows,
         // prematurely return early, otherwise, if we didn't overshoot,
@@ -103,12 +103,12 @@ where
         // use extended-precision multiplication.
         match fp
             .mant
-            .overflowing_mul(powers.get_small_int(small_index.as_usize()))
+            .overflowing_mul(powers.get_small_int(small_index as usize))
         {
             // Overflow, multiplication unsuccessful, go slow path.
             (_, true) => {
                 fp.normalize();
-                fp.imul(&powers.get_small(small_index.as_usize()));
+                fp.imul(&powers.get_small(small_index as usize));
                 errors += u64::error_halfscale();
             }
             // No overflow, multiplication successful.
@@ -119,7 +119,7 @@ where
         }
 
         // Multiply by the large power
-        fp.imul(&powers.get_large(large_index.as_usize()));
+        fp.imul(&powers.get_large(large_index as usize));
         if errors > 0 {
             errors += 1;
         }

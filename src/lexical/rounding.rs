@@ -196,8 +196,8 @@ where
             // Our overflow mask needs to start at the hidden bit, or at
             // `F::MANTISSA_SIZE+1`, and needs to have `diff+1` bits set,
             // to see if our value overflows.
-            let bit = (F::MANTISSA_SIZE + 1).as_u64();
-            let n = (diff + 1).as_u64();
+            let bit = (F::MANTISSA_SIZE + 1) as u64;
+            let n = (diff + 1) as u64;
             let mask = internal_n_mask(bit, n);
             if (fp.mant & mask) == 0 {
                 // If we have no 1-bit in the hidden-bit position,

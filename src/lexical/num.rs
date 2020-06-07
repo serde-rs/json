@@ -52,7 +52,6 @@ pub trait AsPrimitive: Sized + Copy + PartialOrd {
     fn as_u64(self) -> u64;
     fn as_u128(self) -> u128;
     fn as_usize(self) -> usize;
-    fn as_i32(self) -> i32;
     fn as_f32(self) -> f32;
     fn as_f64(self) -> f64;
 }
@@ -82,11 +81,6 @@ macro_rules! as_primitive_impl {
                 }
 
                 #[inline]
-                fn as_i32(self) -> i32 {
-                    self as i32
-                }
-
-                #[inline]
                 fn as_f32(self) -> f32 {
                     self as f32
                 }
@@ -100,7 +94,7 @@ macro_rules! as_primitive_impl {
     };
 }
 
-as_primitive_impl! { u32 u64 u128 usize i32 f32 f64 }
+as_primitive_impl! { u32 u64 u128 usize f32 f64 }
 
 /// An interface for casting between machine scalars.
 pub trait AsCast: AsPrimitive {
@@ -124,7 +118,6 @@ as_cast_impl!(u32, as_u32);
 as_cast_impl!(u64, as_u64);
 as_cast_impl!(u128, as_u128);
 as_cast_impl!(usize, as_usize);
-as_cast_impl!(i32, as_i32);
 as_cast_impl!(f32, as_f32);
 as_cast_impl!(f64, as_f64);
 
@@ -139,7 +132,7 @@ macro_rules! number_impl {
     };
 }
 
-number_impl! { u32 u64 u128 usize i32 f32 f64 }
+number_impl! { u32 u64 u128 usize f32 f64 }
 
 /// Defines a trait that supports integral operations.
 pub trait Integer: Number + ops::BitAnd<Output = Self> + ops::Shr<i32, Output = Self> {
@@ -156,7 +149,7 @@ macro_rules! integer_impl {
     };
 }
 
-integer_impl! { u32 u64 u128 usize i32 }
+integer_impl! { u32 u64 u128 usize }
 
 /// Type trait for the mantissa type.
 pub trait Mantissa: Integer {
@@ -281,8 +274,8 @@ pub trait Float: Number {
         }
 
         let bits = self.to_bits();
-        let biased_e: i32 = ((bits & Self::EXPONENT_MASK) >> Self::MANTISSA_SIZE).as_i32();
-        biased_e - Self::EXPONENT_BIAS
+        let biased_e = ((bits & Self::EXPONENT_MASK) >> Self::MANTISSA_SIZE).as_u32();
+        biased_e as i32 - Self::EXPONENT_BIAS
     }
 
     /// Get mantissa (significand) component from float.
@@ -302,13 +295,13 @@ pub trait Float: Number {
     #[inline]
     fn next_positive(self) -> Self {
         debug_assert!(self.is_sign_positive() && !self.is_inf());
-        Self::from_bits(self.to_bits() + Self::Unsigned::as_cast(1))
+        Self::from_bits(self.to_bits() + Self::Unsigned::as_cast(1u32))
     }
 
     /// Round a positive number to even.
     #[inline]
     fn round_positive_even(self) -> Self {
-        if self.mantissa() & Self::Unsigned::as_cast(1) == Self::Unsigned::as_cast(1) {
+        if self.mantissa() & Self::Unsigned::as_cast(1u32) == Self::Unsigned::as_cast(1u32) {
             self.next_positive()
         } else {
             self

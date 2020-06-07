@@ -172,7 +172,7 @@ where
         if (fp.exp == F::DENORMAL_EXPONENT) && (fp.mant & F::HIDDEN_BIT_MASK.as_u64()) == 0 {
             exp = 0;
         } else {
-            exp = (fp.exp + F::EXPONENT_BIAS).as_u64();
+            exp = (fp.exp + F::EXPONENT_BIAS) as u64;
         }
         let exp = exp << F::MANTISSA_SIZE;
         let mant = fp.mant & F::MANTISSA_MASK.as_u64();
