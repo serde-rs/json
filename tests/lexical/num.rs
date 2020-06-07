@@ -21,7 +21,7 @@ fn as_primitive_test() {
     check_as_primitive(1f64);
 }
 
-fn check_number<T: Number>(x: T, mut y: T) {
+fn check_number<T: Number>(x: T, y: T) {
     // Copy, partialeq, partialord
     let _ = x;
     assert!(x < y);
@@ -29,15 +29,6 @@ fn check_number<T: Number>(x: T, mut y: T) {
 
     // Operations
     let _ = y + x;
-    let _ = y - x;
-    let _ = y * x;
-    let _ = y / x;
-    let _ = y % x;
-    y += x;
-    y -= x;
-    y *= x;
-    y /= x;
-    y %= x;
 
     // Conversions already tested.
 }

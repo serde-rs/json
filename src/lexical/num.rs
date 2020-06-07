@@ -47,7 +47,7 @@ const F64_POW10: [f64; 23] = [
 ];
 
 /// Type that can be converted to primitive with `as`.
-pub trait AsPrimitive: Sized + Copy + PartialEq + PartialOrd + Send + Sync {
+pub trait AsPrimitive: Sized + Copy + PartialOrd {
     fn as_u32(self) -> u32;
     fn as_u64(self) -> u64;
     fn as_u128(self) -> u128;
@@ -129,20 +129,7 @@ as_cast_impl!(f32, as_f32);
 as_cast_impl!(f64, as_f64);
 
 /// Numerical type trait.
-pub trait Number:
-    AsCast
-    + ops::Add<Output = Self>
-    + ops::AddAssign
-    + ops::Div<Output = Self>
-    + ops::DivAssign
-    + ops::Mul<Output = Self>
-    + ops::MulAssign
-    + ops::Rem<Output = Self>
-    + ops::RemAssign
-    + ops::Sub<Output = Self>
-    + ops::SubAssign
-{
-}
+pub trait Number: AsCast + ops::Add<Output = Self> {}
 
 macro_rules! number_impl {
     ($($ty:ident)*) => {
@@ -155,9 +142,7 @@ macro_rules! number_impl {
 number_impl! { u32 u64 u128 usize i32 f32 f64 }
 
 /// Defines a trait that supports integral operations.
-pub trait Integer:
-    Number + ops::BitAnd<Output = Self> + ops::BitAndAssign + ops::Shr<i32, Output = Self>
-{
+pub trait Integer: Number + ops::BitAnd<Output = Self> + ops::Shr<i32, Output = Self> {
     const ZERO: Self;
 }
 
@@ -195,7 +180,7 @@ impl Mantissa for u64 {
 }
 
 /// Get exact exponent limit for radix.
-pub trait Float: Number + ops::Neg<Output = Self> {
+pub trait Float: Number {
     /// Unsigned type of the same size.
     type Unsigned: Integer;
 
