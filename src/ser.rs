@@ -44,10 +44,7 @@ where
     /// specified.
     #[inline]
     pub fn with_formatter(writer: W, formatter: F) -> Self {
-        Serializer {
-            writer: writer,
-            formatter: formatter,
-        }
+        Serializer { writer, formatter }
     }
 
     /// Unwrap the `Writer` from the `Serializer`.
@@ -1950,7 +1947,7 @@ impl<'a> PrettyFormatter<'a> {
         PrettyFormatter {
             current_indent: 0,
             has_value: false,
-            indent: indent,
+            indent,
         }
     }
 }

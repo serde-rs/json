@@ -122,10 +122,7 @@ where
     // Get the exact representation of the float from the big integer.
     let (mant, is_truncated) = bigmant.hi64();
     let exp = bigmant.bit_length() as i32 - bits as i32;
-    let mut fp = ExtendedFloat {
-        mant: mant,
-        exp: exp,
-    };
+    let mut fp = ExtendedFloat { mant, exp };
     fp.round_to_native::<F, _>(|fp, shift| round_nearest_tie_even(fp, shift, is_truncated));
     into_float(fp)
 }

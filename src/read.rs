@@ -408,15 +408,12 @@ impl<'a> SliceRead<'a> {
     pub fn new(slice: &'a [u8]) -> Self {
         #[cfg(not(feature = "raw_value"))]
         {
-            SliceRead {
-                slice: slice,
-                index: 0,
-            }
+            SliceRead { slice, index: 0 }
         }
         #[cfg(feature = "raw_value")]
         {
             SliceRead {
-                slice: slice,
+                slice,
                 index: 0,
                 raw_buffering_start_index: 0,
             }

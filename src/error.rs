@@ -245,11 +245,7 @@ impl Error {
     #[cold]
     pub(crate) fn syntax(code: ErrorCode, line: usize, column: usize) -> Self {
         Error {
-            err: Box::new(ErrorImpl {
-                code: code,
-                line: line,
-                column: column,
-            }),
+            err: Box::new(ErrorImpl { code, line, column }),
         }
     }
 
@@ -388,8 +384,8 @@ fn make_error(mut msg: String) -> Error {
     Error {
         err: Box::new(ErrorImpl {
             code: ErrorCode::Message(msg.into_boxed_str()),
-            line: line,
-            column: column,
+            line,
+            column,
         }),
     }
 }

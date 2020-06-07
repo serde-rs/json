@@ -340,7 +340,6 @@
     clippy::zero_prefixed_literal,
     // we support older compilers
     clippy::checked_conversions,
-    clippy::redundant_field_names,
     // noisy
     clippy::missing_errors_doc,
     clippy::must_use_candidate,

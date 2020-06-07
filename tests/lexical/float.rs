@@ -5,10 +5,7 @@ use std::{f32, f64};
 // NORMALIZE
 
 fn check_normalize(mant: u64, exp: i32, shift: u32, r_mant: u64, r_exp: i32) {
-    let mut x = ExtendedFloat {
-        mant: mant,
-        exp: exp,
-    };
+    let mut x = ExtendedFloat { mant, exp };
     assert_eq!(x.normalize(), shift);
     assert_eq!(
         x,
@@ -85,10 +82,7 @@ fn normalize_test() {
 // ROUND
 
 fn check_round_to_f32(mant: u64, exp: i32, r_mant: u64, r_exp: i32) {
-    let mut x = ExtendedFloat {
-        mant: mant,
-        exp: exp,
-    };
+    let mut x = ExtendedFloat { mant, exp };
     x.round_to_native::<f32, _>(round_nearest_tie_even);
     assert_eq!(
         x,
@@ -129,10 +123,7 @@ fn round_to_f32_test() {
 }
 
 fn check_round_to_f64(mant: u64, exp: i32, r_mant: u64, r_exp: i32) {
-    let mut x = ExtendedFloat {
-        mant: mant,
-        exp: exp,
-    };
+    let mut x = ExtendedFloat { mant, exp };
     x.round_to_native::<f64, _>(round_nearest_tie_even);
     assert_eq!(
         x,

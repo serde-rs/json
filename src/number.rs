@@ -239,7 +239,7 @@ impl Number {
                     ryu::Buffer::new().format_finite(f).to_owned()
                 }
             };
-            Some(Number { n: n })
+            Some(Number { n })
         } else {
             None
         }
@@ -250,7 +250,7 @@ impl Number {
     #[doc(hidden)]
     #[inline]
     pub fn from_string_unchecked(n: String) -> Self {
-        Number { n: n }
+        Number { n }
     }
 }
 
@@ -655,7 +655,7 @@ impl From<ParserNumber> for Number {
             #[cfg(feature = "arbitrary_precision")]
             ParserNumber::String(s) => s,
         };
-        Number { n: n }
+        Number { n }
     }
 }
 
@@ -675,7 +675,7 @@ macro_rules! impl_from_unsigned {
                             itoa::Buffer::new().format(u).to_owned()
                         }
                     };
-                    Number { n: n }
+                    Number { n }
                 }
             }
         )*
@@ -704,7 +704,7 @@ macro_rules! impl_from_signed {
                             itoa::Buffer::new().format(i).to_owned()
                         }
                     };
-                    Number { n: n }
+                    Number { n }
                 }
             }
         )*

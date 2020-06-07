@@ -46,7 +46,7 @@ where
         {
             Deserializer {
                 requested_f32: false,
-                read: read,
+                read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
             }
@@ -56,7 +56,7 @@ where
         {
             Deserializer {
                 requested_f32: false,
-                read: read,
+                read,
                 scratch: Vec::new(),
                 remaining_depth: 128,
                 disable_recursion_limit: false,
@@ -154,7 +154,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let offset = self.read.byte_offset();
         StreamDeserializer {
             de: self,
-            offset: offset,
+            offset,
             failed: false,
             output: PhantomData,
             lifetime: PhantomData,
@@ -1651,10 +1651,7 @@ struct SeqAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> SeqAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        SeqAccess {
-            de: de,
-            first: true,
-        }
+        SeqAccess { de, first: true }
     }
 }
 
@@ -1701,10 +1698,7 @@ struct MapAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> MapAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        MapAccess {
-            de: de,
-            first: true,
-        }
+        MapAccess { de, first: true }
     }
 }
 
@@ -1760,7 +1754,7 @@ struct VariantAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> VariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        VariantAccess { de: de }
+        VariantAccess { de }
     }
 }
 
@@ -1813,7 +1807,7 @@ struct UnitVariantAccess<'a, R: 'a> {
 
 impl<'a, R: 'a> UnitVariantAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
-        UnitVariantAccess { de: de }
+        UnitVariantAccess { de }
     }
 }
 
@@ -2025,7 +2019,7 @@ where
         let offset = read.byte_offset();
         StreamDeserializer {
             de: Deserializer::new(read),
-            offset: offset,
+            offset,
             failed: false,
             output: PhantomData,
             lifetime: PhantomData,

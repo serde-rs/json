@@ -20,10 +20,7 @@ impl ExtendedFloatArray {
     pub fn get_extended_float(&self, index: usize) -> ExtendedFloat {
         let mant = self.mant[index];
         let exp = self.exp[index];
-        ExtendedFloat {
-            mant: mant,
-            exp: exp,
-        }
+        ExtendedFloat { mant, exp }
     }
 
     #[inline]

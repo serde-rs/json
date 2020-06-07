@@ -285,10 +285,7 @@ impl<'de> serde::Deserializer<'de> for Value {
             }
         };
 
-        visitor.visit_enum(EnumDeserializer {
-            variant: variant,
-            value: value,
-        })
+        visitor.visit_enum(EnumDeserializer { variant, value })
     }
 
     #[inline]
@@ -830,10 +827,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             }
         };
 
-        visitor.visit_enum(EnumRefDeserializer {
-            variant: variant,
-            value: value,
-        })
+        visitor.visit_enum(EnumRefDeserializer { variant, value })
     }
 
     #[inline]
@@ -1387,7 +1381,7 @@ struct BorrowedCowStrDeserializer<'de> {
 
 impl<'de> BorrowedCowStrDeserializer<'de> {
     fn new(value: Cow<'de, str>) -> Self {
-        BorrowedCowStrDeserializer { value: value }
+        BorrowedCowStrDeserializer { value }
     }
 }
 
