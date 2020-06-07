@@ -11,20 +11,20 @@
 //! Fast, minimal float-parsing algorithm.
 
 // MODULES
-mod algorithm;
+pub(crate) mod algorithm;
 mod bhcomp;
 mod bignum;
 mod cached;
 mod cached_float80;
 mod digit;
 mod errors;
-mod exponent;
-mod float;
+pub(crate) mod exponent;
+pub(crate) mod float;
 mod large_powers;
-mod math;
-mod num;
-mod parse;
-mod rounding;
+pub(crate) mod math;
+pub(crate) mod num;
+pub(crate) mod parse;
+pub(crate) mod rounding;
 mod shift;
 mod small_powers;
 
