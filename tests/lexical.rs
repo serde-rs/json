@@ -1,3 +1,9 @@
+#![allow(
+    clippy::comparison_chain,
+    clippy::excessive_precision,
+    clippy::float_cmp
+)]
+
 #[path = "../src/lexical/mod.rs"]
 mod lexical;
 
