@@ -50,38 +50,29 @@ where
 
     // Parse the mantissa and attempt the fast and moderate-path algorithms.
     let (mantissa, truncated) = parse_mantissa(integer, fraction);
-    let is_truncated = truncated != 0;
 
-    // Process the state to a float.
     if mantissa == 0 {
-        // Literal 0, return early.
-        // Value cannot be truncated, since truncation only occurs on
-        // overflow or underflow.
-        F::ZERO
-    } else if !is_truncated {
-        // Try the fast path, no mantissa truncation.
-        let mant_exp = mantissa_exponent(exponent, fraction.len(), 0);
-        if let Some(float) = fast_path(mantissa, mant_exp) {
-            float
-        } else {
-            fallback_path(
-                integer,
-                fraction,
-                mantissa,
-                exponent,
-                mant_exp,
-                is_truncated,
-            )
-        }
-    } else {
-        let mant_exp = mantissa_exponent(exponent, fraction.len(), truncated);
-        fallback_path(
-            integer,
-            fraction,
-            mantissa,
-            exponent,
-            mant_exp,
-            is_truncated,
-        )
+        // Literal 0, return early. Value cannot be truncated since truncation
+        // only occurs on overflow or underflow.
+        return F::ZERO;
     }
+
+    let mant_exp = mantissa_exponent(exponent, fraction.len(), truncated);
+
+    // Try the fast path if no mantissa truncation.
+    let is_truncated = truncated != 0;
+    if !is_truncated {
+        if let Some(float) = fast_path(mantissa, mant_exp) {
+            return float;
+        }
+    }
+
+    fallback_path(
+        integer,
+        fraction,
+        mantissa,
+        exponent,
+        mant_exp,
+        is_truncated,
+    )
 }
