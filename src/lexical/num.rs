@@ -160,8 +160,6 @@ integer_impl! { u32 u64 u128 usize i32 }
 
 /// Type trait for the mantissa type.
 pub trait Mantissa: Integer {
-    /// Mask for the left-most bit, to check if the value is normalized.
-    const NORMALIZED_MASK: Self;
     /// Mask to extract the high bits from the integer.
     const HIMASK: Self;
     /// Mask to extract the low bits from the integer.
@@ -173,7 +171,6 @@ pub trait Mantissa: Integer {
 }
 
 impl Mantissa for u64 {
-    const NORMALIZED_MASK: u64 = 0x8000000000000000;
     const HIMASK: u64 = 0xFFFFFFFF00000000;
     const LOMASK: u64 = 0x00000000FFFFFFFF;
     const FULL: i32 = 64;
@@ -268,12 +265,6 @@ pub trait Float: Number {
     #[inline]
     fn is_special(self) -> bool {
         self.to_bits() & Self::EXPONENT_MASK == Self::EXPONENT_MASK
-    }
-
-    /// Returns true if the float is NaN.
-    #[inline]
-    fn is_nan(self) -> bool {
-        self.is_special() && (self.to_bits() & Self::MANTISSA_MASK) != Self::Unsigned::ZERO
     }
 
     /// Returns true if the float is infinite.
