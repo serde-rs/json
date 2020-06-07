@@ -740,7 +740,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         } else {
             lexical::parse_float::<f64>(integer, fraction, exponent)
         };
-        self.scratch.clear();
 
         if f.is_infinite() {
             Err(self.error(ErrorCode::NumberOutOfRange))
