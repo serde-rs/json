@@ -935,6 +935,16 @@ fn test_roundtrip_f64() {
 }
 
 #[test]
+fn test_roundtrip_f32() {
+    // This number has 1 ULP error if parsed via f64 and converted to f32.
+    // https://github.com/serde-rs/json/pull/671#issuecomment-628534468
+    let float = 7.038531e-26;
+    let json = serde_json::to_string(&float).unwrap();
+    let output: f32 = serde_json::from_str(&json).unwrap();
+    assert_eq!(float, output);
+}
+
+#[test]
 fn test_serialize_char() {
     let value = json!(
         ({
