@@ -65,79 +65,81 @@ pub trait AsPrimitive: Sized + Copy + PartialEq + PartialOrd + Send + Sync {
 }
 
 macro_rules! as_primitive_impl {
-    ($($t:tt)*) => ($(
-        impl AsPrimitive for $t {
-            #[inline]
-            fn as_u8(self) -> u8 {
-                self as u8
-            }
+    ($($ty:ident)*) => {
+        $(
+            impl AsPrimitive for $ty {
+                #[inline]
+                fn as_u8(self) -> u8 {
+                    self as u8
+                }
 
-            #[inline]
-            fn as_u16(self) -> u16 {
-                self as u16
-            }
+                #[inline]
+                fn as_u16(self) -> u16 {
+                    self as u16
+                }
 
-            #[inline]
-            fn as_u32(self) -> u32 {
-                self as u32
-            }
+                #[inline]
+                fn as_u32(self) -> u32 {
+                    self as u32
+                }
 
-            #[inline]
-            fn as_u64(self) -> u64 {
-                self as u64
-            }
+                #[inline]
+                fn as_u64(self) -> u64 {
+                    self as u64
+                }
 
-            #[inline]
-            fn as_u128(self) -> u128 {
-                self as u128
-            }
+                #[inline]
+                fn as_u128(self) -> u128 {
+                    self as u128
+                }
 
-            #[inline]
-            fn as_usize(self) -> usize {
-                self as usize
-            }
+                #[inline]
+                fn as_usize(self) -> usize {
+                    self as usize
+                }
 
-            #[inline]
-            fn as_i8(self) -> i8 {
-                self as i8
-            }
+                #[inline]
+                fn as_i8(self) -> i8 {
+                    self as i8
+                }
 
-            #[inline]
-            fn as_i16(self) -> i16 {
-                self as i16
-            }
+                #[inline]
+                fn as_i16(self) -> i16 {
+                    self as i16
+                }
 
-            #[inline]
-            fn as_i32(self) -> i32 {
-                self as i32
-            }
+                #[inline]
+                fn as_i32(self) -> i32 {
+                    self as i32
+                }
 
-            #[inline]
-            fn as_i64(self) -> i64 {
-                self as i64
-            }
+                #[inline]
+                fn as_i64(self) -> i64 {
+                    self as i64
+                }
 
-            #[inline]
-            fn as_i128(self) -> i128 {
-                self as i128
-            }
+                #[inline]
+                fn as_i128(self) -> i128 {
+                    self as i128
+                }
 
-            #[inline]
-            fn as_isize(self) -> isize {
-                self as isize
-            }
+                #[inline]
+                fn as_isize(self) -> isize {
+                    self as isize
+                }
 
-            #[inline]
-            fn as_f32(self) -> f32 {
-                self as f32
-            }
+                #[inline]
+                fn as_f32(self) -> f32 {
+                    self as f32
+                }
 
-            #[inline]
-            fn as_f64(self) -> f64 {
-                self as f64
+                #[inline]
+                fn as_f64(self) -> f64 {
+                    self as f64
+                }
             }
-        }
-    )*)
+        )*
+    };
 }
 
 as_primitive_impl! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize f32 f64 }
@@ -150,11 +152,11 @@ pub trait AsCast: AsPrimitive {
 }
 
 macro_rules! as_cast_impl {
-    ($t:ty, $meth:ident) => {
-        impl AsCast for $t {
+    ($ty:ident, $method:ident) => {
+        impl AsCast for $ty {
             #[inline]
-            fn as_cast<N: AsPrimitive>(n: N) -> $t {
-                n.$meth()
+            fn as_cast<N: AsPrimitive>(n: N) -> Self {
+                n.$method()
             }
         }
     };
@@ -192,10 +194,11 @@ pub trait Number:
 }
 
 macro_rules! number_impl {
-    ($($t:tt)*) => ($(
-        impl Number for $t {
-        }
-    )*)
+    ($($ty:ident)*) => {
+        $(
+            impl Number for $ty {}
+        )*
+    };
 }
 
 number_impl! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize f32 f64 }
@@ -208,11 +211,13 @@ pub trait Integer:
 }
 
 macro_rules! integer_impl {
-    ($($t:tt)*) => ($(
-        impl Integer for $t {
-            const ZERO: $t = 0;
-        }
-    )*)
+    ($($ty:tt)*) => {
+        $(
+            impl Integer for $ty {
+                const ZERO: Self = 0;
+            }
+        )*
+    };
 }
 
 integer_impl! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
