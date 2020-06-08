@@ -56,7 +56,9 @@ alloc = ["serde/alloc"]
 preserve_order = ["indexmap"]
 
 # Use sufficient precision when parsing fixed precision floats from JSON to
-# ensure that they maintain accuracy when round-tripped through JSON.
+# ensure that they maintain accuracy when round-tripped through JSON. This comes
+# at an approximately 2x performance cost for parsing floats compared to the
+# default best-effort precision.
 float_roundtrip = []
 
 # Use an arbitrary precision number representation for serde_json::Number. This
