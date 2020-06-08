@@ -449,11 +449,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             let digit = (c - b'0') as u64;
 
             if overflow!(significand * 10 + digit, u64::max_value()) {
-                self.scratch.clear();
-                self.scratch
-                    .extend_from_slice(itoa::Buffer::new().format(significand).as_bytes());
-                let integer_end = self.scratch.len() - (-exponent) as usize;
-                return self.parse_long_decimal(positive, integer_end);
+                return self.parse_decimal_overflow(positive, significand, exponent);
             }
 
             self.eat_char();
@@ -583,6 +579,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[cold]
     fn parse_long_decimal(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
         let mut at_least_one_digit = integer_end < self.scratch.len();
         while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
@@ -649,6 +646,23 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let final_exp = if positive_exp { exp } else { -exp };
 
         self.f64_long_from_parts(positive, integer_end, final_exp)
+    }
+
+    // This cold code should not be inlined into the middle of the hot
+    // decimal-parsing loop above.
+    #[cold]
+    #[inline(never)]
+    fn parse_decimal_overflow(
+        &mut self,
+        positive: bool,
+        significand: u64,
+        exponent: i32,
+    ) -> Result<f64> {
+        self.scratch.clear();
+        self.scratch
+            .extend_from_slice(itoa::Buffer::new().format(significand).as_bytes());
+        let integer_end = self.scratch.len() - (-exponent) as usize;
+        self.parse_long_decimal(positive, integer_end)
     }
 
     // This cold code should not be inlined into the middle of the hot
