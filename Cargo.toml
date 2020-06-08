@@ -59,11 +59,17 @@ preserve_order = ["indexmap"]
 # ensure that they maintain accuracy when round-tripped through JSON. This comes
 # at an approximately 2x performance cost for parsing floats compared to the
 # default best-effort precision.
+#
+# Unlike arbitrary_precision, this feature makes f64 -> JSON -> f64 produce
+# output identical to the input.
 float_roundtrip = []
 
 # Use an arbitrary precision number representation for serde_json::Number. This
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
 # written back to a JSON string without loss of precision.
+#
+# Unlike float_roundtrip, this feature makes JSON -> serde_json::Number -> JSON
+# produce output identical to the input.
 arbitrary_precision = []
 
 # Provide a RawValue type that can hold unprocessed JSON during deserialization.
