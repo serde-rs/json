@@ -50,7 +50,7 @@ std = ["serde/std"]
 # Available on Rust 1.36+.
 alloc = ["serde/alloc"]
 
-# Use a different representation for the map type of serde_json::Value.
+# Make serde_json::Map use a representation which maintains insertion order.
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
 preserve_order = ["indexmap"]
