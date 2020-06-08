@@ -405,7 +405,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             c @ b'1'..=b'9' => {
                 self.scratch.push(c);
-                let mut res = (c - b'0') as u64;
+                let mut significand = (c - b'0') as u64;
 
                 loop {
                     match tri!(self.peek_or_null()) {
@@ -414,19 +414,20 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             self.eat_char();
                             let digit = (c - b'0') as u64;
 
-                            // We need to be careful with overflow. If we can, try to keep the
-                            // number as a `u64` until we grow too large. At that point, switch to
-                            // parsing the value as a `f64`.
-                            if overflow!(res * 10 + digit, u64::max_value()) {
+                            // We need to be careful with overflow. If we can,
+                            // try to keep the number as a `u64` until we grow
+                            // too large. At that point, switch to parsing the
+                            // value as a `f64`.
+                            if overflow!(significand * 10 + digit, u64::max_value()) {
                                 return Ok(ParserNumber::F64(tri!(
                                     self.parse_long_integer(positive),
                                 )));
                             }
 
-                            res = res * 10 + digit;
+                            significand = significand * 10 + digit;
                         }
                         _ => {
-                            return self.parse_number(positive, res);
+                            return self.parse_number(positive, significand);
                         }
                     }
                 }
