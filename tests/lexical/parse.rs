@@ -3,11 +3,15 @@
 use crate::lexical::num::Float;
 use crate::lexical::parse::parse_float;
 use core::f64;
+use core::fmt::Debug;
 
-fn check_parse_float<F: Float>(integer: &str, fraction: &str, exponent: i32, expected: F) {
+fn check_parse_float<F>(integer: &str, fraction: &str, exponent: i32, expected: F)
+where
+    F: Float + Debug,
+{
     let integer = integer.as_bytes();
     let fraction = fraction.as_bytes();
-    assert!(expected == parse_float(integer, fraction, exponent));
+    assert_eq!(parse_float::<F>(integer, fraction, exponent), expected);
 }
 
 #[test]
