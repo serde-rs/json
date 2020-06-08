@@ -435,26 +435,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    fn parse_long_integer(&mut self, positive: bool) -> Result<f64> {
-        loop {
-            match tri!(self.peek_or_null()) {
-                c @ b'0'..=b'9' => {
-                    self.scratch.push(c);
-                    self.eat_char();
-                }
-                b'.' => {
-                    return self.parse_decimal(positive, self.scratch.len());
-                }
-                b'e' | b'E' => {
-                    return self.parse_exponent(positive, self.scratch.len());
-                }
-                _ => {
-                    return self.f64_from_parts(positive, self.scratch.len(), 0);
-                }
-            }
-        }
-    }
-
     fn parse_number(&mut self, positive: bool, significand: u64) -> Result<ParserNumber> {
         let integer_end = self.scratch.len();
         Ok(match tri!(self.peek_or_null()) {
@@ -546,6 +526,26 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.f64_from_parts(positive, integer_end, final_exp)
     }
 
+    fn parse_long_integer(&mut self, positive: bool) -> Result<f64> {
+        loop {
+            match tri!(self.peek_or_null()) {
+                c @ b'0'..=b'9' => {
+                    self.scratch.push(c);
+                    self.eat_char();
+                }
+                b'.' => {
+                    return self.parse_decimal(positive, self.scratch.len());
+                }
+                b'e' | b'E' => {
+                    return self.parse_exponent(positive, self.scratch.len());
+                }
+                _ => {
+                    return self.f64_from_parts(positive, self.scratch.len(), 0);
+                }
+            }
+        }
+    }
+
     // This cold code should not be inlined into the middle of the hot
     // exponent-parsing loop above.
     #[cold]
@@ -560,6 +560,23 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             self.eat_char();
         }
         Ok(if positive { 0.0 } else { -0.0 })
+    }
+
+    fn f64_from_parts(&mut self, positive: bool, integer_end: usize, exponent: i32) -> Result<f64> {
+        let integer = &self.scratch[..integer_end];
+        let fraction = &self.scratch[integer_end..];
+
+        let f = if self.single_precision {
+            lexical::parse_float::<f32>(integer, fraction, exponent) as f64
+        } else {
+            lexical::parse_float::<f64>(integer, fraction, exponent)
+        };
+
+        if f.is_infinite() {
+            Err(self.error(ErrorCode::NumberOutOfRange))
+        } else {
+            Ok(if positive { f } else { -f })
+        }
     }
 
     fn parse_any_signed_number(&mut self) -> Result<ParserNumber> {
@@ -710,23 +727,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         Ok(())
-    }
-
-    fn f64_from_parts(&mut self, positive: bool, integer_end: usize, exponent: i32) -> Result<f64> {
-        let integer = &self.scratch[..integer_end];
-        let fraction = &self.scratch[integer_end..];
-
-        let f = if self.single_precision {
-            lexical::parse_float::<f32>(integer, fraction, exponent) as f64
-        } else {
-            lexical::parse_float::<f64>(integer, fraction, exponent)
-        };
-
-        if f.is_infinite() {
-            Err(self.error(ErrorCode::NumberOutOfRange))
-        } else {
-            Ok(if positive { f } else { -f })
-        }
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
