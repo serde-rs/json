@@ -422,7 +422,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     fn parse_number(&mut self, positive: bool, significand: u64) -> Result<ParserNumber> {
         Ok(match tri!(self.peek_or_null()) {
-            b'.' => ParserNumber::F64(tri!(self.parse_decimal(positive, significand))),
+            b'.' => ParserNumber::F64(tri!(self.parse_decimal(positive, significand, 0))),
             b'e' | b'E' => ParserNumber::F64(tri!(self.parse_exponent(positive, significand, 0))),
             _ => {
                 if positive {
@@ -441,10 +441,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         })
     }
 
-    fn parse_decimal(&mut self, positive: bool, mut significand: u64) -> Result<f64> {
+    fn parse_decimal(
+        &mut self,
+        positive: bool,
+        mut significand: u64,
+        mut exponent: i32,
+    ) -> Result<f64> {
         self.eat_char();
 
-        let mut exponent: i32 = 0;
         while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
             let digit = (c - b'0') as u64;
 
@@ -578,7 +582,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(if positive { f } else { -f })
     }
 
+    #[cfg(feature = "float_roundtrip")]
     #[cold]
+    #[inline(never)]
     fn parse_long_integer(&mut self, positive: bool, partial_significand: u64) -> Result<f64> {
         // To deserialize floats we'll first push the integer and fraction
         // parts, both as byte strings, into the scratch buffer and then feed
@@ -616,6 +622,33 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[cfg(not(feature = "float_roundtrip"))]
+    #[cold]
+    #[inline(never)]
+    fn parse_long_integer(&mut self, positive: bool, significand: u64) -> Result<f64> {
+        let mut exponent = 0;
+        loop {
+            match tri!(self.peek_or_null()) {
+                b'0'..=b'9' => {
+                    self.eat_char();
+                    // This could overflow... if your integer is gigabytes long.
+                    // Ignore that possibility.
+                    exponent += 1;
+                }
+                b'.' => {
+                    return self.parse_decimal(positive, significand, exponent);
+                }
+                b'e' | b'E' => {
+                    return self.parse_exponent(positive, significand, exponent);
+                }
+                _ => {
+                    return self.f64_from_parts(positive, significand, exponent);
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "float_roundtrip")]
     #[cold]
     fn parse_long_decimal(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
         let mut at_least_one_digit = integer_end < self.scratch.len();
@@ -638,6 +671,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[cfg(feature = "float_roundtrip")]
     fn parse_long_exponent(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
         self.eat_char();
 
@@ -687,6 +721,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     // This cold code should not be inlined into the middle of the hot
     // decimal-parsing loop above.
+    #[cfg(feature = "float_roundtrip")]
     #[cold]
     #[inline(never)]
     fn parse_decimal_overflow(
@@ -705,6 +740,27 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.scratch.extend_from_slice(significand.as_bytes());
         let integer_end = self.scratch.len() - fraction_digits;
         self.parse_long_decimal(positive, integer_end)
+    }
+
+    #[cfg(not(feature = "float_roundtrip"))]
+    #[cold]
+    #[inline(never)]
+    fn parse_decimal_overflow(
+        &mut self,
+        positive: bool,
+        significand: u64,
+        exponent: i32,
+    ) -> Result<f64> {
+        // The next multiply/add would overflow, so just ignore all further
+        // digits.
+        while let b'0'..=b'9' = tri!(self.peek_or_null()) {
+            self.eat_char();
+        }
+
+        match tri!(self.peek_or_null()) {
+            b'e' | b'E' => self.parse_exponent(positive, significand, exponent),
+            _ => self.f64_from_parts(positive, significand, exponent),
+        }
     }
 
     // This cold code should not be inlined into the middle of the hot
@@ -728,6 +784,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(if positive { 0.0 } else { -0.0 })
     }
 
+    #[cfg(feature = "float_roundtrip")]
     fn f64_long_from_parts(
         &mut self,
         positive: bool,
