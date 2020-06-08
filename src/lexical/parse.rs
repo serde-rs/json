@@ -1,6 +1,7 @@
 // Adapted from https://github.com/Alexhuszagh/rust-lexical.
 
 use super::algorithm::*;
+use super::bhcomp::*;
 use super::digit::*;
 use super::exponent::*;
 use super::num::*;
@@ -8,28 +9,34 @@ use super::num::*;
 // PARSERS
 // -------
 
-/// Parse the significant digits of the float.
-///
-/// * `integer`     - Slice containing the integer digits.
-/// * `fraction`    - Slice containing the fraction digits.
-fn parse_mantissa(integer: &[u8], fraction: &[u8]) -> (u64, usize) {
-    let mut value: u64 = 0;
-    // On overflow, calculate the number of truncated digits.
-    let mut integer = integer.iter();
-    while let Some(c) = integer.next() {
-        value = match add_digit(value, to_digit(*c).unwrap()) {
-            Some(v) => v,
-            None => return (value, 1 + integer.count() + fraction.len()),
-        };
+/// Parse float for which the entire integer and fraction parts fit into a 64
+/// bit mantissa.
+pub fn parse_concise_float<F>(mantissa: u64, mant_exp: i32) -> F
+where
+    F: Float,
+{
+    if let Some(float) = fast_path(mantissa, mant_exp) {
+        return float;
     }
-    let mut fraction = fraction.iter();
-    while let Some(c) = fraction.next() {
-        value = match add_digit(value, to_digit(*c).unwrap()) {
-            Some(v) => v,
-            None => return (value, 1 + fraction.count()),
-        };
+
+    // Moderate path (use an extended 80-bit representation).
+    let truncated = false;
+    let (fp, valid) = moderate_path::<F>(mantissa, mant_exp, truncated);
+    if valid {
+        return fp.into_float::<F>();
     }
-    (value, 0)
+
+    let b = fp.into_downward_float::<F>();
+    if b.is_special() {
+        // We have a non-finite number, we get to leave early.
+        return b;
+    }
+
+    // Slow path, fast path didn't work.
+    let mut buffer = itoa::Buffer::new();
+    let integer = buffer.format(mantissa).as_bytes();
+    let fraction = &[];
+    bhcomp(b, integer, fraction, mant_exp)
 }
 
 /// Parse float from extracted float components.
@@ -39,7 +46,7 @@ fn parse_mantissa(integer: &[u8], fraction: &[u8]) -> (u64, usize) {
 /// * `exponent`    - Parsed, 32-bit exponent.
 ///
 /// Precondition: The integer must not have leading zeros.
-pub fn parse_float<F>(integer: &[u8], mut fraction: &[u8], exponent: i32) -> F
+pub fn parse_truncated_float<F>(integer: &[u8], mut fraction: &[u8], exponent: i32) -> F
 where
     F: Float,
 {
@@ -48,24 +55,22 @@ where
         fraction = &fraction[..fraction.len() - 1];
     }
 
-    // Parse the mantissa and attempt the fast and moderate-path algorithms.
-    let (mantissa, truncated) = parse_mantissa(integer, fraction);
-
-    if mantissa == 0 {
-        // Literal 0, return early. Value cannot be truncated since truncation
-        // only occurs on overflow or underflow.
-        return F::ZERO;
+    // Calculate the number of truncated digits.
+    let mut truncated = 0;
+    let mut mantissa: u64 = 0;
+    let mut iter = integer.iter().chain(fraction);
+    for &c in &mut iter {
+        mantissa = match add_digit(mantissa, to_digit(c).unwrap()) {
+            Some(v) => v,
+            None => {
+                truncated = 1 + iter.count();
+                break;
+            }
+        };
     }
 
     let mant_exp = mantissa_exponent(exponent, fraction.len(), truncated);
-
-    // Try the fast path if no mantissa truncation.
-    let is_truncated = truncated != 0;
-    if !is_truncated {
-        if let Some(float) = fast_path(mantissa, mant_exp) {
-            return float;
-        }
-    }
+    let is_truncated = true;
 
     fallback_path(
         integer,

@@ -381,20 +381,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
         };
 
-        // To deserialize floats we'll first push the integer and fraction
-        // parts, both as byte strings, into the scratch buffer and then feed
-        // both slices to lexical's parser. For example if the input is
-        // `12.34e5` we'll push b"1234" into scratch and then pass b"12" and
-        // b"34" to lexical. `integer_end` will be used to track where to split
-        // the scratch buffer.
-        //
-        // Note that lexical expects the integer part to contain *no* leading
-        // zeroes and the fraction part to contain *no* trailing zeroes. The
-        // first requirement is already handled by the integer parsing logic.
-        // The second requirement will be enforced just before passing the
-        // slices to lexical in f64_from_parts.
-        self.scratch.clear();
-
         match next {
             b'0' => {
                 // There can be only one leading '0'.
@@ -404,14 +390,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
             }
             c @ b'1'..=b'9' => {
-                self.scratch.push(c);
                 let mut significand = (c - b'0') as u64;
 
                 loop {
                     match tri!(self.peek_or_null()) {
                         c @ b'0'..=b'9' => {
-                            self.scratch.push(c);
-                            self.eat_char();
                             let digit = (c - b'0') as u64;
 
                             // We need to be careful with overflow. If we can,
@@ -420,10 +403,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                             // value as a `f64`.
                             if overflow!(significand * 10 + digit, u64::max_value()) {
                                 return Ok(ParserNumber::F64(tri!(
-                                    self.parse_long_integer(positive),
+                                    self.parse_long_integer(positive, significand),
                                 )));
                             }
 
+                            self.eat_char();
                             significand = significand * 10 + digit;
                         }
                         _ => {
@@ -437,10 +421,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn parse_number(&mut self, positive: bool, significand: u64) -> Result<ParserNumber> {
-        let integer_end = self.scratch.len();
         Ok(match tri!(self.peek_or_null()) {
-            b'.' => ParserNumber::F64(tri!(self.parse_decimal(positive, integer_end))),
-            b'e' | b'E' => ParserNumber::F64(tri!(self.parse_exponent(positive, integer_end))),
+            b'.' => ParserNumber::F64(tri!(self.parse_decimal(positive, significand))),
+            b'e' | b'E' => ParserNumber::F64(tri!(self.parse_exponent(positive, significand, 0))),
             _ => {
                 if positive {
                     ParserNumber::U64(significand)
@@ -458,17 +441,28 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         })
     }
 
-    fn parse_decimal(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
+    fn parse_decimal(&mut self, positive: bool, mut significand: u64) -> Result<f64> {
         self.eat_char();
 
-        let mut at_least_one_digit = false;
+        let mut exponent: i32 = 0;
         while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
-            self.scratch.push(c);
+            let digit = (c - b'0') as u64;
+
+            if overflow!(significand * 10 + digit, u64::max_value()) {
+                self.scratch.clear();
+                self.scratch
+                    .extend_from_slice(itoa::Buffer::new().format(significand).as_bytes());
+                let integer_end = self.scratch.len() - (-exponent) as usize;
+                return self.parse_long_decimal(positive, integer_end);
+            }
+
             self.eat_char();
-            at_least_one_digit = true;
+            significand = significand * 10 + digit;
+            exponent -= 1;
         }
 
-        if !at_least_one_digit {
+        // Error if there is not at least one digit after the decimal point.
+        if exponent == 0 {
             match tri!(self.peek()) {
                 Some(_) => return Err(self.peek_error(ErrorCode::InvalidNumber)),
                 None => return Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
@@ -476,12 +470,17 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         match tri!(self.peek_or_null()) {
-            b'e' | b'E' => self.parse_exponent(positive, integer_end),
-            _ => self.f64_from_parts(positive, integer_end, 0),
+            b'e' | b'E' => self.parse_exponent(positive, significand, exponent),
+            _ => self.f64_from_parts(positive, significand, exponent),
         }
     }
 
-    fn parse_exponent(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
+    fn parse_exponent(
+        &mut self,
+        positive: bool,
+        significand: u64,
+        starting_exp: i32,
+    ) -> Result<f64> {
         self.eat_char();
 
         let positive_exp = match tri!(self.peek_or_null()) {
@@ -516,18 +515,54 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             let digit = (c - b'0') as i32;
 
             if overflow!(exp * 10 + digit, i32::max_value()) {
-                return self.parse_exponent_overflow(positive, positive_exp);
+                let zero_significand = significand == 0;
+                return self.parse_exponent_overflow(positive, zero_significand, positive_exp);
             }
 
             exp = exp * 10 + digit;
         }
 
-        let final_exp = if positive_exp { exp } else { -exp };
+        let final_exp = if positive_exp {
+            starting_exp.saturating_add(exp)
+        } else {
+            starting_exp.saturating_sub(exp)
+        };
 
-        self.f64_from_parts(positive, integer_end, final_exp)
+        self.f64_from_parts(positive, significand, final_exp)
     }
 
-    fn parse_long_integer(&mut self, positive: bool) -> Result<f64> {
+    fn f64_from_parts(&mut self, positive: bool, significand: u64, exponent: i32) -> Result<f64> {
+        let f = if self.single_precision {
+            lexical::parse_concise_float::<f32>(significand, exponent) as f64
+        } else {
+            lexical::parse_concise_float::<f64>(significand, exponent)
+        };
+
+        if f.is_infinite() {
+            Err(self.error(ErrorCode::NumberOutOfRange))
+        } else {
+            Ok(if positive { f } else { -f })
+        }
+    }
+
+    #[cold]
+    fn parse_long_integer(&mut self, positive: bool, partial_significand: u64) -> Result<f64> {
+        // To deserialize floats we'll first push the integer and fraction
+        // parts, both as byte strings, into the scratch buffer and then feed
+        // both slices to lexical's parser. For example if the input is
+        // `12.34e5` we'll push b"1234" into scratch and then pass b"12" and
+        // b"34" to lexical. `integer_end` will be used to track where to split
+        // the scratch buffer.
+        //
+        // Note that lexical expects the integer part to contain *no* leading
+        // zeroes and the fraction part to contain *no* trailing zeroes. The
+        // first requirement is already handled by the integer parsing logic.
+        // The second requirement will be enforced just before passing the
+        // slices to lexical in f64_long_from_parts.
+        self.scratch.clear();
+        self.scratch
+            .extend_from_slice(itoa::Buffer::new().format(partial_significand).as_bytes());
+
         loop {
             match tri!(self.peek_or_null()) {
                 c @ b'0'..=b'9' => {
@@ -535,25 +570,99 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     self.eat_char();
                 }
                 b'.' => {
-                    return self.parse_decimal(positive, self.scratch.len());
+                    self.eat_char();
+                    return self.parse_long_decimal(positive, self.scratch.len());
                 }
                 b'e' | b'E' => {
-                    return self.parse_exponent(positive, self.scratch.len());
+                    return self.parse_long_exponent(positive, self.scratch.len());
                 }
                 _ => {
-                    return self.f64_from_parts(positive, self.scratch.len(), 0);
+                    return self.f64_long_from_parts(positive, self.scratch.len(), 0);
                 }
             }
         }
+    }
+
+    fn parse_long_decimal(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
+        let mut at_least_one_digit = integer_end < self.scratch.len();
+        while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
+            self.scratch.push(c);
+            self.eat_char();
+            at_least_one_digit = true;
+        }
+
+        if !at_least_one_digit {
+            match tri!(self.peek()) {
+                Some(_) => return Err(self.peek_error(ErrorCode::InvalidNumber)),
+                None => return Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
+            }
+        }
+
+        match tri!(self.peek_or_null()) {
+            b'e' | b'E' => self.parse_long_exponent(positive, integer_end),
+            _ => self.f64_long_from_parts(positive, integer_end, 0),
+        }
+    }
+
+    fn parse_long_exponent(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
+        self.eat_char();
+
+        let positive_exp = match tri!(self.peek_or_null()) {
+            b'+' => {
+                self.eat_char();
+                true
+            }
+            b'-' => {
+                self.eat_char();
+                false
+            }
+            _ => true,
+        };
+
+        let next = match tri!(self.next_char()) {
+            Some(b) => b,
+            None => {
+                return Err(self.error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        // Make sure a digit follows the exponent place.
+        let mut exp = match next {
+            c @ b'0'..=b'9' => (c - b'0') as i32,
+            _ => {
+                return Err(self.error(ErrorCode::InvalidNumber));
+            }
+        };
+
+        while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
+            self.eat_char();
+            let digit = (c - b'0') as i32;
+
+            if overflow!(exp * 10 + digit, i32::max_value()) {
+                let zero_significand = self.scratch.iter().all(|&digit| digit == b'0');
+                return self.parse_exponent_overflow(positive, zero_significand, positive_exp);
+            }
+
+            exp = exp * 10 + digit;
+        }
+
+        let final_exp = if positive_exp { exp } else { -exp };
+
+        self.f64_long_from_parts(positive, integer_end, final_exp)
     }
 
     // This cold code should not be inlined into the middle of the hot
     // exponent-parsing loop above.
     #[cold]
     #[inline(never)]
-    fn parse_exponent_overflow(&mut self, positive: bool, positive_exp: bool) -> Result<f64> {
+    fn parse_exponent_overflow(
+        &mut self,
+        positive: bool,
+        zero_significand: bool,
+        positive_exp: bool,
+    ) -> Result<f64> {
         // Error instead of +/- infinity.
-        if positive_exp && !self.scratch.iter().all(|&digit| digit == b'0') {
+        if !zero_significand && positive_exp {
             return Err(self.error(ErrorCode::NumberOutOfRange));
         }
 
@@ -563,14 +672,19 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(if positive { 0.0 } else { -0.0 })
     }
 
-    fn f64_from_parts(&mut self, positive: bool, integer_end: usize, exponent: i32) -> Result<f64> {
+    fn f64_long_from_parts(
+        &mut self,
+        positive: bool,
+        integer_end: usize,
+        exponent: i32,
+    ) -> Result<f64> {
         let integer = &self.scratch[..integer_end];
         let fraction = &self.scratch[integer_end..];
 
         let f = if self.single_precision {
-            lexical::parse_float::<f32>(integer, fraction, exponent) as f64
+            lexical::parse_truncated_float::<f32>(integer, fraction, exponent) as f64
         } else {
-            lexical::parse_float::<f64>(integer, fraction, exponent)
+            lexical::parse_truncated_float::<f64>(integer, fraction, exponent)
         };
 
         if f.is_infinite() {
