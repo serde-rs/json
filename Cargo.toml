@@ -55,6 +55,10 @@ alloc = ["serde/alloc"]
 # while preserving the order of map keys in the input.
 preserve_order = ["indexmap"]
 
+# Use sufficient precision when parsing fixed precision floats from JSON to
+# ensure that they maintain accuracy when round-tripped through JSON.
+float_roundtrip = []
+
 # Use an arbitrary precision number representation for serde_json::Number. This
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
 # written back to a JSON string without loss of precision.
