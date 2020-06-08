@@ -35,5 +35,4 @@ mod large_powers32;
 mod large_powers64;
 
 // API
-pub use self::num::Float;
-pub use self::parse::parse_float;
+pub use self::parse::{parse_concise_float, parse_truncated_float};

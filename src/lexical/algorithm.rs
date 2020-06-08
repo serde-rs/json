@@ -24,7 +24,9 @@ where
     let (min_exp, max_exp) = F::exponent_limit();
     let shift_exp = F::mantissa_limit();
     let mantissa_size = F::MANTISSA_SIZE + 1;
-    if mantissa >> mantissa_size != 0 {
+    if mantissa == 0 {
+        Some(F::ZERO)
+    } else if mantissa >> mantissa_size != 0 {
         // Would require truncation of the mantissa.
         None
     } else if exponent == 0 {
