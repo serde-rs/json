@@ -535,7 +535,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             let digit = (c - b'0') as i32;
 
             if overflow!(exp * 10 + digit, i32::max_value()) {
-                return self.parse_exponent_overflow(positive, integer_end, positive_exp);
+                return self.parse_exponent_overflow(positive, positive_exp);
             }
 
             exp = exp * 10 + digit;
@@ -550,14 +550,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     // exponent-parsing loop above.
     #[cold]
     #[inline(never)]
-    fn parse_exponent_overflow(
-        &mut self,
-        positive: bool,
-        integer_end: usize,
-        positive_exp: bool,
-    ) -> Result<f64> {
+    fn parse_exponent_overflow(&mut self, positive: bool, positive_exp: bool) -> Result<f64> {
         // Error instead of +/- infinity.
-        if integer_end > 0 && positive_exp {
+        if positive_exp && !self.scratch.iter().all(|&digit| digit == b'0') {
             return Err(self.error(ErrorCode::NumberOutOfRange));
         }
 
