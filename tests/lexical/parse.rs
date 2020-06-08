@@ -18,7 +18,10 @@ where
 {
     let integer = integer.as_bytes();
     let fraction = fraction.as_bytes();
-    assert_eq!(parse_truncated_float::<F>(integer, fraction, exponent), expected);
+    assert_eq!(
+        parse_truncated_float::<F>(integer, fraction, exponent),
+        expected,
+    );
 }
 
 #[test]
