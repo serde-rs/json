@@ -658,10 +658,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         significand: u64,
         exponent: i32,
     ) -> Result<f64> {
+        let mut buffer = itoa::Buffer::new();
+        let significand = buffer.format(significand);
+        let fraction_digits = -exponent as usize;
         self.scratch.clear();
-        self.scratch
-            .extend_from_slice(itoa::Buffer::new().format(significand).as_bytes());
-        let integer_end = self.scratch.len() - (-exponent) as usize;
+        if let Some(zeros) = fraction_digits.checked_sub(significand.len() + 1) {
+            self.scratch.extend(iter::repeat(b'0').take(zeros + 1));
+        }
+        self.scratch.extend_from_slice(significand.as_bytes());
+        let integer_end = self.scratch.len() - fraction_digits;
         self.parse_long_decimal(positive, integer_end)
     }
 
