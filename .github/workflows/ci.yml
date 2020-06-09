@@ -18,7 +18,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo test
       - run: cargo test --features preserve_order --tests -- --skip ui --exact
+      - run: cargo test --features float_roundtrip --tests -- --skip ui --exact
       - run: cargo test --features arbitrary_precision --tests -- --skip ui --exact
+      - run: cargo test --features float_roundtrip,arbitrary_precision --tests -- --skip ui --exact
       - run: cargo test --features raw_value --tests -- --skip ui --exact
       - run: cargo test --features unbounded_depth --tests -- --skip ui --exact
 
@@ -38,9 +40,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{matrix.rust}}
-      - run: cargo build
-      - run: cargo build --features preserve_order
-      - run: cargo build --features arbitrary_precision
+      - run: cargo check
+      - run: cargo check --features preserve_order
+      - run: cargo check --features float_roundtrip
+      - run: cargo check --features arbitrary_precision
+      - run: cargo check --features raw_value
+      - run: cargo check --features unbounded_depth
       - name: Build without std
         run: |
           rustup target add aarch64-unknown-none
