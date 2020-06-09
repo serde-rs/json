@@ -455,6 +455,7 @@ mod features_check;
 mod io;
 #[cfg(feature = "std")]
 mod iter;
+#[cfg(feature = "float_roundtrip")]
 mod lexical;
 mod number;
 mod read;
