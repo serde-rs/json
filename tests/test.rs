@@ -827,6 +827,9 @@ fn test_parse_f64() {
         ("3.1", 3.1),
         ("-1.2", -1.2),
         ("0.4", 0.4),
+        // Edge case from:
+        // https://github.com/serde-rs/json/issues/536#issuecomment-583714900
+        ("2.638344616030823e-256", 2.638344616030823e-256),
     ]);
 
     #[cfg(not(feature = "arbitrary_precision"))]
@@ -911,6 +914,7 @@ fn test_parse_f64() {
 
 // Test roundtrip with some values that were not perfectly roundtripped by the
 // old f64 deserializer.
+#[cfg(feature = "float_roundtrip")]
 #[test]
 fn test_roundtrip_f64() {
     for &float in &[
@@ -920,16 +924,13 @@ fn test_roundtrip_f64() {
         -93.3113703768803_3,  // -93.3113703768803_2
         -36.5739948427534_36, // -36.5739948427534_4
         52.31400820410624_4,  // 52.31400820410624_
-        97.45365320034685,    // 97.4536532003468_4
+        97.4536532003468_5,   // 97.4536532003468_4
         // Samples from `rng.next_u64` + `f64::from_bits` + `is_finite` filter.
         2.0030397744267762e-253,
         7.101215824554616e260,
         1.769268377902049e74,
         -1.6727517818542075e58,
         3.9287532173373315e299,
-        // Edge case from:
-        // https://github.com/serde-rs/json/issues/536#issuecomment-583714900
-        2.638344616030823e-256,
     ] {
         let json = serde_json::to_string(&float).unwrap();
         let output: f64 = serde_json::from_str(&json).unwrap();
