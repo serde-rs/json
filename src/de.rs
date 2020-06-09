@@ -25,6 +25,7 @@ pub struct Deserializer<R> {
     read: R,
     scratch: Vec<u8>,
     remaining_depth: u8,
+    #[cfg(feature = "float_roundtrip")]
     single_precision: bool,
     #[cfg(feature = "unbounded_depth")]
     disable_recursion_limit: bool,
@@ -47,6 +48,7 @@ where
             read,
             scratch: Vec::new(),
             remaining_depth: 128,
+            #[cfg(feature = "float_roundtrip")]
             single_precision: false,
             #[cfg(feature = "unbounded_depth")]
             disable_recursion_limit: false,
@@ -1401,8 +1403,11 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     deserialize_number!(deserialize_u16);
     deserialize_number!(deserialize_u32);
     deserialize_number!(deserialize_u64);
+    #[cfg(not(feature = "float_roundtrip"))]
+    deserialize_number!(deserialize_f32);
     deserialize_number!(deserialize_f64);
 
+    #[cfg(feature = "float_roundtrip")]
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
