@@ -9,7 +9,7 @@ documentation = "https://docs.serde.rs/serde_json/"
 keywords = ["json", "serde", "serialization"]
 categories = ["encoding"]
 readme = "README.md"
-include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+include = ["build.rs", "src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 edition = "2018"
 
 [dependencies]
