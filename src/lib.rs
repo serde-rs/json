@@ -311,7 +311,9 @@
     clippy::float_cmp,
     clippy::match_single_binding,
     clippy::needless_doctest_main,
-    clippy::transmute_ptr_to_ptr
+    clippy::transmute_ptr_to_ptr,
+    // clippy bug: https://github.com/rust-lang/rust-clippy/issues/5704
+    clippy::unnested_or_patterns,
 )]
 // Ignored clippy_pedantic lints
 #![allow(
