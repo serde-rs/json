@@ -304,26 +304,24 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
+        let erased_visitor = {
+            let erased_visitor = &DeserializeNumber {
+                visit_number: do_visit_number::<V>,
+                drop_visitor: do_drop::<V>,
+                expecting: do_expecting::<V>,
+            };
+            erased_visitor
         };
-
-        let value = match peek {
-            b'-' => {
-                self.eat_char();
-                tri!(self.parse_integer(false)).visit(visitor)
-            }
-            b'0'..=b'9' => tri!(self.parse_integer(true)).visit(visitor),
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
+        let mut visitor = ManuallyDrop::new(visitor);
+        let mut ret = MaybeUninit::<V::Value>::uninit();
+        tri!(unsafe {
+            self.do_deserialize_number(
+                &mut *visitor as *mut V as *mut (),
+                ret.as_mut_ptr() as *mut (),
+                erased_visitor,
+            )
+        });
+        Ok(unsafe { ret.assume_init() })
     }
 
     serde_if_integer128! {
@@ -1284,14 +1282,189 @@ macro_rules! check_recursion {
     };
 }
 
-impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
-    type Error = Error;
+#[derive(Copy, Clone)]
+struct DeserializeAny<'de, R> {
+    visit_unit: unsafe fn(visitor: *mut (), ret: *mut ()) -> Result<()>,
+    visit_bool: unsafe fn(visitor: *mut (), ret: *mut (), bool) -> Result<()>,
+    visit_number: unsafe fn(visitor: *mut (), ret: *mut (), ParserNumber) -> Result<()>,
+    visit_borrowed_str: unsafe fn(visitor: *mut (), ret: *mut (), &'de str) -> Result<()>,
+    visit_str: unsafe fn(visitor: *mut (), ret: *mut (), &str) -> Result<()>,
+    visit_seq: for<'a> unsafe fn(visitor: *mut (), ret: *mut (), SeqAccess<'a, R>) -> Result<()>,
+    visit_map: for<'a> unsafe fn(visitor: *mut (), ret: *mut (), MapAccess<'a, R>) -> Result<()>,
+    drop_visitor: unsafe fn(visitor: *mut ()),
+    drop_ret: unsafe fn(ret: *mut ()),
+}
 
-    #[inline]
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
+#[derive(Copy, Clone)]
+struct DeserializeBool {
+    visit_bool: unsafe fn(visitor: *mut (), ret: *mut (), bool) -> Result<()>,
+    drop_visitor: unsafe fn(visitor: *mut ()),
+    expecting: unsafe fn(visitor: *mut (), formatter: &mut fmt::Formatter) -> fmt::Result,
+}
+
+#[derive(Copy, Clone)]
+struct DeserializeNumber {
+    visit_number: unsafe fn(visitor: *mut (), ret: *mut (), ParserNumber) -> Result<()>,
+    drop_visitor: unsafe fn(visitor: *mut ()),
+    expecting: unsafe fn(visitor: *mut (), formatter: &mut fmt::Formatter) -> fmt::Result,
+}
+
+#[derive(Copy, Clone)]
+struct DeserializeStr<'de> {
+    visit_borrowed_str: unsafe fn(visitor: *mut (), ret: *mut (), &'de str) -> Result<()>,
+    visit_str: unsafe fn(visitor: *mut (), ret: *mut (), &str) -> Result<()>,
+    drop_visitor: unsafe fn(visitor: *mut ()),
+    expecting: unsafe fn(visitor: *mut (), formatter: &mut fmt::Formatter) -> fmt::Result,
+}
+
+#[derive(Copy, Clone)]
+struct DeserializeSeq<R> {
+    visit_seq: for<'a> unsafe fn(visitor: *mut (), ret: *mut (), SeqAccess<'a, R>) -> Result<()>,
+    drop_visitor: unsafe fn(visitor: *mut ()),
+    drop_ret: unsafe fn(ret: *mut ()),
+    expecting: unsafe fn(visitor: *mut (), formatter: &mut fmt::Formatter) -> fmt::Result,
+}
+
+#[derive(Copy, Clone)]
+struct DeserializeMap<R> {
+    visit_map: for<'a> unsafe fn(visitor: *mut (), ret: *mut (), MapAccess<'a, R>) -> Result<()>,
+    drop_visitor: unsafe fn(visitor: *mut ()),
+    drop_ret: unsafe fn(ret: *mut ()),
+    expecting: unsafe fn(visitor: *mut (), formatter: &mut fmt::Formatter) -> fmt::Result,
+}
+
+#[derive(Copy, Clone)]
+struct DeserializeStruct<R> {
+    visit_seq: for<'a> unsafe fn(visitor: *mut (), ret: *mut (), SeqAccess<'a, R>) -> Result<()>,
+    visit_map: for<'a> unsafe fn(visitor: *mut (), ret: *mut (), MapAccess<'a, R>) -> Result<()>,
+    drop_visitor: unsafe fn(visitor: *mut ()),
+    drop_ret: unsafe fn(ret: *mut ()),
+    expecting: unsafe fn(visitor: *mut (), formatter: &mut fmt::Formatter) -> fmt::Result,
+}
+
+struct VisitorPtr {
+    visitor: *mut (),
+    expecting: unsafe fn(visitor: *mut (), formatter: &mut fmt::Formatter) -> fmt::Result,
+}
+
+unsafe fn do_visit_unit<'de, V>(visitor: *mut (), ret: *mut ()) -> Result<()>
+where
+    V: de::Visitor<'de>,
+{
+    let visitor = ptr::read(visitor as *const V);
+    ptr::write(ret as *mut V::Value, tri!(visitor.visit_unit()));
+    Ok(())
+}
+
+unsafe fn do_visit_bool<'de, V>(visitor: *mut (), ret: *mut (), value: bool) -> Result<()>
+where
+    V: de::Visitor<'de>,
+{
+    let visitor = ptr::read(visitor as *const V);
+    ptr::write(ret as *mut V::Value, tri!(visitor.visit_bool(value)));
+    Ok(())
+}
+
+unsafe fn do_visit_number<'de, V>(
+    visitor: *mut (),
+    ret: *mut (),
+    number: ParserNumber,
+) -> Result<()>
+where
+    V: de::Visitor<'de>,
+{
+    let visitor = ptr::read(visitor as *const V);
+    ptr::write(ret as *mut V::Value, tri!(number.visit(visitor)));
+    Ok(())
+}
+
+unsafe fn do_visit_borrowed_str<'de, V>(visitor: *mut (), ret: *mut (), s: &'de str) -> Result<()>
+where
+    V: de::Visitor<'de>,
+{
+    let visitor = ptr::read(visitor as *const V);
+    ptr::write(ret as *mut V::Value, tri!(visitor.visit_borrowed_str(s)));
+    Ok(())
+}
+
+unsafe fn do_visit_str<'de, V>(visitor: *mut (), ret: *mut (), s: &str) -> Result<()>
+where
+    V: de::Visitor<'de>,
+{
+    let visitor = ptr::read(visitor as *const V);
+    ptr::write(ret as *mut V::Value, tri!(visitor.visit_str(s)));
+    Ok(())
+}
+
+unsafe fn do_visit_seq<'a, 'de, V, R>(
+    visitor: *mut (),
+    ret: *mut (),
+    seq: SeqAccess<'a, R>,
+) -> Result<()>
+where
+    V: de::Visitor<'de>,
+    R: Read<'de>,
+{
+    let visitor = ptr::read(visitor as *const V);
+    ptr::write(ret as *mut V::Value, tri!(visitor.visit_seq(seq)));
+    Ok(())
+}
+
+unsafe fn do_visit_map<'a, 'de, V, R>(
+    visitor: *mut (),
+    ret: *mut (),
+    map: MapAccess<'a, R>,
+) -> Result<()>
+where
+    V: de::Visitor<'de>,
+    R: Read<'de>,
+{
+    let visitor = ptr::read(visitor as *const V);
+    ptr::write(ret as *mut V::Value, tri!(visitor.visit_map(map)));
+    Ok(())
+}
+
+unsafe fn do_expecting<'de, V>(visitor: *mut (), formatter: &mut fmt::Formatter) -> fmt::Result
+where
+    V: de::Visitor<'de>,
+{
+    let visitor = &*(visitor as *const V);
+    visitor.expecting(formatter)
+}
+
+unsafe fn do_drop<V>(visitor: *mut ()) {
+    ptr::drop_in_place(visitor as *mut V);
+}
+
+struct DropGuard {
+    ptr: *mut (),
+    drop: unsafe fn(ptr: *mut ()),
+}
+
+impl Drop for DropGuard {
+    fn drop(&mut self) {
+        unsafe { (self.drop)(self.ptr) }
+    }
+}
+
+impl de::Expected for VisitorPtr {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        unsafe { (self.expecting)(self.visitor, formatter) }
+    }
+}
+
+impl<'de, R: Read<'de>> Deserializer<R> {
+    unsafe fn do_deserialize_any(
+        &mut self,
+        visitor: *mut (),
+        ret: *mut (),
+        erased_visitor: &DeserializeAny<'de, R>,
+    ) -> Result<()> {
+        let drop_visitor = DropGuard {
+            ptr: visitor,
+            drop: erased_visitor.drop_visitor,
+        };
+
         let peek = match tri!(self.parse_whitespace()) {
             Some(b) => b,
             None => {
@@ -1299,62 +1472,90 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             }
         };
 
-        let value = match peek {
+        let result = match peek {
             b'n' => {
                 self.eat_char();
                 tri!(self.parse_ident(b"ull"));
-                visitor.visit_unit()
+                mem::forget(drop_visitor);
+                (erased_visitor.visit_unit)(visitor, ret)
             }
             b't' => {
                 self.eat_char();
                 tri!(self.parse_ident(b"rue"));
-                visitor.visit_bool(true)
+                mem::forget(drop_visitor);
+                (erased_visitor.visit_bool)(visitor, ret, true)
             }
             b'f' => {
                 self.eat_char();
                 tri!(self.parse_ident(b"alse"));
-                visitor.visit_bool(false)
+                mem::forget(drop_visitor);
+                (erased_visitor.visit_bool)(visitor, ret, false)
             }
             b'-' => {
                 self.eat_char();
-                tri!(self.parse_any_number(false)).visit(visitor)
+                let number = tri!(self.parse_any_number(false));
+                mem::forget(drop_visitor);
+                (erased_visitor.visit_number)(visitor, ret, number)
             }
-            b'0'..=b'9' => tri!(self.parse_any_number(true)).visit(visitor),
+            b'0'..=b'9' => {
+                let number = tri!(self.parse_any_number(true));
+                mem::forget(drop_visitor);
+                (erased_visitor.visit_number)(visitor, ret, number)
+            }
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
                 match tri!(self.read.parse_str(&mut self.scratch)) {
-                    Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
-                    Reference::Copied(s) => visitor.visit_str(s),
+                    Reference::Borrowed(s) => {
+                        mem::forget(drop_visitor);
+                        (erased_visitor.visit_borrowed_str)(visitor, ret, s)
+                    }
+                    Reference::Copied(s) => {
+                        mem::forget(drop_visitor);
+                        (erased_visitor.visit_str)(visitor, ret, s)
+                    }
                 }
             }
             b'[' => {
                 check_recursion! {
                     self.eat_char();
-                    let ret = visitor.visit_seq(SeqAccess::new(self));
+                    mem::forget(drop_visitor);
+                    let result = (erased_visitor.visit_seq)(visitor, ret, SeqAccess::new(self));
                 }
 
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
+                match (result, self.end_seq()) {
+                    (Ok(()), Ok(())) => Ok(()),
+                    (Ok(()), Err(err)) => {
+                        (erased_visitor.drop_ret)(ret);
+                        Err(err)
+                    }
+                    (Err(err), _) => Err(err),
                 }
             }
             b'{' => {
                 check_recursion! {
                     self.eat_char();
-                    let ret = visitor.visit_map(MapAccess::new(self));
+                    mem::forget(drop_visitor);
+                    let result = (erased_visitor.visit_map)(visitor, ret, MapAccess::new(self));
                 }
 
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
+                match (result, self.end_map()) {
+                    (Ok(()), Ok(())) => Ok(()),
+                    (Ok(()), Err(err)) => {
+                        (erased_visitor.drop_ret)(ret);
+                        Err(err)
+                    }
+                    (Err(err), _) => Err(err),
                 }
             }
-            _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+            _ => {
+                drop(drop_visitor);
+                Err(self.peek_error(ErrorCode::ExpectedSomeValue))
+            }
         };
 
-        match value {
-            Ok(value) => Ok(value),
+        match result {
+            Ok(()) => Ok(()),
             // The de::Error impl creates errors with unknown line and column.
             // Fill in the position here by looking at the current index in the
             // input. There is no way to tell whether this should call `error`
@@ -1364,10 +1565,17 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
-    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
+    unsafe fn do_deserialize_bool(
+        &mut self,
+        visitor: *mut (),
+        ret: *mut (),
+        erased_visitor: &'static DeserializeBool,
+    ) -> Result<()> {
+        let drop_visitor = DropGuard {
+            ptr: visitor,
+            drop: erased_visitor.drop_visitor,
+        };
+
         let peek = match tri!(self.parse_whitespace()) {
             Some(b) => b,
             None => {
@@ -1375,24 +1583,356 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             }
         };
 
-        let value = match peek {
+        let result = match peek {
             b't' => {
                 self.eat_char();
                 tri!(self.parse_ident(b"rue"));
-                visitor.visit_bool(true)
+                mem::forget(drop_visitor);
+                (erased_visitor.visit_bool)(visitor, ret, true)
             }
             b'f' => {
                 self.eat_char();
                 tri!(self.parse_ident(b"alse"));
-                visitor.visit_bool(false)
+                mem::forget(drop_visitor);
+                (erased_visitor.visit_bool)(visitor, ret, false)
             }
-            _ => Err(self.peek_invalid_type(&visitor)),
+            _ => {
+                let err = self.peek_invalid_type(&VisitorPtr {
+                    visitor,
+                    expecting: erased_visitor.expecting,
+                });
+                drop(drop_visitor);
+                Err(err)
+            }
         };
 
-        match value {
-            Ok(value) => Ok(value),
+        match result {
+            Ok(()) => Ok(()),
             Err(err) => Err(self.fix_position(err)),
         }
+    }
+
+    unsafe fn do_deserialize_number(
+        &mut self,
+        visitor: *mut (),
+        ret: *mut (),
+        erased_visitor: &'static DeserializeNumber,
+    ) -> Result<()> {
+        let drop_visitor = DropGuard {
+            ptr: visitor,
+            drop: erased_visitor.drop_visitor,
+        };
+
+        let peek = match tri!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        let result = match peek {
+            b'-' => {
+                self.eat_char();
+                let number = tri!(self.parse_integer(false));
+                mem::forget(drop_visitor);
+                (erased_visitor.visit_number)(visitor, ret, number)
+            }
+            b'0'..=b'9' => {
+                let number = tri!(self.parse_integer(true));
+                mem::forget(drop_visitor);
+                (erased_visitor.visit_number)(visitor, ret, number)
+            }
+            _ => {
+                let err = self.peek_invalid_type(&VisitorPtr {
+                    visitor,
+                    expecting: erased_visitor.expecting,
+                });
+                drop(drop_visitor);
+                Err(err)
+            }
+        };
+
+        match result {
+            Ok(()) => Ok(()),
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+
+    unsafe fn do_deserialize_str(
+        &mut self,
+        visitor: *mut (),
+        ret: *mut (),
+        erased_visitor: &'de DeserializeStr<'de>,
+    ) -> Result<()> {
+        let drop_visitor = DropGuard {
+            ptr: visitor,
+            drop: erased_visitor.drop_visitor,
+        };
+
+        let peek = match tri!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        let result = match peek {
+            b'"' => {
+                self.eat_char();
+                self.scratch.clear();
+                match tri!(self.read.parse_str(&mut self.scratch)) {
+                    Reference::Borrowed(s) => {
+                        mem::forget(drop_visitor);
+                        (erased_visitor.visit_borrowed_str)(visitor, ret, s)
+                    }
+                    Reference::Copied(s) => {
+                        mem::forget(drop_visitor);
+                        (erased_visitor.visit_str)(visitor, ret, s)
+                    }
+                }
+            }
+            _ => {
+                let err = self.peek_invalid_type(&VisitorPtr {
+                    visitor,
+                    expecting: erased_visitor.expecting,
+                });
+                drop(drop_visitor);
+                Err(err)
+            }
+        };
+
+        match result {
+            Ok(()) => Ok(()),
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+
+    unsafe fn do_deserialize_seq(
+        &mut self,
+        visitor: *mut (),
+        ret: *mut (),
+        erased_visitor: &DeserializeSeq<R>,
+    ) -> Result<()> {
+        let drop_visitor = DropGuard {
+            ptr: visitor,
+            drop: erased_visitor.drop_visitor,
+        };
+
+        let peek = match tri!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        let result = match peek {
+            b'[' => {
+                check_recursion! {
+                    self.eat_char();
+                    mem::forget(drop_visitor);
+                    let result = (erased_visitor.visit_seq)(visitor, ret, SeqAccess::new(self));
+                }
+
+                match (result, self.end_seq()) {
+                    (Ok(()), Ok(())) => Ok(()),
+                    (Ok(()), Err(err)) => {
+                        (erased_visitor.drop_ret)(ret);
+                        Err(err)
+                    }
+                    (Err(err), _) => Err(err),
+                }
+            }
+            _ => {
+                let err = self.peek_invalid_type(&VisitorPtr {
+                    visitor,
+                    expecting: erased_visitor.expecting,
+                });
+                drop(drop_visitor);
+                Err(err)
+            }
+        };
+
+        match result {
+            Ok(()) => Ok(()),
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+
+    unsafe fn do_deserialize_map(
+        &mut self,
+        visitor: *mut (),
+        ret: *mut (),
+        erased_visitor: &DeserializeMap<R>,
+    ) -> Result<()> {
+        let drop_visitor = DropGuard {
+            ptr: visitor,
+            drop: erased_visitor.drop_visitor,
+        };
+
+        let peek = match tri!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        let result = match peek {
+            b'{' => {
+                check_recursion! {
+                    self.eat_char();
+                    mem::forget(drop_visitor);
+                    let result = (erased_visitor.visit_map)(visitor, ret, MapAccess::new(self));
+                }
+
+                match (result, self.end_map()) {
+                    (Ok(()), Ok(())) => Ok(()),
+                    (Ok(()), Err(err)) => {
+                        (erased_visitor.drop_ret)(ret);
+                        Err(err)
+                    }
+                    (Err(err), _) => Err(err),
+                }
+            }
+            _ => {
+                let err = self.peek_invalid_type(&VisitorPtr {
+                    visitor,
+                    expecting: erased_visitor.expecting,
+                });
+                drop(drop_visitor);
+                Err(err)
+            }
+        };
+
+        match result {
+            Ok(()) => Ok(()),
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+
+    unsafe fn do_deserialize_struct(
+        &mut self,
+        visitor: *mut (),
+        ret: *mut (),
+        erased_visitor: &DeserializeStruct<R>,
+    ) -> Result<()> {
+        let drop_visitor = DropGuard {
+            ptr: visitor,
+            drop: erased_visitor.drop_visitor,
+        };
+
+        let peek = match tri!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        let result = match peek {
+            b'[' => {
+                check_recursion! {
+                    self.eat_char();
+                    mem::forget(drop_visitor);
+                    let result = (erased_visitor.visit_seq)(visitor, ret, SeqAccess::new(self));
+                }
+
+                match (result, self.end_seq()) {
+                    (Ok(()), Ok(())) => Ok(()),
+                    (Ok(()), Err(err)) => {
+                        (erased_visitor.drop_ret)(ret);
+                        Err(err)
+                    }
+                    (Err(err), _) => Err(err),
+                }
+            }
+            b'{' => {
+                check_recursion! {
+                    self.eat_char();
+                    mem::forget(drop_visitor);
+                    let result = (erased_visitor.visit_map)(visitor, ret, MapAccess::new(self));
+                }
+
+                match (result, self.end_map()) {
+                    (Ok(()), Ok(())) => Ok(()),
+                    (Ok(()), Err(err)) => {
+                        (erased_visitor.drop_ret)(ret);
+                        Err(err)
+                    }
+                    (Err(err), _) => Err(err),
+                }
+            }
+            _ => {
+                let err = self.peek_invalid_type(&VisitorPtr {
+                    visitor,
+                    expecting: erased_visitor.expecting,
+                });
+                drop(drop_visitor);
+                Err(err)
+            }
+        };
+
+        match result {
+            Ok(()) => Ok(()),
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+}
+
+impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
+    type Error = Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        let erased_visitor = {
+            // ensure promoted to static
+            let erased_visitor = &DeserializeAny {
+                visit_unit: do_visit_unit::<V>,
+                visit_bool: do_visit_bool::<V>,
+                visit_number: do_visit_number::<V>,
+                visit_borrowed_str: do_visit_borrowed_str::<V>,
+                visit_str: do_visit_str::<V>,
+                visit_seq: do_visit_seq::<V, R>,
+                visit_map: do_visit_map::<V, R>,
+                drop_visitor: do_drop::<V>,
+                drop_ret: do_drop::<V::Value>,
+            };
+            erased_visitor
+        };
+        let mut visitor = ManuallyDrop::new(visitor);
+        let mut ret = MaybeUninit::<V::Value>::uninit();
+        tri!(unsafe {
+            self.do_deserialize_any(
+                &mut *visitor as *mut V as *mut (),
+                ret.as_mut_ptr() as *mut (),
+                erased_visitor,
+            )
+        });
+        Ok(unsafe { ret.assume_init() })
+    }
+
+    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        let erased_visitor = {
+            let erased_visitor = &DeserializeBool {
+                visit_bool: do_visit_bool::<V>,
+                drop_visitor: do_drop::<V>,
+                expecting: do_expecting::<V>,
+            };
+            erased_visitor
+        };
+        let mut visitor = ManuallyDrop::new(visitor);
+        let mut ret = MaybeUninit::<V::Value>::uninit();
+        tri!(unsafe {
+            self.do_deserialize_bool(
+                &mut *visitor as *mut V as *mut (),
+                ret.as_mut_ptr() as *mut (),
+                erased_visitor,
+            )
+        });
+        Ok(unsafe { ret.assume_init() })
     }
 
     deserialize_number!(deserialize_i8);
@@ -1493,29 +2033,25 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
+        let erased_visitor = {
+            let erased_visitor = &DeserializeStr {
+                visit_borrowed_str: do_visit_borrowed_str::<V>,
+                visit_str: do_visit_str::<V>,
+                drop_visitor: do_drop::<V>,
+                expecting: do_expecting::<V>,
+            };
+            erased_visitor
         };
-
-        let value = match peek {
-            b'"' => {
-                self.eat_char();
-                self.scratch.clear();
-                match tri!(self.read.parse_str(&mut self.scratch)) {
-                    Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
-                    Reference::Copied(s) => visitor.visit_str(s),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
+        let mut visitor = ManuallyDrop::new(visitor);
+        let mut ret = MaybeUninit::<V::Value>::uninit();
+        tri!(unsafe {
+            self.do_deserialize_str(
+                &mut *visitor as *mut V as *mut (),
+                ret.as_mut_ptr() as *mut (),
+                erased_visitor,
+            )
+        });
+        Ok(unsafe { ret.assume_init() })
     }
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
@@ -1704,32 +2240,25 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
+        let erased_visitor = {
+            let erased_visitor = &DeserializeSeq {
+                visit_seq: do_visit_seq::<V, R>,
+                drop_visitor: do_drop::<V>,
+                drop_ret: do_drop::<V::Value>,
+                expecting: do_expecting::<V>,
+            };
+            erased_visitor
         };
-
-        let value = match peek {
-            b'[' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_seq(SeqAccess::new(self));
-                }
-
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
+        let mut visitor = ManuallyDrop::new(visitor);
+        let mut ret = MaybeUninit::<V::Value>::uninit();
+        tri!(unsafe {
+            self.do_deserialize_seq(
+                &mut *visitor as *mut V as *mut (),
+                ret.as_mut_ptr() as *mut (),
+                erased_visitor,
+            )
+        });
+        Ok(unsafe { ret.assume_init() })
     }
 
     fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
@@ -1755,32 +2284,25 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
+        let erased_visitor = {
+            let erased_visitor = &DeserializeMap {
+                visit_map: do_visit_map::<V, R>,
+                drop_visitor: do_drop::<V>,
+                drop_ret: do_drop::<V::Value>,
+                expecting: do_expecting::<V>,
+            };
+            erased_visitor
         };
-
-        let value = match peek {
-            b'{' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_map(MapAccess::new(self));
-                }
-
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
+        let mut visitor = ManuallyDrop::new(visitor);
+        let mut ret = MaybeUninit::<V::Value>::uninit();
+        tri!(unsafe {
+            self.do_deserialize_map(
+                &mut *visitor as *mut V as *mut (),
+                ret.as_mut_ptr() as *mut (),
+                erased_visitor,
+            )
+        });
+        Ok(unsafe { ret.assume_init() })
     }
 
     fn deserialize_struct<V>(
@@ -1792,43 +2314,26 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = match tri!(self.parse_whitespace()) {
-            Some(b) => b,
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
+        let erased_visitor = {
+            let erased_visitor = &DeserializeStruct {
+                visit_seq: do_visit_seq::<V, R>,
+                visit_map: do_visit_map::<V, R>,
+                drop_visitor: do_drop::<V>,
+                drop_ret: do_drop::<V::Value>,
+                expecting: do_expecting::<V>,
+            };
+            erased_visitor
         };
-
-        let value = match peek {
-            b'[' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_seq(SeqAccess::new(self));
-                }
-
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            b'{' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_map(MapAccess::new(self));
-                }
-
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
+        let mut visitor = ManuallyDrop::new(visitor);
+        let mut ret = MaybeUninit::<V::Value>::uninit();
+        tri!(unsafe {
+            self.do_deserialize_struct(
+                &mut *visitor as *mut V as *mut (),
+                ret.as_mut_ptr() as *mut (),
+                erased_visitor,
+            )
+        });
+        Ok(unsafe { ret.assume_init() })
     }
 
     /// Parses an enum as an object like `{"$KEY":$VALUE}`, where $VALUE is either a straight
