@@ -196,6 +196,9 @@ autocomplete field names to prevent typos, which was impossible in the
 when we write `p.phones[0]`, then `p.phones` is guaranteed to be a
 `Vec<String>` so indexing into it makes sense and produces a `String`.
 
+Read [Using derive](https://serde.rs/derive.html)
+for details on setting up `#[derive(Serialize, Deserialize)]` macro.
+
 ## Constructing JSON values
 
 Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
