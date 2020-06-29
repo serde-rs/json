@@ -299,5 +299,5 @@ macro_rules! json_unexpected {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! json_expect_expr_comma {
-    ($e:expr ,) => {};
+    ($e:expr , $($tt:tt)*) => {};
 }
