@@ -1,7 +1,5 @@
-error: unexpected end of macro invocation
- --> $DIR/parse_expr.rs:4:5
+error: no rules expected the token `~`
+ --> $DIR/parse_expr.rs:4:19
   |
 4 |     json!({ "a" : ~ });
-  |     ^^^^^^^^^^^^^^^^^^^ missing tokens in macro arguments
-  |
-  = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+  |                   ^ no rules expected this token in macro call
