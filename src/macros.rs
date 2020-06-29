@@ -224,6 +224,11 @@ macro_rules! json_internal {
         json_internal!(@object $object ($key) (: $($rest)*) (: $($rest)*));
     };
 
+    // Refuse to absorb colon token into key expression.
+    (@object $object:ident ($($key:tt)*) (: $($unexpected:tt)+) $copy:tt) => {
+        json_expect_expr_comma!($($unexpected)+);
+    };
+
     // Munch a token into the current key.
     (@object $object:ident ($($key:tt)*) ($tt:tt $($rest:tt)*) $copy:tt) => {
         json_internal!(@object $object ($($key)* $tt) ($($rest)*) ($($rest)*));
@@ -289,4 +294,10 @@ macro_rules! json_internal_vec {
 #[doc(hidden)]
 macro_rules! json_unexpected {
     () => {};
+}
+
+#[macro_export]
+#[doc(hidden)]
+macro_rules! json_expect_expr_comma {
+    ($e:expr , $($tt:tt)*) => {};
 }
