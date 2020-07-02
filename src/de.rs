@@ -1951,11 +1951,11 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
     where
         T: de::DeserializeSeed<'de>,
     {
-        match self.parse_element_prefix() {
-            ElementResult::Field => Ok(Some(tri!(seed.deserialize(&mut *self.de)))),
-            ElementResult::Done => Ok(None),
-            ElementResult::Error(err) => Err(err),
-        }
+        Ok(match self.parse_element_prefix() {
+            ElementResult::Field => Some(tri!(seed.deserialize(&mut *self.de))),
+            ElementResult::Done => None,
+            ElementResult::Error(err) => return Err(err),
+        })
     }
 }
 
@@ -2013,11 +2013,11 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
     where
         K: de::DeserializeSeed<'de>,
     {
-        match self.parse_key_prefix() {
-            KeyResult::Key => seed.deserialize(MapKey { de: &mut *self.de }).map(Some),
-            KeyResult::Done => Ok(None),
-            KeyResult::Error(err) => Err(err),
-        }
+        Ok(match self.parse_key_prefix() {
+            KeyResult::Key => Some(tri!(seed.deserialize(MapKey { de: &mut *self.de }))),
+            KeyResult::Done => None,
+            KeyResult::Error(err) => return Err(err),
+        })
     }
 
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
