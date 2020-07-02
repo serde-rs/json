@@ -672,17 +672,12 @@ where
             Compound::Map { ser, state } => {
                 tri!(ser
                     .formatter
-                    .begin_object_key(&mut ser.writer, *state == State::First)
-                    .map_err(Error::io));
+                    .begin_object_key_io(&mut ser.writer, *state == State::First));
                 *state = State::Rest;
 
                 tri!(key.serialize(MapKeySerializer { ser: *ser }));
 
-                tri!(ser
-                    .formatter
-                    .end_object_key(&mut ser.writer)
-                    .map_err(Error::io));
-                Ok(())
+                ser.formatter.end_object_key_io(&mut ser.writer)
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
@@ -698,16 +693,9 @@ where
     {
         match self {
             Compound::Map { ser, .. } => {
-                tri!(ser
-                    .formatter
-                    .begin_object_value(&mut ser.writer)
-                    .map_err(Error::io));
+                tri!(ser.formatter.begin_object_value_io(&mut ser.writer));
                 tri!(value.serialize(&mut **ser));
-                tri!(ser
-                    .formatter
-                    .end_object_value(&mut ser.writer)
-                    .map_err(Error::io));
-                Ok(())
+                ser.formatter.end_object_value_io(&mut ser.writer)
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
@@ -719,13 +707,10 @@ where
     #[inline]
     fn end(self) -> Result<()> {
         match self {
-            Compound::Map { ser, state } => {
-                match state {
-                    State::Empty => {}
-                    _ => tri!(ser.formatter.end_object(&mut ser.writer).map_err(Error::io)),
-                }
-                Ok(())
-            }
+            Compound::Map { ser, state } => match state {
+                State::Empty => Ok(()),
+                _ => ser.formatter.end_object(&mut ser.writer).map_err(Error::io),
+            },
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
@@ -1917,6 +1902,42 @@ pub trait Formatter {
         writer.write_all(fragment.as_bytes())
     }
 }
+
+trait FormatterExt: Formatter {
+    #[inline]
+    fn begin_object_key_io<W>(&mut self, writer: &mut W, first: bool) -> Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        self.begin_object_key(writer, first).map_err(Error::io)
+    }
+
+    #[inline]
+    fn end_object_key_io<W>(&mut self, writer: &mut W) -> Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        self.end_object_key(writer).map_err(Error::io)
+    }
+
+    #[inline]
+    fn begin_object_value_io<W>(&mut self, writer: &mut W) -> Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        self.begin_object_value(writer).map_err(Error::io)
+    }
+
+    #[inline]
+    fn end_object_value_io<W>(&mut self, writer: &mut W) -> Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        self.end_object_value(writer).map_err(Error::io)
+    }
+}
+
+impl<T> FormatterExt for T where T: Formatter {}
 
 /// This structure compacts a JSON value with no extra whitespace.
 #[derive(Clone, Debug)]
