@@ -259,6 +259,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    fn parse_whitespace_until(&mut self, expected: u8, visitor: &dyn Expected) -> Result<()> {
+        if tri!(self.parse_whitespace_in_value()) == expected {
+            Ok(())
+        } else {
+            Err(self.peek_invalid_type(visitor))
+        }
+    }
+
     /// Returns the first non-whitespace byte without consuming it, or `Err` if
     /// EOF is encountered.
     fn parse_whitespace_in_object(&mut self) -> Result<u8> {
@@ -1482,18 +1490,13 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = tri!(self.parse_whitespace_in_value());
+        tri!(self.parse_whitespace_until(b'"', &visitor));
 
-        let value = match peek {
-            b'"' => {
-                self.eat_char();
-                self.scratch.clear();
-                match tri!(self.read.parse_str(&mut self.scratch)) {
-                    Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
-                    Reference::Copied(s) => visitor.visit_str(s),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
+        self.eat_char();
+        self.scratch.clear();
+        let value = match tri!(self.read.parse_str(&mut self.scratch)) {
+            Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
+            Reference::Copied(s) => visitor.visit_str(s),
         };
 
         match value {
@@ -1632,18 +1635,12 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = tri!(self.parse_whitespace_in_value());
+        tri!(self.parse_whitespace_until(b'n', &visitor));
 
-        let value = match peek {
-            b'n' => {
-                self.eat_char();
-                tri!(self.parse_ident(b"ull"));
-                visitor.visit_unit()
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
+        self.eat_char();
+        tri!(self.parse_ident(b"ull"));
 
-        match value {
+        match visitor.visit_unit() {
             Ok(value) => Ok(value),
             Err(err) => Err(self.fix_position(err)),
         }
@@ -1677,26 +1674,16 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = tri!(self.parse_whitespace_in_value());
+        tri!(self.parse_whitespace_until(b'[', &visitor));
 
-        let value = match peek {
-            b'[' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_seq(SeqAccess::new(self));
-                }
+        check_recursion! {
+            self.eat_char();
+            let ret = visitor.visit_seq(SeqAccess::new(self));
+        }
 
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
+        match (ret, self.end_seq()) {
+            (Ok(ret), Ok(())) => Ok(ret),
+            (Err(err), _) | (_, Err(err)) => Err(self.fix_position(err)),
         }
     }
 
@@ -1723,26 +1710,16 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = tri!(self.parse_whitespace_in_value());
+        tri!(self.parse_whitespace_until(b'{', &visitor));
 
-        let value = match peek {
-            b'{' => {
-                check_recursion! {
-                    self.eat_char();
-                    let ret = visitor.visit_map(MapAccess::new(self));
-                }
+        check_recursion! {
+            self.eat_char();
+            let ret = visitor.visit_map(MapAccess::new(self));
+        }
 
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
-            }
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
+        match (ret, self.end_map()) {
+            (Ok(ret), Ok(())) => Ok(ret),
+            (Err(err), _) | (_, Err(err)) => Err(self.fix_position(err)),
         }
     }
 
@@ -1757,17 +1734,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         let peek = tri!(self.parse_whitespace_in_value());
 
-        let value = match peek {
+        let (ret, ret2) = match peek {
             b'[' => {
                 check_recursion! {
                     self.eat_char();
                     let ret = visitor.visit_seq(SeqAccess::new(self));
                 }
 
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
+                (ret, self.end_seq())
             }
             b'{' => {
                 check_recursion! {
@@ -1775,17 +1749,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     let ret = visitor.visit_map(MapAccess::new(self));
                 }
 
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
+                (ret, self.end_map())
             }
-            _ => Err(self.peek_invalid_type(&visitor)),
+            _ => (Err(self.peek_invalid_type(&visitor)), Ok(())),
         };
 
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
+        match (ret, ret2) {
+            (Ok(ret), Ok(())) => Ok(ret),
+            (Err(err), _) | (_, Err(err)) => Err(self.fix_position(err)),
         }
     }
 
