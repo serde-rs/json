@@ -1933,6 +1933,54 @@ impl<'a, R: 'a> MapAccess<'a, R> {
     }
 }
 
+macro_rules! try_with {
+    ($e:expr, $wrap:expr) => {
+        match $e {
+            crate::lib::Result::Ok(val) => val,
+            crate::lib::Result::Err(err) => return $wrap(err),
+        }
+    };
+    ($e:expr, $wrap:expr,) => {
+        try_with!($e, $wrap)
+    };
+}
+
+enum KeyResult {
+    Error(Error),
+    Key,
+    Done,
+}
+
+impl<'de, 'a, R: Read<'de> + 'a> MapAccess<'a, R> {
+    fn parse_key_prefix(&mut self) -> KeyResult {
+        let peek = match try_with!(self.de.parse_whitespace_in_object(), KeyResult::Error) {
+            b'}' => {
+                return KeyResult::Done;
+            }
+            b',' if !self.first => {
+                self.de.eat_char();
+                try_with!(self.de.parse_whitespace_in_value(), KeyResult::Error)
+            }
+            b => {
+                if self.first {
+                    self.first = false;
+                    b
+                } else {
+                    return KeyResult::Error(
+                        self.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd),
+                    );
+                }
+            }
+        };
+
+        match peek {
+            b'"' => KeyResult::Key,
+            b'}' => KeyResult::Error(self.de.peek_error(ErrorCode::TrailingComma)),
+            _ => KeyResult::Error(self.de.peek_error(ErrorCode::KeyMustBeAString)),
+        }
+    }
+}
+
 impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
     type Error = Error;
 
@@ -1940,28 +1988,10 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
     where
         K: de::DeserializeSeed<'de>,
     {
-        let peek = match tri!(self.de.parse_whitespace_in_object()) {
-            b'}' => {
-                return Ok(None);
-            }
-            b',' if !self.first => {
-                self.de.eat_char();
-                tri!(self.de.parse_whitespace_in_value())
-            }
-            b => {
-                if self.first {
-                    self.first = false;
-                    b
-                } else {
-                    return Err(self.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
-                }
-            }
-        };
-
-        match peek {
-            b'"' => seed.deserialize(MapKey { de: &mut *self.de }).map(Some),
-            b'}' => Err(self.de.peek_error(ErrorCode::TrailingComma)),
-            _ => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
+        match self.parse_key_prefix() {
+            KeyResult::Key => seed.deserialize(MapKey { de: &mut *self.de }).map(Some),
+            KeyResult::Done => Ok(None),
+            KeyResult::Error(err) => Err(err),
         }
     }
 
