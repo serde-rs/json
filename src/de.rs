@@ -1,28 +1,39 @@
 //! Deserialize JSON data to a Rust data structure.
 
-use crate::error::{Error, ErrorCode, Result};
-#[cfg(feature = "float_roundtrip")]
-use crate::lexical;
-use crate::number::Number;
-use crate::read::{self, Fused, Reference};
-use alloc::string::String;
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 #[cfg(feature = "float_roundtrip")]
 use core::iter;
-use core::iter::FusedIterator;
-use core::marker::PhantomData;
-use core::result;
-use core::str::FromStr;
-use serde::de::{self, Expected, Unexpected};
-use serde::{forward_to_deserialize_any, serde_if_integer128};
+use core::{iter::FusedIterator, marker::PhantomData, result, str::FromStr};
 
+use serde::{
+    de::{self, Expected, Unexpected},
+    forward_to_deserialize_any, serde_if_integer128,
+};
+
+#[cfg(feature = "float_roundtrip")]
+use crate::lexical;
 #[cfg(feature = "arbitrary_precision")]
 use crate::number::NumberDeserializer;
-
-pub use crate::read::{Read, SliceRead, StrRead};
-
 #[cfg(feature = "std")]
 pub use crate::read::IoRead;
+pub use crate::read::{Read, SliceRead, StrRead};
+use crate::{
+    error::{Error, ErrorCode, Result},
+    number::Number,
+    read::{self, Fused, Reference},
+};
+
+macro_rules! try_with {
+    ($e:expr, $wrap:expr) => {
+        match $e {
+            core::result::Result::Ok(val) => val,
+            core::result::Result::Err(err) => return $wrap(err),
+        }
+    };
+    ($e:expr, $wrap:expr,) => {
+        try_with!($e, $wrap)
+    };
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -172,6 +183,16 @@ macro_rules! check_recursion {
     };
 }
 
+enum AnyResult {
+    Null,
+    Bool(bool),
+    Number(bool),
+    String,
+    Array,
+    Map,
+    Error(Error),
+}
+
 impl<'de, R: Read<'de>> Deserializer<R> {
     /// The `Deserializer::end` method should be called after a value has been fully deserialized.
     /// This allows the `Deserializer` to validate that the input stream is at the end or that it
@@ -288,6 +309,57 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn peek_error(&self, reason: ErrorCode) -> Error {
         let position = self.read.peek_position();
         Error::syntax(reason, position.line, position.column)
+    }
+
+    fn parse_any_prefix(&mut self) -> AnyResult {
+        match try_with!(self.parse_whitespace_in_value(), AnyResult::Error) {
+            b'n' => {
+                self.eat_char();
+                try_with!(self.parse_ident(b"ull"), AnyResult::Error);
+                AnyResult::Null
+            }
+            b't' => {
+                self.eat_char();
+                try_with!(self.parse_ident(b"rue"), AnyResult::Error);
+                AnyResult::Bool(true)
+            }
+            b'f' => {
+                self.eat_char();
+                try_with!(self.parse_ident(b"alse"), AnyResult::Error);
+                AnyResult::Bool(false)
+            }
+            b'-' => {
+                self.eat_char();
+                AnyResult::Number(false)
+            }
+            b'0'..=b'9' => AnyResult::Number(true),
+            b'"' => {
+                self.eat_char();
+                self.scratch.clear();
+                AnyResult::String
+            }
+            b'[' => {
+                self.eat_char();
+                if_checking_recursion_limit! {
+                    self.remaining_depth -= 1;
+                    if self.remaining_depth == 0 {
+                        return AnyResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
+                    }
+                }
+                AnyResult::Array
+            }
+            b'{' => {
+                self.eat_char();
+                if_checking_recursion_limit! {
+                    self.remaining_depth -= 1;
+                    if self.remaining_depth == 0 {
+                        return AnyResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
+                    }
+                }
+                AnyResult::Map
+            }
+            _ => AnyResult::Error(self.peek_error(ErrorCode::ExpectedSomeValue)),
+        }
     }
 
     fn parse_struct_prefix(&mut self, exp: &dyn Expected) -> StructResult {
@@ -1357,62 +1429,31 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = tri!(self.parse_whitespace_in_value());
+        let value = match self.parse_any_prefix() {
+            AnyResult::Null => visitor.visit_unit(),
+            AnyResult::Bool(b) => visitor.visit_bool(b),
+            AnyResult::Number(positive) => tri!(self.parse_any_number(positive)).visit(visitor),
+            AnyResult::String => match tri!(self.read.parse_str(&mut self.scratch)) {
+                Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
+                Reference::Copied(s) => visitor.visit_str(s),
+            },
+            AnyResult::Array => {
+                let ret = visitor.visit_seq(SeqAccess::new(self));
 
-        let value = match peek {
-            b'n' => {
-                self.eat_char();
-                tri!(self.parse_ident(b"ull"));
-                visitor.visit_unit()
-            }
-            b't' => {
-                self.eat_char();
-                tri!(self.parse_ident(b"rue"));
-                visitor.visit_bool(true)
-            }
-            b'f' => {
-                self.eat_char();
-                tri!(self.parse_ident(b"alse"));
-                visitor.visit_bool(false)
-            }
-            b'-' => {
-                self.eat_char();
-                tri!(self.parse_any_number(false)).visit(visitor)
-            }
-            b'0'..=b'9' => tri!(self.parse_any_number(true)).visit(visitor),
-            b'"' => {
-                self.eat_char();
-                self.scratch.clear();
-                match tri!(self.read.parse_str(&mut self.scratch)) {
-                    Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
-                    Reference::Copied(s) => visitor.visit_str(s),
-                }
-            }
-            b'[' => {
-                self.eat_char();
-                check_recursion! {
-                    self;
-                    let ret = visitor.visit_seq(SeqAccess::new(self));
-                }
-
-                match (ret, self.end_seq()) {
+                match (ret, self.end_recursion_and_seq()) {
                     (Ok(ret), Ok(())) => Ok(ret),
                     (Err(err), _) | (_, Err(err)) => Err(err),
                 }
             }
-            b'{' => {
-                self.eat_char();
-                check_recursion! {
-                    self;
-                    let ret = visitor.visit_map(MapAccess::new(self));
-                }
+            AnyResult::Map => {
+                let ret = visitor.visit_map(MapAccess::new(self));
 
-                match (ret, self.end_map()) {
+                match (ret, self.end_recursion_and_map()) {
                     (Ok(ret), Ok(())) => Ok(ret),
                     (Err(err), _) | (_, Err(err)) => Err(err),
                 }
             }
-            _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+            AnyResult::Error(err) => Err(err),
         };
 
         match value {
@@ -1849,18 +1890,6 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         tri!(self.ignore_value());
         visitor.visit_unit()
     }
-}
-
-macro_rules! try_with {
-    ($e:expr, $wrap:expr) => {
-        match $e {
-            crate::lib::Result::Ok(val) => val,
-            crate::lib::Result::Err(err) => return $wrap(err),
-        }
-    };
-    ($e:expr, $wrap:expr,) => {
-        try_with!($e, $wrap)
-    };
 }
 
 struct SeqAccess<'a, R: 'a> {
