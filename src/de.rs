@@ -1862,6 +1862,51 @@ impl<'a, R: 'a> SeqAccess<'a, R> {
     }
 }
 
+enum FieldResult {
+    Error(Error),
+    Field,
+    Done,
+}
+
+impl<'de, 'a, R: Read<'de> + 'a> SeqAccess<'a, R> {
+    fn parse_field_prefix(&mut self) -> FieldResult {
+        let peek = match self.de.parse_whitespace() {
+            Ok(Some(peek)) => peek,
+            Ok(None) => {
+                return FieldResult::Error(self.de.peek_error(ErrorCode::EofWhileParsingList));
+            }
+            Err(err) => return FieldResult::Error(err),
+        };
+        let peek = match peek {
+            b']' => {
+                return FieldResult::Done;
+            }
+            b',' if !self.first => {
+                self.de.eat_char();
+                match self.de.parse_whitespace_in_value() {
+                    Ok(peek) => peek,
+                    Err(err) => return FieldResult::Error(err),
+                }
+            }
+            b => {
+                if self.first {
+                    self.first = false;
+                    b
+                } else {
+                    return FieldResult::Error(
+                        self.de.peek_error(ErrorCode::ExpectedListCommaOrEnd),
+                    );
+                }
+            }
+        };
+
+        match peek {
+            b']' => FieldResult::Error(self.de.peek_error(ErrorCode::TrailingComma)),
+            _ => FieldResult::Field,
+        }
+    }
+}
+
 impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
     type Error = Error;
 
@@ -1869,30 +1914,10 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
     where
         T: de::DeserializeSeed<'de>,
     {
-        let peek = match tri!(self.de.parse_whitespace()) {
-            Some(b']') => {
-                return Ok(None);
-            }
-            Some(b',') if !self.first => {
-                self.de.eat_char();
-                tri!(self.de.parse_whitespace_in_value())
-            }
-            Some(b) => {
-                if self.first {
-                    self.first = false;
-                    b
-                } else {
-                    return Err(self.de.peek_error(ErrorCode::ExpectedListCommaOrEnd));
-                }
-            }
-            None => {
-                return Err(self.de.peek_error(ErrorCode::EofWhileParsingList));
-            }
-        };
-
-        match peek {
-            b']' => Err(self.de.peek_error(ErrorCode::TrailingComma)),
-            _ => Ok(Some(tri!(seed.deserialize(&mut *self.de)))),
+        match self.parse_field_prefix() {
+            FieldResult::Field => Ok(Some(tri!(seed.deserialize(&mut *self.de)))),
+            FieldResult::Done => Ok(None),
+            FieldResult::Error(err) => Err(err),
         }
     }
 }
