@@ -139,6 +139,39 @@ enum StructResult {
     Error(Error),
 }
 
+#[cfg(not(feature = "unbounded_depth"))]
+macro_rules! if_checking_recursion_limit {
+    ($($body:tt)*) => {
+        $($body)*
+    };
+}
+
+#[cfg(feature = "unbounded_depth")]
+macro_rules! if_checking_recursion_limit {
+    ($this:ident $($body:tt)*) => {
+        if !$this.disable_recursion_limit {
+            $this $($body)*
+        }
+    };
+}
+
+macro_rules! check_recursion {
+    ($this:ident; $($body:tt)*) => {
+        if_checking_recursion_limit! {
+            $this.remaining_depth -= 1;
+            if $this.remaining_depth == 0 {
+                return Err($this.error(ErrorCode::RecursionLimitExceeded));
+            }
+        }
+
+        $($body)*
+
+        if_checking_recursion_limit! {
+            $this.remaining_depth += 1;
+        }
+    };
+}
+
 impl<'de, R: Read<'de>> Deserializer<R> {
     /// The `Deserializer::end` method should be called after a value has been fully deserialized.
     /// This allows the `Deserializer` to validate that the input stream is at the end or that it
@@ -261,10 +294,22 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         match self.parse_whitespace_in_value() {
             Ok(b'[') => {
                 self.eat_char();
+                if_checking_recursion_limit! {
+                    self.remaining_depth -= 1;
+                    if self.remaining_depth == 0 {
+                        return StructResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
+                    }
+                }
                 StructResult::Array
             }
             Ok(b'{') => {
                 self.eat_char();
+                if_checking_recursion_limit! {
+                    self.remaining_depth -= 1;
+                    if self.remaining_depth == 0 {
+                        return StructResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
+                    }
+                }
                 StructResult::Map
             }
             Ok(_) => {
@@ -1018,6 +1063,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    fn end_recursion_and_seq(&mut self) -> Result<()> {
+        if_checking_recursion_limit! {
+            self.remaining_depth += 1;
+        }
+        self.end_seq()
+    }
+
     fn end_seq(&mut self) -> Result<()> {
         match tri!(self.parse_whitespace()) {
             Some(b']') => {
@@ -1034,6 +1086,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingList)),
         }
+    }
+
+    fn end_recursion_and_map(&mut self) -> Result<()> {
+        if_checking_recursion_limit! {
+            self.remaining_depth += 1;
+        }
+        self.end_map()
     }
 
     fn end_map(&mut self) -> Result<()> {
@@ -1286,39 +1345,6 @@ macro_rules! deserialize_number {
             V: de::Visitor<'de>,
         {
             self.deserialize_number(visitor)
-        }
-    };
-}
-
-#[cfg(not(feature = "unbounded_depth"))]
-macro_rules! if_checking_recursion_limit {
-    ($($body:tt)*) => {
-        $($body)*
-    };
-}
-
-#[cfg(feature = "unbounded_depth")]
-macro_rules! if_checking_recursion_limit {
-    ($this:ident $($body:tt)*) => {
-        if !$this.disable_recursion_limit {
-            $this $($body)*
-        }
-    };
-}
-
-macro_rules! check_recursion {
-    ($this:ident; $($body:tt)*) => {
-        if_checking_recursion_limit! {
-            $this.remaining_depth -= 1;
-            if $this.remaining_depth == 0 {
-                return Err($this.error(ErrorCode::RecursionLimitExceeded));
-            }
-        }
-
-        $($body)*
-
-        if_checking_recursion_limit! {
-            $this.remaining_depth += 1;
         }
     };
 }
@@ -1759,22 +1785,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         V: de::Visitor<'de>,
     {
         let (ret, ret2) = match self.parse_struct_prefix(&visitor) {
-            StructResult::Array => {
-                check_recursion! {
-                    self;
-                    let ret = visitor.visit_seq(SeqAccess::new(self));
-                }
-
-                (ret, self.end_seq())
-            }
-            StructResult::Map => {
-                check_recursion! {
-                    self;
-                    let ret = visitor.visit_map(MapAccess::new(self));
-                }
-
-                (ret, self.end_map())
-            }
+            StructResult::Array => (
+                visitor.visit_seq(SeqAccess::new(self)),
+                self.end_recursion_and_seq(),
+            ),
+            StructResult::Map => (
+                visitor.visit_map(MapAccess::new(self)),
+                self.end_recursion_and_map(),
+            ),
             StructResult::Error(err) => return Err(err),
         };
 
