@@ -1851,6 +1851,18 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     }
 }
 
+macro_rules! try_with {
+    ($e:expr, $wrap:expr) => {
+        match $e {
+            crate::lib::Result::Ok(val) => val,
+            crate::lib::Result::Err(err) => return $wrap(err),
+        }
+    };
+    ($e:expr, $wrap:expr,) => {
+        try_with!($e, $wrap)
+    };
+}
+
 struct SeqAccess<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
     first: bool,
@@ -1870,12 +1882,11 @@ enum FieldResult {
 
 impl<'de, 'a, R: Read<'de> + 'a> SeqAccess<'a, R> {
     fn parse_field_prefix(&mut self) -> FieldResult {
-        let peek = match self.de.parse_whitespace() {
-            Ok(Some(peek)) => peek,
-            Ok(None) => {
+        let peek = match try_with!(self.de.parse_whitespace(), FieldResult::Error) {
+            Some(peek) => peek,
+            None => {
                 return FieldResult::Error(self.de.peek_error(ErrorCode::EofWhileParsingList));
             }
-            Err(err) => return FieldResult::Error(err),
         };
         let peek = match peek {
             b']' => {
@@ -1883,10 +1894,7 @@ impl<'de, 'a, R: Read<'de> + 'a> SeqAccess<'a, R> {
             }
             b',' if !self.first => {
                 self.de.eat_char();
-                match self.de.parse_whitespace_in_value() {
-                    Ok(peek) => peek,
-                    Err(err) => return FieldResult::Error(err),
-                }
+                try_with!(self.de.parse_whitespace_in_value(), FieldResult::Error)
             }
             b => {
                 if self.first {
@@ -1931,18 +1939,6 @@ impl<'a, R: 'a> MapAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
         MapAccess { de, first: true }
     }
-}
-
-macro_rules! try_with {
-    ($e:expr, $wrap:expr) => {
-        match $e {
-            crate::lib::Result::Ok(val) => val,
-            crate::lib::Result::Err(err) => return $wrap(err),
-        }
-    };
-    ($e:expr, $wrap:expr,) => {
-        try_with!($e, $wrap)
-    };
 }
 
 enum KeyResult {
