@@ -132,6 +132,13 @@ impl ParserNumber {
     }
 }
 
+/// Flattened `Result<b'[' | b'{'), Error>`. Helps llvm when optimizing
+enum StructResult {
+    Array,
+    Map,
+    Error(Error),
+}
+
 impl<'de, R: Read<'de>> Deserializer<R> {
     /// The `Deserializer::end` method should be called after a value has been fully deserialized.
     /// This allows the `Deserializer` to validate that the input stream is at the end or that it
@@ -248,6 +255,24 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn peek_error(&self, reason: ErrorCode) -> Error {
         let position = self.read.peek_position();
         Error::syntax(reason, position.line, position.column)
+    }
+
+    fn parse_struct_prefix(&mut self, exp: &dyn Expected) -> StructResult {
+        match self.parse_whitespace_in_value() {
+            Ok(b'[') => {
+                self.eat_char();
+                StructResult::Array
+            }
+            Ok(b'{') => {
+                self.eat_char();
+                StructResult::Map
+            }
+            Ok(_) => {
+                let err = self.peek_invalid_type(exp);
+                StructResult::Error(self.fix_position(err))
+            }
+            Err(err) => StructResult::Error(err),
+        }
     }
 
     /// Returns the first non-whitespace byte without consuming it, or `Err` if
@@ -1733,11 +1758,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = tri!(self.parse_whitespace_in_value());
-
-        let (ret, ret2) = match peek {
-            b'[' => {
-                self.eat_char();
+        let (ret, ret2) = match self.parse_struct_prefix(&visitor) {
+            StructResult::Array => {
                 check_recursion! {
                     self;
                     let ret = visitor.visit_seq(SeqAccess::new(self));
@@ -1745,8 +1767,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
                 (ret, self.end_seq())
             }
-            b'{' => {
-                self.eat_char();
+            StructResult::Map => {
                 check_recursion! {
                     self;
                     let ret = visitor.visit_map(MapAccess::new(self));
@@ -1754,7 +1775,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
                 (ret, self.end_map())
             }
-            _ => (Err(self.peek_invalid_type(&visitor)), Ok(())),
+            StructResult::Error(err) => return Err(err),
         };
 
         match (ret, ret2) {
