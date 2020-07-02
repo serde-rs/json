@@ -261,6 +261,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     fn parse_whitespace_until(&mut self, expected: u8, visitor: &dyn Expected) -> Result<()> {
         if tri!(self.parse_whitespace_in_value()) == expected {
+            self.eat_char();
             Ok(())
         } else {
             Err(self.peek_invalid_type(visitor))
@@ -1281,15 +1282,15 @@ macro_rules! if_checking_recursion_limit {
 }
 
 macro_rules! check_recursion {
-    ($this:ident $($body:tt)*) => {
+    ($this:ident; $($body:tt)*) => {
         if_checking_recursion_limit! {
             $this.remaining_depth -= 1;
             if $this.remaining_depth == 0 {
-                return Err($this.peek_error(ErrorCode::RecursionLimitExceeded));
+                return Err($this.error(ErrorCode::RecursionLimitExceeded));
             }
         }
 
-        $this $($body)*
+        $($body)*
 
         if_checking_recursion_limit! {
             $this.remaining_depth += 1;
@@ -1337,8 +1338,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'[' => {
+                self.eat_char();
                 check_recursion! {
-                    self.eat_char();
+                    self;
                     let ret = visitor.visit_seq(SeqAccess::new(self));
                 }
 
@@ -1348,8 +1350,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 }
             }
             b'{' => {
+                self.eat_char();
                 check_recursion! {
-                    self.eat_char();
+                    self;
                     let ret = visitor.visit_map(MapAccess::new(self));
                 }
 
@@ -1492,7 +1495,6 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         tri!(self.parse_whitespace_until(b'"', &visitor));
 
-        self.eat_char();
         self.scratch.clear();
         let value = match tri!(self.read.parse_str(&mut self.scratch)) {
             Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
@@ -1637,7 +1639,6 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         tri!(self.parse_whitespace_until(b'n', &visitor));
 
-        self.eat_char();
         tri!(self.parse_ident(b"ull"));
 
         match visitor.visit_unit() {
@@ -1677,7 +1678,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         tri!(self.parse_whitespace_until(b'[', &visitor));
 
         check_recursion! {
-            self.eat_char();
+            self;
             let ret = visitor.visit_seq(SeqAccess::new(self));
         }
 
@@ -1713,7 +1714,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         tri!(self.parse_whitespace_until(b'{', &visitor));
 
         check_recursion! {
-            self.eat_char();
+            self;
             let ret = visitor.visit_map(MapAccess::new(self));
         }
 
@@ -1736,16 +1737,18 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 
         let (ret, ret2) = match peek {
             b'[' => {
+                self.eat_char();
                 check_recursion! {
-                    self.eat_char();
+                    self;
                     let ret = visitor.visit_seq(SeqAccess::new(self));
                 }
 
                 (ret, self.end_seq())
             }
             b'{' => {
+                self.eat_char();
                 check_recursion! {
-                    self.eat_char();
+                    self;
                     let ret = visitor.visit_map(MapAccess::new(self));
                 }
 
@@ -1774,8 +1777,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     {
         match tri!(self.parse_whitespace_in_value()) {
             b'{' => {
+                self.eat_char();
                 check_recursion! {
-                    self.eat_char();
+                    self;
                     let value = tri!(visitor.visit_enum(VariantAccess::new(self)));
                 }
 
