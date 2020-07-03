@@ -144,9 +144,9 @@ impl ParserNumber {
 }
 
 /// Flattened `Result<b'[' | b'{'), Error>`. Helps llvm when optimizing
-enum StructResult {
-    Array,
-    Map,
+enum StructResult<'a, R> {
+    Array(SeqAccess<'a, R>),
+    Map(MapAccess<'a, R>),
     Error(Error),
 }
 
@@ -375,7 +375,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.read.parse_str(&mut self.scratch)
     }
 
-    fn parse_struct_prefix(&mut self, exp: &dyn Expected) -> StructResult {
+    fn parse_struct_prefix(&mut self, exp: &dyn Expected) -> StructResult<'_, R> {
         match self.parse_whitespace_in_value() {
             Ok(b'[') => {
                 self.eat_char();
@@ -385,7 +385,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                         return StructResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
                     }
                 }
-                StructResult::Array
+                StructResult::Array(SeqAccess::new(self))
             }
             Ok(b'{') => {
                 self.eat_char();
@@ -395,7 +395,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                         return StructResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
                     }
                 }
-                StructResult::Map
+                StructResult::Map(MapAccess::new(self))
             }
             Ok(_) => {
                 let err = self.peek_invalid_type(exp);
@@ -1832,14 +1832,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         V: de::Visitor<'de>,
     {
         let (ret, ret2) = match self.parse_struct_prefix(&visitor) {
-            StructResult::Array => (
-                visitor.visit_seq(SeqAccess::new(self)),
-                self.end_recursion_and_seq(),
-            ),
-            StructResult::Map => (
-                visitor.visit_map(MapAccess::new(self)),
-                self.end_recursion_and_map(),
-            ),
+            StructResult::Array(access) => {
+                (visitor.visit_seq(access), self.end_recursion_and_seq())
+            }
+            StructResult::Map(access) => (visitor.visit_map(access), self.end_recursion_and_map()),
             StructResult::Error(err) => return Err(err),
         };
 
