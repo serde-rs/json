@@ -362,6 +362,19 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    fn parse_str<'s>(&'s mut self) -> Result<Reference<'de, 's, str>> {
+        self.eat_char();
+        self.scratch.clear();
+        self.read.parse_str(&mut self.scratch)
+    }
+
+    fn parse_str_prefix<'s>(&'s mut self, exp: &dyn Expected) -> Result<Reference<'de, 's, str>> {
+        tri!(self.parse_whitespace_until(b'"', exp));
+
+        self.scratch.clear();
+        self.read.parse_str(&mut self.scratch)
+    }
+
     fn parse_struct_prefix(&mut self, exp: &dyn Expected) -> StructResult {
         match self.parse_whitespace_in_value() {
             Ok(b'[') => {
@@ -469,14 +482,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 Ok(n) => n.invalid_type(exp),
                 Err(err) => return err,
             },
-            b'"' => {
-                self.eat_char();
-                self.scratch.clear();
-                match self.read.parse_str(&mut self.scratch) {
-                    Ok(s) => de::Error::invalid_type(Unexpected::Str(&s), exp),
-                    Err(err) => return err,
-                }
-            }
+            b'"' => match self.parse_str() {
+                Ok(s) => de::Error::invalid_type(Unexpected::Str(&s), exp),
+                Err(err) => return err,
+            },
             b'[' => de::Error::invalid_type(Unexpected::Seq, exp),
             b'{' => de::Error::invalid_type(Unexpected::Map, exp),
             _ => self.peek_error(ErrorCode::ExpectedSomeValue),
@@ -1585,10 +1594,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        tri!(self.parse_whitespace_until(b'"', &visitor));
-
-        self.scratch.clear();
-        let value = match tri!(self.read.parse_str(&mut self.scratch)) {
+        let value = match tri!(self.parse_str_prefix(&visitor)) {
             Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
             Reference::Copied(s) => visitor.visit_str(s),
         };
@@ -2156,9 +2162,7 @@ macro_rules! deserialize_integer_key {
         where
             V: de::Visitor<'de>,
         {
-            self.de.eat_char();
-            self.de.scratch.clear();
-            let string = tri!(self.de.read.parse_str(&mut self.de.scratch));
+            let string = tri!(self.de.parse_str());
             match (string.parse(), string) {
                 (Ok(integer), _) => visitor.$visit(integer),
                 (Err(_), Reference::Borrowed(s)) => visitor.visit_borrowed_str(s),
@@ -2179,9 +2183,7 @@ where
     where
         V: de::Visitor<'de>,
     {
-        self.de.eat_char();
-        self.de.scratch.clear();
-        match tri!(self.de.read.parse_str(&mut self.de.scratch)) {
+        match tri!(self.de.parse_str()) {
             Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
             Reference::Copied(s) => visitor.visit_str(s),
         }
