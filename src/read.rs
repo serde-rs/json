@@ -695,9 +695,12 @@ impl<'a> Read<'a> for StrRead<'a> {
 
 //////////////////////////////////////////////////////////////////////////////
 
-impl<'de, R: Read<'de>> private::Sealed for &mut R {}
+impl<'a, 'de, R> private::Sealed for &'a mut R where R: Read<'de> {}
 
-impl<'de, R: Read<'de>> Read<'de> for &mut R {
+impl<'a, 'de, R> Read<'de> for &'a mut R
+where
+    R: Read<'de>,
+{
     fn next(&mut self) -> Result<Option<u8>> {
         R::next(self)
     }
