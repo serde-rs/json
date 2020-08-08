@@ -301,6 +301,59 @@ fn print_an_address() -> Result<()> {
 }
 ```
 
+## Navigating a hierarchical JSON structure
+
+Some times you'll need to navigate a JSON structure deserialized
+by serde_json. This example should help you conceptualize how to
+accomplish that.
+
+```rust
+use serde_json::{Result, Value};
+
+fn untyped_example() -> Result<()> {
+    // Some JSON input data as a &str. Maybe this comes from the user.
+    let data = r#"
+        {
+            "name": "John Doe",
+            "age": 43,
+            "phones": [
+                "+44 1234567",
+                "+44 2345678"
+            ],
+            "who": {
+                "you": {
+                    "gonna": {
+                        "call": "ghostbusters"
+                    }
+                }
+            }
+        }"#;
+
+    // Parse the string of data into serde_json::Value.
+    let v: Value = serde_json::from_str(data)?;
+
+    // To access an array in a JSON object, make sure to cast
+    // it with the as_array function
+    match v["phones"].as_array() {
+        Some(arr) => {
+            for i in 0..arr.len() {
+                println!("Phone Number: {}", arr[i]);
+            }
+        }
+        None => {
+            println!("Error accessing JSON array");
+        }
+    }
+
+    // If you need to access a deeply set key, you can use
+    // the following syntax to do so. Note the difference
+    // between accessing arrays and regular objects
+    println!("Who you gonna call? {}", v["who"]["you"]["gonna"]["call"]);
+
+    Ok(())
+}
+```
+
 Any type that implements Serde's `Serialize` trait can be serialized this
 way. This includes built-in Rust standard library types like `Vec<T>` and
 `HashMap<K, V>`, as well as any structs or enums annotated with
