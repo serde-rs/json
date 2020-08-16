@@ -23,6 +23,8 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 /// `RawValue` is only available if serde\_json is built with the `"raw_value"`
 /// feature.
 ///
+/// For [technical reasons](https://github.com/serde-rs/json/issues/497), `RawValue` can't be used with untagged enums at the moment. Trying to deserialize to an untagged enum with `RawValue`, therefore, always fails with an error.
+///
 /// ```toml
 /// [dependencies]
 /// serde_json = { version = "1.0", features = ["raw_value"] }
