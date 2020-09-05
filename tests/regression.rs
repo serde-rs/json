@@ -1,2 +1,3 @@
-#[path = "regression/mod.rs"]
-mod regression;
+mod regression {
+    automod::dir!("tests/regression");
+}
