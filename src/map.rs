@@ -116,10 +116,7 @@ impl Map<String, Value> {
         String: Borrow<Q>,
         Q: ?Sized + Ord + Eq + Hash,
     {
-        #[cfg(feature = "preserve_order")]
-        return self.map.swap_remove(key);
-        #[cfg(not(feature = "preserve_order"))]
-        return self.map.remove(key);
+        self.map.remove(key)
     }
 
     /// Moves all elements from other into Self, leaving other empty.
