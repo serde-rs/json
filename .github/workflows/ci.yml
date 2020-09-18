@@ -17,6 +17,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo test
+      - run: cargo test --features map_remove_entry --tests -- --skip ui --exact
       - run: cargo test --features preserve_order --tests -- --skip ui --exact
       - run: cargo test --features float_roundtrip --tests -- --skip ui --exact
       - run: cargo test --features arbitrary_precision --tests -- --skip ui --exact
@@ -41,6 +42,8 @@ jobs:
         with:
           toolchain: ${{matrix.rust}}
       - run: cargo check
+      - run: cargo check --features map_remove_entry
+        if: matrix.rust != '1.31.0' && matrix.rust != '1.36.0'
       - run: cargo check --features preserve_order
         if: matrix.rust != '1.31.0'
       - run: cargo check --features float_roundtrip

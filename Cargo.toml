@@ -44,6 +44,11 @@ default = ["std"]
 
 std = ["serde/std"]
 
+# Provide the method Map::remove_entry. This is behind a feature flag because it
+# only works on Rust 1.45+, unless the preserver_order feature is also
+# activated, in which case the MSRV for that feature applies.
+map_remove_entry = []
+
 # Provide integration for heap-allocated collections without depending on the
 # rest of the Rust standard library.
 # NOTE: Disabling both `std` *and* `alloc` features is not supported yet.
