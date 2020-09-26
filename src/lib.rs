@@ -329,6 +329,7 @@
     clippy::enum_glob_use,
     clippy::if_not_else,
     clippy::integer_division,
+    clippy::map_err_ignore,
     clippy::match_same_arms,
     clippy::similar_names,
     clippy::unused_self,
