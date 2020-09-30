@@ -132,24 +132,29 @@ impl Map<String, Value> {
         String: Borrow<Q>,
         Q: ?Sized + Ord + Eq + Hash,
     {
-        use std::ops::{Bound, RangeBounds};
+        #[cfg(feature = "preserve_order")]
+        return self.map.remove_entry(key);
+        #[cfg(not(feature = "preserve_order"))]
+        {
+            use std::ops::{Bound, RangeBounds};
 
-        struct Key<'a, Q: ?Sized>(&'a Q);
+            struct Key<'a, Q: ?Sized>(&'a Q);
 
-        impl<'a, Q: ?Sized> RangeBounds<Q> for Key<'a, Q> {
-            fn start_bound(&self) -> Bound<&Q> {
-                Bound::Included(self.0)
+            impl<'a, Q: ?Sized> RangeBounds<Q> for Key<'a, Q> {
+                fn start_bound(&self) -> Bound<&Q> {
+                    Bound::Included(self.0)
+                }
+                fn end_bound(&self) -> Bound<&Q> {
+                    Bound::Included(self.0)
+                }
             }
-            fn end_bound(&self) -> Bound<&Q> {
-                Bound::Included(self.0)
-            }
+
+            let mut range = self.map.range(Key(key));
+            let (key, _value) = range.next()?;
+            let key = key.clone();
+            let value = self.map.remove::<String>(&key)?;
+            Some((key, value))
         }
-
-        let mut range = self.map.range(Key(key));
-        let (key, _value) = range.next()?;
-        let key = key.clone();
-        let value = self.map.remove::<String>(&key)?;
-        Some((key, value))
     }
 
     /// Moves all elements from other into Self, leaving other empty.
