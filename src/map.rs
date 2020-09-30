@@ -132,16 +132,16 @@ impl Map<String, Value> {
         String: Borrow<Q>,
         Q: ?Sized + Ord + Eq + Hash,
     {
-        #[cfg(any(feature = "preserve_order", btreemap_remove_entry))]
+        #[cfg(any(feature = "preserve_order", not(no_btreemap_remove_entry)))]
         return self.map.remove_entry(key);
-        #[cfg(all(btreemap_get_key_value, not(any(feature = "preserve_order", btreemap_remove_entry))))]
+        #[cfg(all(not(no_btreemap_get_key_value), not(any(feature = "preserve_order", not(no_btreemap_remove_entry)))))]
         {
             let (key, _value) = self.map.get_key_value(key)?;
             let key = key.clone();
             let value = self.map.remove::<String>(&key)?;
             Some((key, value))
         }
-        #[cfg(not(any(feature = "preserve_order", btreemap_remove_entry, btreemap_get_key_value)))]
+        #[cfg(not(any(feature = "preserve_order", not(no_btreemap_remove_entry), not(no_btreemap_get_key_value))))]
         {
             use std::ops::{Bound, RangeBounds};
 

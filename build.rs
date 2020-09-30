@@ -22,14 +22,14 @@ fn main() {
 
     // BTreeMap::get_key_value
     // https://blog.rust-lang.org/2019/12/19/Rust-1.40.0.html#additions-to-the-standard-library
-    if minor >= 40 {
-        println!("cargo:rustc-cfg=btreemap_get_key_value");
+    if minor < 40 {
+        println!("cargo:rustc-cfg=no_btreemap_get_key_value");
     }
 
     // BTreeMap::remove_entry
     // https://blog.rust-lang.org/2020/07/16/Rust-1.45.0.html#library-changes
-    if minor >= 45 {
-        println!("cargo:rustc-cfg=btreemap_remove_entry");
+    if minor < 45 {
+        println!("cargo:rustc-cfg=no_btreemap_remove_entry");
     }
 }
 
