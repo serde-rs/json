@@ -64,6 +64,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@1.36.0
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc
+      - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,preserve_order
 
   clippy:
     name: Clippy
