@@ -151,8 +151,6 @@ impl Map<String, Value> {
             no_btreemap_get_key_value,
         ))]
         {
-            use std::ops::{Bound, RangeBounds};
-
             struct Key<'a, Q: ?Sized>(&'a Q);
 
             impl<'a, Q: ?Sized> RangeBounds<Q> for Key<'a, Q> {
