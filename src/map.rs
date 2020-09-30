@@ -134,14 +134,22 @@ impl Map<String, Value> {
     {
         #[cfg(any(feature = "preserve_order", not(no_btreemap_remove_entry)))]
         return self.map.remove_entry(key);
-        #[cfg(all(not(feature = "preserve_order"), no_btreemap_remove_entry, not(no_btreemap_get_key_value)))]
+        #[cfg(all(
+            not(feature = "preserve_order"),
+            no_btreemap_remove_entry,
+            not(no_btreemap_get_key_value),
+        ))]
         {
             let (key, _value) = self.map.get_key_value(key)?;
             let key = key.clone();
             let value = self.map.remove::<String>(&key)?;
             Some((key, value))
         }
-        #[cfg(all(not(feature = "preserve_order"), no_btreemap_remove_entry, no_btreemap_get_key_value))]
+        #[cfg(all(
+            not(feature = "preserve_order"),
+            no_btreemap_remove_entry,
+            no_btreemap_get_key_value,
+        ))]
         {
             use std::ops::{Bound, RangeBounds};
 
