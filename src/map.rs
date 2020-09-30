@@ -122,6 +122,19 @@ impl Map<String, Value> {
         return self.map.remove(key);
     }
 
+    /// Removes a key from the map, returning the stored key and value if the
+    /// key was previously in the map.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    pub fn remove_entry<Q>(&mut self, _key: &Q) -> Option<(String, Value)>
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Ord + Eq + Hash,
+    {
+        unimplemented!()
+    }
+
     /// Moves all elements from other into Self, leaving other empty.
     #[inline]
     pub fn append(&mut self, other: &mut Self) {
