@@ -122,6 +122,54 @@ impl Map<String, Value> {
         return self.map.remove(key);
     }
 
+    /// Removes a key from the map, returning the stored key and value if the
+    /// key was previously in the map.
+    ///
+    /// The key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(String, Value)>
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Ord + Eq + Hash,
+    {
+        #[cfg(any(feature = "preserve_order", not(no_btreemap_remove_entry)))]
+        return self.map.remove_entry(key);
+        #[cfg(all(
+            not(feature = "preserve_order"),
+            no_btreemap_remove_entry,
+            not(no_btreemap_get_key_value),
+        ))]
+        {
+            let (key, _value) = self.map.get_key_value(key)?;
+            let key = key.clone();
+            let value = self.map.remove::<String>(&key)?;
+            Some((key, value))
+        }
+        #[cfg(all(
+            not(feature = "preserve_order"),
+            no_btreemap_remove_entry,
+            no_btreemap_get_key_value,
+        ))]
+        {
+            struct Key<'a, Q: ?Sized>(&'a Q);
+
+            impl<'a, Q: ?Sized> RangeBounds<Q> for Key<'a, Q> {
+                fn start_bound(&self) -> Bound<&Q> {
+                    Bound::Included(self.0)
+                }
+                fn end_bound(&self) -> Bound<&Q> {
+                    Bound::Included(self.0)
+                }
+            }
+
+            let mut range = self.map.range(Key(key));
+            let (key, _value) = range.next()?;
+            let key = key.clone();
+            let value = self.map.remove::<String>(&key)?;
+            Some((key, value))
+        }
+    }
+
     /// Moves all elements from other into Self, leaving other empty.
     #[inline]
     pub fn append(&mut self, other: &mut Self) {

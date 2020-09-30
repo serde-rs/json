@@ -371,6 +371,7 @@ mod lib {
         pub use std::*;
     }
 
+    pub use self::core::ops::{Bound, RangeBounds};
     pub use self::core::cell::{Cell, RefCell};
     pub use self::core::clone::{self, Clone};
     pub use self::core::convert::{self, From, Into};
