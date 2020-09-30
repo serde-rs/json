@@ -132,9 +132,9 @@ impl Map<String, Value> {
         String: Borrow<Q>,
         Q: ?Sized + Ord + Eq + Hash,
     {
-        #[cfg(feature = "preserve_order")]
+        #[cfg(any(feature = "preserve_order", btreemap_remove_entry))]
         return self.map.remove_entry(key);
-        #[cfg(not(feature = "preserve_order"))]
+        #[cfg(not(any(feature = "preserve_order", btreemap_remove_entry)))]
         {
             use std::ops::{Bound, RangeBounds};
 
