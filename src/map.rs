@@ -174,7 +174,7 @@ impl Map<String, Value> {
     #[inline]
     pub fn append(&mut self, other: &mut Self) {
         #[cfg(feature = "preserve_order")]
-        for (k, v) in std::mem::replace(&mut other.map, MapImpl::default()) {
+        for (k, v) in mem::replace(&mut other.map, MapImpl::default()) {
             self.map.insert(k, v);
         }
         #[cfg(not(feature = "preserve_order"))]
