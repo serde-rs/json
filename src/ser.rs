@@ -1588,6 +1588,7 @@ impl CharEscape {
             self::FF => CharEscape::FormFeed,
             self::RR => CharEscape::CarriageReturn,
             self::QU => CharEscape::Quote,
+            self::FS => CharEscape::Solidus,
             self::BS => CharEscape::ReverseSolidus,
             self::UU => CharEscape::AsciiControl(byte),
             _ => unreachable!(),
@@ -1768,6 +1769,17 @@ pub trait Formatter {
         W: ?Sized + io::Write,
     {
         writer.write_all(fragment.as_bytes())
+    }
+
+    /// Returns a character escaping
+    #[inline]
+    fn char_escape(&self, byte: u8) -> Option<CharEscape> {
+        let escape = ESCAPE[byte as usize];
+        if escape != 0 {
+            Some(CharEscape::from_escape_table(escape, byte))
+        } else {
+            None
+        }
     }
 
     /// Writes a character escape code to the specified writer.
@@ -2088,19 +2100,15 @@ where
     let mut start = 0;
 
     for (i, &byte) in bytes.iter().enumerate() {
-        let escape = ESCAPE[byte as usize];
-        if escape == 0 {
-            continue;
+        if let Some(char_escape) = formatter.char_escape(byte) {
+            if start < i {
+                tri!(formatter.write_string_fragment(writer, &value[start..i]));
+            }
+
+            tri!(formatter.write_char_escape(writer, char_escape));
+
+            start = i + 1;
         }
-
-        if start < i {
-            tri!(formatter.write_string_fragment(writer, &value[start..i]));
-        }
-
-        let char_escape = CharEscape::from_escape_table(escape, byte);
-        tri!(formatter.write_char_escape(writer, char_escape));
-
-        start = i + 1;
     }
 
     if start != bytes.len() {
@@ -2116,6 +2124,7 @@ const NN: u8 = b'n'; // \x0A
 const FF: u8 = b'f'; // \x0C
 const RR: u8 = b'r'; // \x0D
 const QU: u8 = b'"'; // \x22
+const FS: u8 = b'/'; // \x2F
 const BS: u8 = b'\\'; // \x5C
 const UU: u8 = b'u'; // \x00...\x1F except the ones above
 const __: u8 = 0;

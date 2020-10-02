@@ -16,8 +16,10 @@ use serde::ser::{self, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_bytes::{ByteBuf, Bytes};
 use serde_json::{
-    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
-    to_vec, to_writer, Deserializer, Number, Value,
+    from_reader, from_slice, from_str, from_value, json,
+    ser::{CharEscape, CompactFormatter, Formatter},
+    to_string, to_string_pretty, to_value, to_vec, to_writer, Deserializer, Number,
+    Serializer as JsonSerializer, Value,
 };
 use std::collections::BTreeMap;
 use std::fmt::{self, Debug};
@@ -185,6 +187,63 @@ fn test_write_char() {
     ];
     test_encode_ok(tests);
     test_pretty_encode_ok(tests);
+}
+
+#[test]
+fn test_write_html_safe() {
+    struct HtmlSafeCompactFormatter;
+
+    impl Formatter for HtmlSafeCompactFormatter {
+        fn char_escape(&self, byte: u8) -> Option<CharEscape> {
+            if byte == b'/' {
+                Some(CharEscape::Solidus)
+            } else {
+                CompactFormatter.char_escape(byte)
+            }
+        }
+    }
+
+    fn to_string_html_safe<T: Serialize + ?Sized>(
+        value: &T,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let mut writer = Vec::new();
+        let mut ser = JsonSerializer::with_formatter(&mut writer, HtmlSafeCompactFormatter);
+        value.serialize(&mut ser)?;
+        let string = String::from_utf8(writer)?;
+        Ok(string)
+    }
+
+    assert_eq!(to_string_html_safe("script").unwrap(), r#""script""#);
+    assert_eq!(to_string_html_safe("<script>").unwrap(), r#""<script>""#);
+    assert_eq!(to_string_html_safe("</script>").unwrap(), r#""<\/script>""#);
+    assert_eq!(to_string_html_safe("<script/>").unwrap(), r#""<script\/>""#);
+    assert_eq!(to_string_html_safe("4 \\/ 5").unwrap(), r#""4 \\\/ 5""#);
+}
+
+#[test]
+fn test_write_escape_all_characters() {
+    struct EscapeAllCharactersFormatter;
+
+    impl Formatter for EscapeAllCharactersFormatter {
+        fn char_escape(&self, byte: u8) -> Option<CharEscape> {
+            Some(CharEscape::AsciiControl(byte))
+        }
+    }
+
+    fn to_string_escape_all<T: Serialize + ?Sized>(
+        value: &T,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let mut writer = Vec::new();
+        let mut ser = JsonSerializer::with_formatter(&mut writer, EscapeAllCharactersFormatter);
+        value.serialize(&mut ser)?;
+        let string = String::from_utf8(writer)?;
+        Ok(string)
+    }
+
+    assert_eq!(
+        to_string_escape_all("It is escaped").unwrap(),
+        r#""\u0049\u0074\u0020\u0069\u0073\u0020\u0065\u0073\u0063\u0061\u0070\u0065\u0064""#
+    );
 }
 
 #[test]
