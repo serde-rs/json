@@ -131,7 +131,7 @@ The `Value` representation is sufficient for very basic tasks but can be tedious
 to work with for anything more significant. Error handling is verbose to
 implement correctly, for example imagine trying to detect the presence of
 unrecognized fields in the input data. The compiler is powerless to help you
-when you make a mistake, for example imagine typoing `v["name"]` as `v["nmae"]`
+when you make a mistake, for example imagine typing `v["name"]` as `v["nmae"]`
 in one of the dozens of places it is used in your code.
 
 ## Parsing JSON as strongly typed data structures
