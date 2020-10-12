@@ -912,6 +912,17 @@ fn test_parse_f64() {
     ]);
 }
 
+#[test]
+fn test_value_as_f64() {
+    let v = serde_json::from_str::<Value>("1e1000");
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    assert!(v.is_err());
+
+    #[cfg(feature = "arbitrary_precision")]
+    assert_eq!(v.unwrap().as_f64(), None);
+}
+
 // Test roundtrip with some values that were not perfectly roundtripped by the
 // old f64 deserializer.
 #[cfg(feature = "float_roundtrip")]
