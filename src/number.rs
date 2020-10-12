@@ -211,7 +211,7 @@ impl Number {
             N::Float(n) => Some(n),
         }
         #[cfg(feature = "arbitrary_precision")]
-        self.n.parse().ok()
+        self.n.parse::<f64>().ok().filter(|float| float.is_finite())
     }
 
     /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not JSON
