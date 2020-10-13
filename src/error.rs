@@ -18,6 +18,11 @@ pub struct Error {
 pub type Result<T> = result::Result<T, Error>;
 
 impl Error {
+    /// Message of this error
+    pub fn msg(&self) -> String {
+        self.err.code.to_string()
+    }
+
     /// One-based line number at which the error was detected.
     ///
     /// Characters in the first line of the input (before the first newline
