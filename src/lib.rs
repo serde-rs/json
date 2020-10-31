@@ -309,6 +309,7 @@
     clippy::doc_markdown,
     clippy::excessive_precision,
     clippy::float_cmp,
+    clippy::manual_range_contains,
     clippy::match_like_matches_macro,
     clippy::match_single_binding,
     clippy::needless_doctest_main,
