@@ -749,7 +749,7 @@ impl Value {
     /// assert_eq!(data.pointer("/a/b/c"), None);
     /// ```
     pub fn pointer(&self, pointer: &str) -> Option<&Value> {
-        if pointer == "" {
+        if pointer.is_empty() {
             return Some(self);
         }
         if !pointer.starts_with('/') {
@@ -814,7 +814,7 @@ impl Value {
     /// }
     /// ```
     pub fn pointer_mut(&mut self, pointer: &str) -> Option<&mut Value> {
-        if pointer == "" {
+        if pointer.is_empty() {
             return Some(self);
         }
         if !pointer.starts_with('/') {
