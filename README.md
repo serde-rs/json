@@ -268,7 +268,7 @@ A data structure can be converted to a JSON string by
 [`serde_json::to_string`][to_string]. There is also
 [`serde_json::to_vec`][to_vec] which serializes to a `Vec<u8>` and
 [`serde_json::to_writer`][to_writer] which serializes to any `io::Write`
-such as a File or a TCP stream.
+such as a File or a TCP stream. The following code uses the Serde serialization framework for Rust, documentation for which may be found [here](https://github.com/serde-rs/serde).
 
 <a href="https://play.rust-lang.org/?edition=2018&gist=3472242a08ed2ff88a944f2a2283b0ee" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
