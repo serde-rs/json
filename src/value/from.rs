@@ -215,6 +215,22 @@ impl<T: Into<Value>> FromIterator<T> for Value {
     }
 }
 
+impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
+    /// Convert an iteratable type to a `Value`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use serde_json::Value;
+    ///
+    /// let v: Vec<_> = vec![("lorem", 40), ("ipsum", 2)];
+    /// let x: Value = v.into_iter().collect();
+    /// ```
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        Value::Object(iter.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
+    }
+}
+
 impl From<()> for Value {
     /// Convert `()` to `Value`
     ///
