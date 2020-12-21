@@ -1,6 +1,6 @@
 #![cfg(not(feature = "preserve_order"))]
 
-use serde_json::{json, Deserializer, Value};
+use serde_json::{de::SliceRead, json, Deserializer, StreamDeserializer, Value};
 
 // Rustfmt issue https://github.com/rust-lang-nursery/rustfmt/issues/2740
 #[rustfmt::skip]
@@ -179,4 +179,86 @@ fn test_error() {
         assert!(stream.next().unwrap().is_err());
         assert!(stream.next().is_none());
     });
+}
+
+use serde::de::{Deserialize, DeserializeSeed, SeqAccess, Visitor};
+
+// A DeserializeSeed implementation that uses stateful deserialization to
+// append array elements onto the end of an existing vector. The preexisting
+// state ("seed") in this case is the Vec<T>. The `deserialize` method of
+// `ExtendVec` will be traversing the inner arrays of the JSON input and
+// appending each integer into the existing Vec.
+struct ExtendVec<'a, T: 'a>(&'a mut Vec<T>);
+
+impl<'de, 'a, T> DeserializeSeed<'de> for &mut ExtendVec<'a, T>
+where
+    T: Deserialize<'de>,
+{
+    // The return type of the `deserialize` method. This implementation
+    // appends onto an existing vector but does not create any new data
+    // structure, so the return type is ().
+    type Value = ();
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        // Visitor implementation that will walk an inner array of the JSON
+        // input.
+        struct ExtendVecVisitor<'a, T: 'a>(&'a mut Vec<T>);
+
+        impl<'de, 'a, T> Visitor<'de> for ExtendVecVisitor<'a, T>
+        where
+            T: Deserialize<'de>,
+        {
+            type Value = ();
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "an array of integers")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<(), A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                // Visit each element in the inner array and push it onto
+                // the existing vector.
+                while let Some(elem) = seq.next_element()? {
+                    self.0.push(elem);
+                }
+                Ok(())
+            }
+        }
+
+        deserializer.deserialize_seq(ExtendVecVisitor(self.0))
+    }
+}
+
+#[test]
+fn test_json_stream_with_seed() {
+    let data = "[0] [1,2] [3] []";
+
+    let reader = SliceRead::new(data.as_bytes());
+
+    let mut vec: Vec<usize> = Vec::with_capacity(4);
+
+    {
+        let seed = ExtendVec(&mut vec);
+        let mut stream = StreamDeserializer::new_with_seed(reader, seed);
+        assert_eq!(stream.byte_offset(), 0);
+
+        assert_eq!(stream.next().unwrap().unwrap(), ());
+        assert_eq!(stream.byte_offset(), 3);
+
+        assert_eq!(stream.next().unwrap().unwrap(), ());
+        assert_eq!(stream.byte_offset(), 9);
+
+        assert_eq!(stream.next().unwrap().unwrap(), ());
+        assert_eq!(stream.byte_offset(), 13);
+
+        assert_eq!(stream.next().unwrap().unwrap(), ());
+        assert_eq!(stream.byte_offset(), 16);
+    }
+
+    assert_eq!(vec, &[0, 1, 2, 3]);
 }
