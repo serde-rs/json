@@ -136,7 +136,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     /// Turn a JSON deserializer into an iterator over values of type T.
-    pub fn into_iter<T>(self) -> StreamDeserializer<'de, R, T>
+    pub fn into_iter<T>(self) -> StreamDeserializer<'de, R, PhantomData<T>>
     where
         T: de::Deserialize<'de>,
     {
@@ -147,7 +147,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             de: self,
             offset,
             failed: false,
-            output: PhantomData,
+            seed: PhantomData,
             lifetime: PhantomData,
         }
     }
@@ -2231,15 +2231,15 @@ where
 ///     }
 /// }
 /// ```
-pub struct StreamDeserializer<'de, R, T> {
+pub struct StreamDeserializer<'de, R, S> {
     de: Deserializer<R>,
     offset: usize,
     failed: bool,
-    output: PhantomData<T>,
+    seed: S,
     lifetime: PhantomData<&'de ()>,
 }
 
-impl<'de, R, T> StreamDeserializer<'de, R, T>
+impl<'de, R, T> StreamDeserializer<'de, R, PhantomData<T>>
 where
     R: read::Read<'de>,
     T: de::Deserialize<'de>,
@@ -2253,12 +2253,24 @@ where
     ///   - Deserializer::from_bytes(...).into_iter()
     ///   - Deserializer::from_reader(...).into_iter()
     pub fn new(read: R) -> Self {
+        Self::new_with_seed(read, PhantomData)
+    }
+}
+
+impl<'de, R, S> StreamDeserializer<'de, R, S>
+where
+    R: read::Read<'de>,
+    S: de::DeserializeSeed<'de> + Copy,
+{
+    /// Create a JSON stream seeded deserializer from one of the possible
+    /// serde_json input sources.
+    pub fn new_with_seed(read: R, seed: S) -> Self {
         let offset = read.byte_offset();
         StreamDeserializer {
             de: Deserializer::new(read),
             offset,
             failed: false,
-            output: PhantomData,
+            seed,
             lifetime: PhantomData,
         }
     }
@@ -2314,14 +2326,14 @@ where
     }
 }
 
-impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
+impl<'de, R, S> Iterator for StreamDeserializer<'de, R, S>
 where
     R: Read<'de>,
-    T: de::Deserialize<'de>,
+    S: de::DeserializeSeed<'de> + Copy,
 {
-    type Item = Result<T>;
+    type Item = Result<S::Value>;
 
-    fn next(&mut self) -> Option<Result<T>> {
+    fn next(&mut self) -> Option<Result<S::Value>> {
         if R::should_early_return_if_failed && self.failed {
             return None;
         }
@@ -2343,7 +2355,7 @@ where
                     _ => false,
                 };
                 self.offset = self.de.read.byte_offset();
-                let result = de::Deserialize::deserialize(&mut self.de);
+                let result = self.seed.deserialize(&mut self.de);
 
                 Some(match result {
                     Ok(value) => {
@@ -2368,10 +2380,10 @@ where
     }
 }
 
-impl<'de, R, T> FusedIterator for StreamDeserializer<'de, R, T>
+impl<'de, R, S> FusedIterator for StreamDeserializer<'de, R, S>
 where
     R: Read<'de> + Fused,
-    T: de::Deserialize<'de>,
+    S: de::DeserializeSeed<'de> + Copy,
 {
 }
 
