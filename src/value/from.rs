@@ -136,6 +136,22 @@ impl<'a> From<Cow<'a, str>> for Value {
     }
 }
 
+impl From<Number> for Value {
+    /// Convert `Number` to `Value`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use serde_json::{Number, Value};
+    ///
+    /// let n = Number::from(7);
+    /// let x: Value = n.into();
+    /// ```
+    fn from(f: Number) -> Self {
+        Value::Number(f)
+    }
+}
+
 impl From<Map<String, Value>> for Value {
     /// Convert map (with string keys) to `Value`
     ///
