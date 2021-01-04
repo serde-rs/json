@@ -1,13 +1,23 @@
 //! Serialize a Rust data structure into JSON data.
 
-use crate::error::{Error, ErrorCode, Result};
-use crate::io;
-use alloc::string::{String, ToString};
-use alloc::vec::Vec;
-use core::fmt::{self, Display};
-use core::num::FpCategory;
-use serde::ser::{self, Impossible, Serialize};
-use serde::serde_if_integer128;
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
+use core::{
+    fmt::{self, Display},
+    num::FpCategory,
+};
+
+use serde::{
+    ser::{self, Impossible, Serialize, Serializer as _},
+    serde_if_integer128,
+};
+
+use crate::{
+    error::{Error, ErrorCode, Result},
+    io,
+};
 
 /// A structure for serializing Rust values into JSON.
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -54,6 +64,25 @@ where
     #[inline]
     pub fn into_inner(self) -> W {
         self.writer
+    }
+
+    fn serialize_variant(&mut self, variant: &'static str) -> Result<()> {
+        tri!(self
+            .formatter
+            .begin_object(&mut self.writer)
+            .map_err(Error::io));
+        tri!(self
+            .formatter
+            .begin_object_key(&mut self.writer, true)
+            .map_err(Error::io));
+        tri!(self.serialize_str(variant));
+        tri!(self
+            .formatter
+            .end_object_key(&mut self.writer)
+            .map_err(Error::io));
+        self.formatter
+            .begin_object_value(&mut self.writer)
+            .map_err(Error::io)
     }
 }
 
@@ -275,23 +304,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        tri!(self
-            .formatter
-            .begin_object(&mut self.writer)
-            .map_err(Error::io));
-        tri!(self
-            .formatter
-            .begin_object_key(&mut self.writer, true)
-            .map_err(Error::io));
-        tri!(self.serialize_str(variant));
-        tri!(self
-            .formatter
-            .end_object_key(&mut self.writer)
-            .map_err(Error::io));
-        tri!(self
-            .formatter
-            .begin_object_value(&mut self.writer)
-            .map_err(Error::io));
+        tri!(self.serialize_variant(variant));
         tri!(value.serialize(&mut *self));
         tri!(self
             .formatter
@@ -362,23 +375,7 @@ where
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
-        tri!(self
-            .formatter
-            .begin_object(&mut self.writer)
-            .map_err(Error::io));
-        tri!(self
-            .formatter
-            .begin_object_key(&mut self.writer, true)
-            .map_err(Error::io));
-        tri!(self.serialize_str(variant));
-        tri!(self
-            .formatter
-            .end_object_key(&mut self.writer)
-            .map_err(Error::io));
-        tri!(self
-            .formatter
-            .begin_object_value(&mut self.writer)
-            .map_err(Error::io));
+        tri!(self.serialize_variant(variant));
         self.serialize_seq(Some(len))
     }
 
@@ -424,23 +421,7 @@ where
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStructVariant> {
-        tri!(self
-            .formatter
-            .begin_object(&mut self.writer)
-            .map_err(Error::io));
-        tri!(self
-            .formatter
-            .begin_object_key(&mut self.writer, true)
-            .map_err(Error::io));
-        tri!(self.serialize_str(variant));
-        tri!(self
-            .formatter
-            .end_object_key(&mut self.writer)
-            .map_err(Error::io));
-        tri!(self
-            .formatter
-            .begin_object_value(&mut self.writer)
-            .map_err(Error::io));
+        tri!(self.serialize_variant(variant));
         self.serialize_map(Some(len))
     }
 
