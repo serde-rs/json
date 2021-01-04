@@ -531,11 +531,9 @@ where
                     .map_err(Error::io));
                 *state = State::Rest;
                 tri!(value.serialize(&mut **ser));
-                tri!(ser
-                    .formatter
+                ser.formatter
                     .end_array_value(&mut ser.writer)
-                    .map_err(Error::io));
-                Ok(())
+                    .map_err(Error::io)
             }
             #[cfg(feature = "arbitrary_precision")]
             Compound::Number { .. } => unreachable!(),
