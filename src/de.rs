@@ -366,6 +366,19 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    fn parse_number_prefix(&mut self, exp: &dyn Expected) -> Result<ParserNumber> {
+        let peek = tri!(self.parse_whitespace_in_value());
+
+        match peek {
+            b'-' => {
+                self.eat_char();
+                self.parse_integer(false)
+            }
+            b'0'..=b'9' => self.parse_integer(true),
+            _ => Err(self.peek_invalid_type(exp)),
+        }
+    }
+
     fn parse_str<'s>(&'s mut self) -> Result<Reference<'de, 's, str>> {
         self.eat_char();
         self.scratch.clear();
@@ -520,16 +533,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        let peek = tri!(self.parse_whitespace_in_value());
-
-        let value = match peek {
-            b'-' => {
-                self.eat_char();
-                tri!(self.parse_integer(false)).visit(visitor)
-            }
-            b'0'..=b'9' => tri!(self.parse_integer(true)).visit(visitor),
-            _ => Err(self.peek_invalid_type(&visitor)),
-        };
+        let value = tri!(self.parse_number_prefix(&visitor)).visit(visitor);
 
         match value {
             Ok(value) => Ok(value),
