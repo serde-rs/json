@@ -183,11 +183,12 @@ macro_rules! check_recursion {
     };
 }
 
-enum AnyResult {
+enum AnyResult<'de, 's> {
     Null,
     Bool(bool),
     Number(bool),
-    String,
+    BorrowedString(&'de str),
+    CopiedString(&'s str),
     Array,
     Map,
     Error(Error),
@@ -311,7 +312,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Error::syntax(reason, position.line, position.column)
     }
 
-    fn parse_any_prefix(&mut self) -> AnyResult {
+    fn parse_any_prefix(&mut self) -> AnyResult<'de, '_> {
         match try_with!(self.parse_whitespace_in_value(), AnyResult::Error) {
             b'n' => {
                 self.eat_char();
@@ -336,7 +337,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
-                AnyResult::String
+                match try_with!(self.read.parse_str(&mut self.scratch), AnyResult::Error) {
+                    Reference::Borrowed(s) => AnyResult::BorrowedString(s),
+                    Reference::Copied(s) => AnyResult::CopiedString(s),
+                }
             }
             b'[' => {
                 self.eat_char();
@@ -1442,10 +1446,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             AnyResult::Null => visitor.visit_unit(),
             AnyResult::Bool(b) => visitor.visit_bool(b),
             AnyResult::Number(positive) => tri!(self.parse_any_number(positive)).visit(visitor),
-            AnyResult::String => match tri!(self.read.parse_str(&mut self.scratch)) {
-                Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
-                Reference::Copied(s) => visitor.visit_str(s),
-            },
+            AnyResult::BorrowedString(s) => visitor.visit_borrowed_str(s),
+            AnyResult::CopiedString(s) => visitor.visit_str(s),
             AnyResult::Array => {
                 let ret = visitor.visit_seq(SeqAccess::new(self));
 
