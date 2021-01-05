@@ -430,6 +430,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    fn parse_whitespace_until_null(&mut self, visitor: &dyn Expected) -> Result<()> {
+        tri!(self.parse_whitespace_until(b'n', visitor));
+
+        self.parse_ident(b"ull")
+    }
+
     fn parse_whitespace_until(&mut self, expected: u8, visitor: &dyn Expected) -> Result<()> {
         if tri!(self.parse_whitespace_in_value()) == expected {
             self.eat_char();
@@ -1745,9 +1751,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        tri!(self.parse_whitespace_until(b'n', &visitor));
-
-        tri!(self.parse_ident(b"ull"));
+        tri!(self.parse_whitespace_until_null(&visitor));
 
         match visitor.visit_unit() {
             Ok(value) => Ok(value),
