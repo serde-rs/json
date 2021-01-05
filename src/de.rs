@@ -150,6 +150,12 @@ enum StructResult<'a, R> {
     Error(Error),
 }
 
+enum EnumResult<'a, R> {
+    Variant(VariantAccess<'a, R>),
+    Unit(UnitVariantAccess<'a, R>),
+    Error(Error),
+}
+
 #[cfg(not(feature = "unbounded_depth"))]
 macro_rules! if_checking_recursion_limit {
     ($($body:tt)*) => {
@@ -419,6 +425,35 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 StructResult::Error(self.fix_position(err))
             }
             Err(err) => StructResult::Error(err),
+        }
+    }
+
+    #[inline]
+    fn parse_enum_prefix(&mut self) -> EnumResult<'_, R> {
+        match try_with!(self.parse_whitespace_in_value(), EnumResult::Error) {
+            b'{' => {
+                self.eat_char();
+                if_checking_recursion_limit! {
+                    self.remaining_depth -= 1;
+                    if self.remaining_depth == 0 {
+                        return EnumResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
+                    }
+                }
+                EnumResult::Variant(VariantAccess::new(self))
+            }
+            b'"' => EnumResult::Unit(UnitVariantAccess::new(self)),
+            _ => EnumResult::Error(self.peek_error(ErrorCode::ExpectedSomeValue)),
+        }
+    }
+
+    #[inline]
+    fn parse_enum_suffix(&mut self) -> Result<()> {
+        match tri!(self.parse_whitespace_in_object()) {
+            b'}' => {
+                self.eat_char();
+                Ok(())
+            }
+            _ => Err(self.error(ErrorCode::ExpectedSomeValue)),
         }
     }
 
@@ -1875,24 +1910,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        match tri!(self.parse_whitespace_in_value()) {
-            b'{' => {
-                self.eat_char();
-                check_recursion! {
-                    self;
-                    let value = tri!(visitor.visit_enum(VariantAccess::new(self)));
-                }
-
-                match tri!(self.parse_whitespace_in_object()) {
-                    b'}' => {
-                        self.eat_char();
-                        Ok(value)
-                    }
-                    _ => Err(self.error(ErrorCode::ExpectedSomeValue)),
-                }
+        match self.parse_enum_prefix() {
+            EnumResult::Variant(variant) => {
+                let value = tri!(visitor.visit_enum(variant));
+                tri!(self.parse_enum_suffix());
+                Ok(value)
             }
-            b'"' => visitor.visit_enum(UnitVariantAccess::new(self)),
-            _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+            EnumResult::Unit(unit) => visitor.visit_enum(unit),
+            EnumResult::Error(err) => Err(err),
         }
     }
 
