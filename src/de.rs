@@ -409,6 +409,18 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[inline]
+    fn parse_option(&mut self) -> Result<Option<()>> {
+        match tri!(self.parse_whitespace()) {
+            Some(b'n') => {
+                self.eat_char();
+                tri!(self.parse_ident(b"ull"));
+                Ok(None)
+            }
+            _ => Ok(Some(())),
+        }
+    }
+
     /// Returns the first non-whitespace byte without consuming it, or `Err` if
     /// EOF is encountered.
     fn parse_whitespace_in_value(&mut self) -> Result<u8> {
@@ -1723,13 +1735,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        match tri!(self.parse_whitespace()) {
-            Some(b'n') => {
-                self.eat_char();
-                tri!(self.parse_ident(b"ull"));
-                visitor.visit_none()
-            }
-            _ => visitor.visit_some(self),
+        match tri!(self.parse_option()) {
+            Some(()) => visitor.visit_some(self),
+            None => visitor.visit_none(),
         }
     }
 
