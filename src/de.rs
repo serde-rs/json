@@ -172,6 +172,15 @@ macro_rules! if_checking_recursion_limit {
     };
 }
 
+macro_rules! check_recursion_prefix {
+    ($self_: ident, $error: ident) => {
+        $self_.remaining_depth -= 1;
+        if $self_.remaining_depth == 0 {
+            return $error::Error($self_.error(ErrorCode::RecursionLimitExceeded));
+        }
+    };
+}
+
 macro_rules! check_recursion {
     ($this:ident; $($body:tt)*) => {
         if_checking_recursion_limit! {
@@ -350,22 +359,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             b'[' => {
                 self.eat_char();
-                if_checking_recursion_limit! {
-                    self.remaining_depth -= 1;
-                    if self.remaining_depth == 0 {
-                        return AnyResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
-                    }
-                }
+                check_recursion_prefix!(self, AnyResult);
                 AnyResult::Array
             }
             b'{' => {
                 self.eat_char();
-                if_checking_recursion_limit! {
-                    self.remaining_depth -= 1;
-                    if self.remaining_depth == 0 {
-                        return AnyResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
-                    }
-                }
+                check_recursion_prefix!(self, AnyResult);
                 AnyResult::Map
             }
             _ => AnyResult::Error(self.peek_error(ErrorCode::ExpectedSomeValue)),
@@ -402,22 +401,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         match self.parse_whitespace_in_value() {
             Ok(b'[') => {
                 self.eat_char();
-                if_checking_recursion_limit! {
-                    self.remaining_depth -= 1;
-                    if self.remaining_depth == 0 {
-                        return StructResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
-                    }
-                }
+                check_recursion_prefix!(self, StructResult);
                 StructResult::Array(SeqAccess::new(self))
             }
             Ok(b'{') => {
                 self.eat_char();
-                if_checking_recursion_limit! {
-                    self.remaining_depth -= 1;
-                    if self.remaining_depth == 0 {
-                        return StructResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
-                    }
-                }
+                check_recursion_prefix!(self, StructResult);
                 StructResult::Map(MapAccess::new(self))
             }
             Ok(_) => {
@@ -433,12 +422,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         match try_with!(self.parse_whitespace_in_value(), EnumResult::Error) {
             b'{' => {
                 self.eat_char();
-                if_checking_recursion_limit! {
-                    self.remaining_depth -= 1;
-                    if self.remaining_depth == 0 {
-                        return EnumResult::Error(self.error(ErrorCode::RecursionLimitExceeded));
-                    }
-                }
+                check_recursion_prefix!(self, EnumResult);
                 EnumResult::Variant(VariantAccess::new(self))
             }
             b'"' => EnumResult::Unit(UnitVariantAccess::new(self)),
