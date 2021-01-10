@@ -2432,7 +2432,7 @@ where
 ///     location: String,
 /// }
 ///
-/// fn read_user_from_file<P: AsRef<Path>>(path: P) -> Result<User, Box<Error>> {
+/// fn read_user_from_file<P: AsRef<Path>>(path: P) -> Result<User, Box<dyn Error>> {
 ///     // Open the file in read-only mode with buffer.
 ///     let file = File::open(path)?;
 ///     let reader = BufReader::new(file);
