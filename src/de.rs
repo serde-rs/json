@@ -1196,10 +1196,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         if_checking_recursion_limit! {
             self.remaining_depth += 1;
         }
-        self.end_seq()
-    }
-
-    fn end_seq(&mut self) -> Result<()> {
         match tri!(self.parse_whitespace()) {
             Some(b']') => {
                 self.eat_char();
@@ -1221,10 +1217,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         if_checking_recursion_limit! {
             self.remaining_depth += 1;
         }
-        self.end_map()
-    }
-
-    fn end_map(&mut self) -> Result<()> {
         match tri!(self.parse_whitespace_in_object()) {
             b'}' => {
                 self.eat_char();
