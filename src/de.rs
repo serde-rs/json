@@ -1572,13 +1572,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         {
             let mut buf = String::new();
 
-            match tri!(self.parse_whitespace_in_value()) {
-                b'-' => {
-                    self.eat_char();
-                    buf.push('-');
-                }
-                _ => {}
-            };
+            if tri!(self.parse_whitespace_in_value()) == b'-' {
+                self.eat_char();
+                buf.push('-');
+            }
 
             tri!(self.scan_integer128(&mut buf));
 
@@ -1599,11 +1596,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         where
             V: de::Visitor<'de>,
         {
-            match tri!(self.parse_whitespace_in_value()) {
-                b'-' => {
-                    return Err(self.peek_error(ErrorCode::NumberOutOfRange));
-                }
-                _ => {}
+            if tri!(self.parse_whitespace_in_value()) == b'-' {
+                return Err(self.peek_error(ErrorCode::NumberOutOfRange));
             }
 
             let mut buf = String::new();
