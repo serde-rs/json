@@ -338,14 +338,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 AnyResult::Number(false)
             }
             b'0'..=b'9' => AnyResult::Number(true),
-            b'"' => {
-                self.eat_char();
-                self.scratch.clear();
-                match try_with!(self.read.parse_str(&mut self.scratch), AnyResult::Error) {
-                    Reference::Borrowed(s) => AnyResult::BorrowedString(s),
-                    Reference::Copied(s) => AnyResult::CopiedString(s),
-                }
-            }
+            b'"' => match try_with!(self.parse_str(), AnyResult::Error) {
+                Reference::Borrowed(s) => AnyResult::BorrowedString(s),
+                Reference::Copied(s) => AnyResult::CopiedString(s),
+            },
             b'[' => {
                 self.eat_char();
                 check_recursion_prefix!(self, AnyResult::Error);
@@ -377,6 +373,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.eat_char();
         self.scratch.clear();
         self.read.parse_str(&mut self.scratch)
+    }
+
+    fn parse_str_raw<'s>(&'s mut self) -> Result<Reference<'de, 's, [u8]>> {
+        self.eat_char();
+        self.scratch.clear();
+        self.read.parse_str_raw(&mut self.scratch)
     }
 
     fn parse_str_prefix<'s>(&'s mut self, exp: &dyn Expected) -> Result<Reference<'de, 's, str>> {
@@ -1734,14 +1736,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         let peek = tri!(self.parse_whitespace_in_value());
 
         let value = match peek {
-            b'"' => {
-                self.eat_char();
-                self.scratch.clear();
-                match tri!(self.read.parse_str_raw(&mut self.scratch)) {
-                    Reference::Borrowed(b) => visitor.visit_borrowed_bytes(b),
-                    Reference::Copied(b) => visitor.visit_bytes(b),
-                }
-            }
+            b'"' => match tri!(self.parse_str_raw()) {
+                Reference::Borrowed(b) => visitor.visit_borrowed_bytes(b),
+                Reference::Copied(b) => visitor.visit_bytes(b),
+            },
             b'[' => self.deserialize_seq(visitor),
             _ => Err(self.peek_invalid_type(&visitor)),
         };
