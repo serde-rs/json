@@ -180,9 +180,11 @@ macro_rules! if_checking_recursion_limit {
 
 macro_rules! check_recursion_prefix {
     ($self_: ident, $error: path) => {
-        $self_.remaining_depth -= 1;
-        if $self_.remaining_depth == 0 {
-            return $error($self_.error(ErrorCode::RecursionLimitExceeded));
+        if_checking_recursion_limit! {
+            $self_.remaining_depth -= 1;
+            if $self_.remaining_depth == 0 {
+                return $error($self_.error(ErrorCode::RecursionLimitExceeded));
+            }
         }
     };
 }
