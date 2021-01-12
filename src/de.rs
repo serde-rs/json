@@ -179,27 +179,10 @@ macro_rules! if_checking_recursion_limit {
 }
 
 macro_rules! check_recursion_prefix {
-    ($self_: ident, $error: ident) => {
+    ($self_: ident, $error: path) => {
         $self_.remaining_depth -= 1;
         if $self_.remaining_depth == 0 {
-            return $error::Error($self_.error(ErrorCode::RecursionLimitExceeded));
-        }
-    };
-}
-
-macro_rules! check_recursion {
-    ($this:ident; $($body:tt)*) => {
-        if_checking_recursion_limit! {
-            $this.remaining_depth -= 1;
-            if $this.remaining_depth == 0 {
-                return Err($this.error(ErrorCode::RecursionLimitExceeded));
-            }
-        }
-
-        $($body)*
-
-        if_checking_recursion_limit! {
-            $this.remaining_depth += 1;
+            return $error($self_.error(ErrorCode::RecursionLimitExceeded));
         }
     };
 }
@@ -365,12 +348,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             b'[' => {
                 self.eat_char();
-                check_recursion_prefix!(self, AnyResult);
+                check_recursion_prefix!(self, AnyResult::Error);
                 AnyResult::Array
             }
             b'{' => {
                 self.eat_char();
-                check_recursion_prefix!(self, AnyResult);
+                check_recursion_prefix!(self, AnyResult::Error);
                 AnyResult::Map
             }
             _ => AnyResult::Error(self.peek_error(ErrorCode::ExpectedSomeValue)),
@@ -403,16 +386,28 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.read.parse_str(&mut self.scratch)
     }
 
+    fn parse_seq_prefix(&mut self, exp: &dyn Expected) -> Result<()> {
+        tri!(self.parse_whitespace_until(b'[', exp));
+        check_recursion_prefix!(self, Err);
+        Ok(())
+    }
+
+    fn parse_map_prefix(&mut self, exp: &dyn Expected) -> Result<()> {
+        tri!(self.parse_whitespace_until(b'{', exp));
+        check_recursion_prefix!(self, Err);
+        Ok(())
+    }
+
     fn parse_struct_prefix(&mut self, exp: &dyn Expected) -> StructResult<'_, R> {
         match self.parse_whitespace_in_value() {
             Ok(b'[') => {
                 self.eat_char();
-                check_recursion_prefix!(self, StructResult);
+                check_recursion_prefix!(self, StructResult::Error);
                 StructResult::Array(SeqAccess::new(self))
             }
             Ok(b'{') => {
                 self.eat_char();
-                check_recursion_prefix!(self, StructResult);
+                check_recursion_prefix!(self, StructResult::Error);
                 StructResult::Map(MapAccess::new(self))
             }
             Ok(_) => {
@@ -427,7 +422,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         match try_with!(self.parse_whitespace_in_value(), EnumResult::Error) {
             b'{' => {
                 self.eat_char();
-                check_recursion_prefix!(self, EnumResult);
+                check_recursion_prefix!(self, EnumResult::Error);
                 EnumResult::Variant(VariantAccess::new(self))
             }
             b'"' => EnumResult::Unit(UnitVariantAccess::new(self)),
@@ -1819,14 +1814,11 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        tri!(self.parse_whitespace_until(b'[', &visitor));
+        tri!(self.parse_seq_prefix(&visitor));
 
-        check_recursion! {
-            self;
-            let ret = visitor.visit_seq(SeqAccess::new(self));
-        }
+        let ret = visitor.visit_seq(SeqAccess::new(self));
 
-        match (ret, self.end_seq()) {
+        match (ret, self.end_recursion_and_seq()) {
             (Ok(ret), Ok(())) => Ok(ret),
             (Err(err), _) | (_, Err(err)) => Err(self.fix_position(err)),
         }
@@ -1855,14 +1847,11 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        tri!(self.parse_whitespace_until(b'{', &visitor));
+        tri!(self.parse_map_prefix(&visitor));
 
-        check_recursion! {
-            self;
-            let ret = visitor.visit_map(MapAccess::new(self));
-        }
+        let ret = visitor.visit_map(MapAccess::new(self));
 
-        match (ret, self.end_map()) {
+        match (ret, self.end_recursion_and_map()) {
             (Ok(ret), Ok(())) => Ok(ret),
             (Err(err), _) | (_, Err(err)) => Err(self.fix_position(err)),
         }
