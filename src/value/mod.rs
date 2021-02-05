@@ -91,6 +91,7 @@
 //! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
 
 use crate::error::Error;
+use crate::io;
 use crate::lib::*;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
@@ -190,43 +191,6 @@ impl Debug for Value {
     }
 }
 
-// WriterFormatter is in it's own little module to enforce using the unsafe constructor
-mod writer_formatter {
-    use crate::io;
-    use crate::lib::*;
-
-    pub struct WriterFormatter<'a, 'b: 'a> {
-        inner: &'a mut fmt::Formatter<'b>,
-    }
-
-    impl<'a, 'b: 'a> WriterFormatter<'a, 'b> {
-        /// Safety: the caller needs to ensure that only valid utf8 bytes are written into this writer
-        pub unsafe fn new(inner: &'a mut fmt::Formatter<'b>) -> Self {
-            Self { inner }
-        }
-    }
-
-    impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
-        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            fn io_error<E>(_: E) -> io::Error {
-                // Error value does not matter because fmt::Display impl below just
-                // maps it to fmt::Error
-                io::Error::new(io::ErrorKind::Other, "fmt error")
-            }
-            // The safety requirements of passing in valid utf8 is passed trough to the caller trough the unsafe `new` method
-            let s = unsafe { str::from_utf8_unchecked(buf) };
-            tri!(self.inner.write_str(s).map_err(io_error));
-            Ok(buf.len())
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            Ok(())
-        }
-    }
-}
-
-use writer_formatter::WriterFormatter;
-
 impl fmt::Display for Value {
     /// Display a JSON value as a string.
     ///
@@ -253,11 +217,32 @@ impl fmt::Display for Value {
     ///     "{\n  \"city\": \"London\",\n  \"street\": \"10 Downing Street\"\n}");
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        struct WriterFormatter<'a, 'b: 'a> {
+            inner: &'a mut fmt::Formatter<'b>,
+        }
+
+        impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
+            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+                // Safety: the serializer below only emits valid utf8 when using
+                // the default formatter.
+                let s = unsafe { str::from_utf8_unchecked(buf) };
+                tri!(self.inner.write_str(s).map_err(io_error));
+                Ok(buf.len())
+            }
+
+            fn flush(&mut self) -> io::Result<()> {
+                Ok(())
+            }
+        }
+
+        fn io_error(_: fmt::Error) -> io::Error {
+            // Error value does not matter because Display impl just maps it
+            // back to fmt::Error.
+            io::Error::new(io::ErrorKind::Other, "fmt error")
+        }
+
         let alternate = f.alternate();
-        let mut wr = unsafe {
-            // The serializer only emits valid json with the default formatters
-            WriterFormatter::new(f)
-        };
+        let mut wr = WriterFormatter { inner: f };
         if alternate {
             // {:#}
             super::ser::to_writer_pretty(&mut wr, self).map_err(|_| fmt::Error)
