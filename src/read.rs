@@ -587,7 +587,10 @@ impl<'a> Read<'a> for SliceRead<'a> {
         V: Visitor<'a>,
     {
         let raw = &self.slice[self.raw_buffering_start_index..self.index];
-        let raw = str::from_utf8(raw).unwrap();
+        let raw = match str::from_utf8(raw) {
+            Ok(raw) => raw,
+            Err(_) => return error(self, ErrorCode::InvalidUnicodeCodePoint),
+        };
         visitor.visit_map(BorrowedRawDeserializer {
             raw_value: Some(raw),
         })
