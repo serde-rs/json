@@ -2201,6 +2201,25 @@ fn test_boxed_raw_value() {
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
 }
 
+#[cfg(feature = "raw_value")]
+#[test]
+fn test_raw_invalid_utf8() {
+    use serde_json::value::RawValue;
+
+    let j = &[b'"', b'\xCE', b'\xF8', b'"'];
+    let value_err = serde_json::from_slice::<Value>(j).unwrap_err();
+    let raw_value_err = serde_json::from_slice::<Box<RawValue>>(j).unwrap_err();
+
+    assert_eq!(
+        value_err.to_string(),
+        "invalid unicode code point at line 1 column 4",
+    );
+    assert_eq!(
+        raw_value_err.to_string(),
+        "invalid unicode code point at line 1 column 4",
+    );
+}
+
 #[test]
 fn test_borrow_in_map_key() {
     #[derive(Deserialize, Debug)]
