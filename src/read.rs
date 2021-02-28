@@ -377,7 +377,10 @@ where
         V: Visitor<'de>,
     {
         let raw = self.raw_buffer.take().unwrap();
-        let raw = String::from_utf8(raw).unwrap();
+        let raw = match String::from_utf8(raw) {
+            Ok(raw) => raw,
+            Err(_) => return error(self, ErrorCode::InvalidUnicodeCodePoint),
+        };
         visitor.visit_map(OwnedRawDeserializer {
             raw_value: Some(raw),
         })
