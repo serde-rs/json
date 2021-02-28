@@ -2130,7 +2130,7 @@ fn test_borrowed_raw_value() {
         #[serde(borrow)]
         b: &'a RawValue,
         c: i8,
-    };
+    }
 
     let wrapper_from_str: Wrapper =
         serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
@@ -2163,7 +2163,7 @@ fn test_boxed_raw_value() {
         a: i8,
         b: Box<RawValue>,
         c: i8,
-    };
+    }
 
     let wrapper_from_str: Wrapper =
         serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
