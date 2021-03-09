@@ -2014,30 +2014,23 @@ pub struct SeqIntoIter<'a, R: 'a, T> {
     _phantom: PhantomData<fn() -> T>,
 }
 
-impl<'de, 'a, R: Read<'de> + 'a, T: de::Deserialize<'de>> SeqIntoIter<'a, R, T> {
-    fn try_next(&mut self) -> Result<Option<T>> {
-        if let Some(mut seq) = self.seq.take() {
-            match de::SeqAccess::next_element(&mut seq)? {
-                Some(elem) => {
-                    self.seq = Some(seq);
-                    Ok(Some(elem))
-                }
-                None => {
-                    seq.end()?;
-                    Ok(None)
-                }
-            }
-        } else {
-            Ok(None)
-        }
-    }
-}
-
 impl<'de, 'a, R: Read<'de> + 'a, T: de::Deserialize<'de>> Iterator for SeqIntoIter<'a, R, T> {
     type Item = Result<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.try_next().transpose()
+        self.seq
+            .take()
+            .and_then(|mut seq| match de::SeqAccess::next_element(&mut seq) {
+                Ok(Some(elem)) => {
+                    self.seq = Some(seq);
+                    Some(Ok(elem))
+                }
+                Ok(None) => match seq.end() {
+                    Ok(()) => None,
+                    Err(err) => Some(Err(err)),
+                },
+                Err(err) => Some(Err(err)),
+            })
     }
 }
 
