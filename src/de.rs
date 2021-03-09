@@ -1943,6 +1943,14 @@ impl<'de, 'a, R: Read<'de> + 'a> SeqAccess<'a, R> {
     pub fn end(self) -> Result<()> {
         self.de.end_seq()
     }
+
+    /// Turn a JSON sequence into an iterator over values of type T.
+    pub fn into_iter<T: de::Deserialize<'de>>(self) -> SeqIntoIter<'a, R, T> {
+        SeqIntoIter {
+            seq: Some(self),
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
@@ -1980,6 +1988,60 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
         }
     }
 }
+
+/// Iterator that deserializes a sequence into multiple JSON values.
+///
+/// A sequence iterator can be created from any sequence using the `Sequence::into_iter` method.
+///
+/// The elements can consist of any JSON value.
+///
+/// ```
+/// use serde_json::{Deserializer, Value};
+///
+/// fn main() {
+///     let data = r#"[5, "6", {"seven": [8]}]"#;
+///
+///     let mut deserializer = Deserializer::from_str(data);
+///     let seq = deserializer.as_seq().unwrap().into_iter::<Value>();
+///
+///     for value in seq {
+///         println!("{}", value.unwrap());
+///     }
+/// }
+/// ```
+pub struct SeqIntoIter<'a, R: 'a, T> {
+    seq: Option<SeqAccess<'a, R>>,
+    _phantom: PhantomData<fn() -> T>,
+}
+
+impl<'de, 'a, R: Read<'de> + 'a, T: de::Deserialize<'de>> SeqIntoIter<'a, R, T> {
+    fn try_next(&mut self) -> Result<Option<T>> {
+        if let Some(mut seq) = self.seq.take() {
+            match de::SeqAccess::next_element(&mut seq)? {
+                Some(elem) => {
+                    self.seq = Some(seq);
+                    Ok(Some(elem))
+                }
+                None => {
+                    seq.end()?;
+                    Ok(None)
+                }
+            }
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+impl<'de, 'a, R: Read<'de> + 'a, T: de::Deserialize<'de>> Iterator for SeqIntoIter<'a, R, T> {
+    type Item = Result<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.try_next().transpose()
+    }
+}
+
+impl<'de, 'a, R: Read<'de> + 'a, T: de::Deserialize<'de>> FusedIterator for SeqIntoIter<'a, R, T> {}
 
 struct MapAccess<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
