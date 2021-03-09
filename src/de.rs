@@ -152,6 +152,28 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    /// Turn a JSON deserializer into a sequence.
+    pub fn as_seq(&mut self) -> Result<SeqAccess<R>> {
+        let peek = match tri!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        match peek {
+            b'[' => {
+                self.eat_char();
+
+                Ok(SeqAccess::new(self))
+            }
+            _ => {
+                let err = self.peek_invalid_type(&"Expected array");
+                Err(self.fix_position(err))
+            }
+        }
+    }
+
     /// Parse arbitrarily deep JSON structures without any consideration for
     /// overflowing the stack.
     ///
@@ -1881,7 +1903,28 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     }
 }
 
-struct SeqAccess<'a, R: 'a> {
+/// A sequence that can be iterated over.
+///
+/// This can be created from any JSON deserializer using the `Deserializer::as_seq` method.
+///
+/// The data must be an array. Elements can be any JSON value.
+///
+/// ```
+/// use serde::de::SeqAccess;
+/// use serde_json::{Deserializer, Value};
+///
+/// fn main() {
+///     let data = r#"[1, "2", {"three": [4]}]"#;
+///
+///     let mut deserializer = Deserializer::from_str(data);
+///     let mut seq = deserializer.as_seq().unwrap();
+///
+///     while let Some(value) = seq.next_element::<Value>().unwrap() {
+///         println!("{}", value);
+///     }
+/// }
+/// ```
+pub struct SeqAccess<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
     first: bool,
 }
