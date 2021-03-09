@@ -1922,6 +1922,8 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 ///     while let Some(value) = seq.next_element::<Value>().unwrap() {
 ///         println!("{}", value);
 ///     }
+///
+///     seq.end();
 /// }
 /// ```
 pub struct SeqAccess<'a, R: 'a> {
@@ -1932,6 +1934,14 @@ pub struct SeqAccess<'a, R: 'a> {
 impl<'a, R: 'a> SeqAccess<'a, R> {
     fn new(de: &'a mut Deserializer<R>) -> Self {
         SeqAccess { de, first: true }
+    }
+}
+
+impl<'de, 'a, R: Read<'de> + 'a> SeqAccess<'a, R> {
+    /// Ensures that the end of the sequence has been reached. This must be called even if
+    /// `next_element` returns `Ok(None)`.
+    pub fn end(self) -> Result<()> {
+        self.de.end_seq()
     }
 }
 
