@@ -139,19 +139,22 @@ in one of the dozens of places it is used in your code.
 Serde provides a powerful way of mapping JSON data into Rust data structures
 largely automatically.
 
-<a href="https://play.rust-lang.org/?edition=2018&gist=15cfab66d38ff8a15a9cf1d8d897ac68" target="_blank">
+<a href="https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=abbfa8f91041f0be5674c3a35f9c3f4d" target="_blank">
 <img align="right" width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
 </a>
 
 ```rust
 use serde::{Deserialize, Serialize};
-use serde_json::Result;
+use serde_json::{Result, Value};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 struct Person {
     name: String,
     age: u8,
     phones: Vec<String>,
+    crayons: HashMap<String, Value>,
+    
 }
 
 fn typed_example() -> Result<()> {
@@ -163,7 +166,12 @@ fn typed_example() -> Result<()> {
             "phones": [
                 "+44 1234567",
                 "+44 2345678"
-            ]
+            ],
+            "crayons": {
+                "electric blue": 5,
+                "purple sashay": 69000
+            }
+    
         }"#;
 
     // Parse the string of data into a Person object. This is exactly the
@@ -172,10 +180,15 @@ fn typed_example() -> Result<()> {
     let p: Person = serde_json::from_str(data)?;
 
     // Do things just like with any other Rust data structure.
-    println!("Please call {} at the number {}", p.name, p.phones[0]);
+    println!("{} is selling {} crayons.  Call {}.", p.name, p.crayons["purple sashay"], p.phones[0]);
 
     Ok(())
 }
+
+fn main() {
+    typed_example().unwrap();
+}
+
 ```
 
 This is the same `serde_json::from_str` function as before, but this time we
