@@ -71,7 +71,7 @@ enum Value {
     Number(Number),
     String(String),
     Array(Vec<Value>),
-    Object(Map<String, Value>),
+    HashMap<String, Value>,
 }
 ```
 
