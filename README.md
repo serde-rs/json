@@ -350,7 +350,7 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 For JSON support in Serde without a memory allocator, please see the
 [`serde-json-core`] crate.
 
-[`serde-json-core`]: https://japaric.github.io/serde-json-core/serde_json_core/
+[`serde-json-core`]: https://github.com/rust-embedded-community/serde-json-core
 
 [value]: https://docs.serde.rs/serde_json/value/enum.Value.html
 [from_str]: https://docs.serde.rs/serde_json/de/fn.from_str.html
