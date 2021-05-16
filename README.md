@@ -83,7 +83,7 @@ a TCP stream.
 
 <div align="right">
 <a href="https://play.rust-lang.org/?edition=2018&gist=d69d8e3156d4bb81c4461b60b772ab72" target="_blank">
-<img width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
+<img align="center" width="85" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/runtab.png">
 </a>
 </div>
 
@@ -143,7 +143,7 @@ largely automatically.
 
 <div align="right">
 <a href="https://play.rust-lang.org/?edition=2018&gist=15cfab66d38ff8a15a9cf1d8d897ac68" target="_blank">
-<img width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
+<img align="center" width="85" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/runtab.png">
 </a>
 </div>
 
@@ -212,7 +212,7 @@ objects with very natural JSON syntax.
 
 <div align="right">
 <a href="https://play.rust-lang.org/?edition=2018&gist=6ccafad431d72b62e77cc34c8e879b24" target="_blank">
-<img width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
+<img align="center" width="85" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/runtab.png">
 </a>
 </div>
 
@@ -247,7 +247,7 @@ be represented as JSON.
 
 <div align="right">
 <a href="https://play.rust-lang.org/?edition=2018&gist=f9101a6e61dfc9e02c6a67f315ed24f2" target="_blank">
-<img width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
+<img align="center" width="85" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/runtab.png">
 </a>
 </div>
 
@@ -280,7 +280,7 @@ such as a File or a TCP stream.
 
 <div align="right">
 <a href="https://play.rust-lang.org/?edition=2018&gist=3472242a08ed2ff88a944f2a2283b0ee" target="_blank">
-<img width="50" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/run.png">
+<img align="center" width="85" src="https://raw.githubusercontent.com/serde-rs/serde-rs.github.io/master/img/runtab.png">
 </a>
 </div>
 
