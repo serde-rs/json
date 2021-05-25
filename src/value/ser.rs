@@ -419,6 +419,13 @@ impl serde::ser::SerializeMap for SerializeMap {
 
     fn end(self) -> Result<Value> {
         match self {
+            SerializeMap::Map {
+                next_key: Some(pending),
+                ..
+            } => {
+                // Panic to indicate bug with the custom Serialize implementation
+                panic!("end called before serialize_value: {:?}", pending)
+            }
             SerializeMap::Map { map, .. } => Ok(Value::Object(map)),
             #[cfg(feature = "arbitrary_precision")]
             SerializeMap::Number { .. } => unreachable!(),

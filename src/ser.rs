@@ -499,9 +499,14 @@ where
 #[doc(hidden)]
 #[derive(Eq, PartialEq)]
 pub enum State {
+    /// No content is expected, as the number of elements were previously given as zero.
     Empty,
+    /// First elements key is about to be serialized
     First,
+    /// N key value pairs have been serialized
     Rest,
+    /// A key has been serialized but not the value
+    Value,
 }
 
 // Not public API. Should be pub(crate).
@@ -539,12 +544,13 @@ where
                     .formatter
                     .begin_array_value(&mut ser.writer, *state == State::First)
                     .map_err(Error::io));
-                *state = State::Rest;
+                *state = State::Value;
                 tri!(value.serialize(&mut **ser));
                 tri!(ser
                     .formatter
                     .end_array_value(&mut ser.writer)
                     .map_err(Error::io));
+                *state = State::Rest;
                 Ok(())
             }
             #[cfg(feature = "arbitrary_precision")]
@@ -677,7 +683,7 @@ where
                     .formatter
                     .begin_object_key(&mut ser.writer, *state == State::First)
                     .map_err(Error::io));
-                *state = State::Rest;
+                *state = State::Value;
 
                 tri!(key.serialize(MapKeySerializer { ser: *ser }));
 
@@ -700,11 +706,18 @@ where
         T: ?Sized + Serialize,
     {
         match *self {
-            Compound::Map { ref mut ser, .. } => {
+            Compound::Map {
+                ref mut ser,
+                ref mut state,
+            } => {
+                if state != &State::Value {
+                    panic!("serialize_value called before serialize_key");
+                };
                 tri!(ser
                     .formatter
                     .begin_object_value(&mut ser.writer)
                     .map_err(Error::io));
+                *state = State::Rest;
                 tri!(value.serialize(&mut **ser));
                 tri!(ser
                     .formatter
@@ -725,7 +738,13 @@ where
             Compound::Map { ser, state } => {
                 match state {
                     State::Empty => {}
-                    _ => tri!(ser.formatter.end_object(&mut ser.writer).map_err(Error::io)),
+                    State::First | State::Rest => {
+                        tri!(ser.formatter.end_object(&mut ser.writer).map_err(Error::io));
+                    }
+                    State::Value => {
+                        // Panic to indicate a bug with the custom Serialize implementation
+                        panic!("end called before serialize_value");
+                    }
                 }
                 Ok(())
             }
