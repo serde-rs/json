@@ -52,7 +52,7 @@ impl Map<String, Value> {
     /// Clears the map, removing all values.
     #[inline]
     pub fn clear(&mut self) {
-        self.map.clear()
+        self.map.clear();
     }
 
     /// Returns a reference to the value corresponding to the key.
