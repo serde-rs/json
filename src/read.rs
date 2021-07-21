@@ -716,7 +716,7 @@ where
     }
 
     fn discard(&mut self) {
-        R::discard(self)
+        R::discard(self);
     }
 
     fn position(&self) -> Position {
@@ -766,7 +766,7 @@ where
     const should_early_return_if_failed: bool = R::should_early_return_if_failed;
 
     fn set_failed(&mut self, failed: &mut bool) {
-        R::set_failed(self, failed)
+        R::set_failed(self, failed);
     }
 }
 
