@@ -18,16 +18,6 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 /// When serializing, a value of this type will retain its original formatting
 /// and will not be minified or pretty-printed.
 ///
-/// # Note
-///
-/// `RawValue` is only available if serde\_json is built with the `"raw_value"`
-/// feature.
-///
-/// ```toml
-/// [dependencies]
-/// serde_json = { version = "1.0", features = ["raw_value"] }
-/// ```
-///
 /// # Example
 ///
 /// ```
@@ -109,6 +99,7 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 /// }
 /// ```
 #[repr(C)]
+#[cfg_attr(docsrs, doc(cfg(feature = "raw_value")))]
 pub struct RawValue {
     json: str,
 }
@@ -267,6 +258,7 @@ impl RawValue {
 ///
 /// println!("{}", serde_json::value::to_raw_value(&map).unwrap_err());
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "raw_value")))]
 pub fn to_raw_value<T>(value: &T) -> Result<Box<RawValue>, Error>
 where
     T: Serialize,

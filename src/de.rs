@@ -163,9 +163,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     /// completed, including, but not limited to, Display and Debug and Drop
     /// impls.
     ///
-    /// *This method is only available if serde_json is built with the
-    /// `"unbounded_depth"` feature.*
-    ///
     /// # Examples
     ///
     /// ```
@@ -196,6 +193,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     /// }
     /// ```
     #[cfg(feature = "unbounded_depth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "unbounded_depth")))]
     pub fn disable_recursion_limit(&mut self) {
         self.disable_recursion_limit = true;
     }
