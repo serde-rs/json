@@ -2492,6 +2492,7 @@ where
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
 where
     R: crate::io::Read,

@@ -454,6 +454,7 @@ pub mod de;
 pub mod error;
 pub mod map;
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod ser;
 #[cfg(not(feature = "std"))]
 mod ser;

@@ -140,6 +140,7 @@ where
 
 /// JSON input source that reads from a std::io input stream.
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct IoRead<R>
 where
     R: io::Read,
