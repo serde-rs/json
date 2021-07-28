@@ -357,6 +357,7 @@
 #![allow(non_upper_case_globals)]
 #![deny(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -453,6 +454,7 @@ pub mod de;
 pub mod error;
 pub mod map;
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod ser;
 #[cfg(not(feature = "std"))]
 mod ser;

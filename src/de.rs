@@ -196,6 +196,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     /// }
     /// ```
     #[cfg(feature = "unbounded_depth")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "unbounded_depth")))]
     pub fn disable_recursion_limit(&mut self) {
         self.disable_recursion_limit = true;
     }
@@ -2494,6 +2495,7 @@ where
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
 where
     R: crate::io::Read,
