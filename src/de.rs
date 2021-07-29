@@ -899,7 +899,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn scan_number(&mut self, buf: &mut String) -> Result<()> {
         match tri!(self.peek_or_null()) {
             b'.' => self.scan_decimal(buf),
-            c @ (b'e' | b'E') => self.scan_exponent(c as char, buf),
+            e @ b'e' | e @ b'E' => self.scan_exponent(e as char, buf),
             _ => Ok(()),
         }
     }
@@ -924,7 +924,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         match tri!(self.peek_or_null()) {
-            c @ (b'e' | b'E') => self.scan_exponent(c as char, buf),
+            e @ b'e' | e @ b'E' => self.scan_exponent(e as char, buf),
             _ => Ok(()),
         }
     }
