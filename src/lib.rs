@@ -300,7 +300,7 @@
 //! [macro]: https://docs.serde.rs/serde_json/macro.json.html
 //! [`serde-json-core`]: https://github.com/rust-embedded-community/serde-json-core
 
-#![doc(html_root_url = "https://docs.rs/serde_json/1.0.65")]
+#![doc(html_root_url = "https://docs.rs/serde_json/1.0.66")]
 #![deny(clippy::all, clippy::pedantic)]
 // Ignored clippy lints
 #![allow(
