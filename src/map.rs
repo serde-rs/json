@@ -11,6 +11,8 @@ use crate::lib::iter::FromIterator;
 use crate::lib::*;
 use crate::value::Value;
 use serde::de;
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
 
 #[cfg(feature = "preserve_order")]
 use indexmap::{self, IndexMap};
@@ -277,6 +279,27 @@ impl PartialEq for Map<String, Value> {
 }
 
 impl Eq for Map<String, Value> {}
+
+impl Hash for Map<String, Value> {
+    #[inline]
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        self.map.hash(h)
+    }
+}
+
+impl PartialOrd for Map<String, Value> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.map.partial_cmp(&other.map)
+    }
+}
+
+impl Ord for Map<String, Value> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.map.cmp(&other.map)
+    }
+}
 
 /// Access an element of this map. Panics if the given key is not present in the
 /// map.
