@@ -1,12 +1,14 @@
 use crate::de::ParserNumber;
 use crate::error::Error;
 use crate::lib::*;
-use ordered_float::NotNan;
 use serde::de::{self, Unexpected, Visitor};
 use serde::{
     forward_to_deserialize_any, serde_if_integer128, Deserialize, Deserializer, Serialize,
     Serializer,
 };
+
+#[cfg(not(feature = "arbitrary_precision"))]
+use ordered_float::NotNan;
 
 #[cfg(feature = "arbitrary_precision")]
 use crate::error::ErrorCode;
@@ -282,7 +284,7 @@ impl Debug for Number {
                 debug.field(&i);
             }
             N::Float(f) => {
-                debug.field(&f);
+                debug.field(&f.into_inner());
             }
         }
         debug.finish()

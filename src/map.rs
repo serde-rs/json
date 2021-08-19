@@ -11,7 +11,10 @@ use crate::lib::iter::FromIterator;
 use crate::lib::*;
 use crate::value::Value;
 use serde::de;
+
+#[cfg(not(feature = "preserve_order"))]
 use std::cmp::Ordering;
+#[cfg(not(feature = "preserve_order"))]
 use std::hash::{Hash, Hasher};
 
 #[cfg(feature = "preserve_order")]
@@ -280,6 +283,7 @@ impl PartialEq for Map<String, Value> {
 
 impl Eq for Map<String, Value> {}
 
+#[cfg(not(feature = "preserve_order"))]
 impl Hash for Map<String, Value> {
     #[inline]
     fn hash<H: Hasher>(&self, h: &mut H) {
@@ -287,6 +291,7 @@ impl Hash for Map<String, Value> {
     }
 }
 
+#[cfg(not(feature = "preserve_order"))]
 impl PartialOrd for Map<String, Value> {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -294,6 +299,7 @@ impl PartialOrd for Map<String, Value> {
     }
 }
 
+#[cfg(not(feature = "preserve_order"))]
 impl Ord for Map<String, Value> {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
