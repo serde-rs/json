@@ -287,7 +287,7 @@ impl Eq for Map<String, Value> {}
 impl Hash for Map<String, Value> {
     #[inline]
     fn hash<H: Hasher>(&self, h: &mut H) {
-        self.map.hash(h)
+        self.map.hash(h);
     }
 }
 
