@@ -13,9 +13,9 @@ use crate::value::Value;
 use serde::de;
 
 #[cfg(not(feature = "preserve_order"))]
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 #[cfg(not(feature = "preserve_order"))]
-use std::hash::{Hash, Hasher};
+use core::hash::{Hash, Hasher};
 
 #[cfg(feature = "preserve_order")]
 use indexmap::{self, IndexMap};
