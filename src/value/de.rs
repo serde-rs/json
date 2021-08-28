@@ -512,21 +512,10 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
     {
         match self.value {
             Some(Value::Array(v)) => {
-                let len = v.len();
-                if len == 0 {
+                if v.is_empty() {
                     visitor.visit_unit()
                 } else {
-                    let mut seq = SeqDeserializer::new(v);
-                    let ret = tri!(visitor.visit_seq(&mut seq));
-                    let remaining = seq.iter.len();
-                    if remaining == 0 {
-                        Ok(ret)
-                    } else {
-                        Err(serde::de::Error::invalid_length(
-                            len,
-                            &"fewer elements in array",
-                        ))
-                    }
+                    visit_array(v, visitor)
                 }
             }
             Some(other) => Err(serde::de::Error::invalid_type(
@@ -1006,21 +995,10 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
     {
         match self.value {
             Some(&Value::Array(ref v)) => {
-                let len = v.len();
-                if len == 0 {
+                if v.is_empty() {
                     visitor.visit_unit()
                 } else {
-                    let mut seq = SeqRefDeserializer::new(v);
-                    let ret = tri!(visitor.visit_seq(&mut seq));
-                    let remaining = seq.iter.len();
-                    if remaining == 0 {
-                        Ok(ret)
-                    } else {
-                        Err(serde::de::Error::invalid_length(
-                            len,
-                            &"fewer elements in array",
-                        ))
-                    }
+                    visit_array_ref(v, visitor)
                 }
             }
             Some(other) => Err(serde::de::Error::invalid_type(
