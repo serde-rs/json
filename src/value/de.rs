@@ -1006,7 +1006,22 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
     {
         match self.value {
             Some(&Value::Array(ref v)) => {
-                serde::Deserializer::deserialize_any(SeqRefDeserializer::new(v), visitor)
+                let len = v.len();
+                if len == 0 {
+                    visitor.visit_unit()
+                } else {
+                    let mut seq = SeqRefDeserializer::new(v);
+                    let ret = tri!(visitor.visit_seq(&mut seq));
+                    let remaining = seq.iter.len();
+                    if remaining == 0 {
+                        Ok(ret)
+                    } else {
+                        Err(serde::de::Error::invalid_length(
+                            len,
+                            &"fewer elements in array",
+                        ))
+                    }
+                }
             }
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
@@ -1050,38 +1065,6 @@ struct SeqRefDeserializer<'de> {
 impl<'de> SeqRefDeserializer<'de> {
     fn new(slice: &'de [Value]) -> Self {
         SeqRefDeserializer { iter: slice.iter() }
-    }
-}
-
-impl<'de> serde::Deserializer<'de> for SeqRefDeserializer<'de> {
-    type Error = Error;
-
-    #[inline]
-    fn deserialize_any<V>(mut self, visitor: V) -> Result<V::Value, Error>
-    where
-        V: Visitor<'de>,
-    {
-        let len = self.iter.len();
-        if len == 0 {
-            visitor.visit_unit()
-        } else {
-            let ret = tri!(visitor.visit_seq(&mut self));
-            let remaining = self.iter.len();
-            if remaining == 0 {
-                Ok(ret)
-            } else {
-                Err(serde::de::Error::invalid_length(
-                    len,
-                    &"fewer elements in array",
-                ))
-            }
-        }
-    }
-
-    forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
     }
 }
 
