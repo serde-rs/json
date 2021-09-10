@@ -251,6 +251,7 @@ impl Map<String, Value> {
     }
 }
 
+#[allow(clippy::derivable_impls)] // clippy bug: https://github.com/rust-lang/rust-clippy/issues/7655
 impl Default for Map<String, Value> {
     #[inline]
     fn default() -> Self {
