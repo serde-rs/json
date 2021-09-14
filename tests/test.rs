@@ -805,6 +805,7 @@ fn test_parse_u64() {
 #[test]
 fn test_parse_negative_zero() {
     for negative_zero in &[
+        "-0",
         "-0.0",
         "-0e2",
         "-0.0e2",
