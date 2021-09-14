@@ -2230,6 +2230,7 @@ fn test_raw_invalid_utf8() {
 fn test_borrow_in_map_key() {
     #[derive(Deserialize, Debug)]
     struct Outer {
+        #[allow(dead_code)]
         map: BTreeMap<MyMapKey, ()>,
     }
 
