@@ -434,8 +434,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 } else {
                     let neg = (significand as i64).wrapping_neg();
 
-                    // Convert into a float if we underflow.
-                    if neg > 0 {
+                    // Convert into a float if we underflow, or on `-0`.
+                    if neg >= 0 {
                         ParserNumber::F64(-(significand as f64))
                     } else {
                         ParserNumber::I64(neg)
