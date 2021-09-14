@@ -812,9 +812,14 @@ fn test_parse_negative_zero() {
         "-1e-4000000000000000000000000000000000000000000000000",
     ] {
         assert!(
+            from_str::<f32>(negative_zero).unwrap().is_sign_negative(),
+            "should have been negative: {:?}",
+            negative_zero,
+        );
+        assert!(
             from_str::<f64>(negative_zero).unwrap().is_sign_negative(),
             "should have been negative: {:?}",
-            negative_zero
+            negative_zero,
         );
     }
 }
