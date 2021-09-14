@@ -5,7 +5,7 @@ use serde_json::json;
 use std::fmt;
 
 #[derive(Debug)]
-enum Enum {
+pub enum Enum {
     Variant { x: u8 },
 }
 
