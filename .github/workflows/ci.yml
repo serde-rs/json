@@ -93,3 +93,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo install cargo-fuzz --debug
       - run: cargo fuzz build -O
+        # Currently broken. https://github.com/rust-fuzz/cargo-fuzz/issues/276
+        continue-on-error: true
