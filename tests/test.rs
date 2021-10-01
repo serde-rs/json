@@ -5,7 +5,6 @@
     clippy::float_cmp,
     clippy::items_after_statements,
     clippy::let_underscore_drop,
-    clippy::manual_str_repeat,
     clippy::shadow_unrelated,
     clippy::too_many_lines,
     clippy::unreadable_literal,
@@ -1827,7 +1826,7 @@ fn test_stack_overflow() {
         .collect();
     let _: Value = from_str(&brackets).unwrap();
 
-    let brackets: String = iter::repeat('[').take(129).collect();
+    let brackets = "[".repeat(129);
     test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 128")]);
 }
 
