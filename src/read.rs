@@ -677,7 +677,7 @@ impl<'a> Read<'a> for StrRead<'a> {
 
     #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
-        self.delegate.begin_raw_buffering()
+        self.delegate.begin_raw_buffering();
     }
 
     #[cfg(feature = "raw_value")]
@@ -753,7 +753,7 @@ where
 
     #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
-        R::begin_raw_buffering(self)
+        R::begin_raw_buffering(self);
     }
 
     #[cfg(feature = "raw_value")]

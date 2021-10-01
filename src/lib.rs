@@ -352,8 +352,6 @@
     // noisy
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
-    // TODO
-    clippy::semicolon_if_nothing_returned,
 )]
 #![allow(non_upper_case_globals)]
 #![deny(missing_docs)]
