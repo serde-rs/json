@@ -316,8 +316,6 @@
     clippy::unnecessary_wraps,
     // clippy bug: https://github.com/rust-lang/rust-clippy/issues/5704
     clippy::unnested_or_patterns,
-    // TODO
-    clippy::needless_borrow,
 )]
 // Ignored clippy_pedantic lints
 #![allow(
