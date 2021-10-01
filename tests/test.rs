@@ -1,8 +1,17 @@
 #![cfg(not(feature = "preserve_order"))]
 #![allow(
+    clippy::cast_precision_loss,
     clippy::excessive_precision,
     clippy::float_cmp,
-    clippy::unreadable_literal
+    clippy::items_after_statements,
+    clippy::let_underscore_drop,
+    clippy::manual_str_repeat,
+    clippy::shadow_unrelated,
+    clippy::too_many_lines,
+    clippy::unreadable_literal,
+    clippy::unseparated_literal_suffix,
+    clippy::vec_init_then_push,
+    clippy::zero_sized_map_values
 )]
 #![cfg_attr(feature = "trace-macros", feature(trace_macros))]
 #[cfg(feature = "trace-macros")]

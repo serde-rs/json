@@ -1,7 +1,24 @@
 #![allow(
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
     clippy::comparison_chain,
+    clippy::doc_markdown,
     clippy::excessive_precision,
-    clippy::float_cmp
+    clippy::float_cmp,
+    clippy::if_not_else,
+    clippy::module_name_repetitions,
+    clippy::needless_borrow,
+    clippy::semicolon_if_nothing_returned,
+    clippy::shadow_unrelated,
+    clippy::similar_names,
+    clippy::single_match_else,
+    clippy::too_many_lines,
+    clippy::unreadable_literal,
+    clippy::unseparated_literal_suffix,
+    clippy::wildcard_imports
 )]
 
 #[path = "../src/lexical/mod.rs"]
