@@ -316,6 +316,8 @@
     clippy::unnecessary_wraps,
     // clippy bug: https://github.com/rust-lang/rust-clippy/issues/5704
     clippy::unnested_or_patterns,
+    // TODO
+    clippy::needless_borrow,
 )]
 // Ignored clippy_pedantic lints
 #![allow(
@@ -352,6 +354,9 @@
     // noisy
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
+    // TODO
+    clippy::redundant_closure_for_method_calls,
+    clippy::semicolon_if_nothing_returned,
 )]
 #![allow(non_upper_case_globals)]
 #![deny(missing_docs)]
