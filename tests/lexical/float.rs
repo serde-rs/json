@@ -181,7 +181,7 @@ fn round_to_f64_test() {
 
     // Bug fixes
     // 1.2345e-308
-    check_round_to_f64(10234494226754558294, -1086, 2498655817078750, -1074)
+    check_round_to_f64(10234494226754558294, -1086, 2498655817078750, -1074);
 }
 
 fn assert_normalized_eq(mut x: ExtendedFloat, mut y: ExtendedFloat) {
