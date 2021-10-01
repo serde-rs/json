@@ -130,7 +130,7 @@ impl Number {
         {
             for c in self.n.chars() {
                 if c == '.' || c == 'e' || c == 'E' {
-                    return self.n.parse::<f64>().ok().map_or(false, |f| f.is_finite());
+                    return self.n.parse::<f64>().ok().map_or(false, f64::is_finite);
                 }
             }
             false
