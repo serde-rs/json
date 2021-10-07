@@ -1,5 +1,5 @@
 error: unexpected end of macro invocation
- --> $DIR/missing_colon.rs:4:5
+ --> $DIR/tests/ui/missing_colon.rs:4:5
   |
 4 |     json!({ "a" });
   |     ^^^^^^^^^^^^^^^ missing tokens in macro arguments
