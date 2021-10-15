@@ -1703,6 +1703,7 @@ pub trait Formatter {
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
+    #[cfg(not(feature = "std_float"))]
     #[inline]
     fn write_f32<W>(&mut self, writer: &mut W, value: f32) -> io::Result<()>
     where
@@ -1714,6 +1715,17 @@ pub trait Formatter {
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
+    #[cfg(feature = "std_float")]
+    #[inline]
+    fn write_f32<W>(&mut self, writer: &mut W, value: f32) -> io::Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        write!(writer, "{:?}", value)
+    }
+
+    /// Writes a floating point value like `-31.26e+12` to the specified writer.
+    #[cfg(not(feature = "std_float"))]
     #[inline]
     fn write_f64<W>(&mut self, writer: &mut W, value: f64) -> io::Result<()>
     where
@@ -1722,6 +1734,16 @@ pub trait Formatter {
         let mut buffer = ryu::Buffer::new();
         let s = buffer.format_finite(value);
         writer.write_all(s.as_bytes())
+    }
+
+    /// Writes a floating point value like `-31.26e+12` to the specified writer.
+    #[cfg(feature = "std_float")]
+    #[inline]
+    fn write_f64<W>(&mut self, writer: &mut W, value: f64) -> io::Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        write!(writer, "{:?}", value)
     }
 
     /// Writes a number that has already been rendered to a string.

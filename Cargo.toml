@@ -74,6 +74,9 @@ float_roundtrip = []
 # produce output identical to the input.
 arbitrary_precision = []
 
+# Uses std formatter instead of ryu's one
+std_float = []
+
 # Provide a RawValue type that can hold unprocessed JSON during deserialization.
 raw_value = []
 
