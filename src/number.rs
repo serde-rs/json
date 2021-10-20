@@ -283,7 +283,7 @@ impl Debug for Number {
                 debug.field(&i);
             }
             N::Float(f) => {
-                debug.field(&f);
+                debug.field(&f.into_inner());
             }
         }
         debug.finish()
