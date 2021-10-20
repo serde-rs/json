@@ -1,6 +1,7 @@
 use crate::de::ParserNumber;
 use crate::error::Error;
 use crate::lib::*;
+use ordered_float::NotNan;
 use serde::de::{self, Unexpected, Visitor};
 use serde::{
     forward_to_deserialize_any, serde_if_integer128, Deserialize, Deserializer, Serialize,
@@ -16,24 +17,20 @@ use serde::de::{IntoDeserializer, MapAccess};
 pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Number {
     n: N,
 }
 
 #[cfg(not(feature = "arbitrary_precision"))]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum N {
     PosInt(u64),
     /// Always less than zero.
     NegInt(i64),
     /// Always finite.
-    Float(f64),
+    Float(NotNan<f64>),
 }
-
-// Implementing Eq is fine since any float values are always finite.
-#[cfg(not(feature = "arbitrary_precision"))]
-impl Eq for N {}
 
 #[cfg(feature = "arbitrary_precision")]
 type N = String;
@@ -208,7 +205,7 @@ impl Number {
         match self.n {
             N::PosInt(n) => Some(n as f64),
             N::NegInt(n) => Some(n as f64),
-            N::Float(n) => Some(n),
+            N::Float(n) => Some(n.into_inner()),
         }
         #[cfg(feature = "arbitrary_precision")]
         self.n.parse::<f64>().ok().filter(|float| float.is_finite())
@@ -232,7 +229,11 @@ impl Number {
             let n = {
                 #[cfg(not(feature = "arbitrary_precision"))]
                 {
-                    N::Float(f)
+                    N::Float(unsafe {
+                        // This is safe because `f.is_finite()` ensures
+                        // that `f` is not `NaN`.
+                        NotNan::new_unchecked(f)
+                    })
                 }
                 #[cfg(feature = "arbitrary_precision")]
                 {
@@ -307,7 +308,7 @@ impl Serialize for Number {
         match self.n {
             N::PosInt(u) => serializer.serialize_u64(u),
             N::NegInt(i) => serializer.serialize_i64(i),
-            N::Float(f) => serializer.serialize_f64(f),
+            N::Float(f) => serializer.serialize_f64(f.into_inner()),
         }
     }
 
@@ -461,7 +462,7 @@ macro_rules! deserialize_any {
             match self.n {
                 N::PosInt(u) => visitor.visit_u64(u),
                 N::NegInt(i) => visitor.visit_i64(i),
-                N::Float(f) => visitor.visit_f64(f),
+                N::Float(f) => visitor.visit_f64(f.into_inner()),
             }
         }
 
@@ -625,7 +626,11 @@ impl From<ParserNumber> for Number {
             ParserNumber::F64(f) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
                 {
-                    N::Float(f)
+                    N::Float(unsafe {
+                        // This is safe because `ParserNumber` ensures
+                        // that `f` is not `NaN`.
+                        NotNan::new_unchecked(f)
+                    })
                 }
                 #[cfg(feature = "arbitrary_precision")]
                 {
@@ -736,7 +741,7 @@ impl Number {
         match self.n {
             N::PosInt(u) => Unexpected::Unsigned(u),
             N::NegInt(i) => Unexpected::Signed(i),
-            N::Float(f) => Unexpected::Float(f),
+            N::Float(f) => Unexpected::Float(f.into_inner()),
         }
     }
 
