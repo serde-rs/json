@@ -1,7 +1,6 @@
 use crate::de::ParserNumber;
 use crate::error::Error;
 use crate::lib::*;
-use ordered_float::NotNan;
 use serde::de::{self, Unexpected, Visitor};
 use serde::{
     forward_to_deserialize_any, serde_if_integer128, Deserialize, Deserializer, Serialize,
@@ -12,6 +11,9 @@ use serde::{
 use crate::error::ErrorCode;
 #[cfg(feature = "arbitrary_precision")]
 use serde::de::{IntoDeserializer, MapAccess};
+
+#[cfg(not(feature = "arbitrary_precision"))]
+use ordered_float::NotNan;
 
 #[cfg(feature = "arbitrary_precision")]
 pub(crate) const TOKEN: &str = "$serde_json::private::Number";
