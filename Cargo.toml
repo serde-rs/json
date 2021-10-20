@@ -18,7 +18,7 @@ serde = { version = "1.0.100", default-features = false }
 indexmap = { version = "1.5", optional = true }
 itoa = { version = "0.4.3", default-features = false }
 ryu = "1.0"
-ordered-float = "2.8"
+ordered-float = { version = "2.8", default-features = false }
 
 [dev-dependencies]
 automod = "1.0"
