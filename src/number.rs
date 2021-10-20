@@ -36,8 +36,8 @@ enum N {
 impl Eq for N {}
 
 #[cfg(not(feature = "arbitrary_precision"))]
-impl std::hash::Hash for N {
-    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+impl core::hash::Hash for N {
+    fn hash<H: core::hash::Hasher>(&self, h: &mut H) {
         match self {
             Self::PosInt(i) => i.hash(h),
             Self::NegInt(i) => i.hash(h),
