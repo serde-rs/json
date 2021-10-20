@@ -22,13 +22,25 @@ pub struct Number {
 }
 
 #[cfg(not(feature = "arbitrary_precision"))]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone)]
 enum N {
     PosInt(u64),
     /// Always less than zero.
     NegInt(i64),
     /// Always finite.
     Float(f64),
+}
+
+#[cfg(not(feature = "arbitrary_precision"))]
+impl PartialEq for N {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::PosInt(a), Self::PosInt(b)) => a == b,
+            (Self::NegInt(a), Self::NegInt(b)) => a == b,
+            (Self::Float(a), Self::Float(b)) => a == b,
+            _ => false,
+        }
+    }
 }
 
 // Implementing Eq is fine since any float values are always finite.
