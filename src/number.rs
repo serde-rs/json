@@ -12,9 +12,6 @@ use crate::error::ErrorCode;
 #[cfg(feature = "arbitrary_precision")]
 use serde::de::{IntoDeserializer, MapAccess};
 
-#[cfg(not(feature = "arbitrary_precision"))]
-use ordered_float::NotNan;
-
 #[cfg(feature = "arbitrary_precision")]
 pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
@@ -25,13 +22,31 @@ pub struct Number {
 }
 
 #[cfg(not(feature = "arbitrary_precision"))]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq)]
 enum N {
     PosInt(u64),
     /// Always less than zero.
     NegInt(i64),
     /// Always finite.
-    Float(NotNan<f64>),
+    Float(f64),
+}
+
+// Implementing Eq is fine since any float values are always finite.
+#[cfg(not(feature = "arbitrary_precision"))]
+impl Eq for N {}
+
+#[cfg(not(feature = "arbitrary_precision"))]
+impl std::hash::Hash for N {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        match self {
+            Self::PosInt(i) => i.hash(h),
+            Self::NegInt(i) => i.hash(h),
+            Self::Float(f) => {
+                // Using `f64::to_bits` here is fine since any float values are always finite.
+                f.to_bits().hash(h)
+            }
+        }
+    }
 }
 
 #[cfg(feature = "arbitrary_precision")]
@@ -207,7 +222,7 @@ impl Number {
         match self.n {
             N::PosInt(n) => Some(n as f64),
             N::NegInt(n) => Some(n as f64),
-            N::Float(n) => Some(n.into_inner()),
+            N::Float(n) => Some(n),
         }
         #[cfg(feature = "arbitrary_precision")]
         self.n.parse::<f64>().ok().filter(|float| float.is_finite())
@@ -231,11 +246,7 @@ impl Number {
             let n = {
                 #[cfg(not(feature = "arbitrary_precision"))]
                 {
-                    N::Float(unsafe {
-                        // This is safe because `f.is_finite()` ensures
-                        // that `f` is not `NaN`.
-                        NotNan::new_unchecked(f)
-                    })
+                    N::Float(f)
                 }
                 #[cfg(feature = "arbitrary_precision")]
                 {
@@ -285,7 +296,7 @@ impl Debug for Number {
                 debug.field(&i);
             }
             N::Float(f) => {
-                debug.field(&f.into_inner());
+                debug.field(&f);
             }
         }
         debug.finish()
@@ -310,7 +321,7 @@ impl Serialize for Number {
         match self.n {
             N::PosInt(u) => serializer.serialize_u64(u),
             N::NegInt(i) => serializer.serialize_i64(i),
-            N::Float(f) => serializer.serialize_f64(f.into_inner()),
+            N::Float(f) => serializer.serialize_f64(f),
         }
     }
 
@@ -464,7 +475,7 @@ macro_rules! deserialize_any {
             match self.n {
                 N::PosInt(u) => visitor.visit_u64(u),
                 N::NegInt(i) => visitor.visit_i64(i),
-                N::Float(f) => visitor.visit_f64(f.into_inner()),
+                N::Float(f) => visitor.visit_f64(f),
             }
         }
 
@@ -628,11 +639,7 @@ impl From<ParserNumber> for Number {
             ParserNumber::F64(f) => {
                 #[cfg(not(feature = "arbitrary_precision"))]
                 {
-                    N::Float(unsafe {
-                        // This is safe because `ParserNumber` ensures
-                        // that `f` is not `NaN`.
-                        NotNan::new_unchecked(f)
-                    })
+                    N::Float(f)
                 }
                 #[cfg(feature = "arbitrary_precision")]
                 {
@@ -743,7 +750,7 @@ impl Number {
         match self.n {
             N::PosInt(u) => Unexpected::Unsigned(u),
             N::NegInt(i) => Unexpected::Signed(i),
-            N::Float(f) => Unexpected::Float(f.into_inner()),
+            N::Float(f) => Unexpected::Float(f),
         }
     }
 
