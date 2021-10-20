@@ -35,9 +35,9 @@ enum N {
 impl PartialEq for N {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::PosInt(a), Self::PosInt(b)) => a == b,
-            (Self::NegInt(a), Self::NegInt(b)) => a == b,
-            (Self::Float(a), Self::Float(b)) => a == b,
+            (N::PosInt(a), N::PosInt(b)) => a == b,
+            (N::NegInt(a), N::NegInt(b)) => a == b,
+            (N::Float(a), N::Float(b)) => a == b,
             _ => false,
         }
     }
@@ -51,11 +51,11 @@ impl Eq for N {}
 impl core::hash::Hash for N {
     fn hash<H: core::hash::Hasher>(&self, h: &mut H) {
         match self {
-            Self::PosInt(i) => i.hash(h),
-            Self::NegInt(i) => i.hash(h),
-            Self::Float(f) => {
+            N::PosInt(i) => i.hash(h),
+            N::NegInt(i) => i.hash(h),
+            N::Float(f) => {
                 // Using `f64::to_bits` here is fine since any float values are always finite.
-                f.to_bits().hash(h)
+                f.to_bits().hash(h);
             }
         }
     }
