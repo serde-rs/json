@@ -379,7 +379,7 @@ mod lib {
     pub use self::core::convert::{self, From, Into};
     pub use self::core::default::{self, Default};
     pub use self::core::fmt::{self, Debug, Display};
-    pub use self::core::hash::{self, Hash};
+    pub use self::core::hash::{self, Hash, Hasher};
     pub use self::core::iter::FusedIterator;
     pub use self::core::marker::{self, PhantomData};
     pub use self::core::ops::{Bound, RangeBounds};

@@ -48,17 +48,16 @@ impl PartialEq for N {
 impl Eq for N {}
 
 #[cfg(not(feature = "arbitrary_precision"))]
-impl core::hash::Hash for N {
-    fn hash<H: core::hash::Hasher>(&self, h: &mut H) {
-        match self {
+impl Hash for N {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        match *self {
             N::PosInt(i) => i.hash(h),
             N::NegInt(i) => i.hash(h),
             N::Float(f) => {
-                // Using `f64::to_bits` here is fine since any float values are never `NaN`.
-                if *f == 0.0f64 {
-                    // The IEEE 754 standard has two representations for zero, +0 and -0,
-                    // such that +0 == -0.
-                    // In both cases we use the +0 hash so that hash(+0) == hash(-0).
+                if f == 0.0f64 {
+                    // There are 2 zero representations, +0 and -0, which
+                    // compare equal but have different bits. We use the +0 hash
+                    // for both so that hash(+0) == hash(-0).
                     0.0f64.to_bits().hash(h);
                 } else {
                     f.to_bits().hash(h);

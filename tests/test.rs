@@ -27,8 +27,10 @@ use serde_json::{
     from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
     to_vec, to_writer, Deserializer, Number, Value,
 };
+use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 use std::fmt::{self, Debug};
+use std::hash::{Hash, Hasher};
 use std::io;
 use std::iter;
 use std::marker::PhantomData;
@@ -2287,9 +2289,6 @@ fn test_value_into_deserializer() {
 
 #[test]
 fn hash_positive_and_negative_zero() {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
     fn hash(obj: impl Hash) -> u64 {
         let mut hasher = DefaultHasher::new();
         obj.hash(&mut hasher);
@@ -2298,5 +2297,11 @@ fn hash_positive_and_negative_zero() {
 
     let k1 = serde_json::from_str::<Number>("0.0").unwrap();
     let k2 = serde_json::from_str::<Number>("-0.0").unwrap();
-    assert!(k1 != k2 || hash(k1) == hash(k2));
+    if cfg!(feature = "arbitrary_precision") {
+        assert_ne!(k1, k2);
+        assert_ne!(hash(k1), hash(k2));
+    } else {
+        assert_eq!(k1, k2);
+        assert_eq!(hash(k1), hash(k2));
+    }
 }
