@@ -16,13 +16,13 @@ use serde::de::{IntoDeserializer, MapAccess};
 pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Number {
     n: N,
 }
 
 #[cfg(not(feature = "arbitrary_precision"))]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone)]
 enum N {
     PosInt(u64),
     /// Always less than zero.
@@ -31,9 +31,42 @@ enum N {
     Float(f64),
 }
 
+#[cfg(not(feature = "arbitrary_precision"))]
+impl PartialEq for N {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (N::PosInt(a), N::PosInt(b)) => a == b,
+            (N::NegInt(a), N::NegInt(b)) => a == b,
+            (N::Float(a), N::Float(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
 // Implementing Eq is fine since any float values are always finite.
 #[cfg(not(feature = "arbitrary_precision"))]
 impl Eq for N {}
+
+#[cfg(not(feature = "arbitrary_precision"))]
+impl core::hash::Hash for N {
+    fn hash<H: core::hash::Hasher>(&self, h: &mut H) {
+        match self {
+            N::PosInt(i) => i.hash(h),
+            N::NegInt(i) => i.hash(h),
+            N::Float(f) => {
+                // Using `f64::to_bits` here is fine since any float values are never `NaN`.
+                if *f == 0.0f64 {
+                    // The IEEE 754 standard has two representations for zero, +0 and -0,
+                    // such that +0 == -0.
+                    // In both cases we use the +0 hash so that hash(+0) == hash(-0).
+                    0.0f64.to_bits().hash(h);
+                } else {
+                    f.to_bits().hash(h);
+                }
+            }
+        }
+    }
+}
 
 #[cfg(feature = "arbitrary_precision")]
 type N = String;

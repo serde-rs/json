@@ -2284,3 +2284,19 @@ fn test_value_into_deserializer() {
     let outer = Outer::deserialize(map.into_deserializer()).unwrap();
     assert_eq!(outer.inner.string, "Hello World");
 }
+
+#[test]
+fn hash_positive_and_negative_zero() {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    fn hash(obj: impl Hash) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        obj.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    let k1 = serde_json::from_str::<Number>("0.0").unwrap();
+    let k2 = serde_json::from_str::<Number>("-0.0").unwrap();
+    assert!(k1 != k2 || hash(k1) == hash(k2));
+}
