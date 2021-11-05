@@ -55,7 +55,14 @@ impl core::hash::Hash for N {
             N::NegInt(i) => i.hash(h),
             N::Float(f) => {
                 // Using `f64::to_bits` here is fine since any float values are never `NaN`.
-                f.to_bits().hash(h);
+                if *f == 0.0f64 {
+                    // The IEEE 754 standard has two representations for zero, +0 and -0,
+                    // such that +0 == -0.
+                    // In both cases we use the +0 hash so that hash(+0) == hash(-0).
+                    0.0f64.to_bits().hash(h);
+                } else {
+                    f.to_bits().hash(h);
+                }
             }
         }
     }
