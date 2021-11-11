@@ -13,7 +13,7 @@
 
 ```toml
 [dependencies]
-serde_json = "1.0"
+serde_json = "1.0.69"
 ```
 
 You may be looking for:
