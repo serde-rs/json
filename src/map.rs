@@ -247,7 +247,7 @@ impl Map<String, Value> {
         self.map.retain(f);
     }
 
-    #[cfg(not(feature = "preserve_order"))]
+    #[cfg(all(not(feature = "preserve_order"), not(no_btreemap_retain)))]
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
