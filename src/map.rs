@@ -234,12 +234,12 @@ impl Map<String, Value> {
         }
     }
 
+    #[cfg(all(feature = "preserve_order", not(no_btreemap_retain)))]
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
     /// The elements are visited in ascending key order.
     #[inline]
-    #[cfg(all(feature = "preserve_order", not(no_btreemap_remove_entry)))]
     pub fn retain<F, K>(&mut self, f: F)
     where
         F: FnMut(&String, &mut Value) -> bool,
@@ -247,12 +247,12 @@ impl Map<String, Value> {
         self.map.retain(f);
     }
 
+    #[cfg(not(feature = "preserve_order"))]
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
     /// The elements are visited in ascending key order.
     #[inline]
-    #[cfg(not(feature = "preserve_order"))]
     pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&String, &mut Value) -> bool,
