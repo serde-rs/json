@@ -35,6 +35,7 @@ fn test_append() {
     assert!(val.is_empty());
 }
 
+#[cfg(not(no_btreemap_retain))]
 #[test]
 fn test_retain() {
     const EXPECTED: &[&str] = &["a", "c"];
