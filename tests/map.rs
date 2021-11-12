@@ -34,3 +34,15 @@ fn test_append() {
     assert_eq!(keys, EXPECTED);
     assert!(val.is_empty());
 }
+
+#[test]
+fn test_retain() {
+    const EXPECTED: &[&str] = &["a", "c"];
+
+    let mut v: Value = from_str(r#"{"b":null,"a":null,"c":null}"#).unwrap();
+    let val = v.as_object_mut().unwrap();
+    val.retain(|k, _| k.as_str() != "b");
+
+    let keys: Vec<_> = val.keys().collect();
+    assert_eq!(keys, EXPECTED);
+}

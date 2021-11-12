@@ -234,6 +234,32 @@ impl Map<String, Value> {
         }
     }
 
+    #[cfg(feature = "preserve_order")]
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in ascending key order.
+    #[inline]
+    pub fn retain<F, K>(&mut self, f: F)
+    where
+        F: FnMut(&String, &mut Value) -> bool,
+    {
+        self.map.retain(f);
+    }
+
+    #[cfg(not(feature = "preserve_order"))]
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in ascending key order.
+    #[inline]
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&String, &mut Value) -> bool,
+    {
+        self.map.retain(f);
+    }
+
     /// Gets an iterator over the values of the map.
     #[inline]
     pub fn values(&self) -> Values {
