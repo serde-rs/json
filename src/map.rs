@@ -240,7 +240,7 @@ impl Map<String, Value> {
     /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
     /// The elements are visited in ascending key order.
     #[inline]
-    pub fn retain<F, K>(&mut self, f: F)
+    pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&String, &mut Value) -> bool,
     {
