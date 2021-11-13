@@ -33,7 +33,7 @@ fn main() {
     }
 
     // BTreeMap::retain
-    // https://blog.rust-lang.org/2021/06/17/Rust-1.53.0.html#library-changes
+    // https://blog.rust-lang.org/2021/06/17/Rust-1.53.0.html#stabilized-apis
     if minor < 53 {
         println!("cargo:rustc-cfg=no_btreemap_retain");
     }
