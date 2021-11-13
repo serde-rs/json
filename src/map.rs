@@ -234,19 +234,6 @@ impl Map<String, Value> {
         }
     }
 
-    /// Retains only the elements specified by the predicate.
-    ///
-    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)`
-    /// returns `false`.
-    #[cfg(not(no_btreemap_retain))]
-    #[inline]
-    pub fn retain<F>(&mut self, f: F)
-    where
-        F: FnMut(&String, &mut Value) -> bool,
-    {
-        self.map.retain(f);
-    }
-
     /// Gets an iterator over the values of the map.
     #[inline]
     pub fn values(&self) -> Values {
@@ -261,6 +248,19 @@ impl Map<String, Value> {
         ValuesMut {
             iter: self.map.values_mut(),
         }
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)`
+    /// returns `false`.
+    #[cfg(not(no_btreemap_retain))]
+    #[inline]
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&String, &mut Value) -> bool,
+    {
+        self.map.retain(f);
     }
 }
 
