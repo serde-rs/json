@@ -7,6 +7,7 @@ use serde::{de, ser};
 
 /// This type represents all possible errors that can occur when serializing or
 /// deserializing JSON data.
+#[derive(Eq, PartialEq)]
 pub struct Error {
     /// This `Box` allows us to keep the size of `Error` as small as possible. A
     /// larger `Error` type was substantially slower due to all the functions
@@ -167,6 +168,7 @@ impl From<Error> for io::Error {
     }
 }
 
+#[derive(Eq, PartialEq)]
 struct ErrorImpl {
     code: ErrorCode,
     line: usize,
@@ -240,6 +242,33 @@ pub(crate) enum ErrorCode {
     /// Encountered nesting of JSON maps and arrays more than 128 layers deep.
     RecursionLimitExceeded,
 }
+
+impl PartialEq for ErrorCode {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ErrorCode::Message(l), ErrorCode::Message(r)) => l == r,
+            (ErrorCode::Io(l), ErrorCode::Io(r)) => io_error_eq(l, r),
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+fn io_error_eq(l: &io::Error, r: &io::Error) -> bool {
+    if l.kind() == io::ErrorKind::Other {
+        format!("{:?}", l) == format!("{:?}", r)
+    } else {
+        l.kind() == r.kind()
+    }
+}
+
+#[cfg(not(feature = "std"))]
+fn io_error_eq(_: &io::Error, _: &io::Error) -> bool {
+    // IO errors can never occur in no-std mode.
+    true
+}
+
+impl Eq for ErrorCode {}
 
 impl Error {
     #[cold]
