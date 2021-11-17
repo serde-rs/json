@@ -216,6 +216,12 @@ impl RawValue {
     }
 }
 
+impl From<Box<RawValue>> for Box<str> {
+    fn from(val: Box<RawValue>) -> Self {
+        unsafe { mem::transmute::<Box<RawValue>, Box<str>>(val) }
+    }
+}
+
 /// Convert a `T` into a boxed `RawValue`.
 ///
 /// # Example
