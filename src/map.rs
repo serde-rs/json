@@ -99,6 +99,7 @@ impl Map<String, Value> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     #[inline]
+    #[cfg(any(feature = "preserve_order", not(no_btreemap_get_key_value)))]
     pub fn get_key_value<Q>(&self, key: &Q) -> Option<(&String, &Value)>
     where
         String: Borrow<Q>,
