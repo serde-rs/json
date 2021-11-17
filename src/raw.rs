@@ -122,6 +122,10 @@ impl RawValue {
     fn from_owned(json: Box<str>) -> Box<Self> {
         unsafe { mem::transmute::<Box<str>, Box<RawValue>>(json) }
     }
+
+    fn into_owned(raw_value: Box<Self>) -> Box<str> {
+        unsafe { mem::transmute::<Box<RawValue>, Box<str>>(raw_value) }
+    }
 }
 
 impl Clone for Box<RawValue> {
@@ -217,8 +221,8 @@ impl RawValue {
 }
 
 impl From<Box<RawValue>> for Box<str> {
-    fn from(val: Box<RawValue>) -> Self {
-        unsafe { mem::transmute::<Box<RawValue>, Box<str>>(val) }
+    fn from(raw_value: Box<RawValue>) -> Self {
+        RawValue::into_owned(raw_value)
     }
 }
 
