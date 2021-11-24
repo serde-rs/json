@@ -1715,10 +1715,31 @@ fn test_byte_buf_de() {
 }
 
 #[test]
-fn test_byte_buf_de_invalid_escape_sequence() {
+fn test_byte_buf_de_lone_surrogate() {
     let bytes = ByteBuf::from(vec![237, 160, 188]);
     let v: ByteBuf = from_str(r#""\ud83c""#).unwrap();
     assert_eq!(v, bytes);
+
+    let bytes = ByteBuf::from(vec![237, 160, 188, 10]);
+    let v: ByteBuf = from_str(r#""\ud83c\n""#).unwrap();
+    assert_eq!(v, bytes);
+
+    let bytes = ByteBuf::from(vec![237, 160, 188, 32]);
+    let v: ByteBuf = from_str(r#""\ud83c ""#).unwrap();
+    assert_eq!(v, bytes);
+
+    let bytes = ByteBuf::from(vec![237, 176, 129]);
+    let v: ByteBuf = from_str(r#""\udc01""#).unwrap();
+    assert_eq!(v, bytes);
+
+    let res = from_str::<ByteBuf>(r#""\ud83c\!""#);
+    assert!(res.is_err());
+
+    let res = from_str::<ByteBuf>(r#""\ud83c\u""#);
+    assert!(res.is_err());
+
+    let res = from_str::<ByteBuf>(r#""\ud83c\ud83c""#);
+    assert!(res.is_err());
 }
 
 #[test]

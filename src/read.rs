@@ -859,8 +859,20 @@ fn parse_escape<'de, R: Read<'de>>(
         b't' => scratch.push(b'\t'),
         b'u' => {
             let c = match tri!(read.decode_hex_escape()) {
-                0xDC00..=0xDFFF => {
-                    return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
+                n @ 0xDC00..=0xDFFF => {
+                    if validate {
+                        return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
+                    }
+
+                    let utf8_bytes = [
+                        (n >> 12 & 0x0F) as u8 | 0b1110_0000,
+                        (n >> 6 & 0x3F) as u8 | 0b1000_0000,
+                        (n & 0x3F) as u8 | 0b1000_0000,
+                    ];
+
+                    scratch.extend_from_slice(&utf8_bytes);
+
+                    return Ok(());
                 }
 
                 // Non-BMP characters are encoded as a sequence of
@@ -871,7 +883,7 @@ fn parse_escape<'de, R: Read<'de>>(
                 n1 @ 0xD800..=0xDBFF => {
                     if tri!(peek_or_eof(read)) != b'\\' {
                         if validate {
-                            tri!(next_or_eof(read));
+                            read.discard();
                             return error(read, ErrorCode::UnexpectedEndOfHexEscape);
                         }
 
@@ -885,10 +897,11 @@ fn parse_escape<'de, R: Read<'de>>(
 
                         return Ok(());
                     }
-                    tri!(next_or_eof(read));
+                    read.discard();
+
                     if tri!(peek_or_eof(read)) != b'u' {
                         if validate {
-                            tri!(next_or_eof(read));
+                            read.discard();
                             return error(read, ErrorCode::UnexpectedEndOfHexEscape);
                         }
 
@@ -900,9 +913,13 @@ fn parse_escape<'de, R: Read<'de>>(
 
                         scratch.extend_from_slice(&utf8_bytes);
 
+                        // The \ prior to this byte started an escape sequence,
+                        // so we need to parse that now.
+                        parse_escape(read, validate, scratch)?;
+
                         return Ok(());
                     }
-                    tri!(next_or_eof(read));
+                    read.discard();
 
                     let n2 = tri!(read.decode_hex_escape());
 
