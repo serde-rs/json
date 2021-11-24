@@ -1715,6 +1715,13 @@ fn test_byte_buf_de() {
 }
 
 #[test]
+fn test_byte_buf_de_invalid_escape_sequence() {
+    let bytes = ByteBuf::from(vec![237, 160, 188]);
+    let v: ByteBuf = from_str(r#""\ud83c""#).unwrap();
+    assert_eq!(v, bytes);
+}
+
+#[test]
 fn test_byte_buf_de_multiple() {
     let s: Vec<ByteBuf> = from_str(r#"["ab\nc", "cd\ne"]"#).unwrap();
     let a = ByteBuf::from(b"ab\nc".to_vec());

@@ -225,7 +225,7 @@ where
                     return result(self, scratch);
                 }
                 b'\\' => {
-                    tri!(parse_escape(self, scratch));
+                    tri!(parse_escape(self, validate, scratch));
                 }
                 _ => {
                     if validate {
@@ -465,7 +465,7 @@ impl<'a> SliceRead<'a> {
                 b'\\' => {
                     scratch.extend_from_slice(&self.slice[start..self.index]);
                     self.index += 1;
-                    tri!(parse_escape(self, scratch));
+                    tri!(parse_escape(self, validate, scratch));
                     start = self.index;
                 }
                 _ => {
@@ -817,6 +817,16 @@ where
     }
 }
 
+fn peek_or_eof<'de, R>(read: &mut R) -> Result<u8>
+where
+    R: ?Sized + Read<'de>,
+{
+    match tri!(read.peek()) {
+        Some(b) => Ok(b),
+        None => error(read, ErrorCode::EofWhileParsingString),
+    }
+}
+
 fn error<'de, R, T>(read: &R, reason: ErrorCode) -> Result<T>
 where
     R: ?Sized + Read<'de>,
@@ -831,7 +841,11 @@ fn as_str<'de, 's, R: Read<'de>>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
 /// the previous byte read was a backslash.
-fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
+fn parse_escape<'de, R: Read<'de>>(
+    read: &mut R,
+    validate: bool,
+    scratch: &mut Vec<u8>,
+) -> Result<()> {
     let ch = tri!(next_or_eof(read));
 
     match ch {
@@ -851,13 +865,44 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
 
                 // Non-BMP characters are encoded as a sequence of
                 // two hex escapes, representing UTF-16 surrogates.
+                // If `validate` is false and we only find a single
+                // hex escape that is a surrogate, then we'll accept
+                // it instead of erroring.
                 n1 @ 0xD800..=0xDBFF => {
-                    if tri!(next_or_eof(read)) != b'\\' {
-                        return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                    if tri!(peek_or_eof(read)) != b'\\' {
+                        if validate {
+                            tri!(next_or_eof(read));
+                            return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                        }
+
+                        let utf8_bytes = [
+                            (n1 >> 12 & 0x0F) as u8 | 0b1110_0000,
+                            (n1 >> 6 & 0x3F) as u8 | 0b1000_0000,
+                            (n1 & 0x3F) as u8 | 0b1000_0000,
+                        ];
+
+                        scratch.extend_from_slice(&utf8_bytes);
+
+                        return Ok(());
                     }
-                    if tri!(next_or_eof(read)) != b'u' {
-                        return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                    tri!(next_or_eof(read));
+                    if tri!(peek_or_eof(read)) != b'u' {
+                        if validate {
+                            tri!(next_or_eof(read));
+                            return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                        }
+
+                        let utf8_bytes = [
+                            (n1 >> 12 & 0x0F) as u8 | 0b1110_0000,
+                            (n1 >> 6 & 0x3F) as u8 | 0b1000_0000,
+                            (n1 & 0x3F) as u8 | 0b1000_0000,
+                        ];
+
+                        scratch.extend_from_slice(&utf8_bytes);
+
+                        return Ok(());
                     }
+                    tri!(next_or_eof(read));
 
                     let n2 = tri!(read.decode_hex_escape());
 
