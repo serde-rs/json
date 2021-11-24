@@ -1581,18 +1581,18 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ///
     /// Backslash escape sequences like `\n` are still interpreted and required
     /// to be valid. `\u` escape sequences are required to represent valid
-    /// Unicode code points, except in the case of lone surrogate pairs.
+    /// Unicode code points, except in the case of lone surrogates.
     ///
     /// ```
     /// use serde_bytes::ByteBuf;
     ///
     /// fn look_at_bytes() {
-    ///     let json_data = b"\"lone surrogate pair: \\uD801\"";
+    ///     let json_data = b"\"lone surrogate: \\uD801\"";
     ///     let parsed: Result<ByteBuf, _> = serde_json::from_slice(json_data);
     ///
     ///     assert!(parsed.is_ok());
     ///
-    ///     let expected = b"lone surrogate pair: \xED\xA0\x81";
+    ///     let expected = b"lone surrogate: \xED\xA0\x81";
     ///     let bytes: ByteBuf = parsed.unwrap();
     ///     assert_eq!(expected, &bytes[..]);
     /// }
