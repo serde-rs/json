@@ -868,13 +868,12 @@ fn parse_escape<'de, R: Read<'de>>(
 
             let c = match tri!(read.decode_hex_escape()) {
                 n @ 0xDC00..=0xDFFF => {
-                    if validate {
-                        return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
-                    }
-
-                    encode_surrogate(scratch, n);
-
-                    return Ok(());
+                    return if validate {
+                        error(read, ErrorCode::LoneLeadingSurrogateInHexEscape)
+                    } else {
+                        encode_surrogate(scratch, n);
+                        Ok(())
+                    };
                 }
 
                 // Non-BMP characters are encoded as a sequence of two hex
@@ -883,31 +882,29 @@ fn parse_escape<'de, R: Read<'de>>(
                 // whereas deserializing a byte string accepts lone surrogates.
                 n1 @ 0xD800..=0xDBFF => {
                     if tri!(peek_or_eof(read)) != b'\\' {
-                        if validate {
+                        return if validate {
                             read.discard();
-                            return error(read, ErrorCode::UnexpectedEndOfHexEscape);
-                        }
-
-                        encode_surrogate(scratch, n1);
-
-                        return Ok(());
+                            error(read, ErrorCode::UnexpectedEndOfHexEscape)
+                        } else {
+                            encode_surrogate(scratch, n1);
+                            Ok(())
+                        };
                     }
                     read.discard();
 
                     if tri!(peek_or_eof(read)) != b'u' {
-                        if validate {
+                        return if validate {
                             read.discard();
-                            return error(read, ErrorCode::UnexpectedEndOfHexEscape);
-                        }
-
-                        encode_surrogate(scratch, n1);
-
-                        // The \ prior to this byte started an escape sequence,
-                        // so we need to parse that now. This recursive call
-                        // does not blow the stack on malicious input because
-                        // the escape is not \u, so it will be handled by one
-                        // of the easy nonrecursive cases.
-                        return parse_escape(read, validate, scratch);
+                            error(read, ErrorCode::UnexpectedEndOfHexEscape)
+                        } else {
+                            encode_surrogate(scratch, n1);
+                            // The \ prior to this byte started an escape sequence,
+                            // so we need to parse that now. This recursive call
+                            // does not blow the stack on malicious input because
+                            // the escape is not \u, so it will be handled by one
+                            // of the easy nonrecursive cases.
+                            parse_escape(read, validate, scratch)
+                        };
                     }
                     read.discard();
 
