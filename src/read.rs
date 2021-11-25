@@ -858,17 +858,21 @@ fn parse_escape<'de, R: Read<'de>>(
         b'r' => scratch.push(b'\r'),
         b't' => scratch.push(b'\t'),
         b'u' => {
+            fn encode_surrogate(scratch: &mut Vec<u8>, n: u16) {
+                scratch.extend_from_slice(&[
+                    (n >> 12 & 0x0F) as u8 | 0b1110_0000,
+                    (n >> 6 & 0x3F) as u8 | 0b1000_0000,
+                    (n & 0x3F) as u8 | 0b1000_0000,
+                ]);
+            }
+
             let c = match tri!(read.decode_hex_escape()) {
                 n @ 0xDC00..=0xDFFF => {
                     if validate {
                         return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
                     }
 
-                    scratch.extend_from_slice(&[
-                        (n >> 12 & 0x0F) as u8 | 0b1110_0000,
-                        (n >> 6 & 0x3F) as u8 | 0b1000_0000,
-                        (n & 0x3F) as u8 | 0b1000_0000,
-                    ]);
+                    encode_surrogate(scratch, n);
 
                     return Ok(());
                 }
@@ -884,11 +888,7 @@ fn parse_escape<'de, R: Read<'de>>(
                             return error(read, ErrorCode::UnexpectedEndOfHexEscape);
                         }
 
-                        scratch.extend_from_slice(&[
-                            (n1 >> 12 & 0x0F) as u8 | 0b1110_0000,
-                            (n1 >> 6 & 0x3F) as u8 | 0b1000_0000,
-                            (n1 & 0x3F) as u8 | 0b1000_0000,
-                        ]);
+                        encode_surrogate(scratch, n1);
 
                         return Ok(());
                     }
@@ -900,11 +900,7 @@ fn parse_escape<'de, R: Read<'de>>(
                             return error(read, ErrorCode::UnexpectedEndOfHexEscape);
                         }
 
-                        scratch.extend_from_slice(&[
-                            (n1 >> 12 & 0x0F) as u8 | 0b1110_0000,
-                            (n1 >> 6 & 0x3F) as u8 | 0b1000_0000,
-                            (n1 & 0x3F) as u8 | 0b1000_0000,
-                        ]);
+                        encode_surrogate(scratch, n1);
 
                         // The \ prior to this byte started an escape sequence,
                         // so we need to parse that now. This recursive call
