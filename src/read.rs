@@ -875,11 +875,10 @@ fn parse_escape<'de, R: Read<'de>>(
                     return Ok(());
                 }
 
-                // Non-BMP characters are encoded as a sequence of
-                // two hex escapes, representing UTF-16 surrogates.
-                // If `validate` is false and we only find a single
-                // hex escape that is a surrogate, then we'll accept
-                // it instead of erroring.
+                // Non-BMP characters are encoded as a sequence of two hex
+                // escapes, representing UTF-16 surrogates. If deserializing a
+                // utf-8 string the surrogates are required to be paired,
+                // whereas deserializing a byte string accepts lone surrogates.
                 n1 @ 0xD800..=0xDBFF => {
                     if tri!(peek_or_eof(read)) != b'\\' {
                         if validate {
