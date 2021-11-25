@@ -907,7 +907,10 @@ fn parse_escape<'de, R: Read<'de>>(
                         ]);
 
                         // The \ prior to this byte started an escape sequence,
-                        // so we need to parse that now.
+                        // so we need to parse that now. This recursive call
+                        // does not blow the stack on malicious input because
+                        // the escape is not \u, so it will be handled by one
+                        // of the easy nonrecursive cases.
                         return parse_escape(read, validate, scratch);
                     }
                     read.discard();
