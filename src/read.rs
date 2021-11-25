@@ -860,9 +860,9 @@ fn parse_escape<'de, R: Read<'de>>(
         b'u' => {
             fn encode_surrogate(scratch: &mut Vec<u8>, n: u16) {
                 scratch.extend_from_slice(&[
-                    (n >> 12 & 0x0F) as u8 | 0b1110_0000,
-                    (n >> 6 & 0x3F) as u8 | 0b1000_0000,
-                    (n & 0x3F) as u8 | 0b1000_0000,
+                    (n >> 12 & 0b0000_1111) as u8 | 0b1110_0000,
+                    (n >> 6 & 0b0011_1111) as u8 | 0b1000_0000,
+                    (n & 0b0011_1111) as u8 | 0b1000_0000,
                 ]);
             }
 
