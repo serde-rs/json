@@ -908,9 +908,7 @@ fn parse_escape<'de, R: Read<'de>>(
 
                         // The \ prior to this byte started an escape sequence,
                         // so we need to parse that now.
-                        parse_escape(read, validate, scratch)?;
-
-                        return Ok(());
+                        return parse_escape(read, validate, scratch);
                     }
                     read.discard();
 
