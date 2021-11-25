@@ -926,12 +926,9 @@ fn parse_escape<'de, R: Read<'de>>(
                     }
                 }
 
-                n => match char::from_u32(n as u32) {
-                    Some(c) => c,
-                    None => {
-                        return error(read, ErrorCode::InvalidUnicodeCodePoint);
-                    }
-                },
+                // Every u16 outside of the surrogate ranges above is guaranteed
+                // to be a legal char.
+                n => char::from_u32(n as u32).unwrap(),
             };
 
             scratch.extend_from_slice(c.encode_utf8(&mut [0_u8; 4]).as_bytes());
@@ -954,38 +951,34 @@ where
 
     match ch {
         b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't' => {}
-        b'u' => {
-            let n = match tri!(read.decode_hex_escape()) {
-                0xDC00..=0xDFFF => {
+        b'u' => match tri!(read.decode_hex_escape()) {
+            0xDC00..=0xDFFF => {
+                return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
+            }
+
+            // Non-BMP characters are encoded as a sequence of
+            // two hex escapes, representing UTF-16 surrogates.
+            n1 @ 0xD800..=0xDBFF => {
+                if tri!(next_or_eof(read)) != b'\\' {
+                    return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                }
+                if tri!(next_or_eof(read)) != b'u' {
+                    return error(read, ErrorCode::UnexpectedEndOfHexEscape);
+                }
+
+                let n2 = tri!(read.decode_hex_escape());
+                if n2 < 0xDC00 || n2 > 0xDFFF {
                     return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
                 }
 
-                // Non-BMP characters are encoded as a sequence of
-                // two hex escapes, representing UTF-16 surrogates.
-                n1 @ 0xD800..=0xDBFF => {
-                    if tri!(next_or_eof(read)) != b'\\' {
-                        return error(read, ErrorCode::UnexpectedEndOfHexEscape);
-                    }
-                    if tri!(next_or_eof(read)) != b'u' {
-                        return error(read, ErrorCode::UnexpectedEndOfHexEscape);
-                    }
-
-                    let n2 = tri!(read.decode_hex_escape());
-
-                    if n2 < 0xDC00 || n2 > 0xDFFF {
-                        return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
-                    }
-
-                    (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000
+                let n = (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
+                if char::from_u32(n).is_none() {
+                    return error(read, ErrorCode::InvalidUnicodeCodePoint);
                 }
-
-                n => n as u32,
-            };
-
-            if char::from_u32(n).is_none() {
-                return error(read, ErrorCode::InvalidUnicodeCodePoint);
             }
-        }
+
+            _ => {}
+        },
         _ => {
             return error(read, ErrorCode::InvalidEscape);
         }
