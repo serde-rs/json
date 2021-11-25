@@ -881,7 +881,9 @@ fn parse_escape<'de, R: Read<'de>>(
                 // utf-8 string the surrogates are required to be paired,
                 // whereas deserializing a byte string accepts lone surrogates.
                 n1 @ 0xD800..=0xDBFF => {
-                    if tri!(peek_or_eof(read)) != b'\\' {
+                    if tri!(peek_or_eof(read)) == b'\\' {
+                        read.discard();
+                    } else {
                         return if validate {
                             read.discard();
                             error(read, ErrorCode::UnexpectedEndOfHexEscape)
@@ -890,9 +892,10 @@ fn parse_escape<'de, R: Read<'de>>(
                             Ok(())
                         };
                     }
-                    read.discard();
 
-                    if tri!(peek_or_eof(read)) != b'u' {
+                    if tri!(peek_or_eof(read)) == b'u' {
+                        read.discard();
+                    } else {
                         return if validate {
                             read.discard();
                             error(read, ErrorCode::UnexpectedEndOfHexEscape)
@@ -906,7 +909,6 @@ fn parse_escape<'de, R: Read<'de>>(
                             parse_escape(read, validate, scratch)
                         };
                     }
-                    read.discard();
 
                     let n2 = tri!(read.decode_hex_escape());
 
