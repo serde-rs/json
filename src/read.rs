@@ -864,13 +864,11 @@ fn parse_escape<'de, R: Read<'de>>(
                         return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
                     }
 
-                    let utf8_bytes = [
+                    scratch.extend_from_slice(&[
                         (n >> 12 & 0x0F) as u8 | 0b1110_0000,
                         (n >> 6 & 0x3F) as u8 | 0b1000_0000,
                         (n & 0x3F) as u8 | 0b1000_0000,
-                    ];
-
-                    scratch.extend_from_slice(&utf8_bytes);
+                    ]);
 
                     return Ok(());
                 }
@@ -886,13 +884,11 @@ fn parse_escape<'de, R: Read<'de>>(
                             return error(read, ErrorCode::UnexpectedEndOfHexEscape);
                         }
 
-                        let utf8_bytes = [
+                        scratch.extend_from_slice(&[
                             (n1 >> 12 & 0x0F) as u8 | 0b1110_0000,
                             (n1 >> 6 & 0x3F) as u8 | 0b1000_0000,
                             (n1 & 0x3F) as u8 | 0b1000_0000,
-                        ];
-
-                        scratch.extend_from_slice(&utf8_bytes);
+                        ]);
 
                         return Ok(());
                     }
@@ -904,13 +900,11 @@ fn parse_escape<'de, R: Read<'de>>(
                             return error(read, ErrorCode::UnexpectedEndOfHexEscape);
                         }
 
-                        let utf8_bytes = [
+                        scratch.extend_from_slice(&[
                             (n1 >> 12 & 0x0F) as u8 | 0b1110_0000,
                             (n1 >> 6 & 0x3F) as u8 | 0b1000_0000,
                             (n1 & 0x3F) as u8 | 0b1000_0000,
-                        ];
-
-                        scratch.extend_from_slice(&utf8_bytes);
+                        ]);
 
                         // The \ prior to this byte started an escape sequence,
                         // so we need to parse that now.
