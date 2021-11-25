@@ -858,68 +858,57 @@ fn parse_escape<'de, R: Read<'de>>(
         b'r' => scratch.push(b'\r'),
         b't' => scratch.push(b'\t'),
         b'u' => {
+            fn encode_surrogate(scratch: &mut Vec<u8>, n: u16) {
+                scratch.extend_from_slice(&[
+                    (n >> 12 & 0b0000_1111) as u8 | 0b1110_0000,
+                    (n >> 6 & 0b0011_1111) as u8 | 0b1000_0000,
+                    (n & 0b0011_1111) as u8 | 0b1000_0000,
+                ]);
+            }
+
             let c = match tri!(read.decode_hex_escape()) {
                 n @ 0xDC00..=0xDFFF => {
-                    if validate {
-                        return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
-                    }
-
-                    let utf8_bytes = [
-                        (n >> 12 & 0x0F) as u8 | 0b1110_0000,
-                        (n >> 6 & 0x3F) as u8 | 0b1000_0000,
-                        (n & 0x3F) as u8 | 0b1000_0000,
-                    ];
-
-                    scratch.extend_from_slice(&utf8_bytes);
-
-                    return Ok(());
+                    return if validate {
+                        error(read, ErrorCode::LoneLeadingSurrogateInHexEscape)
+                    } else {
+                        encode_surrogate(scratch, n);
+                        Ok(())
+                    };
                 }
 
-                // Non-BMP characters are encoded as a sequence of
-                // two hex escapes, representing UTF-16 surrogates.
-                // If `validate` is false and we only find a single
-                // hex escape that is a surrogate, then we'll accept
-                // it instead of erroring.
+                // Non-BMP characters are encoded as a sequence of two hex
+                // escapes, representing UTF-16 surrogates. If deserializing a
+                // utf-8 string the surrogates are required to be paired,
+                // whereas deserializing a byte string accepts lone surrogates.
                 n1 @ 0xD800..=0xDBFF => {
-                    if tri!(peek_or_eof(read)) != b'\\' {
-                        if validate {
+                    if tri!(peek_or_eof(read)) == b'\\' {
+                        read.discard();
+                    } else {
+                        return if validate {
                             read.discard();
-                            return error(read, ErrorCode::UnexpectedEndOfHexEscape);
-                        }
-
-                        let utf8_bytes = [
-                            (n1 >> 12 & 0x0F) as u8 | 0b1110_0000,
-                            (n1 >> 6 & 0x3F) as u8 | 0b1000_0000,
-                            (n1 & 0x3F) as u8 | 0b1000_0000,
-                        ];
-
-                        scratch.extend_from_slice(&utf8_bytes);
-
-                        return Ok(());
+                            error(read, ErrorCode::UnexpectedEndOfHexEscape)
+                        } else {
+                            encode_surrogate(scratch, n1);
+                            Ok(())
+                        };
                     }
-                    read.discard();
 
-                    if tri!(peek_or_eof(read)) != b'u' {
-                        if validate {
+                    if tri!(peek_or_eof(read)) == b'u' {
+                        read.discard();
+                    } else {
+                        return if validate {
                             read.discard();
-                            return error(read, ErrorCode::UnexpectedEndOfHexEscape);
-                        }
-
-                        let utf8_bytes = [
-                            (n1 >> 12 & 0x0F) as u8 | 0b1110_0000,
-                            (n1 >> 6 & 0x3F) as u8 | 0b1000_0000,
-                            (n1 & 0x3F) as u8 | 0b1000_0000,
-                        ];
-
-                        scratch.extend_from_slice(&utf8_bytes);
-
-                        // The \ prior to this byte started an escape sequence,
-                        // so we need to parse that now.
-                        parse_escape(read, validate, scratch)?;
-
-                        return Ok(());
+                            error(read, ErrorCode::UnexpectedEndOfHexEscape)
+                        } else {
+                            encode_surrogate(scratch, n1);
+                            // The \ prior to this byte started an escape sequence,
+                            // so we need to parse that now. This recursive call
+                            // does not blow the stack on malicious input because
+                            // the escape is not \u, so it will be handled by one
+                            // of the easy nonrecursive cases.
+                            parse_escape(read, validate, scratch)
+                        };
                     }
-                    read.discard();
 
                     let n2 = tri!(read.decode_hex_escape());
 
