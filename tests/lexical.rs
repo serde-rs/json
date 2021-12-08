@@ -10,6 +10,7 @@
     clippy::float_cmp,
     clippy::if_not_else,
     clippy::module_name_repetitions,
+    clippy::needless_late_init,
     clippy::shadow_unrelated,
     clippy::similar_names,
     clippy::single_match_else,
