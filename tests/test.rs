@@ -20,9 +20,11 @@ trace_macros!(true);
 mod macros;
 
 use serde::de::{self, IgnoredAny, IntoDeserializer};
-use serde::ser::{self, Serializer};
+use serde::ser::{self, SerializeMap, SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_bytes::{ByteBuf, Bytes};
+#[cfg(feature = "raw_value")]
+use serde_json::value::RawValue;
 use serde_json::{
     from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
     to_vec, to_writer, Deserializer, Number, Value,
@@ -34,8 +36,11 @@ use std::hash::{Hash, Hasher};
 use std::io;
 use std::iter;
 use std::marker::PhantomData;
+use std::mem;
+use std::net;
 use std::str::FromStr;
 use std::string::ToString;
+use std::thread;
 use std::{f32, f64};
 use std::{i16, i32, i64, i8};
 use std::{u16, u32, u64, u8};
@@ -1456,7 +1461,6 @@ fn test_serialize_seq_with_no_len() {
         where
             S: ser::Serializer,
         {
-            use serde::ser::SerializeSeq;
             let mut seq = serializer.serialize_seq(None)?;
             for elem in &self.0 {
                 seq.serialize_element(elem)?;
@@ -1543,7 +1547,6 @@ fn test_serialize_map_with_no_len() {
         where
             S: ser::Serializer,
         {
-            use serde::ser::SerializeMap;
             let mut map = serializer.serialize_map(None)?;
             for (k, v) in &self.0 {
                 map.serialize_entry(k, v)?;
@@ -1622,10 +1625,6 @@ fn test_serialize_map_with_no_len() {
 
 #[test]
 fn test_deserialize_from_stream() {
-    use serde::Deserialize;
-    use std::net;
-    use std::thread;
-
     #[derive(Debug, PartialEq, Serialize, Deserialize)]
     struct Message {
         message: String,
@@ -1789,8 +1788,6 @@ fn test_json_pointer() {
 
 #[test]
 fn test_json_pointer_mut() {
-    use std::mem;
-
     // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
     let mut data: Value = from_str(
         r#"{
@@ -2172,8 +2169,6 @@ fn test_integer128() {
 #[cfg(feature = "raw_value")]
 #[test]
 fn test_borrowed_raw_value() {
-    use serde_json::value::RawValue;
-
     #[derive(Serialize, Deserialize)]
     struct Wrapper<'a> {
         a: i8,
@@ -2206,8 +2201,6 @@ fn test_borrowed_raw_value() {
 #[cfg(feature = "raw_value")]
 #[test]
 fn test_boxed_raw_value() {
-    use serde_json::value::RawValue;
-
     #[derive(Serialize, Deserialize)]
     struct Wrapper {
         a: i8,
@@ -2254,8 +2247,6 @@ fn test_boxed_raw_value() {
 #[cfg(feature = "raw_value")]
 #[test]
 fn test_raw_invalid_utf8() {
-    use serde_json::value::RawValue;
-
     let j = &[b'"', b'\xCE', b'\xF8', b'"'];
     let value_err = serde_json::from_slice::<Value>(j).unwrap_err();
     let raw_value_err = serde_json::from_slice::<Box<RawValue>>(j).unwrap_err();
