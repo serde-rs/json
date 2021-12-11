@@ -11,7 +11,7 @@ categories = ["encoding"]
 readme = "README.md"
 include = ["build.rs", "src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 edition = "2018"
-rust-version = "1.31"
+rust-version = "1.36"
 
 [dependencies]
 serde = { version = "1.0.100", default-features = false }
