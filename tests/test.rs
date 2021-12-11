@@ -27,7 +27,7 @@ use serde_bytes::{ByteBuf, Bytes};
 use serde_json::value::RawValue;
 use serde_json::{
     from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
-    to_vec, to_writer, Deserializer, Number, Value,
+    to_vec, Deserializer, Number, Value,
 };
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
@@ -37,10 +37,8 @@ use std::io;
 use std::iter;
 use std::marker::PhantomData;
 use std::mem;
-use std::net;
 use std::str::FromStr;
 use std::string::ToString;
-use std::thread;
 use std::{f32, f64};
 use std::{i16, i32, i64, i8};
 use std::{u16, u32, u64, u8};
@@ -1623,14 +1621,19 @@ fn test_serialize_map_with_no_len() {
     assert_eq!(s, expected);
 }
 
+#[cfg(not(miri))]
 #[test]
 fn test_deserialize_from_stream() {
+    use serde_json::to_writer;
+    use std::net::{TcpListener, TcpStream};
+    use std::thread;
+
     #[derive(Debug, PartialEq, Serialize, Deserialize)]
     struct Message {
         message: String,
     }
 
-    let l = net::TcpListener::bind("localhost:20000").unwrap();
+    let l = TcpListener::bind("localhost:20000").unwrap();
 
     thread::spawn(|| {
         let l = l;
@@ -1647,7 +1650,7 @@ fn test_deserialize_from_stream() {
         }
     });
 
-    let mut stream = net::TcpStream::connect("localhost:20000").unwrap();
+    let mut stream = TcpStream::connect("localhost:20000").unwrap();
     let request = Message {
         message: "hi there".to_string(),
     };
