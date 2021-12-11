@@ -67,6 +67,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.36.0
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc
 
+  miri:
+    name: Miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - run: cargo miri test
+
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
