@@ -16,7 +16,7 @@ rust-version = "1.36"
 [dependencies]
 serde = { version = "1.0.100", default-features = false }
 indexmap = { version = "1.5", optional = true }
-itoa = { version = "0.4.3", default-features = false }
+itoa = "1.0"
 ryu = "1.0"
 
 [dev-dependencies]
