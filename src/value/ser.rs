@@ -1,8 +1,12 @@
 use crate::error::{Error, ErrorCode, Result};
-use crate::lib::*;
 use crate::map::Map;
 use crate::number::Number;
 use crate::value::{to_value, Value};
+use alloc::borrow::ToOwned;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::fmt::Display;
+use core::result;
 use serde::ser::{Impossible, Serialize};
 
 #[cfg(feature = "arbitrary_precision")]

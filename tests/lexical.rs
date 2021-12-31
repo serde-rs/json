@@ -20,6 +20,8 @@
     clippy::wildcard_imports
 )]
 
+extern crate alloc;
+
 #[path = "../src/lexical/mod.rs"]
 mod lexical;
 

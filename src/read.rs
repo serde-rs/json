@@ -1,6 +1,9 @@
 use crate::error::{Error, ErrorCode, Result};
-use crate::lib::ops::Deref;
-use crate::lib::*;
+use alloc::vec::Vec;
+use core::char;
+use core::cmp;
+use core::ops::Deref;
+use core::str;
 
 #[cfg(feature = "std")]
 use crate::io;

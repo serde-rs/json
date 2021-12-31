@@ -360,37 +360,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-////////////////////////////////////////////////////////////////////////////////
-
 extern crate alloc;
-
-/// A facade around all the types we need from the `std`, `core`, and `alloc`
-/// crates. This avoids elaborate import wrangling having to happen in every
-/// module.
-mod lib {
-    pub use core::cell::{Cell, RefCell};
-    pub use core::clone::{self, Clone};
-    pub use core::convert::{self, From, Into};
-    pub use core::default::{self, Default};
-    pub use core::fmt::{self, Debug, Display};
-    pub use core::hash::{self, Hash, Hasher};
-    pub use core::iter::FusedIterator;
-    pub use core::marker::{self, PhantomData};
-    pub use core::ops::{Bound, RangeBounds};
-    pub use core::result::{self, Result};
-    pub use core::{borrow, char, cmp, iter, mem, num, ops, slice, str};
-
-    pub use alloc::borrow::{Cow, ToOwned};
-    pub use alloc::boxed::Box;
-    pub use alloc::collections::{btree_map, BTreeMap};
-    pub use alloc::string::{String, ToString};
-    pub use alloc::vec::{self, Vec};
-
-    #[cfg(feature = "std")]
-    pub use std::error;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(feature = "std")]
 #[doc(inline)]
@@ -412,8 +382,8 @@ pub use crate::value::{from_value, to_value, Map, Number, Value};
 macro_rules! tri {
     ($e:expr $(,)?) => {
         match $e {
-            crate::lib::Result::Ok(val) => val,
-            crate::lib::Result::Err(err) => return crate::lib::Result::Err(err),
+            core::result::Result::Ok(val) => val,
+            core::result::Result::Err(err) => return core::result::Result::Err(err),
         }
     };
 }

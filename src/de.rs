@@ -3,10 +3,16 @@
 use crate::error::{Error, ErrorCode, Result};
 #[cfg(feature = "float_roundtrip")]
 use crate::lexical;
-use crate::lib::str::FromStr;
-use crate::lib::*;
 use crate::number::Number;
 use crate::read::{self, Fused, Reference};
+use alloc::string::String;
+use alloc::vec::Vec;
+#[cfg(feature = "float_roundtrip")]
+use core::iter;
+use core::iter::FusedIterator;
+use core::marker::PhantomData;
+use core::result;
+use core::str::FromStr;
 use serde::de::{self, Expected, Unexpected};
 use serde::{forward_to_deserialize_any, serde_if_integer128};
 

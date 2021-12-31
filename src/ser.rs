@@ -2,8 +2,10 @@
 
 use crate::error::{Error, ErrorCode, Result};
 use crate::io;
-use crate::lib::num::FpCategory;
-use crate::lib::*;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::fmt::{self, Display};
+use core::num::FpCategory;
 use serde::ser::{self, Impossible, Serialize};
 use serde::serde_if_integer128;
 

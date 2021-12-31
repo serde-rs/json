@@ -9,7 +9,8 @@
 use super::large_powers;
 use super::num::*;
 use super::small_powers::*;
-use crate::lib::{cmp, iter, mem, Vec};
+use alloc::vec::Vec;
+use core::{cmp, iter, mem};
 
 // ALIASES
 // -------
