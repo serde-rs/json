@@ -410,14 +410,11 @@ pub use crate::value::{from_value, to_value, Map, Number, Value};
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
 macro_rules! tri {
-    ($e:expr) => {
+    ($e:expr $(,)?) => {
         match $e {
             crate::lib::Result::Ok(val) => val,
             crate::lib::Result::Err(err) => return crate::lib::Result::Err(err),
         }
-    };
-    ($e:expr,) => {
-        tri!($e)
     };
 }
 
