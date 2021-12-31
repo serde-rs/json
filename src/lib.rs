@@ -362,56 +362,29 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(not(feature = "std"))]
 extern crate alloc;
 
 /// A facade around all the types we need from the `std`, `core`, and `alloc`
 /// crates. This avoids elaborate import wrangling having to happen in every
 /// module.
 mod lib {
-    mod core {
-        #[cfg(not(feature = "std"))]
-        pub use core::*;
-        #[cfg(feature = "std")]
-        pub use std::*;
-    }
+    pub use core::cell::{Cell, RefCell};
+    pub use core::clone::{self, Clone};
+    pub use core::convert::{self, From, Into};
+    pub use core::default::{self, Default};
+    pub use core::fmt::{self, Debug, Display};
+    pub use core::hash::{self, Hash, Hasher};
+    pub use core::iter::FusedIterator;
+    pub use core::marker::{self, PhantomData};
+    pub use core::ops::{Bound, RangeBounds};
+    pub use core::result::{self, Result};
+    pub use core::{borrow, char, cmp, iter, mem, num, ops, slice, str};
 
-    pub use self::core::cell::{Cell, RefCell};
-    pub use self::core::clone::{self, Clone};
-    pub use self::core::convert::{self, From, Into};
-    pub use self::core::default::{self, Default};
-    pub use self::core::fmt::{self, Debug, Display};
-    pub use self::core::hash::{self, Hash, Hasher};
-    pub use self::core::iter::FusedIterator;
-    pub use self::core::marker::{self, PhantomData};
-    pub use self::core::ops::{Bound, RangeBounds};
-    pub use self::core::result::{self, Result};
-    pub use self::core::{borrow, char, cmp, iter, mem, num, ops, slice, str};
-
-    #[cfg(not(feature = "std"))]
     pub use alloc::borrow::{Cow, ToOwned};
-    #[cfg(feature = "std")]
-    pub use std::borrow::{Cow, ToOwned};
-
-    #[cfg(not(feature = "std"))]
-    pub use alloc::string::{String, ToString};
-    #[cfg(feature = "std")]
-    pub use std::string::{String, ToString};
-
-    #[cfg(not(feature = "std"))]
-    pub use alloc::vec::{self, Vec};
-    #[cfg(feature = "std")]
-    pub use std::vec::{self, Vec};
-
-    #[cfg(not(feature = "std"))]
     pub use alloc::boxed::Box;
-    #[cfg(feature = "std")]
-    pub use std::boxed::Box;
-
-    #[cfg(not(feature = "std"))]
     pub use alloc::collections::{btree_map, BTreeMap};
-    #[cfg(feature = "std")]
-    pub use std::collections::{btree_map, BTreeMap};
+    pub use alloc::string::{String, ToString};
+    pub use alloc::vec::{self, Vec};
 
     #[cfg(feature = "std")]
     pub use std::error;
