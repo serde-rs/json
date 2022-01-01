@@ -2264,6 +2264,15 @@ fn test_raw_invalid_utf8() {
     );
 }
 
+#[cfg(feature = "raw_value")]
+#[test]
+fn test_serialize_unsized_value_to_raw_value() {
+    assert_eq!(
+        serde_json::value::to_raw_value("foobar").unwrap().get(),
+        r#""foobar""#,
+    );
+}
+
 #[test]
 fn test_borrow_in_map_key() {
     #[derive(Deserialize, Debug)]
