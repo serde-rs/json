@@ -282,7 +282,7 @@ impl From<Box<RawValue>> for Box<str> {
 #[cfg_attr(docsrs, doc(cfg(feature = "raw_value")))]
 pub fn to_raw_value<T>(value: &T) -> Result<Box<RawValue>, Error>
 where
-    T: Serialize,
+    T: Serialize + ?Sized,
 {
     let json_string = crate::to_string(value)?;
     Ok(RawValue::from_owned(json_string.into_boxed_str()))
