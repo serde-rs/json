@@ -81,6 +81,9 @@ jobs:
       - run: cargo miri test
         env:
           MIRIFLAGS: "-Zmiri-tag-raw-pointers"
+      - run: cargo miri test --features preserve_order,float_roundtrip,arbitrary_precision,raw_value
+        env:
+          MIRIFLAGS: "-Zmiri-tag-raw-pointers"
 
   clippy:
     name: Clippy
