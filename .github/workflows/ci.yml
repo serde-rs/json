@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [beta, stable, 1.45.0, 1.40.0, 1.38.0, 1.36.0]
+        rust: [beta, stable, 1.53.0, 1.46.0, 1.45.0, 1.40.0, 1.38.0, 1.36.0]
         os: [ubuntu]
         include:
           - rust: stable
@@ -44,14 +44,15 @@ jobs:
         with:
           toolchain: ${{matrix.rust}}
       - run: cargo check
-      - run: cargo check --features preserve_order
-        if: matrix.rust != '1.36.0'
-      - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,preserve_order
-        if: matrix.rust != '1.36.0'
       - run: cargo check --features float_roundtrip
       - run: cargo check --features arbitrary_precision
       - run: cargo check --features raw_value
       - run: cargo check --features unbounded_depth
+      - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc
+      - run: cargo check --features preserve_order
+        if: matrix.rust != '1.45.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
+      - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,preserve_order
+        if: matrix.rust != '1.45.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
       - name: Build without std
         run: |
           rustup target add aarch64-unknown-none
@@ -61,14 +62,6 @@ jobs:
               --no-default-features \
               --features alloc
         if: matrix.rust == 'stable' && matrix.os == 'ubuntu'
-
-  nostd:
-    name: Rust 1.36.0
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@1.36.0
-      - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc
 
   miri:
     name: Miri
