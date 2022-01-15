@@ -321,6 +321,8 @@
 )]
 // Ignored clippy_pedantic lints
 #![allow(
+    // buggy
+    clippy::iter_not_returning_iterator, // https://github.com/rust-lang/rust-clippy/issues/8285
     // Deserializer::from_str, into_iter
     clippy::should_implement_trait,
     // integer and float ser/de requires these sorts of casts
