@@ -864,6 +864,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             buf.push('-');
         }
         self.scan_integer(&mut buf)?;
+        if positive {
+            if let Ok(unsigned) = buf.parse() {
+                return Ok(ParserNumber::U64(unsigned));
+            }
+        } else {
+            if let Ok(signed) = buf.parse() {
+                return Ok(ParserNumber::I64(signed));
+            }
+        }
         Ok(ParserNumber::String(buf))
     }
 
