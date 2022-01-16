@@ -715,11 +715,7 @@ fn test_parse_char() {
         ),
         (
             "10",
-            if cfg!(feature = "arbitrary_precision") {
-                "invalid type: number, expected a character at line 1 column 2"
-            } else {
-                "invalid type: integer `10`, expected a character at line 1 column 2"
-            },
+            "invalid type: integer `10`, expected a character at line 1 column 2",
         ),
     ]);
 
@@ -1203,11 +1199,7 @@ fn test_parse_struct() {
     test_parse_err::<Outer>(&[
         (
             "5",
-            if cfg!(feature = "arbitrary_precision") {
-                "invalid type: number, expected struct Outer at line 1 column 1"
-            } else {
-                "invalid type: integer `5`, expected struct Outer at line 1 column 1"
-            },
+            "invalid type: integer `5`, expected struct Outer at line 1 column 1",
         ),
         (
             "\"hello\"",

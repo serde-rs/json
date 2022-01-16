@@ -303,6 +303,7 @@
 #![doc(html_root_url = "https://docs.rs/serde_json/1.0.74")]
 // Ignored clippy lints
 #![allow(
+    clippy::collapsible_else_if,
     clippy::comparison_chain,
     clippy::deprecated_cfg_attr,
     clippy::doc_markdown,
