@@ -1548,6 +1548,13 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
     ) -> Result<Self::SerializeStructVariant> {
         Err(ser::Error::custom("expected RawValue"))
     }
+
+    fn collect_str<T>(self, value: &T) -> Result<Self::Ok>
+    where
+        T: ?Sized + Display,
+    {
+        self.serialize_str(&value.to_string())
+    }
 }
 
 /// Represents a character escape code in a type-safe manner.

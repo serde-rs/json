@@ -1020,4 +1020,11 @@ impl serde::ser::Serializer for RawValueEmitter {
     ) -> Result<Self::SerializeStructVariant> {
         Err(invalid_raw_value())
     }
+
+    fn collect_str<T>(self, value: &T) -> Result<Self::Ok>
+    where
+        T: ?Sized + Display,
+    {
+        self.serialize_str(&value.to_string())
+    }
 }
