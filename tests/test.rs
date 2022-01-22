@@ -19,6 +19,8 @@ trace_macros!(true);
 #[macro_use]
 mod macros;
 
+#[cfg(feature = "raw_value")]
+use ref_cast::RefCast;
 use serde::de::{self, IgnoredAny, IntoDeserializer};
 use serde::ser::{self, SerializeMap, SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
@@ -31,6 +33,8 @@ use serde_json::{
 };
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
+#[cfg(feature = "raw_value")]
+use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
 use std::io;
@@ -2196,8 +2200,6 @@ fn test_borrowed_raw_value() {
 #[cfg(feature = "raw_value")]
 #[test]
 fn test_raw_value_in_map_key() {
-    use ref_cast::RefCast;
-
     #[derive(RefCast)]
     #[repr(transparent)]
     struct RawMapKey(RawValue);
@@ -2226,7 +2228,7 @@ fn test_raw_value_in_map_key() {
         }
     }
 
-    let map_from_str: std::collections::HashMap<&RawMapKey, &RawValue> =
+    let map_from_str: HashMap<&RawMapKey, &RawValue> =
         serde_json::from_str(r#" {"\\k":"\\v"} "#).unwrap();
     let (map_k, map_v) = map_from_str.into_iter().next().unwrap();
     assert_eq!("\"\\\\k\"", map_k.0.get());
