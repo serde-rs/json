@@ -1,4 +1,7 @@
 use crate::error::Error;
+use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
+use alloc::string::String;
 use core::fmt::{self, Debug, Display};
 use core::mem;
 use serde::de::value::BorrowedStrDeserializer;
