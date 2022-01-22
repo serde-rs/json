@@ -2195,6 +2195,46 @@ fn test_borrowed_raw_value() {
 
 #[cfg(feature = "raw_value")]
 #[test]
+fn test_raw_value_in_map_key() {
+    use ref_cast::RefCast;
+
+    #[derive(RefCast)]
+    #[repr(transparent)]
+    struct RawMapKey(RawValue);
+
+    impl<'de> Deserialize<'de> for &'de RawMapKey {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            let raw_value = <&RawValue>::deserialize(deserializer)?;
+            Ok(RawMapKey::ref_cast(raw_value))
+        }
+    }
+
+    impl PartialEq for RawMapKey {
+        fn eq(&self, other: &Self) -> bool {
+            self.0.get() == other.0.get()
+        }
+    }
+
+    impl Eq for RawMapKey {}
+
+    impl Hash for RawMapKey {
+        fn hash<H: Hasher>(&self, hasher: &mut H) {
+            self.0.get().hash(hasher);
+        }
+    }
+
+    let map_from_str: std::collections::HashMap<&RawMapKey, &RawValue> =
+        serde_json::from_str(r#" {"\\k":"\\v"} "#).unwrap();
+    let (map_k, map_v) = map_from_str.into_iter().next().unwrap();
+    assert_eq!("\"\\\\k\"", map_k.0.get());
+    assert_eq!("\"\\\\v\"", map_v.get());
+}
+
+#[cfg(feature = "raw_value")]
+#[test]
 fn test_boxed_raw_value() {
     #[derive(Serialize, Deserialize)]
     struct Wrapper {
