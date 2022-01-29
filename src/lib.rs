@@ -314,6 +314,8 @@
     clippy::match_single_binding,
     clippy::needless_doctest_main,
     clippy::needless_late_init,
+    // clippy bug: https://github.com/rust-lang/rust-clippy/issues/8366
+    clippy::ptr_arg,
     clippy::return_self_not_must_use,
     clippy::transmute_ptr_to_ptr,
     clippy::unnecessary_wraps,
