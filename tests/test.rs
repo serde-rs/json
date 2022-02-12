@@ -1740,6 +1740,20 @@ fn test_byte_buf_de_lone_surrogate() {
     assert!(res.is_err());
 }
 
+#[cfg(feature = "raw_value")]
+#[test]
+fn test_raw_de_lone_surrogate() {
+    use serde_json::value::RawValue;
+
+    assert!(from_str::<Box<RawValue>>(r#""\ud83c""#).is_ok());
+    assert!(from_str::<Box<RawValue>>(r#""\ud83c\n""#).is_ok());
+    assert!(from_str::<Box<RawValue>>(r#""\ud83c ""#).is_ok());
+    assert!(from_str::<Box<RawValue>>(r#""\udc01 ""#).is_ok());
+    assert!(from_str::<Box<RawValue>>(r#""\udc01\!""#).is_err());
+    assert!(from_str::<Box<RawValue>>(r#""\udc01\u""#).is_err());
+    assert!(from_str::<Box<RawValue>>(r#""\ud83c\ud83c""#).is_ok());
+}
+
 #[test]
 fn test_byte_buf_de_multiple() {
     let s: Vec<ByteBuf> = from_str(r#"["ab\nc", "cd\ne"]"#).unwrap();
