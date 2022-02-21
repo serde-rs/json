@@ -16,6 +16,23 @@ fn test_preserve_order() {
 }
 
 #[test]
+fn test_preserve_order_with_remove() {
+    // Sorted order
+    #[cfg(not(feature = "preserve_order"))]
+    const EXPECTED: &[&str] = &["a", "c", "d"];
+
+    // Insertion order
+    #[cfg(feature = "preserve_order")]
+    const EXPECTED: &[&str] = &["d", "a", "c"];
+
+    let v: Value = from_str(r#"{"b":null,"d":null,"a":null,"c":null}"#).unwrap();
+    let mut map = v.as_object().unwrap().clone();
+    map.remove("b");
+    let keys: Vec<_> = map.keys().collect();
+    assert_eq!(keys, EXPECTED);
+}
+
+#[test]
 fn test_append() {
     // Sorted order
     #[cfg(not(feature = "preserve_order"))]

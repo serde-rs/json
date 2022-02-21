@@ -138,7 +138,7 @@ impl Map<String, Value> {
         Q: ?Sized + Ord + Eq + Hash,
     {
         #[cfg(feature = "preserve_order")]
-        return self.map.swap_remove(key);
+        return self.map.shift_remove(key);
         #[cfg(not(feature = "preserve_order"))]
         return self.map.remove(key);
     }
@@ -812,7 +812,7 @@ impl<'a> OccupiedEntry<'a> {
     #[inline]
     pub fn remove(self) -> Value {
         #[cfg(feature = "preserve_order")]
-        return self.occupied.swap_remove();
+        return self.occupied.shift_remove();
         #[cfg(not(feature = "preserve_order"))]
         return self.occupied.remove();
     }
