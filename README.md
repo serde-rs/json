@@ -265,8 +265,8 @@ let john = json!({
 });
 ```
 
-This is amazingly convenient but we have the problem we had before with
-`Value` which is that the IDE and Rust compiler cannot help us if we get it
+This is amazingly convenient, but we have the problem we had before with
+`Value`: the IDE and Rust compiler cannot help us if we get it
 wrong. Serde JSON provides a better way of serializing strongly-typed data
 structures into JSON text.
 
@@ -328,7 +328,7 @@ Benchmarks live in the [serde-rs/json-benchmark] repo.
 
 ## Getting help
 
-Serde is one of the most widely used Rust libraries so any place that Rustaceans
+Serde is one of the most widely used Rust libraries, so any place that Rustaceans
 congregate will be able to help you out. For chat, consider trying the
 [#rust-questions] or [#rust-beginners] channels of the unofficial community
 Discord (invite: <https://discord.gg/rust-lang-community>), the [#rust-usage] or
@@ -337,7 +337,7 @@ Discord (invite: <https://discord.gg/rust-lang-community>), the [#rust-usage] or
 asynchronous, consider the [\[rust\] tag on StackOverflow][stackoverflow], the
 [/r/rust] subreddit which has a pinned weekly easy questions post, or the Rust
 [Discourse forum][discourse]. It's acceptable to file a support issue in this
-repo but they tend not to get as many eyes as any of the above and may get
+repo, but they tend not to get as many eyes as any of the above and may get
 closed without a response after some time.
 
 [#rust-questions]: https://discord.com/channels/273534239310479360/274215136414400513
