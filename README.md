@@ -56,7 +56,7 @@ with JSON data in Rust.
    of your data to conform to a particular structure and want to get real
    work done without JSON's loosey-goosey nature tripping you up.
 
-Serde JSON provides efficient, flexible, safe ways of converting data
+Serde JSON provides efficient, flexible, and safe ways of converting data
 between each of these representations.
 
 ## Operating on untyped JSON values
@@ -131,9 +131,9 @@ section.
 
 The `Value` representation is sufficient for very basic tasks but can be tedious
 to work with for anything more significant. Error handling is verbose to
-implement correctly, for example imagine trying to detect the presence of
+implement correctly; for example, imagine trying to detect the presence of
 unrecognized fields in the input data. The compiler is powerless to help you
-when you make a mistake, for example imagine typoing `v["name"]` as `v["nmae"]`
+when you make a mistake; for example, imagine typoing `v["name"]` as `v["nmae"]`
 in one of the dozens of places it is used in your code.
 
 ## Parsing JSON as strongly typed data structures
@@ -265,8 +265,8 @@ let john = json!({
 });
 ```
 
-This is amazingly convenient but we have the problem we had before with
-`Value` which is that the IDE and Rust compiler cannot help us if we get it
+This is amazingly convenient, but we have the problem we had before with
+`Value`: the IDE and Rust compiler cannot help us if we get it
 wrong. Serde JSON provides a better way of serializing strongly-typed data
 structures into JSON text.
 
@@ -321,14 +321,14 @@ way. This includes built-in Rust standard library types like `Vec<T>` and
 It is fast. You should expect in the ballpark of 500 to 1000 megabytes per
 second deserialization and 600 to 900 megabytes per second serialization,
 depending on the characteristics of your data. This is competitive with the
-fastest C and C++ JSON libraries or even 30% faster for many use cases.
+fastest C and C++ JSON libraries (or even 30% faster for many use cases).
 Benchmarks live in the [serde-rs/json-benchmark] repo.
 
 [serde-rs/json-benchmark]: https://github.com/serde-rs/json-benchmark
 
 ## Getting help
 
-Serde is one of the most widely used Rust libraries so any place that Rustaceans
+Serde is one of the most widely used Rust libraries, so any place that Rustaceans
 congregate will be able to help you out. For chat, consider trying the
 [#rust-questions] or [#rust-beginners] channels of the unofficial community
 Discord (invite: <https://discord.gg/rust-lang-community>), the [#rust-usage] or
@@ -337,7 +337,7 @@ Discord (invite: <https://discord.gg/rust-lang-community>), the [#rust-usage] or
 asynchronous, consider the [\[rust\] tag on StackOverflow][stackoverflow], the
 [/r/rust] subreddit which has a pinned weekly easy questions post, or the Rust
 [Discourse forum][discourse]. It's acceptable to file a support issue in this
-repo but they tend not to get as many eyes as any of the above and may get
+repo, but they tend not to get as many eyes as any of the above and may get
 closed without a response after some time.
 
 [#rust-questions]: https://discord.com/channels/273534239310479360/274215136414400513
