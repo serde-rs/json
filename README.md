@@ -42,22 +42,21 @@ transmit data objects consisting of key-value pairs.
 }
 ```
 
-There are three common ways that you might find yourself needing to work
-with JSON data in Rust.
+There are three common ways that you might find yourself needing to work with
+JSON data in Rust.
 
- - **As text data.** An unprocessed string of JSON data that you receive on
-   an HTTP endpoint, read from a file, or prepare to send to a remote
-   server.
- - **As an untyped or loosely typed representation.** Maybe you want to
-   check that some JSON data is valid before passing it on, but without
-   knowing the structure of what it contains. Or you want to do very basic
-   manipulations like insert a key in a particular spot.
- - **As a strongly typed Rust data structure.** When you expect all or most
-   of your data to conform to a particular structure and want to get real
-   work done without JSON's loosey-goosey nature tripping you up.
+ - **As text data.** An unprocessed string of JSON data that you receive on an
+   HTTP endpoint, read from a file, or prepare to send to a remote server.
+ - **As an untyped or loosely typed representation.** Maybe you want to check
+   that some JSON data is valid before passing it on, but without knowing the
+   structure of what it contains. Or you want to do very basic manipulations
+   like insert a key in a particular spot.
+ - **As a strongly typed Rust data structure.** When you expect all or most of
+   your data to conform to a particular structure and want to get real work done
+   without JSON's loosey-goosey nature tripping you up.
 
-Serde JSON provides efficient, flexible, safe ways of converting data
-between each of these representations.
+Serde JSON provides efficient, flexible, safe ways of converting data between
+each of these representations.
 
 ## Operating on untyped JSON values
 
@@ -78,8 +77,8 @@ enum Value {
 A string of JSON data can be parsed into a `serde_json::Value` by the
 [`serde_json::from_str`][from_str] function. There is also
 [`from_slice`][from_slice] for parsing from a byte slice &[u8] and
-[`from_reader`][from_reader] for parsing from any `io::Read` like a File or
-a TCP stream.
+[`from_reader`][from_reader] for parsing from any `io::Read` like a File or a
+TCP stream.
 
 <div align="right">
 <a href="https://play.rust-lang.org/?edition=2018&gist=d69d8e3156d4bb81c4461b60b772ab72" target="_blank">
@@ -185,20 +184,20 @@ fn typed_example() -> Result<()> {
 This is the same `serde_json::from_str` function as before, but this time we
 assign the return value to a variable of type `Person` so Serde will
 automatically interpret the input data as a `Person` and produce informative
-error messages if the layout does not conform to what a `Person` is expected
-to look like.
+error messages if the layout does not conform to what a `Person` is expected to
+look like.
 
-Any type that implements Serde's `Deserialize` trait can be deserialized
-this way. This includes built-in Rust standard library types like `Vec<T>`
-and `HashMap<K, V>`, as well as any structs or enums annotated with
+Any type that implements Serde's `Deserialize` trait can be deserialized this
+way. This includes built-in Rust standard library types like `Vec<T>` and
+`HashMap<K, V>`, as well as any structs or enums annotated with
 `#[derive(Deserialize)]`.
 
-Once we have `p` of type `Person`, our IDE and the Rust compiler can help us
-use it correctly like they do for any other Rust code. The IDE can
-autocomplete field names to prevent typos, which was impossible in the
-`serde_json::Value` representation. And the Rust compiler can check that
-when we write `p.phones[0]`, then `p.phones` is guaranteed to be a
-`Vec<String>` so indexing into it makes sense and produces a `String`.
+Once we have `p` of type `Person`, our IDE and the Rust compiler can help us use
+it correctly like they do for any other Rust code. The IDE can autocomplete
+field names to prevent typos, which was impossible in the `serde_json::Value`
+representation. And the Rust compiler can check that when we write
+`p.phones[0]`, then `p.phones` is guaranteed to be a `Vec<String>` so indexing
+into it makes sense and produces a `String`.
 
 The necessary setup for using Serde's derive macros is explained on the *[Using
 derive]* page of the Serde site.
@@ -237,13 +236,13 @@ fn main() {
 }
 ```
 
-The `Value::to_string()` function converts a `serde_json::Value` into a
-`String` of JSON text.
+The `Value::to_string()` function converts a `serde_json::Value` into a `String`
+of JSON text.
 
-One neat thing about the `json!` macro is that variables and expressions can
-be interpolated directly into the JSON value as you are building it. Serde
-will check at compile time that the value you are interpolating is able to
-be represented as JSON.
+One neat thing about the `json!` macro is that variables and expressions can be
+interpolated directly into the JSON value as you are building it. Serde will
+check at compile time that the value you are interpolating is able to be
+represented as JSON.
 
 <div align="right">
 <a href="https://play.rust-lang.org/?edition=2018&gist=f9101a6e61dfc9e02c6a67f315ed24f2" target="_blank">
@@ -266,9 +265,9 @@ let john = json!({
 ```
 
 This is amazingly convenient, but we have the problem we had before with
-`Value`: the IDE and Rust compiler cannot help us if we get it
-wrong. Serde JSON provides a better way of serializing strongly-typed data
-structures into JSON text.
+`Value`: the IDE and Rust compiler cannot help us if we get it wrong. Serde JSON
+provides a better way of serializing strongly-typed data structures into JSON
+text.
 
 ## Creating JSON by serializing data structures
 
@@ -311,10 +310,9 @@ fn print_an_address() -> Result<()> {
 }
 ```
 
-Any type that implements Serde's `Serialize` trait can be serialized this
-way. This includes built-in Rust standard library types like `Vec<T>` and
-`HashMap<K, V>`, as well as any structs or enums annotated with
-`#[derive(Serialize)]`.
+Any type that implements Serde's `Serialize` trait can be serialized this way.
+This includes built-in Rust standard library types like `Vec<T>` and `HashMap<K,
+V>`, as well as any structs or enums annotated with `#[derive(Serialize)]`.
 
 ## Performance
 
@@ -328,9 +326,9 @@ Benchmarks live in the [serde-rs/json-benchmark] repo.
 
 ## Getting help
 
-Serde is one of the most widely used Rust libraries, so any place that Rustaceans
-congregate will be able to help you out. For chat, consider trying the
-[#rust-questions] or [#rust-beginners] channels of the unofficial community
+Serde is one of the most widely used Rust libraries, so any place that
+Rustaceans congregate will be able to help you out. For chat, consider trying
+the [#rust-questions] or [#rust-beginners] channels of the unofficial community
 Discord (invite: <https://discord.gg/rust-lang-community>), the [#rust-usage] or
 [#beginners] channels of the official Rust Project Discord (invite:
 <https://discord.gg/rust-lang>), or the [#general][zulip] stream in Zulip. For
