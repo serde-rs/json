@@ -227,10 +227,10 @@
 //! });
 //! ```
 //!
-//! This is amazingly convenient but we have the problem we had before with
-//! `Value` which is that the IDE and Rust compiler cannot help us if we get it
-//! wrong. Serde JSON provides a better way of serializing strongly-typed data
-//! structures into JSON text.
+//! This is amazingly convenient, but we have the problem we had before with
+//! `Value`: the IDE and Rust compiler cannot help us if we get it wrong. Serde
+//! JSON provides a better way of serializing strongly-typed data structures
+//! into JSON text.
 //!
 //! # Creating JSON by serializing data structures
 //!
