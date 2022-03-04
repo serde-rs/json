@@ -288,7 +288,7 @@ pub enum ErrorCode {
 impl Debug for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Io(_) => f.debug_tuple("Io").finish(),
+            ErrorCode::Io(_) => f.debug_tuple("Io").finish(),
             error_code => Debug::fmt(&error_code, f),
         }
     }
@@ -297,15 +297,25 @@ impl Debug for ErrorCode {
 impl PartialEq for ErrorCode {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Message(l0), Self::Message(r0)) => l0 == r0,
-            (Self::InvalidType(l0, l1), Self::InvalidType(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::InvalidValue(l0, l1), Self::InvalidValue(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::InvalidLength(l0, l1), Self::InvalidLength(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::UnknownVariant(l0, l1), Self::UnknownVariant(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::UnknownField(l0, l1), Self::UnknownField(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::MissingField(l0), Self::MissingField(r0)) => l0 == r0,
-            (Self::DuplicateField(l0), Self::DuplicateField(r0)) => l0 == r0,
-            (Self::Io(_), Self::Io(_)) => true,
+            (ErrorCode::Message(l0), ErrorCode::Message(r0)) => l0 == r0,
+            (ErrorCode::InvalidType(l0, l1), ErrorCode::InvalidType(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::InvalidValue(l0, l1), ErrorCode::InvalidValue(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::InvalidLength(l0, l1), ErrorCode::InvalidLength(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::UnknownVariant(l0, l1), ErrorCode::UnknownVariant(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::UnknownField(l0, l1), ErrorCode::UnknownField(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::MissingField(l0), ErrorCode::MissingField(r0)) => l0 == r0,
+            (ErrorCode::DuplicateField(l0), ErrorCode::DuplicateField(r0)) => l0 == r0,
+            (ErrorCode::Io(_), ErrorCode::Io(_)) => true,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
