@@ -195,7 +195,6 @@ struct ErrorImpl {
 
 /// This type describe all possible errors that can occur when serializing or
 /// deserializing JSON data.
-#[derive(Debug)]
 pub enum ErrorCode {
     /// Catchall for syntax error messages
     Message(Box<str>),
@@ -284,6 +283,15 @@ pub enum ErrorCode {
 
     /// Encountered nesting of JSON maps and arrays more than 128 layers deep.
     RecursionLimitExceeded,
+}
+
+impl Debug for ErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(_) => f.debug_tuple("Io").finish(),
+            error_code => Debug::fmt(&error_code, f),
+        }
+    }
 }
 
 impl PartialEq for ErrorCode {
