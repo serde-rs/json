@@ -57,6 +57,18 @@ impl PartialEq<Value> for String {
     }
 }
 
+impl<'a> PartialEq<&'a Value> for Value {
+    fn eq(&self, other: &&Value) -> bool {
+        self.eq(*other)
+    }
+}
+
+impl<'a> PartialEq<Value> for &'a Value {
+    fn eq(&self, other: &Value) -> bool {
+        (*self).eq(other)
+    }
+}
+
 macro_rules! partialeq_numeric {
     ($($eq:ident [$($ty:ty)*])*) => {
         $($(
