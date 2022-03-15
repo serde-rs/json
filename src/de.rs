@@ -1685,6 +1685,19 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 tri!(self.parse_ident(b"ull"));
                 visitor.visit_unit()
             }
+            b'[' => {
+                self.eat_char();
+                match tri!(self.parse_whitespace()) {
+                    Some(b']') => {
+                        self.eat_char();
+                        visitor.visit_unit()
+                    }
+                    Some(_) => return Err(self.peek_invalid_type(&visitor)),
+                    None => {
+                        return Err(self.peek_error(ErrorCode::EofWhileParsingList));
+                    }
+                }
+            }
             _ => Err(self.peek_invalid_type(&visitor)),
         };
 
