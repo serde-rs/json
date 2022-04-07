@@ -254,7 +254,9 @@ macro_rules! json_internal {
         1 + json_internal!(@object_capacity () ($($rest)*) ($($rest)*))
     };
 
-    // Current entry followed by unexpected token. The actual parsing macro will print the error message.
+    // Current entry followed by unexpected token. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
     (@object_capacity entry $unexpected:tt $($rest:tt)*) => {
         0
     };
@@ -299,22 +301,30 @@ macro_rules! json_internal {
         json_internal!(@object_capacity entry)
     };
 
-    // Missing value for last entry. The actual parsing macro will print the error message.
+    // Missing value for last entry. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
     (@object_capacity ($($key:tt)+) (:) $copy:tt) => {
         0
     };
 
-    // Missing colon and value for last entry. The actual parsing macro will print the error message.
+    // Missing colon and value for last entry. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
     (@object_capacity ($($key:tt)+) () $copy:tt) => {
         0
     };
 
-    // Misplaced colon. The actual parsing macro will print the error message.
+    // Misplaced colon. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
     (@object_capacity () (: $($rest:tt)*) ($colon:tt $($copy:tt)*)) => {
         0
     };
 
-    // Found a comma inside a key. The actual parsing macro will print the error message.
+    // Found a comma inside a key. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
     (@object_capacity ($($key:tt)*) (, $($rest:tt)*) ($comma:tt $($copy:tt)*)) => {
         0
     };
@@ -326,8 +336,10 @@ macro_rules! json_internal {
     // };
 
     // Refuse to absorb colon token into key expression.
+    // The part that parses the values will trigger a reasonable error message;
+    // here, we just return 0 so that there is not a duplicated error message.
     (@object_capacity ($($key:tt)*) (: $($unexpected:tt)+) $copy:tt) => {
-        json_expect_expr_comma!($($unexpected)+)
+        0
     };
 
     // Munch a token into the current key.
