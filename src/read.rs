@@ -861,20 +861,33 @@ fn parse_escape<'de, R: Read<'de>>(
         b'r' => scratch.push(b'\r'),
         b't' => scratch.push(b'\t'),
         b'u' => {
-            fn encode_surrogate(scratch: &mut Vec<u8>, n: u16) {
-                scratch.extend_from_slice(&[
-                    (n >> 12 & 0b0000_1111) as u8 | 0b1110_0000,
-                    (n >> 6 & 0b0011_1111) as u8 | 0b1000_0000,
-                    (n & 0b0011_1111) as u8 | 0b1000_0000,
-                ]);
+            fn encode_wtf8(scratch: &mut Vec<u8>, cp: u16) {
+                match cp {
+                    0x0000..=0x007F => {
+                        scratch.extend_from_slice(&[cp as u8]);
+                    }
+                    0x0080..=0x07FF => {
+                        scratch
+                            .extend_from_slice(&[0xC0 | (cp >> 6) as u8, 0x80 | (cp & 0x3F) as u8]);
+                    }
+                    0x0800..=0xFFFF => {
+                        scratch.extend_from_slice(&[
+                            0xE0 | (cp >> 12) as u8,
+                            0x80 | ((cp >> 6) & 0x3F) as u8,
+                            0x80 | (cp & 0x3F) as u8,
+                        ]);
+                    }
+                }
             }
 
             let c = match tri!(read.decode_hex_escape()) {
                 n @ 0xDC00..=0xDFFF => {
                     return if validate {
+                        // TODO: the error message is wrong, this is a lone
+                        // _trailing_ surrogate
                         error(read, ErrorCode::LoneLeadingSurrogateInHexEscape)
                     } else {
-                        encode_surrogate(scratch, n);
+                        encode_wtf8(scratch, n);
                         Ok(())
                     };
                 }
@@ -889,9 +902,9 @@ fn parse_escape<'de, R: Read<'de>>(
                     } else {
                         return if validate {
                             read.discard();
-                            error(read, ErrorCode::UnexpectedEndOfHexEscape)
+                            error(read, ErrorCode::LoneLeadingSurrogateInHexEscape)
                         } else {
-                            encode_surrogate(scratch, n1);
+                            encode_wtf8(scratch, n1);
                             Ok(())
                         };
                     }
@@ -903,7 +916,7 @@ fn parse_escape<'de, R: Read<'de>>(
                             read.discard();
                             error(read, ErrorCode::UnexpectedEndOfHexEscape)
                         } else {
-                            encode_surrogate(scratch, n1);
+                            encode_wtf8(scratch, n1);
                             // The \ prior to this byte started an escape sequence,
                             // so we need to parse that now. This recursive call
                             // does not blow the stack on malicious input because
@@ -916,7 +929,13 @@ fn parse_escape<'de, R: Read<'de>>(
                     let n2 = tri!(read.decode_hex_escape());
 
                     if n2 < 0xDC00 || n2 > 0xDFFF {
-                        return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
+                        return if validate {
+                            error(read, ErrorCode::LoneLeadingSurrogateInHexEscape)
+                        } else {
+                            encode_wtf8(scratch, n1);
+                            encode_wtf8(scratch, n2);
+                            Ok(())
+                        };
                     }
 
                     let n = (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
