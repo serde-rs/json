@@ -17,7 +17,7 @@ jobs:
       matrix:
         os: [ubuntu, windows]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo test
       - run: cargo test --features preserve_order --tests -- --skip ui --exact
@@ -39,7 +39,7 @@ jobs:
           - rust: stable
             os: windows
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{matrix.rust}}
@@ -70,7 +70,7 @@ jobs:
     env:
       MIRIFLAGS: "-Zmiri-tag-raw-pointers"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: miri
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@clippy
       - run: cargo clippy --tests -- -Dclippy::all -Dclippy::pedantic
       - run: cargo clippy --all-features --tests -- -Dclippy::all -Dclippy::pedantic
@@ -91,7 +91,7 @@ jobs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo doc --features raw_value,unbounded_depth
         env:
@@ -101,7 +101,7 @@ jobs:
     name: Fuzz
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo install cargo-fuzz --debug
       - run: cargo fuzz build -O
