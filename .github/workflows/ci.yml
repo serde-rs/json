@@ -71,9 +71,7 @@ jobs:
       MIRIFLAGS: -Zmiri-tag-raw-pointers
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: miri
+      - uses: dtolnay/rust-toolchain@miri
       - run: cargo miri test
       - run: cargo miri test --features preserve_order,float_roundtrip,arbitrary_precision,raw_value
 
