@@ -68,7 +68,7 @@ jobs:
     name: Miri
     runs-on: ubuntu-latest
     env:
-      MIRIFLAGS: "-Zmiri-tag-raw-pointers"
+      MIRIFLAGS: -Zmiri-tag-raw-pointers
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
