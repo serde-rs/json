@@ -273,9 +273,9 @@ impl serde::Serializer for Serializer {
         })
     }
 
-    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Value>
+    fn collect_str<T>(self, value: &T) -> Result<Value>
     where
-        T: Display,
+        T: ?Sized + Display,
     {
         Ok(Value::String(value.to_string()))
     }
@@ -606,9 +606,9 @@ impl serde::Serializer for MapKeySerializer {
         Err(key_must_be_a_string())
     }
 
-    fn collect_str<T: ?Sized>(self, value: &T) -> Result<String>
+    fn collect_str<T>(self, value: &T) -> Result<String>
     where
-        T: Display,
+        T: ?Sized + Display,
     {
         Ok(value.to_string())
     }
