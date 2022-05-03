@@ -56,7 +56,7 @@ alloc = ["serde/alloc"]
 # Make serde_json::Map use a representation which maintains insertion order.
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
-preserve_order = ["indexmap"]
+preserve_order = ["indexmap", "std"]
 
 # Use sufficient precision when parsing fixed precision floats from JSON to
 # ensure that they maintain accuracy when round-tripped through JSON. This comes
