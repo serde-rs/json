@@ -193,7 +193,7 @@ impl Map<String, Value> {
         }
     }
 
-    /// Moves all elements from other into Self, leaving other empty.
+    /// Moves all elements from other into self, leaving other empty.
     #[inline]
     pub fn append(&mut self, other: &mut Self) {
         #[cfg(feature = "preserve_order")]
