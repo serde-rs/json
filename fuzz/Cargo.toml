@@ -1,9 +1,8 @@
 [package]
 name = "serde_json-fuzz"
 version = "0.0.0"
-authors = ["David Korczynski <david@adalogics.com>"]
 publish = false
-edition = "2018"
+edition = "2021"
 
 [package.metadata]
 cargo-fuzz = true
@@ -15,6 +14,7 @@ serde_json = { path = ".." }
 [[bin]]
 name = "from_slice"
 path = "fuzz_targets/from_slice.rs"
+test = false
+doc = false
 
-# Prevent this from interfering with workspaces
 [workspace]
