@@ -2385,3 +2385,99 @@ fn hash_positive_and_negative_zero() {
         assert_eq!(hash(k1), hash(k2));
     }
 }
+
+#[test]
+fn test_error_codes() {
+    use serde::Deserializer;
+    use serde_json::ErrorCode;
+
+    fn contains_test<'de, D>(deserializer: D) -> Result<String, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v = String::deserialize(deserializer)?;
+        if v.contains("test") {
+            Ok(v)
+        } else {
+            Err(serde::de::Error::invalid_value(
+                serde::de::Unexpected::Str(&v),
+                &"a string containing the substring `test`",
+            ))
+        }
+    }
+
+    #[derive(Deserialize, Debug)]
+    #[serde(deny_unknown_fields)]
+    struct Test {
+        #[serde(deserialize_with = "contains_test")]
+        #[allow(dead_code)]
+        required: String,
+        #[allow(dead_code)]
+        seq: Option<[u8; 2]>,
+        #[allow(dead_code)]
+        en: Option<Enum>,
+    }
+
+    #[derive(Deserialize, Debug)]
+    enum Enum {
+        Variant1,
+        Variant2,
+    }
+
+    assert_eq!(
+        serde_json::from_str::<Test>(r#"{"required":1}"#)
+            .unwrap_err()
+            .code(),
+        &ErrorCode::InvalidType(
+            "integer `1`".to_string().into_boxed_str(),
+            "a string".to_string().into_boxed_str()
+        )
+    );
+    assert_eq!(
+        serde_json::from_str::<Test>(r#"{"required":"ok"}"#)
+            .unwrap_err()
+            .code(),
+        &ErrorCode::InvalidValue(
+            "string \"ok\"".to_string().into_boxed_str(),
+            "a string containing the substring `test`"
+                .to_string()
+                .into_boxed_str()
+        )
+    );
+    // SHOULD PROBABLY BE
+    // &ErrorCode::InvalidLength(3, "an array of length 2".to_string().into_boxed_str())
+    assert_eq!(
+        serde_json::from_str::<Test>(r#"{"required":"test","seq":[0,1,2]}"#)
+            .unwrap_err()
+            .code(),
+        &ErrorCode::TrailingCharacters
+    );
+    assert_eq!(
+        serde_json::from_str::<Test>(r#"{"required":"test","seq":[0]}"#)
+            .unwrap_err()
+            .code(),
+        &ErrorCode::InvalidLength(1, "an array of length 2".to_string().into_boxed_str())
+    );
+    assert_eq!(
+        serde_json::from_str::<Test>(r#"{"en":"Variant3"}"#)
+            .unwrap_err()
+            .code(),
+        &ErrorCode::UnknownVariant(
+            "Variant3".to_string().into_boxed_str(),
+            &["Variant1", "Variant2"]
+        )
+    );
+    assert_eq!(
+        serde_json::from_str::<Test>(r#"{"required":"test","unknown":1}"#)
+            .unwrap_err()
+            .code(),
+        &ErrorCode::UnknownField(
+            "unknown".to_string().into_boxed_str(),
+            &["required", "seq", "en"]
+        )
+    );
+    assert_eq!(
+        serde_json::from_str::<Test>(r#"{}"#).unwrap_err().code(),
+        &ErrorCode::MissingField("required".to_string().into_boxed_str())
+    );
+}

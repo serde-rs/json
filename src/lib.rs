@@ -373,7 +373,7 @@ pub use crate::de::from_reader;
 #[doc(inline)]
 pub use crate::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
-pub use crate::error::{Error, Result};
+pub use crate::error::{Error, ErrorCode, Result};
 #[doc(inline)]
 pub use crate::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty};
 #[cfg(feature = "std")]

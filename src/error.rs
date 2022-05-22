@@ -42,6 +42,14 @@ impl Error {
         self.err.column
     }
 
+    /// Specifies the cause of this error.
+    ///
+    /// Usefull when precise error handling is required or translation of
+    /// error messages is required.
+    pub fn code(&self) -> &ErrorCode {
+        &self.err.code
+    }
+
     /// Categorizes the cause of this error.
     ///
     /// - `Category::Io` - failure to read or write bytes on an IO stream
@@ -50,7 +58,14 @@ impl Error {
     /// - `Category::Eof` - unexpected end of the input data
     pub fn classify(&self) -> Category {
         match self.err.code {
-            ErrorCode::Message(_) => Category::Data,
+            ErrorCode::Message(_)
+            | ErrorCode::InvalidType(_, _)
+            | ErrorCode::InvalidValue(_, _)
+            | ErrorCode::InvalidLength(_, _)
+            | ErrorCode::UnknownVariant(_, _)
+            | ErrorCode::UnknownField(_, _)
+            | ErrorCode::MissingField(_)
+            | ErrorCode::DuplicateField(_) => Category::Data,
             ErrorCode::Io(_) => Category::Io,
             ErrorCode::EofWhileParsingList
             | ErrorCode::EofWhileParsingObject
@@ -178,9 +193,33 @@ struct ErrorImpl {
     column: usize,
 }
 
-pub(crate) enum ErrorCode {
+/// This type describe all possible errors that can occur when serializing or
+/// deserializing JSON data.
+pub enum ErrorCode {
     /// Catchall for syntax error messages
     Message(Box<str>),
+
+    /// Different type than expected
+    InvalidType(Box<str>, Box<str>),
+
+    /// Value of the right type but wrong for some other reason
+    InvalidValue(Box<str>, Box<str>),
+
+    /// Sequence or map with too many or too few elements
+    InvalidLength(usize, Box<str>),
+
+    /// Enum type received a variant with an unrecognized name
+    UnknownVariant(Box<str>, &'static [&'static str]),
+
+    /// Struct type received a field with an unrecognized name.
+    UnknownField(Box<str>, &'static [&'static str]),
+
+    /// Struct type expected to receive a required field with
+    /// a particular name but it was not present
+    MissingField(Box<str>),
+
+    /// Struct type received more than one of the same field
+    DuplicateField(Box<str>),
 
     /// Some IO error occurred while serializing or deserializing.
     Io(io::Error),
@@ -246,6 +285,42 @@ pub(crate) enum ErrorCode {
     RecursionLimitExceeded,
 }
 
+impl Debug for ErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ErrorCode::Io(_) => f.debug_tuple("Io").finish(),
+            error_code => Debug::fmt(&error_code, f),
+        }
+    }
+}
+
+impl PartialEq for ErrorCode {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ErrorCode::Message(l0), ErrorCode::Message(r0)) => l0 == r0,
+            (ErrorCode::InvalidType(l0, l1), ErrorCode::InvalidType(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::InvalidValue(l0, l1), ErrorCode::InvalidValue(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::InvalidLength(l0, l1), ErrorCode::InvalidLength(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::UnknownVariant(l0, l1), ErrorCode::UnknownVariant(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::UnknownField(l0, l1), ErrorCode::UnknownField(r0, r1)) => {
+                l0 == r0 && l1 == r1
+            }
+            (ErrorCode::MissingField(l0), ErrorCode::MissingField(r0)) => l0 == r0,
+            (ErrorCode::DuplicateField(l0), ErrorCode::DuplicateField(r0)) => l0 == r0,
+            (ErrorCode::Io(_), ErrorCode::Io(_)) => true,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
 impl Error {
     #[cold]
     pub(crate) fn syntax(code: ErrorCode, line: usize, column: usize) -> Self {
@@ -284,8 +359,51 @@ impl Error {
 
 impl Display for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             ErrorCode::Message(ref msg) => f.write_str(msg),
+            ErrorCode::InvalidType(unexp, exp) => {
+                f.write_fmt(format_args!("invalid type: {}, expected {}", unexp, exp))
+            }
+            ErrorCode::InvalidValue(unexp, exp) => {
+                f.write_fmt(format_args!("invalid value: {}, expected {}", unexp, exp))
+            }
+            ErrorCode::InvalidLength(len, exp) => {
+                f.write_fmt(format_args!("invalid length {}, expected {}", len, exp))
+            }
+            ErrorCode::UnknownVariant(variant, expected) => {
+                if expected.is_empty() {
+                    f.write_fmt(format_args!(
+                        "unknown variant `{}`, there are no variants",
+                        variant
+                    ))
+                } else {
+                    f.write_fmt(format_args!(
+                        "unknown variant `{}`, expected {}",
+                        variant,
+                        OneOf { names: expected }
+                    ))
+                }
+            }
+            ErrorCode::UnknownField(field, expected) => {
+                if expected.is_empty() {
+                    f.write_fmt(format_args!(
+                        "unknown field `{}`, there are no fields",
+                        field
+                    ))
+                } else {
+                    f.write_fmt(format_args!(
+                        "unknown field `{}`, expected {}",
+                        field,
+                        OneOf { names: expected }
+                    ))
+                }
+            }
+            ErrorCode::MissingField(ref field) => {
+                f.write_fmt(format_args!("missing field `{}`", field))
+            }
+            ErrorCode::DuplicateField(ref field) => {
+                f.write_fmt(format_args!("duplicate field `{}`", field))
+            }
             ErrorCode::Io(ref err) => Display::fmt(err, f),
             ErrorCode::EofWhileParsingList => f.write_str("EOF while parsing a list"),
             ErrorCode::EofWhileParsingObject => f.write_str("EOF while parsing an object"),
@@ -367,10 +485,121 @@ impl de::Error for Error {
 
     #[cold]
     fn invalid_type(unexp: de::Unexpected, exp: &dyn de::Expected) -> Self {
-        if let de::Unexpected::Unit = unexp {
-            Error::custom(format_args!("invalid type: null, expected {}", exp))
-        } else {
-            Error::custom(format_args!("invalid type: {}, expected {}", unexp, exp))
+        Error {
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::InvalidType(
+                    if unexp == de::Unexpected::Unit {
+                        "null".into()
+                    } else {
+                        unexp.to_string().into_boxed_str()
+                    },
+                    exp.to_string().into_boxed_str(),
+                ),
+                line: 0,
+                column: 0,
+            }),
+        }
+    }
+
+    #[cold]
+    fn invalid_value(unexp: de::Unexpected, exp: &dyn de::Expected) -> Self {
+        Error {
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::InvalidValue(
+                    unexp.to_string().into_boxed_str(),
+                    exp.to_string().into_boxed_str(),
+                ),
+                line: 0,
+                column: 0,
+            }),
+        }
+    }
+
+    #[cold]
+    fn invalid_length(len: usize, exp: &dyn de::Expected) -> Self {
+        Error {
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::InvalidLength(len, exp.to_string().into_boxed_str()),
+                line: 0,
+                column: 0,
+            }),
+        }
+    }
+
+    #[cold]
+    fn unknown_variant(variant: &str, expected: &'static [&'static str]) -> Self {
+        Error {
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::UnknownVariant(variant.to_string().into_boxed_str(), expected),
+                line: 0,
+                column: 0,
+            }),
+        }
+    }
+
+    #[cold]
+    fn unknown_field(field: &str, expected: &'static [&'static str]) -> Self {
+        Error {
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::UnknownField(field.to_string().into_boxed_str(), expected),
+                line: 0,
+                column: 0,
+            }),
+        }
+    }
+
+    #[cold]
+    fn missing_field(field: &'static str) -> Self {
+        Error {
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::MissingField(field.to_string().into_boxed_str()),
+                line: 0,
+                column: 0,
+            }),
+        }
+    }
+
+    #[cold]
+    fn duplicate_field(field: &'static str) -> Self {
+        Error {
+            err: Box::new(ErrorImpl {
+                code: ErrorCode::DuplicateField(field.to_string().into_boxed_str()),
+                line: 0,
+                column: 0,
+            }),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+/// Used in error messages.
+///
+/// - expected `a`
+/// - expected `a` or `b`
+/// - expected one of `a`, `b`, `c`
+///
+/// The slice of names must not be empty.
+struct OneOf {
+    names: &'static [&'static str],
+}
+
+impl Display for OneOf {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match self.names.len() {
+            0 => panic!(), // special case elsewhere
+            1 => write!(formatter, "`{}`", self.names[0]),
+            2 => write!(formatter, "`{}` or `{}`", self.names[0], self.names[1]),
+            _ => {
+                write!(formatter, "one of ")?;
+                for (i, alt) in self.names.iter().enumerate() {
+                    if i > 0 {
+                        write!(formatter, ", ")?;
+                    }
+                    write!(formatter, "`{}`", alt)?;
+                }
+                Ok(())
+            }
         }
     }
 }
