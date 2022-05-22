@@ -1,6 +1,7 @@
 #![cfg(not(feature = "preserve_order"))]
 #![allow(
     clippy::cast_precision_loss,
+    clippy::derive_partial_eq_without_eq,
     clippy::excessive_precision,
     clippy::float_cmp,
     clippy::items_after_statements,
