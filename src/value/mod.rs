@@ -425,7 +425,7 @@ impl Value {
     /// ```
     pub fn as_array(&self) -> Option<&Vec<Value>> {
         match *self {
-            Value::Array(ref array) => Some(&*array),
+            Value::Array(ref array) => Some(array),
             _ => None,
         }
     }
