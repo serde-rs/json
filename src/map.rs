@@ -323,10 +323,10 @@ impl Eq for Map<String, Value> {}
 /// #
 /// # let val = &Value::String("".to_owned());
 /// # let _ =
-/// match *val {
-///     Value::String(ref s) => Some(s.as_str()),
-///     Value::Array(ref arr) => arr[0].as_str(),
-///     Value::Object(ref map) => map["type"].as_str(),
+/// match val {
+///     Value::String(s) => Some(s.as_str()),
+///     Value::Array(arr) => arr[0].as_str(),
+///     Value::Object(map) => map["type"].as_str(),
 ///     _ => None,
 /// }
 /// # ;
@@ -530,9 +530,9 @@ impl<'a> Entry<'a> {
     /// assert_eq!(map.entry("serde").key(), &"serde");
     /// ```
     pub fn key(&self) -> &String {
-        match *self {
-            Entry::Vacant(ref e) => e.key(),
-            Entry::Occupied(ref e) => e.key(),
+        match self {
+            Entry::Vacant(e) => e.key(),
+            Entry::Occupied(e) => e.key(),
         }
     }
 
