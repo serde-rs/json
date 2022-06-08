@@ -130,9 +130,25 @@ impl<'de> Deserialize<'de> for Value {
                     None => Ok(Value::Object(Map::new())),
                 }
             }
+
+            #[cfg(feature = "arbitrary_precision")]
+            fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Value, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                deserializer.deserialize_any(self)
+            }
         }
 
-        deserializer.deserialize_any(ValueVisitor)
+        #[cfg(feature = "arbitrary_precision")]
+        {
+            deserializer.deserialize_newtype_struct(crate::value::TOKEN, ValueVisitor)
+        }
+
+        #[cfg(not(feature = "arbitrary_precision"))]
+        {
+            deserializer.deserialize_any(ValueVisitor)
+        }
     }
 }
 
@@ -303,6 +319,13 @@ impl<'de> serde::Deserializer<'de> for Value {
     where
         V: Visitor<'de>,
     {
+        #[cfg(feature = "arbitrary_precision")]
+        {
+            if name == crate::value::TOKEN {
+                return self.deserialize_any(visitor);
+            }
+        }
+
         #[cfg(feature = "raw_value")]
         {
             if name == crate::raw::TOKEN {
@@ -797,6 +820,13 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     where
         V: Visitor<'de>,
     {
+        #[cfg(feature = "arbitrary_precision")]
+        {
+            if name == crate::value::TOKEN {
+                return self.deserialize_any(visitor);
+            }
+        }
+
         #[cfg(feature = "raw_value")]
         {
             if name == crate::raw::TOKEN {

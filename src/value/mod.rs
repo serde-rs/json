@@ -108,6 +108,9 @@ pub use crate::number::Number;
 #[cfg(feature = "raw_value")]
 pub use crate::raw::{to_raw_value, RawValue};
 
+#[cfg(feature = "arbitrary_precision")]
+pub(crate) const TOKEN: &str = "$serde_json::private::Value";
+
 /// Represents any valid JSON value.
 ///
 /// See the [`serde_json::value` module documentation](self) for usage examples.

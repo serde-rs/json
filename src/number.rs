@@ -405,9 +405,25 @@ impl<'de> Deserialize<'de> for Number {
                 let v: NumberFromString = visitor.next_value()?;
                 Ok(v.value)
             }
+
+            #[cfg(feature = "arbitrary_precision")]
+            fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Number, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                deserializer.deserialize_any(self)
+            }
         }
 
-        deserializer.deserialize_any(NumberVisitor)
+        #[cfg(feature = "arbitrary_precision")]
+        {
+            deserializer.deserialize_newtype_struct(crate::value::TOKEN, NumberVisitor)
+        }
+
+        #[cfg(not(feature = "arbitrary_precision"))]
+        {
+            deserializer.deserialize_any(NumberVisitor)
+        }
     }
 }
 
