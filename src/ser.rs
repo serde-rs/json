@@ -1557,8 +1557,6 @@ pub enum CharEscape {
     Quote,
     /// An escaped reverse solidus `\`
     ReverseSolidus,
-    /// An escaped solidus `/`
-    Solidus,
     /// An escaped backspace character (usually escaped as `\b`)
     Backspace,
     /// An escaped form feed character (usually escaped as `\f`)
@@ -1777,7 +1775,6 @@ pub trait Formatter {
         let s = match char_escape {
             Quote => b"\\\"",
             ReverseSolidus => b"\\\\",
-            Solidus => b"\\/",
             Backspace => b"\\b",
             FormFeed => b"\\f",
             LineFeed => b"\\n",
