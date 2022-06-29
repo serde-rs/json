@@ -101,7 +101,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo install cargo-fuzz --debug
+      - uses: dtolnay/install@cargo-fuzz
       - run: cargo fuzz build -O
 
   outdated:
