@@ -18,7 +18,15 @@ use serde::de::{IntoDeserializer, MapAccess};
 pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg(feature = "arbitrary_precision")]
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Number {
+    n: String,
+}
+
+/// Represents a JSON number, whether integer or floating point.
+#[cfg(not(feature = "arbitrary_precision"))]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Number {
     n: N,
 }
@@ -68,9 +76,6 @@ impl Hash for N {
         }
     }
 }
-
-#[cfg(feature = "arbitrary_precision")]
-type N = String;
 
 impl Number {
     /// Returns true if the `Number` is an integer between `i64::MIN` and
