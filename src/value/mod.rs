@@ -874,14 +874,16 @@ impl Value {
         if pointer.is_empty() {
             return Some(self.take());
         }
-        pointer.rsplit_once('/').and_then(|(pointer, key)| {
-            self.pointer_mut(pointer).and_then(|value| match value {
-                Value::Object(map) => map.remove(key),
-                Value::Array(list) => {
-                    parse_index(key).and_then(move |x| (x < list.len()).then(|| list.remove(x)))
-                }
-                _ => None,
-            })
+        #[allow(clippy::manual_split_once)]
+        let mut pointer_split = pointer.rsplitn(2, '/');
+        let key = pointer_split.next()?;
+        let pointer = pointer_split.next()?;
+        self.pointer_mut(pointer).and_then(|value| match value {
+            Value::Object(map) => map.remove(key),
+            Value::Array(list) => {
+                parse_index(key).and_then(move |x| (x < list.len()).then(|| list.remove(x)))
+            }
+            _ => None,
         })
     }
 
