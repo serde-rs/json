@@ -828,6 +828,63 @@ impl Value {
             })
     }
 
+    /// Removes a value by a JSON Pointer and returns that value.
+    ///
+    /// JSON Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (JSON) document.
+    ///
+    /// A Pointer is a Unicode string with the reference tokens separated by `/`.
+    /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
+    /// addressed value is returned and if there is no such value `None` is
+    /// returned.
+    ///
+    /// For more information, read [RFC6901](https://tools.ietf.org/html/rfc6901).
+    ///
+    /// # Example of Use
+    ///
+    /// ```
+    /// # use serde_json::{Value, json};
+    /// #
+    /// let mut data = json!({
+    ///     "x": {
+    ///         "y": ["z", "zz"]
+    ///     }
+    /// });
+    ///
+    /// let v = data.remove_by_pointer("/x/y/0");
+    /// assert_eq!(v, Some(json!("z")));
+    /// assert_eq!(
+    ///     data,
+    ///     json!({
+    ///         "x": {
+    ///             "y": ["zz"]
+    ///         }
+    ///     }),
+    /// );
+    ///
+    /// let v = data.remove_by_pointer("/x/y");
+    /// assert_eq!(v, Some(json!(["zz"])));
+    /// assert_eq!(data, json!({ "x": {} }));
+    ///
+    /// let v = data.remove_by_pointer("");
+    /// assert_eq!(v, Some(json!({ "x": {} })));
+    /// assert_eq!(data, Value::Null);
+    /// ```
+    pub fn remove_by_pointer(&mut self, pointer: &str) -> Option<Value> {
+        if pointer.is_empty() {
+            return Some(self.take());
+        }
+        pointer.rsplit_once('/').and_then(|(pointer, key)| {
+            self.pointer_mut(pointer).and_then(|value| match value {
+                Value::Object(map) => map.remove(key),
+                Value::Array(list) => {
+                    parse_index(key).and_then(move |x| (x < list.len()).then(|| list.remove(x)))
+                }
+                _ => None,
+            })
+        })
+    }
+
     /// Takes the value out of the `Value`, leaving a `Null` in its place.
     ///
     /// ```
