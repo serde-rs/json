@@ -880,9 +880,13 @@ impl Value {
         let pointer = pointer_split.next()?;
         self.pointer_mut(pointer).and_then(|value| match value {
             Value::Object(map) => map.remove(key),
-            Value::Array(list) => {
-                parse_index(key).and_then(move |x| (x < list.len()).then(|| list.remove(x)))
-            }
+            Value::Array(list) => parse_index(key).and_then(move |x| {
+                if x < list.len() {
+                    Some(list.remove(x))
+                } else {
+                    None
+                }
+            }),
             _ => None,
         })
     }
