@@ -33,9 +33,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [beta, stable, 1.56.1, 1.53.0, 1.46.0, 1.45.0, 1.40.0, 1.38.0, 1.36.0]
+        rust: [beta, 1.56.1, 1.53.0, 1.46.0, 1.45.0, 1.40.0, 1.38.0, 1.36.0]
         os: [ubuntu]
         include:
+          - rust: stable
+            os: ubuntu
+            target: aarch64-unknown-none
           - rust: stable
             os: windows
     steps:
@@ -43,6 +46,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{matrix.rust}}
+          targets: ${{matrix.target}}
       - run: cargo check
       - run: cargo check --features float_roundtrip
       - run: cargo check --features arbitrary_precision
@@ -55,14 +59,8 @@ jobs:
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,preserve_order
         if: matrix.rust != '1.53.0' && matrix.rust != '1.46.0' && matrix.rust != '1.45.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
       - name: Build without std
-        run: |
-          rustup target add aarch64-unknown-none
-          cargo check \
-              --manifest-path tests/crate/Cargo.toml \
-              --target aarch64-unknown-none \
-              --no-default-features \
-              --features alloc
-        if: matrix.rust == 'stable' && matrix.os == 'ubuntu'
+        run: cargo check --manifest-path tests/crate/Cargo.toml --target ${{matrix.target}} --no-default-features --features alloc
+        if: matrix.target
 
   miri:
     name: Miri
