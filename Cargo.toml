@@ -2,7 +2,7 @@
 name = "serde_json"
 version = "1.0.82" # remember to update html_root_url
 authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
-categories = ["encoding"]
+categories = ["encoding", "parser-implementations", "no-std"]
 description = "A JSON serialization file format"
 documentation = "https://docs.serde.rs/serde_json/"
 edition = "2018"
