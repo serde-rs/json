@@ -1,8 +1,8 @@
 [package]
 name = "serde_json-fuzz"
 version = "0.0.0"
-publish = false
 edition = "2021"
+publish = false
 
 [package.metadata]
 cargo-fuzz = true
