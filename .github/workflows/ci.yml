@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [beta, 1.56.1, 1.53.0, 1.46.0, 1.40.0, 1.38.0, 1.36.0]
+        rust: [beta, 1.56.1, 1.53.0, 1.51.0, 1.40.0, 1.38.0, 1.36.0]
         os: [ubuntu]
         include:
           - rust: stable
@@ -55,9 +55,9 @@ jobs:
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,raw_value
       - run: cargo check --features preserve_order
-        if: matrix.rust != '1.53.0' && matrix.rust != '1.46.0' && matrix.rust != '1.45.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
+        if: matrix.rust != '1.53.0' && matrix.rust != '1.51.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,preserve_order
-        if: matrix.rust != '1.53.0' && matrix.rust != '1.46.0' && matrix.rust != '1.45.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
+        if: matrix.rust != '1.53.0' && matrix.rust != '1.51.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
       - name: Build without std
         run: cargo check --manifest-path tests/crate/Cargo.toml --target ${{matrix.target}} --no-default-features --features alloc
         if: matrix.target
