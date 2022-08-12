@@ -307,27 +307,16 @@ impl Display for Number {
 impl Debug for Number {
     #[cfg(not(feature = "arbitrary_precision"))]
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let mut debug = formatter.debug_tuple("Number");
         match self.n {
-            N::PosInt(i) => {
-                debug.field(&i);
-            }
-            N::NegInt(i) => {
-                debug.field(&i);
-            }
-            N::Float(f) => {
-                debug.field(&f);
-            }
+            N::PosInt(i) => Debug::fmt(&i, formatter),
+            N::NegInt(i) => Debug::fmt(&i, formatter),
+            N::Float(f) => Debug::fmt(&f, formatter),
         }
-        debug.finish()
     }
 
     #[cfg(feature = "arbitrary_precision")]
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter
-            .debug_tuple("Number")
-            .field(&format_args!("{}", self.n))
-            .finish()
+        write!(formatter, "{}", self.n)
     }
 }
 

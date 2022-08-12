@@ -2,45 +2,42 @@ use serde_json::{json, Number, Value};
 
 #[test]
 fn number() {
-    assert_eq!(format!("{:?}", Number::from(1)), "Number(1)");
-    assert_eq!(format!("{:?}", Number::from(-1)), "Number(-1)");
-    assert_eq!(
-        format!("{:?}", Number::from_f64(1.0).unwrap()),
-        "Number(1.0)"
-    );
+    assert_eq!(format!("{:?}", Number::from(1)), "1");
+    assert_eq!(format!("{:?}", Number::from(-1)), "-1");
+    assert_eq!(format!("{:?}", Number::from_f64(1.0).unwrap()), "1.0");
 }
 
 #[test]
 fn value_null() {
-    assert_eq!(format!("{:?}", json!(null)), "Null");
+    assert_eq!(format!("{:?}", json!(null)), "null");
 }
 
 #[test]
 fn value_bool() {
-    assert_eq!(format!("{:?}", json!(true)), "Bool(true)");
-    assert_eq!(format!("{:?}", json!(false)), "Bool(false)");
+    assert_eq!(format!("{:?}", json!(true)), "true");
+    assert_eq!(format!("{:?}", json!(false)), "false");
 }
 
 #[test]
 fn value_number() {
-    assert_eq!(format!("{:?}", json!(1)), "Number(1)");
-    assert_eq!(format!("{:?}", json!(-1)), "Number(-1)");
-    assert_eq!(format!("{:?}", json!(1.0)), "Number(1.0)");
+    assert_eq!(format!("{:?}", json!(1)), "1");
+    assert_eq!(format!("{:?}", json!(-1)), "-1");
+    assert_eq!(format!("{:?}", json!(1.0)), "1.0");
 }
 
 #[test]
 fn value_string() {
-    assert_eq!(format!("{:?}", json!("s")), "String(\"s\")");
+    assert_eq!(format!("{:?}", json!("s")), "\"s\"");
 }
 
 #[test]
 fn value_array() {
-    assert_eq!(format!("{:?}", json!([])), "Array([])");
+    assert_eq!(format!("{:?}", json!([])), "[]");
 }
 
 #[test]
 fn value_object() {
-    assert_eq!(format!("{:?}", json!({})), "Object({})");
+    assert_eq!(format!("{:?}", json!({})), "{}");
 }
 
 #[test]
@@ -50,16 +47,12 @@ fn error() {
     assert_eq!(format!("{:?}", err), expected);
 }
 
-const INDENTED_EXPECTED: &str = r#"Object({
-    "array": Array([
-        Number(
-            0,
-        ),
-        Number(
-            1,
-        ),
-    ]),
-})"#;
+const INDENTED_EXPECTED: &str = r#"{
+    "array": [
+        0,
+        1,
+    ],
+}"#;
 
 #[test]
 fn indented() {
