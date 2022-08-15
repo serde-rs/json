@@ -177,12 +177,30 @@ pub enum Value {
 impl Debug for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Value::Null => formatter.write_str("null"),
-            Value::Bool(v) => Debug::fmt(v, formatter),
-            Value::Number(v) => Debug::fmt(v, formatter),
-            Value::String(v) => Debug::fmt(v, formatter),
-            Value::Array(v) => Debug::fmt(v, formatter),
-            Value::Object(v) => Debug::fmt(v, formatter),
+            Value::Null => formatter.write_str("Null"),
+            Value::Bool(v) => {
+                formatter.write_str("Bool(")?;
+                Debug::fmt(v, formatter)?;
+                formatter.write_str(")")
+            }
+            Value::Number(v) => {
+                formatter.write_str("Number(")?;
+                Debug::fmt(v, formatter)?;
+                formatter.write_str(")")
+            }
+            Value::String(v) => {
+                formatter.write_str("String(")?;
+                Debug::fmt(v, formatter)?;
+                formatter.write_str(")")
+            }
+            Value::Array(v) => {
+                formatter.write_str("Array ")?;
+                Debug::fmt(v, formatter)
+            }
+            Value::Object(v) => {
+                formatter.write_str("Object ")?;
+                Debug::fmt(v, formatter)
+            }
         }
     }
 }

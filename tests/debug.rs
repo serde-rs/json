@@ -9,35 +9,35 @@ fn number() {
 
 #[test]
 fn value_null() {
-    assert_eq!(format!("{:?}", json!(null)), "null");
+    assert_eq!(format!("{:?}", json!(null)), "Null");
 }
 
 #[test]
 fn value_bool() {
-    assert_eq!(format!("{:?}", json!(true)), "true");
-    assert_eq!(format!("{:?}", json!(false)), "false");
+    assert_eq!(format!("{:?}", json!(true)), "Bool(true)");
+    assert_eq!(format!("{:?}", json!(false)), "Bool(false)");
 }
 
 #[test]
 fn value_number() {
-    assert_eq!(format!("{:?}", json!(1)), "1");
-    assert_eq!(format!("{:?}", json!(-1)), "-1");
-    assert_eq!(format!("{:?}", json!(1.0)), "1.0");
+    assert_eq!(format!("{:?}", json!(1)), "Number(1)");
+    assert_eq!(format!("{:?}", json!(-1)), "Number(-1)");
+    assert_eq!(format!("{:?}", json!(1.0)), "Number(1.0)");
 }
 
 #[test]
 fn value_string() {
-    assert_eq!(format!("{:?}", json!("s")), "\"s\"");
+    assert_eq!(format!("{:?}", json!("s")), "String(\"s\")");
 }
 
 #[test]
 fn value_array() {
-    assert_eq!(format!("{:?}", json!([])), "[]");
+    assert_eq!(format!("{:?}", json!([])), "Array []");
 }
 
 #[test]
 fn value_object() {
-    assert_eq!(format!("{:?}", json!({})), "{}");
+    assert_eq!(format!("{:?}", json!({})), "Object {}");
 }
 
 #[test]
@@ -47,10 +47,10 @@ fn error() {
     assert_eq!(format!("{:?}", err), expected);
 }
 
-const INDENTED_EXPECTED: &str = r#"{
-    "array": [
-        0,
-        1,
+const INDENTED_EXPECTED: &str = r#"Object {
+    "array": Array [
+        Number(0),
+        Number(1),
     ],
 }"#;
 
