@@ -20,6 +20,7 @@ ryu = "1.0"
 
 [dev-dependencies]
 automod = "1.0"
+indoc = "1.0"
 ref-cast = "1.0"
 rustversion = "1.0"
 serde = { version = "1.0.100", features = ["derive"] }

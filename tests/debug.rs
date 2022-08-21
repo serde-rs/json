@@ -1,3 +1,4 @@
+use indoc::indoc;
 use serde_json::{json, Number, Value};
 
 #[test]
@@ -50,19 +51,20 @@ fn error() {
     assert_eq!(format!("{:?}", err), expected);
 }
 
-const INDENTED_EXPECTED: &str = r#"Object({
-    "array": Array([
-        Number(
-            0,
-        ),
-        Number(
-            1,
-        ),
-    ]),
-})"#;
-
 #[test]
 fn indented() {
     let j = json!({ "array": [0, 1] });
-    assert_eq!(format!("{:#?}", j), INDENTED_EXPECTED);
+    let expected = indoc! {r#"
+        Object({
+            "array": Array([
+                Number(
+                    0,
+                ),
+                Number(
+                    1,
+                ),
+            ]),
+        })"#
+    };
+    assert_eq!(format!("{:#?}", j), expected);
 }
