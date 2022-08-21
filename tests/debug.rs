@@ -36,12 +36,12 @@ fn value_string() {
 
 #[test]
 fn value_array() {
-    assert_eq!(format!("{:?}", json!([])), "Array([])");
+    assert_eq!(format!("{:?}", json!([])), "Array []");
 }
 
 #[test]
 fn value_object() {
-    assert_eq!(format!("{:?}", json!({})), "Object({})");
+    assert_eq!(format!("{:?}", json!({})), "Object {}");
 }
 
 #[test]
@@ -63,25 +63,17 @@ fn indented() {
         "String": "...",
     });
     let expected = indoc! {r#"
-        Object({
-            "Array": Array([
-                Bool(
-                    true,
-                ),
-            ]),
-            "Bool": Bool(
-                true,
-            ),
-            "EmptyArray": Array([]),
-            "EmptyObject": Object({}),
+        Object {
+            "Array": Array [
+                Bool(true),
+            ],
+            "Bool": Bool(true),
+            "EmptyArray": Array [],
+            "EmptyObject": Object {},
             "Null": Null,
-            "Number": Number(
-                1,
-            ),
-            "String": String(
-                "...",
-            ),
-        })"#
+            "Number": Number(1),
+            "String": String("..."),
+        }"#
     };
     assert_eq!(format!("{:#?}", j), expected);
 }
