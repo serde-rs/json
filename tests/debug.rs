@@ -54,13 +54,13 @@ fn error() {
 #[test]
 fn indented() {
     let j = json!({
-        "Null": null,
+        "Array": [true],
         "Bool": true,
+        "EmptyArray": [],
+        "EmptyObject": {},
+        "Null": null,
         "Number": 1,
         "String": "...",
-        "Array": [true],
-        "EmptyArray": [],
-        "EmptyObject": {}
     });
     let expected = indoc! {r#"
         Object({
