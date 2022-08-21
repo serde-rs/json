@@ -294,7 +294,8 @@ impl Display for Number {
         match self.n {
             N::PosInt(u) => Display::fmt(&u, formatter),
             N::NegInt(i) => Display::fmt(&i, formatter),
-            N::Float(f) => Display::fmt(&f, formatter),
+            // Preserve `.0` on integral values, which Display hides
+            N::Float(f) => Debug::fmt(&f, formatter),
         }
     }
 
@@ -305,15 +306,6 @@ impl Display for Number {
 }
 
 impl Debug for Number {
-    #[cfg(not(feature = "arbitrary_precision"))]
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        match self.n {
-            N::PosInt(_) | N::NegInt(_) => write!(formatter, "Number({})", self),
-            N::Float(f) => write!(formatter, "Number({:?})", f),
-        }
-    }
-
-    #[cfg(feature = "arbitrary_precision")]
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "Number({})", self)
     }
