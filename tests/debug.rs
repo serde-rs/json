@@ -53,17 +53,34 @@ fn error() {
 
 #[test]
 fn indented() {
-    let j = json!({ "array": [0, 1] });
+    let j = json!({
+        "Null": null,
+        "Bool": true,
+        "Number": 1,
+        "String": "...",
+        "Array": [true],
+        "EmptyArray": [],
+        "EmptyObject": {}
+    });
     let expected = indoc! {r#"
         Object({
-            "array": Array([
-                Number(
-                    0,
-                ),
-                Number(
-                    1,
+            "Array": Array([
+                Bool(
+                    true,
                 ),
             ]),
+            "Bool": Bool(
+                true,
+            ),
+            "EmptyArray": Array([]),
+            "EmptyObject": Object({}),
+            "Null": Null,
+            "Number": Number(
+                1,
+            ),
+            "String": String(
+                "...",
+            ),
         })"#
     };
     assert_eq!(format!("{:#?}", j), expected);
