@@ -145,7 +145,7 @@ impl Number {
     /// ```
     /// # use serde_json::json;
     /// #
-    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    /// let v = json!({ "a": 256.0, "b": 64, "c": -64});
     ///
     /// assert!(v["a"].is_f64());
     ///
@@ -230,7 +230,7 @@ impl Number {
     /// ```
     /// # use serde_json::json;
     /// #
-    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    /// let v = json!({ "a": 256.0, "b": 64, "c": -64});
     ///
     /// assert_eq!(v["a"].as_f64(), Some(256.0));
     /// assert_eq!(v["b"].as_f64(), Some(64.0));
@@ -245,7 +245,7 @@ impl Number {
             N::Float(n) => Some(n),
         }
         #[cfg(feature = "arbitrary_precision")]
-        self.n.parse::<f64>().ok().filter(|float| float.is_finite())
+        self.n.parse::<f64>().ok().filter(|float| !float.is_infinite())
     }
 
     /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not JSON
@@ -258,7 +258,7 @@ impl Number {
     /// #
     /// assert!(Number::from_f64(256.0).is_some());
     ///
-    /// assert!(Number::from_f64(f64::NAN).is_none());
+    /// assert!(Number::from_f64(f64::INFINITY).is_none());
     /// ```
     #[inline]
     pub fn from_f64(f: f64) -> Option<Number> {
@@ -275,6 +275,14 @@ impl Number {
             };
             Some(Number { n })
         } else {
+            #[cfg(all(not(feature = "arbitrary_precision"), feature = "std"))]
+            {
+                if f.is_nan() {
+                    return Some(Number {
+                        n: N::Float(::std::f64::NAN),
+                    });
+                }
+            }
             None
         }
     }
@@ -294,7 +302,7 @@ impl Display for Number {
         match self.n {
             N::PosInt(u) => formatter.write_str(itoa::Buffer::new().format(u)),
             N::NegInt(i) => formatter.write_str(itoa::Buffer::new().format(i)),
-            N::Float(f) => formatter.write_str(ryu::Buffer::new().format_finite(f)),
+            N::Float(f) => formatter.write_str(ryu::Buffer::new().format(f)),
         }
     }
 
