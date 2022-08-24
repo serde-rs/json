@@ -158,6 +158,11 @@ macro_rules! json_internal {
         let _ = $object.insert(($($key)+).into(), $value);
     };
 
+    // Next value is `nan`.
+    (@object $object:ident ($($key:tt)+) (: nan $($rest:tt)*) $copy:tt) => {
+        json_internal!(@object $object [$($key)+] (json_internal!(::std::f64::NAN)) $($rest)*);
+    };
+
     // Next value is `null`.
     (@object $object:ident ($($key:tt)+) (: null $($rest:tt)*) $copy:tt) => {
         json_internal!(@object $object [$($key)+] (json_internal!(null)) $($rest)*);
