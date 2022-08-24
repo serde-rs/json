@@ -173,7 +173,13 @@ where
     #[inline]
     fn serialize_f32(self, value: f32) -> Result<()> {
         match value.classify() {
-            FpCategory::Nan | FpCategory::Infinite => {
+            FpCategory::Nan => {
+                tri!(self
+                    .formatter
+                    .write_number_str(&mut self.writer, "nan")
+                    .map_err(Error::io));
+            }
+            FpCategory::Infinite => {
                 tri!(self
                     .formatter
                     .write_null(&mut self.writer)
@@ -192,7 +198,13 @@ where
     #[inline]
     fn serialize_f64(self, value: f64) -> Result<()> {
         match value.classify() {
-            FpCategory::Nan | FpCategory::Infinite => {
+            FpCategory::Nan => {
+                tri!(self
+                    .formatter
+                    .write_number_str(&mut self.writer, "nan")
+                    .map_err(Error::io));
+            }
+            FpCategory::Infinite => {
                 tri!(self
                     .formatter
                     .write_null(&mut self.writer)
