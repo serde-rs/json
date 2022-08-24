@@ -263,10 +263,22 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let err = match self.peek_or_null().unwrap_or(b'\x00') {
             b'n' => {
                 self.eat_char();
-                if let Err(err) = self.parse_ident(b"ull") {
-                    return err;
+                match self.peek_or_null().unwrap_or(b'\x00') {
+                    #[cfg(feature = "std")]
+                    b'a' => {
+                        if let Err(err) = self.parse_ident(b"an") {
+                            return err;
+                        }
+                        de::Error::invalid_type(Unexpected::Float(::std::f64::NAN), exp)
+                    }
+                    b'u' => {
+                        if let Err(err) = self.parse_ident(b"ull") {
+                            return err;
+                        }
+                        de::Error::invalid_type(Unexpected::Unit, exp)
+                    }
+                    _ => self.peek_error(ErrorCode::ExpectedSomeValue),
                 }
-                de::Error::invalid_type(Unexpected::Unit, exp)
             }
             b't' => {
                 self.eat_char();
@@ -326,6 +338,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 tri!(self.parse_integer(false)).visit(visitor)
             }
             b'0'..=b'9' => tri!(self.parse_integer(true)).visit(visitor),
+            #[cfg(feature = "std")]
+            b'n' => {
+                self.eat_char();
+                tri!(self.parse_ident(b"an"));
+                tri!(Ok(ParserNumber::F64(::std::f64::NAN))).visit(visitor)
+            }
             _ => Err(self.peek_invalid_type(&visitor)),
         };
 
@@ -1321,8 +1339,19 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         let value = match peek {
             b'n' => {
                 self.eat_char();
-                tri!(self.parse_ident(b"ull"));
-                visitor.visit_unit()
+                match tri!(self.peek()) {
+                    #[cfg(feature = "std")]
+                    Some(b'a') => {
+                        tri!(self.parse_ident(b"an"));
+                        visitor.visit_f64(::std::f64::NAN)
+                    }
+                    Some(b'u') => {
+                        tri!(self.parse_ident(b"ull"));
+                        visitor.visit_unit()
+                    }
+                    Some(_) => Err(self.peek_invalid_type(&visitor)),
+                    None => Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
+                }
             }
             b't' => {
                 self.eat_char();
