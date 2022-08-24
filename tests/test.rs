@@ -161,13 +161,21 @@ fn test_write_f64() {
 #[test]
 fn test_encode_nonfinite_float_yields_null() {
     let v = to_value(::std::f64::NAN).unwrap();
-    assert!(v.is_null());
+    if !cfg!(feature = "arbitrary_precision") && cfg!(feature = "std") {
+        assert!(v.is_f64());
+    } else {
+        assert!(v.is_null());
+    }
 
     let v = to_value(::std::f64::INFINITY).unwrap();
     assert!(v.is_null());
 
     let v = to_value(::std::f32::NAN).unwrap();
-    assert!(v.is_null());
+    if !cfg!(feature = "arbitrary_precision") && cfg!(feature = "std") {
+        assert!(v.is_f64());
+    } else {
+        assert!(v.is_null());
+    }
 
     let v = to_value(::std::f32::INFINITY).unwrap();
     assert!(v.is_null());
@@ -691,6 +699,17 @@ fn test_parse_null() {
     ]);
 
     test_parse_ok(vec![("null", ())]);
+}
+
+#[test]
+fn test_parse_nan() {
+    test_parse_err::<()>(&[
+        ("n", "EOF while parsing a value at line 1 column 1"),
+        ("na", "expected ident at line 1 column 2"),
+        ("nana", "expected ident at line 1 column 2"),
+    ]);
+
+    assert!(from_str::<f64>("nan").unwrap().is_nan());
 }
 
 #[test]
