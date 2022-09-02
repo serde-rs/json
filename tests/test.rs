@@ -1107,7 +1107,7 @@ fn test_parse_string() {
     ]);
 
     test_parse_ok(vec![
-        ("\"\"", "".to_string()),
+        ("\"\"", String::new()),
         ("\"foo\"", "foo".to_string()),
         (" \"foo\" ", "foo".to_string()),
         ("\"\\\"\"", "\"".to_string()),
