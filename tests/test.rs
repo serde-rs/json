@@ -95,7 +95,7 @@ where
         let s = to_string(value).unwrap();
         assert_eq!(s, out);
 
-        let v = to_value(&value).unwrap();
+        let v = to_value(value).unwrap();
         let s = to_string(&v).unwrap();
         assert_eq!(s, out);
     }
@@ -111,7 +111,7 @@ where
         let s = to_string_pretty(value).unwrap();
         assert_eq!(s, out);
 
-        let v = to_value(&value).unwrap();
+        let v = to_value(value).unwrap();
         let s = to_string_pretty(&v).unwrap();
         assert_eq!(s, out);
     }
