@@ -15,6 +15,12 @@ use crate::error::ErrorCode;
 use serde::de::{IntoDeserializer, MapAccess};
 
 #[cfg(feature = "arbitrary_precision")]
+use alloc::{
+    borrow::ToOwned,
+    string::{String, ToString},
+};
+
+#[cfg(feature = "arbitrary_precision")]
 pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
