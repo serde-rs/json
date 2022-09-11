@@ -304,7 +304,26 @@ impl Value {
     pub fn get<I: Index>(&self, index: I) -> Option<&Value> {
         index.index_into(self)
     }
-
+    
+    /// Similar to `get` method but fast to get deep json Value
+    /// ```
+    /// # use serde_json::json;
+    ///
+    /// let object = json!({ "A": { "B": { "C": "foo" } } }); // true
+    ///
+    /// assert_eq!(*array.get_concurrent("A.B.C").unwrap(), json!("foo")); // true
+    /// assert_eq!(*array.get_concurrent("A.B.C.D").unwrap(), json!("foo")); // true also
+    /// ```
+    pub fn get_concurrent<I: &str>(&self, pattern: I) -> Option<Value> {
+        let rest: Value = Value::default();
+        for item in list.split(".").into_iter() {
+            let rest = match self.0.get(item) {
+                Some(m) => Some(m),
+                None => Some(&self.0),
+            };
+        }
+        Some(rest)
+    }
     /// Mutably index into a JSON array or map. A string index can be used to
     /// access a value in a map, and a usize index can be used to access an
     /// element of an array.
