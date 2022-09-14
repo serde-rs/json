@@ -8,7 +8,6 @@ documentation = "https://docs.serde.rs/serde_json/"
 edition = "2018"
 keywords = ["json", "serde", "serialization"]
 license = "MIT OR Apache-2.0"
-readme = "README.md"
 repository = "https://github.com/serde-rs/json"
 rust-version = "1.36"
 
