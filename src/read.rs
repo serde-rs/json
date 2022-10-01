@@ -1020,7 +1020,7 @@ pub(crate) const TOKEN: &str = "$serde_json::private::Position";
 
 #[cfg(feature = "raw_value")]
 impl<'de> Deserialize<'de> for Position {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -1033,7 +1033,7 @@ impl<'de> Deserialize<'de> for Position {
                 write!(f, "position indicator")
             }
 
-            fn visit_seq<A>(self, mut seq: A) -> std::result::Result<Self::Value, A::Error>
+            fn visit_seq<A>(self, mut seq: A) -> core::result::Result<Self::Value, A::Error>
             where
                 A: SeqAccess<'de>,
             {
@@ -1050,7 +1050,7 @@ impl<'de> Deserialize<'de> for Position {
 
 #[cfg(feature = "raw_value")]
 impl Serialize for Position {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {

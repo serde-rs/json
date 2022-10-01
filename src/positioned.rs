@@ -59,7 +59,7 @@ impl<T: Serialize> Serialize for Positioned<T> {
     }
 }
 
-#[cfg(feature = "raw_value")]
+#[cfg(all(feature = "raw_value", feature = "std"))]
 impl Positioned<Box<RawValue>> {
     /// Read from a positioned RawValue.
     pub fn read(&self) -> PositionedRead<StrRead<'_>> {
