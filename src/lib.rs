@@ -418,4 +418,11 @@ mod number;
 mod read;
 
 #[cfg(feature = "raw_value")]
+mod positioned;
+#[cfg(feature = "raw_value")]
 mod raw;
+
+#[cfg(feature = "raw_value")]
+pub use positioned::Positioned;
+#[cfg(feature = "raw_value")]
+pub use read::Position;
