@@ -1,23 +1,20 @@
 use crate::de::ParserNumber;
 use crate::error::Error;
+#[cfg(feature = "arbitrary_precision")]
+use crate::error::ErrorCode;
+#[cfg(feature = "arbitrary_precision")]
+use alloc::borrow::ToOwned;
+#[cfg(feature = "arbitrary_precision")]
+use alloc::string::{String, ToString};
 use core::fmt::{self, Debug, Display};
 #[cfg(not(feature = "arbitrary_precision"))]
 use core::hash::{Hash, Hasher};
 use serde::de::{self, Unexpected, Visitor};
+#[cfg(feature = "arbitrary_precision")]
+use serde::de::{IntoDeserializer, MapAccess};
 use serde::{
     forward_to_deserialize_any, serde_if_integer128, Deserialize, Deserializer, Serialize,
     Serializer,
-};
-
-#[cfg(feature = "arbitrary_precision")]
-use crate::error::ErrorCode;
-#[cfg(feature = "arbitrary_precision")]
-use serde::de::{IntoDeserializer, MapAccess};
-
-#[cfg(feature = "arbitrary_precision")]
-use alloc::{
-    borrow::ToOwned,
-    string::{String, ToString},
 };
 
 #[cfg(feature = "arbitrary_precision")]
