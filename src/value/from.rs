@@ -246,6 +246,8 @@ impl<K: Into<String>, V: Into<Value>, const N: usize> From<[(K, V); N]> for Valu
     /// let x: Value = v.into();
     /// ```
     fn from(arr: [(K, V); N]) -> Self {
+        // FromIterator::from_iter cannot be used before Rust 1.53
+        #[allow(deprecated)]
         core::array::IntoIter::new(arr).collect()
     }
 }
