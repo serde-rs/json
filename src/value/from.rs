@@ -4,7 +4,6 @@ use crate::number::Number;
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::array;
 use core::iter::FromIterator;
 
 #[cfg(feature = "arbitrary_precision")]
@@ -247,7 +246,7 @@ impl<K: Into<String>, V: Into<Value>, const N: usize> From<[(K, V); N]> for Valu
     /// let x: Value = v.into();
     /// ```
     fn from(arr: [(K, V); N]) -> Self {
-        array::IntoIter::new(arr).collect()
+        core::array::IntoIter::new(arr).collect()
     }
 }
 

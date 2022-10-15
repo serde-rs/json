@@ -14,7 +14,7 @@ use core::hash::Hash;
 use core::iter::{FromIterator, FusedIterator};
 #[cfg(feature = "preserve_order")]
 use core::mem;
-use core::{array, ops};
+use core::ops;
 use serde::de;
 
 #[cfg(not(feature = "preserve_order"))]
@@ -433,7 +433,7 @@ impl<'de> de::Deserialize<'de> for Map<String, Value> {
 #[cfg(not(no_const_generics))]
 impl<const N: usize> From<[(String, Value); N]> for Map<String, Value> {
     fn from(arr: [(String, Value); N]) -> Self {
-        array::IntoIter::new(arr).collect()
+        core::array::IntoIter::new(arr).collect()
     }
 }
 
