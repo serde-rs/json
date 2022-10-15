@@ -32,6 +32,12 @@ fn main() {
         println!("cargo:rustc-cfg=no_btreemap_remove_entry");
     }
 
+    // Const generics
+    // https://blog.rust-lang.org/2021/03/25/Rust-1.51.0.html#const-generics-mvp
+    if minor < 51 {
+        println!("cargo:rustc-cfg=no_const_generics");
+    }
+
     // BTreeMap::retain
     // https://blog.rust-lang.org/2021/06/17/Rust-1.53.0.html#stabilized-apis
     if minor < 53 {

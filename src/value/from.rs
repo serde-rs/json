@@ -4,6 +4,7 @@ use crate::number::Number;
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::array;
 use core::iter::FromIterator;
 
 #[cfg(feature = "arbitrary_precision")]
@@ -230,6 +231,23 @@ impl<T: Into<Value>> FromIterator<T> for Value {
     /// ```
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Value::Array(iter.into_iter().map(Into::into).collect())
+    }
+}
+
+#[cfg(not(no_const_generics))]
+impl<K: Into<String>, V: Into<Value>, const N: usize> From<[(K, V); N]> for Value {
+    /// Convert a list of map entry tuples to `Value`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use serde_json::Value;
+    ///
+    /// let v = [("lorem", 40), ("ipsum", 2)];
+    /// let x: Value = v.into();
+    /// ```
+    fn from(arr: [(K, V); N]) -> Self {
+        array::IntoIter::new(arr).collect()
     }
 }
 
