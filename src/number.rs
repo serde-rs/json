@@ -732,19 +732,8 @@ impl_from_signed!(i8, i16, i32, i64, isize);
 
 #[cfg(feature = "arbitrary_precision")]
 serde_if_integer128! {
-    impl From<i128> for Number {
-        fn from(i: i128) -> Self {
-            let n = itoa::Buffer::new().format(i).to_owned();
-            Number { n }
-        }
-    }
-
-    impl From<u128> for Number {
-        fn from(u: u128) -> Self {
-            let n = itoa::Buffer::new().format(u).to_owned();
-            Number { n }
-        }
-    }
+    impl_from_unsigned!(u128);
+    impl_from_signed!(i128);
 }
 
 impl Number {
