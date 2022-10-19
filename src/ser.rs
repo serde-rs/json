@@ -7,7 +7,6 @@ use alloc::vec::Vec;
 use core::fmt::{self, Display};
 use core::num::FpCategory;
 use serde::ser::{self, Impossible, Serialize};
-use serde::serde_if_integer128;
 
 /// A structure for serializing Rust values into JSON.
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -118,12 +117,10 @@ where
         Ok(())
     }
 
-    serde_if_integer128! {
-        fn serialize_i128(self, value: i128) -> Result<()> {
-            self.formatter
-                .write_i128(&mut self.writer, value)
-                .map_err(Error::io)
-        }
+    fn serialize_i128(self, value: i128) -> Result<()> {
+        self.formatter
+            .write_i128(&mut self.writer, value)
+            .map_err(Error::io)
     }
 
     #[inline]
@@ -162,12 +159,10 @@ where
         Ok(())
     }
 
-    serde_if_integer128! {
-        fn serialize_u128(self, value: u128) -> Result<()> {
-            self.formatter
-                .write_u128(&mut self.writer, value)
-                .map_err(Error::io)
-        }
+    fn serialize_u128(self, value: u128) -> Result<()> {
+        self.formatter
+            .write_u128(&mut self.writer, value)
+            .map_err(Error::io)
     }
 
     #[inline]
@@ -964,25 +959,23 @@ where
         Ok(())
     }
 
-    serde_if_integer128! {
-        fn serialize_i128(self, value: i128) -> Result<()> {
-            tri!(self
-                .ser
-                .formatter
-                .begin_string(&mut self.ser.writer)
-                .map_err(Error::io));
-            tri!(self
-                .ser
-                .formatter
-                .write_i128(&mut self.ser.writer, value)
-                .map_err(Error::io));
-            tri!(self
-                .ser
-                .formatter
-                .end_string(&mut self.ser.writer)
-                .map_err(Error::io));
-            Ok(())
-        }
+    fn serialize_i128(self, value: i128) -> Result<()> {
+        tri!(self
+            .ser
+            .formatter
+            .begin_string(&mut self.ser.writer)
+            .map_err(Error::io));
+        tri!(self
+            .ser
+            .formatter
+            .write_i128(&mut self.ser.writer, value)
+            .map_err(Error::io));
+        tri!(self
+            .ser
+            .formatter
+            .end_string(&mut self.ser.writer)
+            .map_err(Error::io));
+        Ok(())
     }
 
     fn serialize_u8(self, value: u8) -> Result<()> {
@@ -1061,25 +1054,23 @@ where
         Ok(())
     }
 
-    serde_if_integer128! {
-        fn serialize_u128(self, value: u128) -> Result<()> {
-            tri!(self
-                .ser
-                .formatter
-                .begin_string(&mut self.ser.writer)
-                .map_err(Error::io));
-            tri!(self
-                .ser
-                .formatter
-                .write_u128(&mut self.ser.writer, value)
-                .map_err(Error::io));
-            tri!(self
-                .ser
-                .formatter
-                .end_string(&mut self.ser.writer)
-                .map_err(Error::io));
-            Ok(())
-        }
+    fn serialize_u128(self, value: u128) -> Result<()> {
+        tri!(self
+            .ser
+            .formatter
+            .begin_string(&mut self.ser.writer)
+            .map_err(Error::io));
+        tri!(self
+            .ser
+            .formatter
+            .write_u128(&mut self.ser.writer, value)
+            .map_err(Error::io));
+        tri!(self
+            .ser
+            .formatter
+            .end_string(&mut self.ser.writer)
+            .map_err(Error::io));
+        Ok(())
     }
 
     fn serialize_f32(self, _value: f32) -> Result<()> {
@@ -1218,10 +1209,8 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
         Err(invalid_number())
     }
 
-    serde_if_integer128! {
-        fn serialize_i128(self, _v: i128) -> Result<()> {
-            Err(invalid_number())
-        }
+    fn serialize_i128(self, _v: i128) -> Result<()> {
+        Err(invalid_number())
     }
 
     fn serialize_u8(self, _v: u8) -> Result<()> {
@@ -1240,10 +1229,8 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
         Err(invalid_number())
     }
 
-    serde_if_integer128! {
-        fn serialize_u128(self, _v: u128) -> Result<()> {
-            Err(invalid_number())
-        }
+    fn serialize_u128(self, _v: u128) -> Result<()> {
+        Err(invalid_number())
     }
 
     fn serialize_f32(self, _v: f32) -> Result<()> {
@@ -1399,10 +1386,8 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    serde_if_integer128! {
-        fn serialize_i128(self, _v: i128) -> Result<()> {
-            Err(ser::Error::custom("expected RawValue"))
-        }
+    fn serialize_i128(self, _v: i128) -> Result<()> {
+        Err(ser::Error::custom("expected RawValue"))
     }
 
     fn serialize_u8(self, _v: u8) -> Result<()> {
@@ -1421,10 +1406,8 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
         Err(ser::Error::custom("expected RawValue"))
     }
 
-    serde_if_integer128! {
-        fn serialize_u128(self, _v: u128) -> Result<()> {
-            Err(ser::Error::custom("expected RawValue"))
-        }
+    fn serialize_u128(self, _v: u128) -> Result<()> {
+        Err(ser::Error::custom("expected RawValue"))
     }
 
     fn serialize_f32(self, _v: f32) -> Result<()> {
