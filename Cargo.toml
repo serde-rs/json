@@ -50,7 +50,6 @@ std = ["serde/std"]
 # Provide integration for heap-allocated collections without depending on the
 # rest of the Rust standard library.
 # NOTE: Disabling both `std` *and* `alloc` features is not supported yet.
-# Available on Rust 1.36+.
 alloc = ["serde/alloc"]
 
 # Make serde_json::Map use a representation which maintains insertion order.
