@@ -121,7 +121,7 @@ where
     serde_if_integer128! {
         fn serialize_i128(self, value: i128) -> Result<()> {
             self.formatter
-                .write_number_str(&mut self.writer, &value.to_string())
+                .write_i128(&mut self.writer, value)
                 .map_err(Error::io)
         }
     }
@@ -165,7 +165,7 @@ where
     serde_if_integer128! {
         fn serialize_u128(self, value: u128) -> Result<()> {
             self.formatter
-                .write_number_str(&mut self.writer, &value.to_string())
+                .write_u128(&mut self.writer, value)
                 .map_err(Error::io)
         }
     }
@@ -974,7 +974,7 @@ where
             tri!(self
                 .ser
                 .formatter
-                .write_number_str(&mut self.ser.writer, &value.to_string())
+                .write_i128(&mut self.ser.writer, value)
                 .map_err(Error::io));
             tri!(self
                 .ser
@@ -1071,7 +1071,7 @@ where
             tri!(self
                 .ser
                 .formatter
-                .write_number_str(&mut self.ser.writer, &value.to_string())
+                .write_u128(&mut self.ser.writer, value)
                 .map_err(Error::io));
             tri!(self
                 .ser
@@ -1663,6 +1663,17 @@ pub trait Formatter {
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
+    fn write_i128<W>(&mut self, writer: &mut W, value: i128) -> io::Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
     fn write_u8<W>(&mut self, writer: &mut W, value: u8) -> io::Result<()>
     where
         W: ?Sized + io::Write,
@@ -1697,6 +1708,17 @@ pub trait Formatter {
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
     fn write_u64<W>(&mut self, writer: &mut W, value: u64) -> io::Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        let mut buffer = itoa::Buffer::new();
+        let s = buffer.format(value);
+        writer.write_all(s.as_bytes())
+    }
+
+    /// Writes an integer value like `123` to the specified writer.
+    #[inline]
+    fn write_u128<W>(&mut self, writer: &mut W, value: u128) -> io::Result<()>
     where
         W: ?Sized + io::Write,
     {
