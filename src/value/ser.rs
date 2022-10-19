@@ -9,9 +9,6 @@ use core::fmt::Display;
 use core::result;
 use serde::ser::{Impossible, Serialize};
 
-#[cfg(feature = "arbitrary_precision")]
-use serde::serde_if_integer128;
-
 impl Serialize for Value {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
@@ -96,10 +93,8 @@ impl serde::Serializer for Serializer {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    serde_if_integer128! {
-        fn serialize_i128(self, value: i128) -> Result<Value> {
-            Ok(Value::Number(value.into()))
-        }
+    fn serialize_i128(self, value: i128) -> Result<Value> {
+        Ok(Value::Number(value.into()))
     }
 
     #[inline]
@@ -123,10 +118,8 @@ impl serde::Serializer for Serializer {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    serde_if_integer128! {
-        fn serialize_u128(self, value: u128) -> Result<Value> {
-            Ok(Value::Number(value.into()))
-        }
+    fn serialize_u128(self, value: u128) -> Result<Value> {
+        Ok(Value::Number(value.into()))
     }
 
     #[inline]
