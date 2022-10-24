@@ -184,6 +184,7 @@ struct ErrorImpl {
     column: usize,
 }
 
+/// The errors that can arise while parsing a JSON stream.
 pub enum ErrorCode {
     /// Catchall for syntax error messages
     Message(Box<str>),
