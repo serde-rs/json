@@ -107,7 +107,7 @@ impl Error {
     
     /// Returns a reference to the ErrorCode that represents the specific cause 
     /// of this error.
-    pub fn error_core(&self) -> &ErrorCode {
+    pub fn error_code(&self) -> &ErrorCode {
         &self.err.code
     }
 }
