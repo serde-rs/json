@@ -104,6 +104,12 @@ impl Error {
     pub fn is_eof(&self) -> bool {
         self.classify() == Category::Eof
     }
+    
+    /// Returns a reference to the ErrorCode that represents the specific cause 
+    /// of this error.
+    pub fn error_core(&self) -> &ErrorCode {
+        &self.err.code
+    }
 }
 
 /// Categorizes the cause of a `serde_json::Error`.
