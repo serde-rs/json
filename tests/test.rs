@@ -1928,7 +1928,7 @@ fn test_deny_float_key() {
 
     // map with float key
     let map = treemap!(Float => "x");
-    assert!(serde_json::to_value(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
 }
 
 #[test]
