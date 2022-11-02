@@ -1,4 +1,6 @@
 use core::convert::TryInto;
+use alloc::string::String;
+use alloc::vec::Vec;
 use crate::map::Map;
 use crate::error::Error;
 use super::Value;
