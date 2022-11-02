@@ -2060,6 +2060,93 @@ fn test_partialeq_bool() {
     assert_ne!(v, 0);
 }
 
+#[test]
+fn test_tryinto_string() {
+    use std::convert::TryInto;
+    let v = to_value("42").unwrap();
+    let s: &String = (&v).try_into().unwrap();
+    assert_eq!(s, "42");
+    let s: &str = (&v).try_into().unwrap();
+    assert_eq!(s, "42");
+    let s: String = v.clone().try_into().unwrap();
+    assert_eq!(s, "42");
+}
+
+#[test]
+fn test_tryinto_number() {
+    use std::convert::TryInto;
+    let v = to_value(42).unwrap();
+    let n: u64 = (&v).try_into().unwrap();
+    assert_eq!(n, 42);
+    let n: i64 = (&v).try_into().unwrap();
+    assert_eq!(n, 42);
+    let n: f64 = (&v).try_into().unwrap();
+    assert_eq!(n, 42.0);
+    let n: u64 = v.clone().try_into().unwrap();
+    assert_eq!(n, 42);
+    let n: i64 = v.clone().try_into().unwrap();
+    assert_eq!(n, 42);
+    let n: f64 = v.clone().try_into().unwrap();
+    assert_eq!(n, 42.0);
+}
+
+#[test]
+fn test_tryinto_bool() {
+    use std::convert::TryInto;
+    let v = to_value(true).unwrap();
+    let b: bool = (&v).try_into().unwrap();
+    assert_eq!(b, true);
+    let b: bool = v.try_into().unwrap();
+    assert_eq!(b, true);
+
+    let v = to_value(false).unwrap();
+    let b: bool = (&v).try_into().unwrap();
+    assert_eq!(b, false);
+    let b: bool = v.try_into().unwrap();
+    assert_eq!(b, false);
+}
+
+#[test]
+fn test_tryinto_null() {
+    use std::convert::TryInto;
+    let v = to_value(()).unwrap();
+    let n: () = v.try_into().unwrap();
+    assert_eq!(n, ());
+}
+
+#[test]
+fn test_tryinto_array() {
+    use std::convert::TryInto;
+
+    let v = json!([1, 2, 3]);
+    let a: &Vec<Value> = (&v).try_into().unwrap();
+    assert_eq!(a, &vec![1, 2, 3]);
+    let a: &[Value] = (&v).try_into().unwrap();
+    assert_eq!(a, vec![1, 2, 3]);
+    let a: Vec<Value> = v.try_into().unwrap();
+    assert_eq!(a, vec![1, 2, 3]);
+
+    let v = json!([1, 2.0, "foo", { "bar": "baz"}, null, false]);
+    let _a: &Vec<Value> = (&v).try_into().unwrap();
+    let _a: &[Value] = (&v).try_into().unwrap();
+    let _a: Vec<Value> = v.try_into().unwrap();
+}
+
+#[test]
+fn test_tryinto_object() {
+    use std::convert::TryInto;
+    use serde_json::map::Map;
+
+    let mut map = Map::new();
+    map.insert("foo".to_string(), json!("bar"));
+
+    let v = json!({"foo": "bar"});
+    let m: &Map<String, Value> = (&v).try_into().unwrap();
+    assert_eq!(m, &map);
+    let m: Map<String, Value> = v.try_into().unwrap();
+    assert_eq!(m, map);
+}
+
 struct FailReader(io::ErrorKind);
 
 impl io::Read for FailReader {
