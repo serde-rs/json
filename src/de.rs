@@ -340,18 +340,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             b'0' => {
                 buf.push('0');
                 // There can be only one leading '0'.
-                match tri!(self.peek_or_null()) {
-                    b'0'..=b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
-                    _ => Ok(()),
-                }
+                self.fail_on_digit()
             }
             c @ b'1'..=b'9' => {
                 buf.push(c as char);
-                while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
-                    self.eat_char();
-                    buf.push(c as char);
-                }
-                Ok(())
+                self.parse_digits(|c| buf.push(c as char))
             }
             _ => Err(self.error(ErrorCode::InvalidNumber)),
         }
@@ -390,10 +383,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         match next {
             b'0' => {
                 // There can be only one leading '0'.
-                match tri!(self.peek_or_null()) {
-                    b'0'..=b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
-                    _ => self.parse_number(positive, 0),
-                }
+                self.fail_on_digit()?;
+                self.parse_number(positive, 0)
             }
             c @ b'1'..=b'9' => {
                 let mut significand = (c - b'0') as u64;
@@ -489,17 +480,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     ) -> Result<f64> {
         self.eat_char();
 
-        let positive_exp = match tri!(self.peek_or_null()) {
-            b'+' => {
-                self.eat_char();
-                true
-            }
-            b'-' => {
-                self.eat_char();
-                false
-            }
-            _ => true,
-        };
+        let positive_exp = tri!(self.parse_sign(Some(true), Some(false))).unwrap_or(true);
 
         let next = match tri!(self.next_char()) {
             Some(b) => b,
@@ -677,21 +658,41 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    fn parse_sign<T: Default>(&mut self, pos: T, neg: T) -> Result<T> {
+        Ok(match tri!(self.peek_or_null()) {
+            b'+' => {
+                self.eat_char();
+                pos
+            }
+            b'-' => {
+                self.eat_char();
+                neg
+            }
+            _ => T::default(),
+        })
+    }
+
+    fn fail_on_digit(&mut self) -> Result<()> {
+        match tri!(self.peek_or_null()) {
+            b'0'..=b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
+            _ => Ok(()),
+        }
+    }
+
+    /// As long as the next character is a digit, feed it to the function.
+    fn parse_digits(&mut self, mut f: impl FnMut(u8)) -> Result<()> {
+        while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
+            self.eat_char();
+            f(c)
+        }
+        Ok(())
+    }
+
     #[cfg(feature = "float_roundtrip")]
     fn parse_long_exponent(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
         self.eat_char();
 
-        let positive_exp = match tri!(self.peek_or_null()) {
-            b'+' => {
-                self.eat_char();
-                true
-            }
-            b'-' => {
-                self.eat_char();
-                false
-            }
-            _ => true,
-        };
+        let positive_exp = tri!(self.parse_sign(Some(true), Some(false))).unwrap_or(true);
 
         let next = match tri!(self.next_char()) {
             Some(b) => b,
@@ -759,9 +760,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     ) -> Result<f64> {
         // The next multiply/add would overflow, so just ignore all further
         // digits.
-        while let b'0'..=b'9' = tri!(self.peek_or_null()) {
-            self.eat_char();
-        }
+        tri!(self.parse_digits(|_| {}));
 
         match tri!(self.peek_or_null()) {
             b'e' | b'E' => self.parse_exponent(positive, significand, exponent),
@@ -784,9 +783,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             return Err(self.error(ErrorCode::NumberOutOfRange));
         }
 
-        while let b'0'..=b'9' = tri!(self.peek_or_null()) {
-            self.eat_char();
-        }
+        tri!(self.parse_digits(|_| {}));
         Ok(if positive { 0.0 } else { -0.0 })
     }
 
@@ -884,30 +881,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     #[cfg(feature = "arbitrary_precision")]
     fn scan_integer(&mut self, buf: &mut String) -> Result<()> {
         match tri!(self.scan_or_eof(buf)) {
-            b'0' => {
-                // There can be only one leading '0'.
-                match tri!(self.peek_or_null()) {
-                    b'0'..=b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
-                    _ => self.scan_number(buf),
-                }
-            }
-            b'1'..=b'9' => loop {
-                match tri!(self.peek_or_null()) {
-                    c @ b'0'..=b'9' => {
-                        self.eat_char();
-                        buf.push(c as char);
-                    }
-                    _ => {
-                        return self.scan_number(buf);
-                    }
-                }
-            },
-            _ => Err(self.error(ErrorCode::InvalidNumber)),
+            // There can be only one leading '0'.
+            b'0' => tri!(self.fail_on_digit()),
+            b'1'..=b'9' => tri!(self.parse_digits(|c| buf.push(c as char))),
+            _ => return Err(self.error(ErrorCode::InvalidNumber)),
         }
-    }
 
-    #[cfg(feature = "arbitrary_precision")]
-    fn scan_number(&mut self, buf: &mut String) -> Result<()> {
         match tri!(self.peek_or_null()) {
             b'.' => self.scan_decimal(buf),
             e @ b'e' | e @ b'E' => self.scan_exponent(e as char, buf),
@@ -921,11 +900,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         buf.push('.');
 
         let mut at_least_one_digit = false;
-        while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
-            self.eat_char();
+        tri!(self.parse_digits(|c| {
             buf.push(c as char);
             at_least_one_digit = true;
-        }
+        }));
 
         if !at_least_one_digit {
             match tri!(self.peek()) {
@@ -945,16 +923,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.eat_char();
         buf.push(e);
 
-        match tri!(self.peek_or_null()) {
-            b'+' => {
-                self.eat_char();
-                buf.push('+');
-            }
-            b'-' => {
-                self.eat_char();
-                buf.push('-');
-            }
-            _ => {}
+        if let Some(sign) = tri!(self.parse_sign(Some('+'), Some('-'))) {
+            buf.push(sign)
         }
 
         // Make sure a digit follows the exponent place.
@@ -965,10 +935,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
         }
 
-        while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
-            self.eat_char();
-            buf.push(c as char);
-        }
+        tri!(self.parse_digits(|c| buf.push(c as char)));
 
         Ok(())
     }
@@ -1131,20 +1098,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     fn ignore_integer(&mut self) -> Result<()> {
         match tri!(self.next_char_or_null()) {
-            b'0' => {
-                // There can be only one leading '0'.
-                if let b'0'..=b'9' = tri!(self.peek_or_null()) {
-                    return Err(self.peek_error(ErrorCode::InvalidNumber));
-                }
-            }
-            b'1'..=b'9' => {
-                while let b'0'..=b'9' = tri!(self.peek_or_null()) {
-                    self.eat_char();
-                }
-            }
-            _ => {
-                return Err(self.error(ErrorCode::InvalidNumber));
-            }
+            b'0' => tri!(self.fail_on_digit()),
+            b'1'..=b'9' => tri!(self.parse_digits(|_| {})),
+            _ => return Err(self.error(ErrorCode::InvalidNumber)),
         }
 
         match tri!(self.peek_or_null()) {
@@ -1158,10 +1114,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.eat_char();
 
         let mut at_least_one_digit = false;
-        while let b'0'..=b'9' = tri!(self.peek_or_null()) {
-            self.eat_char();
-            at_least_one_digit = true;
-        }
+        tri!(self.parse_digits(|_| at_least_one_digit = true));
 
         if !at_least_one_digit {
             return Err(self.peek_error(ErrorCode::InvalidNumber));
@@ -1176,10 +1129,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn ignore_exponent(&mut self) -> Result<()> {
         self.eat_char();
 
-        match tri!(self.peek_or_null()) {
-            b'+' | b'-' => self.eat_char(),
-            _ => {}
-        }
+        tri!(self.parse_sign({}, {}));
 
         // Make sure a digit follows the exponent place.
         match tri!(self.next_char_or_null()) {
@@ -1189,9 +1139,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
         }
 
-        while let b'0'..=b'9' = tri!(self.peek_or_null()) {
-            self.eat_char();
-        }
+        tri!(self.parse_digits(|_| {}));
 
         Ok(())
     }
