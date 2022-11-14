@@ -383,7 +383,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         match next {
             b'0' => {
                 // There can be only one leading '0'.
-                self.fail_on_digit()?;
+                tri!(self.fail_on_digit());
                 self.parse_number(positive, 0)
             }
             c @ b'1'..=b'9' => {
