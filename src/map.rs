@@ -306,7 +306,7 @@ impl Clone for Map<String, Value> {
 
     #[inline]
     fn clone_from(&mut self, source: &Self) {
-        self.map.clone_from(&source.map)
+        self.map.clone_from(&source.map);
     }
 }
 
