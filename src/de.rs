@@ -2237,16 +2237,20 @@ where
 /// arrays, objects, or strings, or be followed by whitespace or a self-delineating value.
 ///
 /// ```
-/// use serde_json::{Deserializer, Value};
+/// use serde_json::{json, Deserializer, Value};
 ///
 /// fn main() {
-///     let data = "{\"k\": 3}1\"cool\"\"stuff\" 3{}  [0, 1, 2]";
+///     let data = r#"{"k": 3}1"cool""stuff" 3{}  [0, 1, 2]"#;;
 ///
-///     let stream = Deserializer::from_str(data).into_iter::<Value>();
+///     let mut stream = Deserializer::from_str(data).into_iter::<Value>();
 ///
-///     for value in stream {
-///         println!("{}", value.unwrap());
-///     }
+///     assert_eq!(stream.next().unwrap().unwrap(), json!({"k":3}));
+///     assert_eq!(stream.next().unwrap().unwrap(), json!(1));
+///     assert_eq!(stream.next().unwrap().unwrap(), json!("cool"));
+///     assert_eq!(stream.next().unwrap().unwrap(), json!("stuff"));
+///     assert_eq!(stream.next().unwrap().unwrap(), json!(3));
+///     assert_eq!(stream.next().unwrap().unwrap(), json!({}));
+///     assert_eq!(stream.next().unwrap().unwrap(), json!([0, 1, 2]));
 /// }
 /// ```
 pub struct StreamDeserializer<'de, R, T> {
