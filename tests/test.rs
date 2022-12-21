@@ -2385,3 +2385,10 @@ fn hash_positive_and_negative_zero() {
         assert_eq!(hash(k1), hash(k2));
     }
 }
+
+#[cfg(feature = "arbitrary_value")]
+#[test]
+fn arbitrary_value() {
+    let mut u = arbitrary::Unstructured::new(&[1, 2, 3, 4]);
+    let _value: Value = u.arbitrary().expect("Could not generate arbitrary Value");
+}

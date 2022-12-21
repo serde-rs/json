@@ -23,19 +23,19 @@ use alloc::collections::{btree_map, BTreeMap};
 use indexmap::{self, IndexMap};
 
 /// Represents a JSON key/value type.
-#[cfg(not(feature = "arbitrary"))]
+#[cfg(not(feature = "arbitrary_value"))]
 pub struct Map<K, V> {
     map: MapImpl<K, V>,
 }
 
 /// Represents a JSON key/value type.
-#[cfg(all(feature = "arbitrary", not(feature = "preserve_order")))]
+#[cfg(all(feature = "arbitrary_value", not(feature = "preserve_order")))]
 #[derive(arbitrary::Arbitrary)]
 pub struct Map<K: Ord, V> {
     map: MapImpl<K, V>,
 }
 /// Represents a JSON key/value type.
-#[cfg(all(feature = "arbitrary", feature = "preserve_order"))]
+#[cfg(all(feature = "arbitrary_value", feature = "preserve_order"))]
 #[derive(arbitrary::Arbitrary)]
 pub struct Map<K: Hash + Eq, V> {
     map: MapImpl<K, V>,

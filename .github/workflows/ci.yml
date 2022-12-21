@@ -30,8 +30,8 @@ jobs:
       - run: cargo test --features float_roundtrip,arbitrary_precision --tests -- --skip ui --exact
       - run: cargo test --features raw_value --tests -- --skip ui --exact
       - run: cargo test --features unbounded_depth --tests -- --skip ui --exact
-      - run: cargo test --features arbitrary --tests -- --skip ui --exact
-      - run: cargo test --features arbitrary,preserve_order --tests -- --skip ui --exact
+      - run: cargo test --features arbitrary_value --tests -- --skip ui --exact
+      - run: cargo test --features arbitrary_value,preserve_order --tests -- --skip ui --exact
 
   build:
     name: Rust ${{matrix.rust}} ${{matrix.os == 'windows' && '(windows)' || ''}}
@@ -69,8 +69,8 @@ jobs:
       - name: Build without std
         run: cargo check --manifest-path tests/crate/Cargo.toml --target ${{matrix.target}} --no-default-features --features alloc
         if: matrix.target
-      - run: cargo check --features arbitrary
-      - run: cargo check --features arbitrary,preserve_order
+      - run: cargo check --features arbitrary_value
+      - run: cargo check --features arbitrary_value,preserve_order
         if: matrix.rust != '1.53.0' && matrix.rust != '1.46.0' && matrix.rust != '1.45.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
 
   miri:
@@ -103,7 +103,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo doc --features raw_value,unbounded_depth,arbitrary
+      - run: cargo doc --features raw_value,unbounded_depth,arbitrary_value
         env:
           RUSTDOCFLAGS: --cfg docsrs
 

@@ -112,7 +112,7 @@ pub use crate::raw::{to_raw_value, RawValue};
 ///
 /// See the [`serde_json::value` module documentation](self) for usage examples.
 #[derive(Clone, Eq, PartialEq)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "arbitrary_value", derive(arbitrary::Arbitrary))]
 pub enum Value {
     /// Represents a JSON null value.
     ///

@@ -92,4 +92,4 @@ raw_value = []
 unbounded_depth = []
 
 # Add support for the arbitrary crate to Value.
-arbitrary = ["dep:arbitrary", "indexmap/arbitrary", "std"]
+arbitrary_value = ["arbitrary", "indexmap/arbitrary", "std"]
