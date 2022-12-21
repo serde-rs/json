@@ -16,6 +16,7 @@ serde = { version = "1.0.100", default-features = false }
 indexmap = { version = "1.5.2", features = ["std"], optional = true }
 itoa = "1.0"
 ryu = "1.0"
+arbitrary = { version="1.2.0", features = ["derive"], optional = true }
 
 [dev-dependencies]
 automod = "1.0"
@@ -89,3 +90,6 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# Add support for the arbitrary crate to Value.
+arbitrary = ["dep:arbitrary", "indexmap/arbitrary", "std"]

@@ -19,12 +19,14 @@ pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
 #[derive(Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Number {
     n: N,
 }
 
 #[cfg(not(feature = "arbitrary_precision"))]
 #[derive(Copy, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 enum N {
     PosInt(u64),
     /// Always less than zero.
