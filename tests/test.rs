@@ -2385,3 +2385,15 @@ fn hash_positive_and_negative_zero() {
         assert_eq!(hash(k1), hash(k2));
     }
 }
+
+#[test]
+fn error_impl_serialize() {
+    let res = serde_json::from_str::<Number>(";");
+
+    assert!(res.is_err());
+
+    let res = serde_json::to_string(&res.unwrap_err());
+
+    assert!(res.is_ok());
+    assert_eq!(res.unwrap(), "\"expected value at line 1 column 1\"");
+}

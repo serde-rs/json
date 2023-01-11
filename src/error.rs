@@ -382,6 +382,15 @@ impl ser::Error for Error {
     }
 }
 
+impl ser::Serialize for Error {
+    fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 // Parse our own error message that looks like "{} at line {} column {}" to work
 // around erased-serde round-tripping the error through de::Error::custom.
 fn make_error(mut msg: String) -> Error {
