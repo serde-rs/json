@@ -110,7 +110,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
       - uses: dtolnay/install@cargo-fuzz
-      - run: cargo fuzz build -O
+      - run: cargo fuzz check
 
   outdated:
     name: Outdated
