@@ -2134,7 +2134,7 @@ where
 /// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
+/// fail, or if `T` contains a map type (e.g. `HashMap`) with non-string keys.
 #[inline]
 pub fn to_string<T>(value: &T) -> Result<String>
 where
