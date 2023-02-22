@@ -53,7 +53,7 @@ where
         Deserializer {
             read,
             scratch: Vec::new(),
-            remaining_depth: 128,
+            remaining_depth: 255,
             #[cfg(feature = "float_roundtrip")]
             single_precision: false,
             #[cfg(feature = "unbounded_depth")]
