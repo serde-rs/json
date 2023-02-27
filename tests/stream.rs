@@ -52,6 +52,42 @@ fn test_json_stream_newlines() {
 }
 
 #[test]
+fn test_json_stream_inline_comment() {
+    let data = "{//\n\"x\":42}";
+
+    test_stream!(data, Value, |stream| {
+        assert_eq!(stream.next().unwrap().unwrap()["x"], 42);
+        assert_eq!(stream.byte_offset(), 11);
+
+        assert!(stream.next().is_none());
+        assert_eq!(stream.byte_offset(), 11);
+    });
+}
+
+#[test]
+fn test_json_stream_inline_comment_prefix() {
+    let data = "//\n{\"x\":42}";
+
+    test_stream!(data, Value, |stream| {
+        assert_eq!(stream.next().unwrap().unwrap()["x"], 42);
+        assert_eq!(stream.byte_offset(), 11);
+
+        assert!(stream.next().is_none());
+        assert_eq!(stream.byte_offset(), 11);
+    });
+}
+
+#[test]
+fn test_json_stream_invalid_inline_comment_prefix() {
+    let data = "{/\n\"x\":42}";
+
+    test_stream!(data, Value, |stream| {
+        assert_eq!(stream.next().unwrap().is_err(), true);
+        assert_eq!(stream.byte_offset(), 0);
+    });
+}
+
+#[test]
 fn test_json_stream_trailing_whitespaces() {
     let data = "{\"x\":42} \t\n";
 

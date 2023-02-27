@@ -243,6 +243,48 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Error::syntax(reason, position.line, position.column)
     }
 
+    /// Returns the first non-comment byte without consuming it, or `None` if
+    /// EOF is encountered.
+    fn parse_comment(&mut self) -> Result<Option<u8>> {
+        // Cursor is already after the first slash.
+        match tri!(self.peek()) {
+            // Line Comment
+            Some(b'/') => {
+                self.eat_char();
+
+                // And eat the rest of the line.
+                loop {
+                    match tri!(self.peek()) {
+                        // Found the end of the line.
+                        // Pass it back to parse_whitespace.
+                        Some(b'\r') | Some(b'\n') => {
+                            self.eat_char();
+                            return self.parse_whitespace()
+                        },
+                        _ => {
+                            self.eat_char();
+                        }
+                    };
+                }
+            }
+
+            // Block Comment
+            Some(b'*') => {
+                self.eat_char();
+
+                // TODO: eat until */.
+                return Ok(Some(b'/'));                
+            }
+
+            // Random bad `/` in a whitespace position.
+            _ => {
+                // Lie, false rewind.
+                // FIXME: Actually rewind?
+                return Ok(Some(b'/'));
+            }
+        };
+    }
+
     /// Returns the first non-whitespace byte without consuming it, or `None` if
     /// EOF is encountered.
     fn parse_whitespace(&mut self) -> Result<Option<u8>> {
@@ -250,6 +292,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             match tri!(self.peek()) {
                 Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') => {
                     self.eat_char();
+                }
+                // Treat comments as whitespace.
+                Some(b'/') => {
+                    self.eat_char();
+                    return self.parse_comment();
                 }
                 other => {
                     return Ok(other);
