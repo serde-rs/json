@@ -6,6 +6,7 @@
     clippy::excessive_precision,
     clippy::float_cmp,
     clippy::items_after_statements,
+    clippy::let_underscore_untyped,
     clippy::shadow_unrelated,
     clippy::too_many_lines,
     clippy::unreadable_literal,
