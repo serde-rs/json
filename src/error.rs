@@ -12,6 +12,7 @@ use std::error;
 
 /// This type represents all possible errors that can occur when serializing or
 /// deserializing JSON data.
+#[derive(Clone)]
 pub struct Error {
     /// This `Box` allows us to keep the size of `Error` as small as possible. A
     /// larger `Error` type was substantially slower due to all the functions
@@ -172,6 +173,7 @@ impl From<Error> for io::Error {
     }
 }
 
+#[derive(Clone)]
 struct ErrorImpl {
     code: ErrorCode,
     line: usize,
@@ -311,6 +313,35 @@ impl Display for ErrorCode {
             ErrorCode::TrailingCharacters => f.write_str("trailing characters"),
             ErrorCode::UnexpectedEndOfHexEscape => f.write_str("unexpected end of hex escape"),
             ErrorCode::RecursionLimitExceeded => f.write_str("recursion limit exceeded"),
+        }
+    }
+}
+
+impl Clone for ErrorCode {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Message(msg) => Self::Message(msg.clone()),
+            Self::Io(err) => Self::Io(io::Error::new(err.kind(), err.to_string())),
+            Self::EofWhileParsingList => Self::EofWhileParsingList,
+            Self::EofWhileParsingObject => Self::EofWhileParsingObject,
+            Self::EofWhileParsingString => Self::EofWhileParsingString,
+            Self::EofWhileParsingValue => Self::EofWhileParsingValue,
+            Self::ExpectedColon => Self::ExpectedColon,
+            Self::ExpectedListCommaOrEnd => Self::ExpectedListCommaOrEnd,
+            Self::ExpectedObjectCommaOrEnd => Self::ExpectedObjectCommaOrEnd,
+            Self::ExpectedSomeIdent => Self::ExpectedSomeIdent,
+            Self::ExpectedSomeValue => Self::ExpectedSomeValue,
+            Self::InvalidEscape => Self::InvalidEscape,
+            Self::InvalidNumber => Self::InvalidNumber,
+            Self::NumberOutOfRange => Self::NumberOutOfRange,
+            Self::InvalidUnicodeCodePoint => Self::InvalidUnicodeCodePoint,
+            Self::ControlCharacterWhileParsingString => Self::ControlCharacterWhileParsingString,
+            Self::KeyMustBeAString => Self::KeyMustBeAString,
+            Self::LoneLeadingSurrogateInHexEscape => Self::LoneLeadingSurrogateInHexEscape,
+            Self::TrailingComma => Self::TrailingComma,
+            Self::TrailingCharacters => Self::TrailingCharacters,
+            Self::UnexpectedEndOfHexEscape => Self::UnexpectedEndOfHexEscape,
+            Self::RecursionLimitExceeded => Self::RecursionLimitExceeded,
         }
     }
 }
