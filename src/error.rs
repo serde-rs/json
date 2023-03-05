@@ -319,7 +319,7 @@ impl serde::de::StdError for Error {
     #[cfg(feature = "std")]
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match &self.err.code {
-            ErrorCode::Io(err) => Some(err),
+            ErrorCode::Io(err) => err.source(),
             _ => None,
         }
     }
