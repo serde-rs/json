@@ -60,6 +60,11 @@ where
             disable_recursion_limit: false,
         }
     }
+
+    /// Consume the deserializer and return its inner reader.
+    pub fn into_reader(self) -> R {
+        self.read
+    }
 }
 
 #[cfg(feature = "std")]

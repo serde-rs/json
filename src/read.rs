@@ -412,6 +412,11 @@ impl<'a> SliceRead<'a> {
         }
     }
 
+    /// Get the byte index of the data that will be read next
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
     fn position_of_index(&self, i: usize) -> Position {
         let mut position = Position { line: 1, column: 0 };
         for ch in &self.slice[..i] {
@@ -622,6 +627,11 @@ impl<'a> StrRead<'a> {
             #[cfg(feature = "raw_value")]
             data: s,
         }
+    }
+
+    /// Get the byte index of the data that will be read next
+    pub fn index(&self) -> usize {
+        self.delegate.index()
     }
 }
 

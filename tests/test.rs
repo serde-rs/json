@@ -2407,3 +2407,22 @@ fn hash_positive_and_negative_zero() {
         assert_eq!(hash(k1), hash(k2));
     }
 }
+
+#[test]
+fn parse_string_prefix() {
+    #[derive(PartialEq, Deserialize, Debug)]
+    struct S {
+        a: u32
+    }
+
+    let data = "{\"a\": 42} tail";
+
+    let mut de = serde_json::Deserializer::from_str(data);
+    let val = S::deserialize(&mut de).unwrap();
+
+    assert_eq!(val, S { a: 42 });
+
+    let str_read = de.into_reader();
+    let tail = &data[str_read.index()..];
+    assert_eq!(tail, " tail");
+}
