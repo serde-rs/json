@@ -434,13 +434,26 @@ impl<'de> de::Deserialize<'de> for Map<String, Value> {
     }
 }
 
-impl FromIterator<(String, Value)> for Map<String, Value> {
+impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Map<String, Value> {
+    /// Convert an iteratable type to a `Map`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use serde_json::Map;
+    ///
+    /// let v: Vec<_> = vec![("lorem", 40), ("ipsum", 2)];
+    /// let x: Map<_, _> = v.into_iter().collect();
+    /// ```
     fn from_iter<T>(iter: T) -> Self
     where
-        T: IntoIterator<Item = (String, Value)>,
+        T: IntoIterator<Item = (K, V)>,
     {
         Map {
-            map: FromIterator::from_iter(iter),
+            map: iter
+                .into_iter()
+                .map(|(k, v)| (k.into(), v.into()))
+                .collect(),
         }
     }
 }
