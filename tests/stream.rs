@@ -51,6 +51,7 @@ fn test_json_stream_newlines() {
     });
 }
 
+#[cfg(feature = "jsonc-deserializer")]
 #[test]
 fn test_json_stream_inline_comment() {
     let data = "//\n{//\n\"x\"//\n://\n42//\n}//\n//";
@@ -64,6 +65,7 @@ fn test_json_stream_inline_comment() {
     });
 }
 
+#[cfg(feature = "jsonc-deserializer")]
 #[test]
 fn test_json_stream_invalid_inline_comment() {
     let data = "{/\n\"x\":42}";
@@ -74,6 +76,7 @@ fn test_json_stream_invalid_inline_comment() {
     });
 }
 
+#[cfg(feature = "jsonc-deserializer")]
 #[test]
 fn test_json_stream_block_comment() {
     let data = "/**/{/**/\"x\"/**/:/**/42/**/}/**/";
@@ -87,6 +90,7 @@ fn test_json_stream_block_comment() {
     });
 }
 
+#[cfg(feature = "jsonc-deserializer")]
 #[test]
 fn test_json_stream_invalid_block_comment() {
     let data = "{/*\"x\":42}";

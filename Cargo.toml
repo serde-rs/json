@@ -89,3 +89,7 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# Enable the deserializer to treat comments in JSONC as whitespace. Comments are
+# not tokenized or serialized.
+jsonc-deserializer = []

@@ -245,6 +245,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     /// Returns the first non-comment byte without consuming it, or `None` if
     /// EOF is encountered.
+    #[cfg(feature = "jsonc-deserializer")]
     fn parse_comment(&mut self) -> Result<Option<u8>> {
         // Move the cursor after the first slash.
         self.eat_char();
@@ -260,6 +261,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[cfg(feature = "jsonc-deserializer")]
     fn parse_line_comment(&mut self) -> Result<Option<u8>> {
         // Eat the second character of the prefix.
         self.eat_char();
@@ -275,6 +277,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    #[cfg(feature = "jsonc-deserializer")]
     fn parse_block_comment(&mut self) -> Result<Option<u8>> {
         // Eat the second character of the prefix.
         self.eat_char();
@@ -308,6 +311,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     self.eat_char();
                 }
                 // Treat comments as whitespace.
+                #[cfg(feature = "jsonc-deserializer")]
                 Some(b'/') => {
                     return self.parse_comment();
                 }
