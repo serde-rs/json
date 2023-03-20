@@ -35,6 +35,12 @@ where
     pub fn pretty(writer: W) -> Self {
         Serializer::with_formatter(writer, PrettyFormatter::new())
     }
+
+    /// Creates a new JSON pretty print serializer with a specified indent.
+    #[inline]
+    pub fn pretty_indent(writer: W, indent: &'a [u8]) -> Self {
+        Serializer::with_formatter(writer, PrettyFormatter::with_indent(indent))
+    }
 }
 
 impl<W, F> Serializer<W, F>
@@ -2097,6 +2103,24 @@ where
     value.serialize(&mut ser)
 }
 
+/// Serialize the given data structure as pretty-printed JSON with a specified
+/// indent into the IO stream.
+///
+/// # Errors
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+#[inline]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub fn to_writer_pretty_indent<W, T>(writer: W, value: &T, indent: &[u8]) -> Result<()>
+where
+    W: io::Write,
+    T: ?Sized + Serialize,
+{
+    let mut ser = Serializer::pretty_indent(writer, indent);
+    value.serialize(&mut ser)
+}
+
 /// Serialize the given data structure as a JSON byte vector.
 ///
 /// # Errors
@@ -2126,6 +2150,23 @@ where
 {
     let mut writer = Vec::with_capacity(128);
     tri!(to_writer_pretty(&mut writer, value));
+    Ok(writer)
+}
+
+/// Serialize the given data structure as a pretty-printed JSON byte vector
+/// with a specified indent.
+///
+/// # Errors
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+#[inline]
+pub fn to_vec_pretty_indent<T>(value: &T, indent: &[u8]) -> Result<Vec<u8>>
+where
+    T: ?Sized + Serialize,
+{
+    let mut writer = Vec::with_capacity(128);
+    tri!(to_writer_pretty_indent(&mut writer, value, indent));
     Ok(writer)
 }
 
@@ -2160,6 +2201,26 @@ where
     T: ?Sized + Serialize,
 {
     let vec = tri!(to_vec_pretty(value));
+    let string = unsafe {
+        // We do not emit invalid UTF-8.
+        String::from_utf8_unchecked(vec)
+    };
+    Ok(string)
+}
+
+/// Serialize the given data structure as a pretty-printed String of JSON
+/// with a specified indent.
+///
+/// # Errors
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+#[inline]
+pub fn to_string_pretty_indent<T>(value: &T, indent: &[u8]) -> Result<String>
+where
+    T: ?Sized + Serialize,
+{
+    let vec = tri!(to_vec_pretty_indent(value, indent));
     let string = unsafe {
         // We do not emit invalid UTF-8.
         String::from_utf8_unchecked(vec)
