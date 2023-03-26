@@ -421,5 +421,7 @@ mod read;
 #[cfg(feature = "raw_value")]
 mod raw;
 
+#[cfg(feature = "std")]
 pub mod operator;
+#[cfg(feature = "std")]
 pub use crate::operator::PathOperator;
