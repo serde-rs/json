@@ -420,3 +420,6 @@ mod read;
 
 #[cfg(feature = "raw_value")]
 mod raw;
+
+pub mod operator;
+pub use crate::operator::PathOperator;

@@ -135,6 +135,40 @@ unrecognized fields in the input data. The compiler is powerless to help you
 when you make a mistake, for example imagine typoing `v["name"]` as `v["nmae"]`
 in one of the dozens of places it is used in your code.
 
+### JSON pointer for untyped JSON values and operator overload
+
+Json pointer is an usefull tool to refer to and operate on individual json
+node. There is a method `.pointer()` for `serde_json::Value` to create json
+pointer, and beside that, `/` is overloaded as path operator to yield pointer
+more conveniently and visually，and it can be chained to point to furthur
+deeper node along the json tree, then there is other operator to read from or
+write to the node it pointed.
+
+```rust
+let data = r#"
+    {
+        "name": "John Doe",
+        "age": 43,
+        "phones": [
+            "+44 1234567",
+            "+44 2345678"
+        ]
+    }"#;
+let v: Value = serde_json::from_str(data)?;
+
+let age_ptr = &v / "age";
+let age_val = age_ptr | 0; // got 43, or default 0 if something wrong.
+let first_phone = &v / "phones" / 0 | "";
+assert_eq!(first_phone, "+44 1234567");
+
+// modify some node
+let _ = &mut v / "age" << 44;
+let _ = &mut v / "phones" << ["+44 3456789"];
+let _ = &mut v << ("sex": "male");
+```
+
+Please refer to the operator documentation for detail meaning and usage.
+
 ## Parsing JSON as strongly typed data structures
 
 Serde provides a powerful way of mapping JSON data into Rust data structures
