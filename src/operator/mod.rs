@@ -163,7 +163,7 @@ impl PathOperator for Value {
 /// The rust type for scalar json node, which can used after operator `|` to read,
 /// or/and operator `<<` to write. Only support `i64` for integer, to make use literal
 /// number more convenient.
-trait JsonScalar {}
+pub trait JsonScalar {}
 impl JsonScalar for String {}
 impl JsonScalar for &str {}
 impl JsonScalar for i64 {}
