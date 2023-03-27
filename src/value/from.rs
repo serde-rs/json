@@ -40,7 +40,7 @@ impl From<f32> for Value {
     /// let x: Value = f.into();
     /// ```
     fn from(f: f32) -> Self {
-        From::from(f as f64)
+        Number::from_f32(f).map_or(Value::Null, Value::Number)
     }
 }
 
