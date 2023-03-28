@@ -104,6 +104,12 @@ impl Error {
     pub fn is_eof(&self) -> bool {
         self.classify() == Category::Eof
     }
+    
+    /// Returns a reference to the ErrorCode that represents the specific cause 
+    /// of this error.
+    pub fn error_code(&self) -> &ErrorCode {
+        &self.err.code
+    }
 }
 
 /// Categorizes the cause of a `serde_json::Error`.
@@ -178,7 +184,8 @@ struct ErrorImpl {
     column: usize,
 }
 
-pub(crate) enum ErrorCode {
+/// The errors that can arise while parsing a JSON stream.
+pub enum ErrorCode {
     /// Catchall for syntax error messages
     Message(Box<str>),
 
