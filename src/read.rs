@@ -7,8 +7,6 @@ use core::str;
 
 #[cfg(feature = "std")]
 use crate::io;
-#[cfg(feature = "std")]
-use crate::iter::LineColIterator;
 
 #[cfg(feature = "raw_value")]
 use crate::raw::BorrowedRawDeserializer;
@@ -114,9 +112,23 @@ pub trait Read<'de>: private::Sealed {
     fn set_failed(&mut self, failed: &mut bool);
 }
 
+#[derive(Clone, Copy)]
 pub struct Position {
     pub line: usize,
     pub column: usize,
+}
+
+impl Position {
+    pub fn update(&mut self, slice: &[u8]) {
+        for b in slice {
+            if *b == b'\n' {
+                self.line += 1;
+                self.column = 0;
+            } else {
+                self.column += 1;
+            }
+        }
+    }
 }
 
 pub enum Reference<'b, 'c, T>
@@ -148,7 +160,9 @@ pub struct IoRead<R>
 where
     R: io::Read,
 {
-    iter: LineColIterator<io::Bytes<R>>,
+    reader: std::io::BufReader<R>,
+    pos: Position,
+    byte_off: usize,
     /// Temporary storage of peeked byte.
     ch: Option<u8>,
     #[cfg(feature = "raw_value")]
@@ -191,7 +205,9 @@ where
     /// Create a JSON input source to read from a std::io input stream.
     pub fn new(reader: R) -> Self {
         IoRead {
-            iter: LineColIterator::new(reader.bytes()),
+            reader: std::io::BufReader::new(reader),
+            pos: Position { line: 1, column: 0 },
+            byte_off: 0,
             ch: None,
             #[cfg(feature = "raw_value")]
             raw_buffer: None,
@@ -239,6 +255,24 @@ where
             }
         }
     }
+
+    fn next_byte(&mut self) -> Option<io::Result<u8>> {
+        use io::Read;
+        let mut byte = [0];
+
+        loop {
+            return match self.reader.read_exact(&mut byte) {
+                Ok(()) => {
+                    self.pos.update(&byte);
+                    self.byte_off += 1;
+                    Some(Ok(byte[0]))
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => None,
+                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e) => Some(Err(e)),
+            };
+        }
+    }
 }
 
 #[cfg(feature = "std")]
@@ -258,7 +292,7 @@ where
                 }
                 Ok(Some(ch))
             }
-            None => match self.iter.next() {
+            None => match self.next_byte() {
                 Some(Err(err)) => Err(Error::io(err)),
                 Some(Ok(ch)) => {
                     #[cfg(feature = "raw_value")]
@@ -278,7 +312,7 @@ where
     fn peek(&mut self) -> Result<Option<u8>> {
         match self.ch {
             Some(ch) => Ok(Some(ch)),
-            None => match self.iter.next() {
+            None => match self.next_byte() {
                 Some(Err(err)) => Err(Error::io(err)),
                 Some(Ok(ch)) => {
                     self.ch = Some(ch);
@@ -305,22 +339,18 @@ where
     }
 
     fn position(&self) -> Position {
-        Position {
-            line: self.iter.line(),
-            column: self.iter.col(),
-        }
+        self.pos
     }
 
     fn peek_position(&self) -> Position {
-        // The LineColIterator updates its position during peek() so it has the
-        // right one here.
+        // We update the position during peek(), so we have the right one here.
         self.position()
     }
 
     fn byte_offset(&self) -> usize {
         match self.ch {
-            Some(_) => self.iter.byte_offset() - 1,
-            None => self.iter.byte_offset(),
+            Some(_) => self.byte_off - 1,
+            None => self.byte_off,
         }
     }
 
