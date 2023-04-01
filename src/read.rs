@@ -160,11 +160,26 @@ pub struct IoRead<R>
 where
     R: io::Read,
 {
-    reader: std::io::BufReader<R>,
+    reader: R,
+
+    /// Internal buffer.
+    buffer: Box<[u8; 128]>,
+
+    /// Total number of bytes ever loaded into buffer.
+    buffered_total: usize,
+
+    /// Current number of bytes loaded into buffer.
+    buffered_current: usize,
+
+    /// Current number of bytes consumed from buffer.
+    consumed_current: usize,
+
+    /// Position of last byte read (e.g. by `next` or `peek`).
     pos: Position,
-    byte_off: usize,
+
     /// Temporary storage of peeked byte.
     ch: Option<u8>,
+
     #[cfg(feature = "raw_value")]
     raw_buffer: Option<Vec<u8>>,
 }
@@ -205,9 +220,12 @@ where
     /// Create a JSON input source to read from a std::io input stream.
     pub fn new(reader: R) -> Self {
         IoRead {
-            reader: std::io::BufReader::new(reader),
+            reader,
+            buffer: Box::new([0; 128]),
+            buffered_total: 0,
+            buffered_current: 0,
+            consumed_current: 0,
             pos: Position { line: 1, column: 0 },
-            byte_off: 0,
             ch: None,
             #[cfg(feature = "raw_value")]
             raw_buffer: None,
@@ -256,18 +274,30 @@ where
         }
     }
 
+    #[inline]
     fn next_byte(&mut self) -> Option<io::Result<u8>> {
-        use io::Read;
-        let mut byte = [0];
+        if self.consumed_current < self.buffered_current {
+            let byte = self.buffer[self.consumed_current];
+            self.consumed_current += 1;
+            self.pos.update(&[byte]);
+            return Some(Ok(byte));
+        }
 
+        self.next_byte_cold()
+    }
+
+    #[inline(never)]
+    fn next_byte_cold(&mut self) -> Option<io::Result<u8>> {
         loop {
-            return match self.reader.read_exact(&mut byte) {
-                Ok(()) => {
-                    self.pos.update(&byte);
-                    self.byte_off += 1;
-                    Some(Ok(byte[0]))
+            return match self.reader.read(&mut self.buffer[..]) {
+                Ok(0) => None,
+                Ok(n) => {
+                    self.buffered_total += n;
+                    self.buffered_current = n;
+                    self.consumed_current = 1;
+                    self.pos.update(&[self.buffer[0]]);
+                    Some(Ok(self.buffer[0]))
                 }
-                Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => None,
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
                 Err(e) => Some(Err(e)),
             };
@@ -348,9 +378,11 @@ where
     }
 
     fn byte_offset(&self) -> usize {
+        let offset = self.buffered_total - self.buffered_current + self.consumed_current;
+
         match self.ch {
-            Some(_) => self.byte_off - 1,
-            None => self.byte_off,
+            Some(_) => offset - 1,
+            None => offset,
         }
     }
 
