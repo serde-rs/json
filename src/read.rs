@@ -266,7 +266,10 @@ where
                 }
                 _ => {
                     if validate {
-                        return error(self, ErrorCode::ControlCharacterWhileParsingString);
+                        return error(
+                            self.position(),
+                            ErrorCode::ControlCharacterWhileParsingString,
+                        );
                     }
                     scratch.push(ch);
                 }
@@ -428,7 +431,10 @@ where
                     tri!(ignore_escape(self));
                 }
                 _ => {
-                    return error(self, ErrorCode::ControlCharacterWhileParsingString);
+                    return error(
+                        self.position(),
+                        ErrorCode::ControlCharacterWhileParsingString,
+                    );
                 }
             }
         }
@@ -438,7 +444,7 @@ where
         let mut n = 0;
         for _ in 0..4 {
             match decode_hex_val(tri!(next_or_eof(self))) {
-                None => return error(self, ErrorCode::InvalidEscape),
+                None => return error(self.position(), ErrorCode::InvalidEscape),
                 Some(val) => {
                     n = (n << 4) + val;
                 }
@@ -460,7 +466,7 @@ where
         let raw = self.raw_buffer.take().unwrap();
         let raw = match String::from_utf8(raw) {
             Ok(raw) => raw,
-            Err(_) => return error(self, ErrorCode::InvalidUnicodeCodePoint),
+            Err(_) => return error(self.position(), ErrorCode::InvalidUnicodeCodePoint),
         };
         visitor.visit_map(OwnedRawDeserializer {
             raw_value: Some(raw),
@@ -526,7 +532,7 @@ impl<'a> SliceRead<'a> {
                 self.index += 1;
             }
             if self.index == self.slice.len() {
-                return error(self, ErrorCode::EofWhileParsingString);
+                return error(self.position(), ErrorCode::EofWhileParsingString);
             }
             match self.slice[self.index] {
                 b'"' => {
@@ -551,7 +557,10 @@ impl<'a> SliceRead<'a> {
                 _ => {
                     self.index += 1;
                     if validate {
-                        return error(self, ErrorCode::ControlCharacterWhileParsingString);
+                        return error(
+                            self.position(),
+                            ErrorCode::ControlCharacterWhileParsingString,
+                        );
                     }
                 }
             }
@@ -622,7 +631,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
                 self.index += 1;
             }
             if self.index == self.slice.len() {
-                return error(self, ErrorCode::EofWhileParsingString);
+                return error(self.position(), ErrorCode::EofWhileParsingString);
             }
             match self.slice[self.index] {
                 b'"' => {
@@ -634,7 +643,10 @@ impl<'a> Read<'a> for SliceRead<'a> {
                     tri!(ignore_escape(self));
                 }
                 _ => {
-                    return error(self, ErrorCode::ControlCharacterWhileParsingString);
+                    return error(
+                        self.position(),
+                        ErrorCode::ControlCharacterWhileParsingString,
+                    );
                 }
             }
         }
@@ -643,7 +655,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
     fn decode_hex_escape(&mut self) -> Result<u16> {
         if self.index + 4 > self.slice.len() {
             self.index = self.slice.len();
-            return error(self, ErrorCode::EofWhileParsingString);
+            return error(self.position(), ErrorCode::EofWhileParsingString);
         }
 
         let mut n = 0;
@@ -651,7 +663,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
             let ch = decode_hex_val(self.slice[self.index]);
             self.index += 1;
             match ch {
-                None => return error(self, ErrorCode::InvalidEscape),
+                None => return error(self.position(), ErrorCode::InvalidEscape),
                 Some(val) => {
                     n = (n << 4) + val;
                 }
@@ -673,7 +685,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
         let raw = &self.slice[self.raw_buffering_start_index..self.index];
         let raw = match str::from_utf8(raw) {
             Ok(raw) => raw,
-            Err(_) => return error(self, ErrorCode::InvalidUnicodeCodePoint),
+            Err(_) => return error(self.position(), ErrorCode::InvalidUnicodeCodePoint),
         };
         visitor.visit_map(BorrowedRawDeserializer {
             raw_value: Some(raw),
@@ -893,7 +905,7 @@ where
 {
     match tri!(read.next()) {
         Some(b) => Ok(b),
-        None => error(read, ErrorCode::EofWhileParsingString),
+        None => error(read.position(), ErrorCode::EofWhileParsingString),
     }
 }
 
@@ -903,20 +915,16 @@ where
 {
     match tri!(read.peek()) {
         Some(b) => Ok(b),
-        None => error(read, ErrorCode::EofWhileParsingString),
+        None => error(read.position(), ErrorCode::EofWhileParsingString),
     }
 }
 
-fn error<'de, R, T>(read: &R, reason: ErrorCode) -> Result<T>
-where
-    R: ?Sized + Read<'de>,
-{
-    let position = read.position();
+fn error<'de, T>(position: Position, reason: ErrorCode) -> Result<T> {
     Err(Error::syntax(reason, position.line, position.column))
 }
 
 fn as_str<'de, 's, R: Read<'de>>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
-    str::from_utf8(slice).or_else(|_| error(read, ErrorCode::InvalidUnicodeCodePoint))
+    str::from_utf8(slice).or_else(|_| error(read.position(), ErrorCode::InvalidUnicodeCodePoint))
 }
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
@@ -949,7 +957,7 @@ fn parse_escape<'de, R: Read<'de>>(
             let c = match tri!(read.decode_hex_escape()) {
                 n @ 0xDC00..=0xDFFF => {
                     return if validate {
-                        error(read, ErrorCode::LoneLeadingSurrogateInHexEscape)
+                        error(read.position(), ErrorCode::LoneLeadingSurrogateInHexEscape)
                     } else {
                         encode_surrogate(scratch, n);
                         Ok(())
@@ -966,7 +974,7 @@ fn parse_escape<'de, R: Read<'de>>(
                     } else {
                         return if validate {
                             read.discard();
-                            error(read, ErrorCode::UnexpectedEndOfHexEscape)
+                            error(read.position(), ErrorCode::UnexpectedEndOfHexEscape)
                         } else {
                             encode_surrogate(scratch, n1);
                             Ok(())
@@ -978,7 +986,7 @@ fn parse_escape<'de, R: Read<'de>>(
                     } else {
                         return if validate {
                             read.discard();
-                            error(read, ErrorCode::UnexpectedEndOfHexEscape)
+                            error(read.position(), ErrorCode::UnexpectedEndOfHexEscape)
                         } else {
                             encode_surrogate(scratch, n1);
                             // The \ prior to this byte started an escape sequence,
@@ -993,7 +1001,7 @@ fn parse_escape<'de, R: Read<'de>>(
                     let n2 = tri!(read.decode_hex_escape());
 
                     if n2 < 0xDC00 || n2 > 0xDFFF {
-                        return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
+                        return error(read.position(), ErrorCode::LoneLeadingSurrogateInHexEscape);
                     }
 
                     let n = (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
@@ -1001,7 +1009,7 @@ fn parse_escape<'de, R: Read<'de>>(
                     match char::from_u32(n) {
                         Some(c) => c,
                         None => {
-                            return error(read, ErrorCode::InvalidUnicodeCodePoint);
+                            return error(read.position(), ErrorCode::InvalidUnicodeCodePoint);
                         }
                     }
                 }
@@ -1014,7 +1022,7 @@ fn parse_escape<'de, R: Read<'de>>(
             scratch.extend_from_slice(c.encode_utf8(&mut [0_u8; 4]).as_bytes());
         }
         _ => {
-            return error(read, ErrorCode::InvalidEscape);
+            return error(read.position(), ErrorCode::InvalidEscape);
         }
     }
 
@@ -1041,7 +1049,7 @@ where
             tri!(read.decode_hex_escape());
         }
         _ => {
-            return error(read, ErrorCode::InvalidEscape);
+            return error(read.position(), ErrorCode::InvalidEscape);
         }
     }
 
