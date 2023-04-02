@@ -251,20 +251,59 @@ where
         T: 's,
         F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
     {
-        loop {
-            let ch = tri!(next_or_eof(self));
-            if !ESCAPE[ch as usize] {
-                scratch.push(ch);
-                continue;
+        // Fill buffer if necessary.
+        if self.consumed_current == self.buffered_current {
+            match self.fill_buffer() {
+                Some(Ok(())) => {}
+                Some(Err(e)) => return Err(Error::io(e)),
+                None => return error(self.position(), ErrorCode::EofWhileParsingString),
             }
-            match ch {
-                b'"' => {
+        }
+
+        let mut start = self.consumed_current;
+
+        // Find next escape character in buffer if one exists.
+        let mut escape = match self.buffer[start..self.buffered_current]
+            .iter()
+            .position(|&ch| ESCAPE[ch as usize])
+        {
+            Some(idx) => {
+                // Compensate index for slicing.
+                let idx = start + idx;
+                let ch = self.buffer[idx];
+
+                // We've consumed up through this character.
+                // Bytes consumed is index of character plus one.
+                self.consumed_current = idx + 1;
+
+                if ch == b'"' {
+                    // Found end of string before end of buffer or any character that would
+                    // necessitate using the scratch buffer. Can return directly from our buffer.
+                    return result(self, &self.buffer[start..self.consumed_current - 1]);
+                }
+
+                // Found an escape character. Must copy string into scratch and apply escaping.
+                scratch.extend_from_slice(&self.buffer[start..self.consumed_current - 1]);
+                Some(ch)
+            }
+            None => {
+                // Found end of buffer before finding end of string or a character requiring
+                // escaping. Can't return string from our buffer. Must copy string into scratch.
+                self.consumed_current = self.buffered_current;
+                scratch.extend_from_slice(&self.buffer[start..self.consumed_current]);
+                None
+            }
+        };
+
+        loop {
+            match escape.take() {
+                Some(b'"') => {
                     return result(self, scratch);
                 }
-                b'\\' => {
+                Some(b'\\') => {
                     tri!(parse_escape(self, validate, scratch));
                 }
-                _ => {
+                Some(ch) => {
                     if validate {
                         return error(
                             self.position(),
@@ -272,6 +311,46 @@ where
                         );
                     }
                     scratch.push(ch);
+                }
+                None => {
+                    // Fill buffer if necessary.
+                    if self.consumed_current == self.buffered_current {
+                        match self.fill_buffer() {
+                            Some(Ok(())) => {}
+                            Some(Err(e)) => return Err(Error::io(e)),
+                            None => {
+                                return error(self.position(), ErrorCode::EofWhileParsingString)
+                            }
+                        }
+                    }
+
+                    start = self.consumed_current;
+
+                    // Find next escape character in buffer if one exists.
+                    escape = match self.buffer[start..self.buffered_current]
+                        .iter()
+                        .position(|&ch| ESCAPE[ch as usize])
+                    {
+                        Some(idx) => {
+                            // Compensate index for slicing.
+                            let idx = start + idx;
+                            let ch = self.buffer[idx];
+
+                            // We've consumed up through this character.
+                            // Bytes consumed is index of character plus one.
+                            self.consumed_current = idx + 1;
+                            scratch
+                                .extend_from_slice(&self.buffer[start..self.consumed_current - 1]);
+                            Some(ch)
+                        }
+                        None => {
+                            // Found end of buffer before finding end of string or a character
+                            // requiring escaping.
+                            self.consumed_current = self.buffered_current;
+                            scratch.extend_from_slice(&self.buffer[start..self.consumed_current]);
+                            None
+                        }
+                    };
                 }
             }
         }
@@ -303,6 +382,27 @@ where
                     self.buffered_current = n;
                     self.consumed_current = 1;
                     Some(Ok(self.buffer[0]))
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e) => Some(Err(e)),
+            };
+        }
+    }
+
+    fn fill_buffer(&mut self) -> Option<io::Result<()>> {
+        // This must be done before read call, since it modifies the buffer.
+        let mut buffer_position = self.buffer_position;
+        buffer_position.update(&self.buffer[..self.buffered_current]);
+
+        loop {
+            return match self.reader.read(&mut self.buffer[..]) {
+                Ok(0) => None,
+                Ok(n) => {
+                    self.buffer_position = buffer_position;
+                    self.buffered_total += n;
+                    self.buffered_current = n;
+                    self.consumed_current = 0;
+                    Some(Ok(()))
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
                 Err(e) => Some(Err(e)),

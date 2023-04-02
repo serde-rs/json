@@ -203,6 +203,82 @@ fn test_json_stream_late_error_position() {
 }
 
 #[test]
+fn test_json_stream_long_string() {
+    // This is specifically intended to test the current implementation of the stream-based reader,
+    // which uses a 128 byte buffer. We want to test parsing long strings with escapes at various
+    // points before and after the buffer length.
+    let data = "{\"x\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"y\":\"b\"}";
+
+    test_stream!(data, Value, |stream| {
+        let obj = stream.next().unwrap().unwrap();
+        assert_eq!(
+            obj["x"],
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+                aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+        assert_eq!(obj["y"], "b");
+        assert!(stream.next().is_none());
+    });
+
+    let data = "{\"x\":\"\\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"y\":\"b\"}";
+
+    test_stream!(data, Value, |stream| {
+        let obj = stream.next().unwrap().unwrap();
+        assert_eq!(
+            obj["x"],
+            "\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+                aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+        assert_eq!(obj["y"], "b");
+        assert!(stream.next().is_none());
+    });
+
+    let data = "{\"x\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\raaaaaa\
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"y\":\"b\"}";
+
+    test_stream!(data, Value, |stream| {
+        let obj = stream.next().unwrap().unwrap();
+        assert_eq!(
+            obj["x"],
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\raaaaaa\
+                aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+        assert_eq!(obj["y"], "b");
+        assert!(stream.next().is_none());
+    });
+
+    let data = "{\"x\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\raaaaaa\",\"y\":\"b\"}";
+
+    test_stream!(data, Value, |stream| {
+        let obj = stream.next().unwrap().unwrap();
+        assert_eq!(
+            obj["x"],
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+                aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\raaaaaa"
+        );
+        assert_eq!(obj["y"], "b");
+        assert!(stream.next().is_none());
+    });
+
+    let data = "{\"x\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\r\",\"y\":\"b\"}";
+
+    test_stream!(data, Value, |stream| {
+        let obj = stream.next().unwrap().unwrap();
+        assert_eq!(
+            obj["x"],
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+                aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r"
+        );
+        assert_eq!(obj["y"], "b");
+        assert!(stream.next().is_none());
+    });
+}
+
+#[test]
 fn test_error() {
     let data = "true wrong false";
 
