@@ -172,6 +172,37 @@ fn test_json_stream_invalid_number() {
 }
 
 #[test]
+fn test_json_stream_expected_value() {
+    let data = r#"{
+        "a": 10,
+        "b": 20,
+        "c": ,
+    }"#;
+
+    test_stream!(data, Value, |stream| {
+        let second = stream.next().unwrap().unwrap_err();
+        assert_eq!(second.to_string(), "expected value at line 4 column 14");
+    });
+}
+
+#[test]
+fn test_json_stream_late_error_position() {
+    // Test that the position of an error is computed correctly when it's later in the stream.
+    // This is specifically intended to test the current implementation of the stream-based reader,
+    // which uses a 128 byte buffer. We want the error to occur after the first 128 bytes.
+    let data = r#"{
+        "a": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "b": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "c": ,
+    }"#;
+
+    test_stream!(data, Value, |stream| {
+        let second = stream.next().unwrap().unwrap_err();
+        assert_eq!(second.to_string(), "expected value at line 4 column 14");
+    });
+}
+
+#[test]
 fn test_error() {
     let data = "true wrong false";
 

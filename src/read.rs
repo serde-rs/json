@@ -165,6 +165,9 @@ where
     /// Internal buffer.
     buffer: Box<[u8; 128]>,
 
+    /// Position of start of current buffer / end of previous buffer contents.
+    buffer_position: Position,
+
     /// Total number of bytes ever loaded into buffer.
     buffered_total: usize,
 
@@ -173,9 +176,6 @@ where
 
     /// Current number of bytes consumed from buffer.
     consumed_current: usize,
-
-    /// Position of last byte read (e.g. by `next` or `peek`).
-    pos: Position,
 
     /// Temporary storage of peeked byte.
     ch: Option<u8>,
@@ -222,10 +222,10 @@ where
         IoRead {
             reader,
             buffer: Box::new([0; 128]),
+            buffer_position: Position { line: 1, column: 0 },
             buffered_total: 0,
             buffered_current: 0,
             consumed_current: 0,
-            pos: Position { line: 1, column: 0 },
             ch: None,
             #[cfg(feature = "raw_value")]
             raw_buffer: None,
@@ -279,7 +279,6 @@ where
         if self.consumed_current < self.buffered_current {
             let byte = self.buffer[self.consumed_current];
             self.consumed_current += 1;
-            self.pos.update(&[byte]);
             return Some(Ok(byte));
         }
 
@@ -288,14 +287,18 @@ where
 
     #[inline(never)]
     fn next_byte_cold(&mut self) -> Option<io::Result<u8>> {
+        // This must be done before read call, since it modifies the buffer.
+        let mut buffer_position = self.buffer_position;
+        buffer_position.update(&self.buffer[..self.buffered_current]);
+
         loop {
             return match self.reader.read(&mut self.buffer[..]) {
                 Ok(0) => None,
                 Ok(n) => {
+                    self.buffer_position = buffer_position;
                     self.buffered_total += n;
                     self.buffered_current = n;
                     self.consumed_current = 1;
-                    self.pos.update(&[self.buffer[0]]);
                     Some(Ok(self.buffer[0]))
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
@@ -369,7 +372,19 @@ where
     }
 
     fn position(&self) -> Position {
-        self.pos
+        let mut position = self.buffer_position;
+        for ch in &self.buffer[..self.consumed_current] {
+            match *ch {
+                b'\n' => {
+                    position.line += 1;
+                    position.column = 0;
+                }
+                _ => {
+                    position.column += 1;
+                }
+            }
+        }
+        position
     }
 
     fn peek_position(&self) -> Position {
