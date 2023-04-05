@@ -369,7 +369,7 @@ where
 
     #[inline(never)]
     fn next_byte_cold(&mut self) -> Option<io::Result<u8>> {
-        // This must be done before read call, since it modifies the buffer.
+        // This must be done before read call, since read modifies the buffer.
         let mut buffer_position = self.buffer_position;
         buffer_position.update(&self.buffer[..self.buffered_current]);
 
@@ -390,7 +390,7 @@ where
     }
 
     fn fill_buffer(&mut self) -> Option<io::Result<()>> {
-        // This must be done before read call, since it modifies the buffer.
+        // This must be done before read call, since read modifies the buffer.
         let mut buffer_position = self.buffer_position;
         buffer_position.update(&self.buffer[..self.buffered_current]);
 
