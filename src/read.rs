@@ -476,17 +476,7 @@ where
 
     fn position(&self) -> Position {
         let mut position = self.buffer_position;
-        for ch in &self.buffer[..self.consumed_current] {
-            match *ch {
-                b'\n' => {
-                    position.line += 1;
-                    position.column = 0;
-                }
-                _ => {
-                    position.column += 1;
-                }
-            }
-        }
+        position.update(&self.buffer[..self.consumed_current]);
         position
     }
 
@@ -597,17 +587,7 @@ impl<'a> SliceRead<'a> {
 
     fn position_of_index(&self, i: usize) -> Position {
         let mut position = Position { line: 1, column: 0 };
-        for ch in &self.slice[..i] {
-            match *ch {
-                b'\n' => {
-                    position.line += 1;
-                    position.column = 0;
-                }
-                _ => {
-                    position.column += 1;
-                }
-            }
-        }
+        position.update(&self.slice[..i]);
         position
     }
 
