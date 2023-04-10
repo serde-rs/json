@@ -2148,6 +2148,24 @@ where
     Ok(string)
 }
 
+/// Serialize the given data structure as JSON, appending it to the given `String`.
+///
+/// # Errors
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+pub fn push_to_string<T>(value: &T, string: &mut String) -> Result<()>
+where
+    T: ?Sized + Serialize,
+{
+    let mut writer = unsafe {
+        // We do not emit invalid UTF-8.
+        string.as_mut_vec()
+    };
+    tri!(to_writer(&mut writer, value));
+    Ok(())
+}
+
 /// Serialize the given data structure as a pretty-printed String of JSON.
 ///
 /// # Errors

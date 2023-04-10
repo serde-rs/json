@@ -30,8 +30,8 @@ use serde_bytes::{ByteBuf, Bytes};
 #[cfg(feature = "raw_value")]
 use serde_json::value::RawValue;
 use serde_json::{
-    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
-    to_vec, Deserializer, Number, Value,
+    from_reader, from_slice, from_str, from_value, json, push_to_string, to_string,
+    to_string_pretty, to_value, to_vec, Deserializer, Number, Value,
 };
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
@@ -2406,4 +2406,12 @@ fn hash_positive_and_negative_zero() {
         assert_eq!(k1, k2);
         assert_eq!(hash(k1), hash(k2));
     }
+}
+
+#[test]
+fn test_push_to_string() {
+    let mut s = String::new();
+    push_to_string(&1, &mut s).unwrap();
+    push_to_string(&["a"], &mut s).unwrap();
+    assert_eq!("1[\"a\"]", s);
 }
