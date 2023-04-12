@@ -2064,6 +2064,8 @@ static ESCAPE: [u8; 256] = [
 
 /// Serialize the given data structure as JSON into the IO stream.
 ///
+/// Serialization guarantees it only feeds valid UTF-8 sequences to the writer.
+///
 /// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
@@ -2081,6 +2083,8 @@ where
 
 /// Serialize the given data structure as pretty-printed JSON into the IO
 /// stream.
+///
+/// Serialization guarantees it only feeds valid UTF-8 sequences to the writer.
 ///
 /// # Errors
 ///
