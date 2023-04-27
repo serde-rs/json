@@ -4,7 +4,6 @@ use crate::error::Error;
 use crate::error::ErrorCode;
 #[cfg(feature = "arbitrary_precision")]
 use alloc::borrow::ToOwned;
-#[cfg(feature = "arbitrary_precision")]
 use alloc::string::{String, ToString};
 use core::fmt::{self, Debug, Display};
 #[cfg(not(feature = "arbitrary_precision"))]
@@ -416,6 +415,20 @@ impl<'de> Deserialize<'de> for Number {
         }
 
         deserializer.deserialize_any(NumberVisitor)
+    }
+}
+
+impl From<Number> for String {
+    #[cfg(not(feature = "arbitrary_precision"))]
+    #[inline]
+    fn from(value: Number) -> Self {
+        value.to_string()
+    }
+
+    #[cfg(feature = "arbitrary_precision")]
+    #[inline]
+    fn from(value: Number) -> Self {
+        value.n
     }
 }
 
