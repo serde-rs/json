@@ -2,7 +2,6 @@
 ///
 /// ```
 /// # use serde_json::json;
-/// # use serde_json::Value;
 /// #
 /// let value = json!({
 ///     "code": 200,
@@ -12,7 +11,7 @@
 ///             "serde",
 ///             "json"
 ///         ],
-///         "empty": Value::Null
+///         "empty": null
 ///     }
 /// });
 /// ```
