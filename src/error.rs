@@ -9,6 +9,8 @@ use core::str::FromStr;
 use serde::{de, ser};
 #[cfg(feature = "std")]
 use std::error;
+#[cfg(feature = "std")]
+use std::io::ErrorKind;
 
 /// This type represents all possible errors that can occur when serializing or
 /// deserializing JSON data.
@@ -105,6 +107,55 @@ impl Error {
     pub fn is_eof(&self) -> bool {
         self.classify() == Category::Eof
     }
+
+    /// The kind reported by the underlying standard library I/O error, if this
+    /// error was caused by a failure to read or write bytes on an I/O stream.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use serde_json::Value;
+    /// use std::io::{self, ErrorKind, Read};
+    /// use std::process;
+    ///
+    /// struct ReaderThatWillTimeOut<'a>(&'a [u8]);
+    ///
+    /// impl<'a> Read for ReaderThatWillTimeOut<'a> {
+    ///     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    ///         if self.0.is_empty() {
+    ///             Err(io::Error::new(ErrorKind::TimedOut, "timed out"))
+    ///         } else {
+    ///             self.0.read(buf)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let reader = ReaderThatWillTimeOut(br#" {"k": "#);
+    ///
+    ///     let _: Value = match serde_json::from_reader(reader) {
+    ///         Ok(value) => value,
+    ///         Err(error) => {
+    ///             if error.io_error_kind() == Some(ErrorKind::TimedOut) {
+    ///                 // Maybe this application needs to retry certain kinds of errors.
+    ///
+    ///                 # return;
+    ///             } else {
+    ///                 eprintln!("error: {}", error);
+    ///                 process::exit(1);
+    ///             }
+    ///         }
+    ///     };
+    /// }
+    /// ```
+    #[cfg(feature = "std")]
+    pub fn io_error_kind(&self) -> Option<ErrorKind> {
+        if let ErrorCode::Io(io_error) = &self.err.code {
+            Some(io_error.kind())
+        } else {
+            None
+        }
+    }
 }
 
 /// Categorizes the cause of a `serde_json::Error`.
@@ -166,8 +217,8 @@ impl From<Error> for io::Error {
         } else {
             match j.classify() {
                 Category::Io => unreachable!(),
-                Category::Syntax | Category::Data => io::Error::new(io::ErrorKind::InvalidData, j),
-                Category::Eof => io::Error::new(io::ErrorKind::UnexpectedEof, j),
+                Category::Syntax | Category::Data => io::Error::new(ErrorKind::InvalidData, j),
+                Category::Eof => io::Error::new(ErrorKind::UnexpectedEof, j),
             }
         }
     }
