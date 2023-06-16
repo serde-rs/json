@@ -2062,7 +2062,7 @@ static ESCAPE: [u8; 256] = [
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
 ];
 
-/// Serialize the given data structure as JSON into the IO stream.
+/// Serialize the given data structure as JSON into the I/O stream.
 ///
 /// Serialization guarantees it only feeds valid UTF-8 sequences to the writer.
 ///
@@ -2081,7 +2081,7 @@ where
     value.serialize(&mut ser)
 }
 
-/// Serialize the given data structure as pretty-printed JSON into the IO
+/// Serialize the given data structure as pretty-printed JSON into the I/O
 /// stream.
 ///
 /// Serialization guarantees it only feeds valid UTF-8 sequences to the writer.

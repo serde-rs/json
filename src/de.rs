@@ -2408,9 +2408,9 @@ where
     Ok(value)
 }
 
-/// Deserialize an instance of type `T` from an IO stream of JSON.
+/// Deserialize an instance of type `T` from an I/O stream of JSON.
 ///
-/// The content of the IO stream is deserialized directly from the stream
+/// The content of the I/O stream is deserialized directly from the stream
 /// without being buffered in memory by serde_json.
 ///
 /// When reading from a source against which short reads are not efficient, such
