@@ -36,15 +36,16 @@ impl Error {
     /// The first character in the input and any characters immediately
     /// following a newline character are in column 1.
     ///
-    /// Note that errors may occur in column 0, for example if a read from an IO
-    /// stream fails immediately following a previously read newline character.
+    /// Note that errors may occur in column 0, for example if a read from an
+    /// I/O stream fails immediately following a previously read newline
+    /// character.
     pub fn column(&self) -> usize {
         self.err.column
     }
 
     /// Categorizes the cause of this error.
     ///
-    /// - `Category::Io` - failure to read or write bytes on an IO stream
+    /// - `Category::Io` - failure to read or write bytes on an I/O stream
     /// - `Category::Syntax` - input that is not syntactically valid JSON
     /// - `Category::Data` - input data that is semantically incorrect
     /// - `Category::Eof` - unexpected end of the input data
@@ -76,7 +77,7 @@ impl Error {
     }
 
     /// Returns true if this error was caused by a failure to read or write
-    /// bytes on an IO stream.
+    /// bytes on an I/O stream.
     pub fn is_io(&self) -> bool {
         self.classify() == Category::Io
     }
@@ -109,7 +110,7 @@ impl Error {
 /// Categorizes the cause of a `serde_json::Error`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Category {
-    /// The error was caused by a failure to read or write bytes on an IO
+    /// The error was caused by a failure to read or write bytes on an I/O
     /// stream.
     Io,
 
@@ -134,8 +135,8 @@ pub enum Category {
 impl From<Error> for io::Error {
     /// Convert a `serde_json::Error` into an `io::Error`.
     ///
-    /// JSON syntax and data errors are turned into `InvalidData` IO errors.
-    /// EOF errors are turned into `UnexpectedEof` IO errors.
+    /// JSON syntax and data errors are turned into `InvalidData` I/O errors.
+    /// EOF errors are turned into `UnexpectedEof` I/O errors.
     ///
     /// ```
     /// use std::io;
@@ -182,7 +183,7 @@ pub(crate) enum ErrorCode {
     /// Catchall for syntax error messages
     Message(Box<str>),
 
-    /// Some IO error occurred while serializing or deserializing.
+    /// Some I/O error occurred while serializing or deserializing.
     Io(io::Error),
 
     /// EOF while parsing a list.
