@@ -517,12 +517,12 @@ impl serde::Serializer for MapKeySerializer {
         Ok(value.to_string())
     }
 
-    fn serialize_f32(self, _value: f32) -> Result<String> {
-        Err(key_must_be_a_string())
+    fn serialize_f32(self, value: f32) -> Result<String> {
+        Ok(value.to_string())
     }
 
-    fn serialize_f64(self, _value: f64) -> Result<String> {
-        Err(key_must_be_a_string())
+    fn serialize_f64(self, value: f64) -> Result<String> {
+        Ok(value.to_string())
     }
 
     #[inline]

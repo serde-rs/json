@@ -1914,21 +1914,38 @@ fn test_integer128_key() {
 }
 
 #[test]
-fn test_deny_float_key() {
-    #[derive(Eq, PartialEq, Ord, PartialOrd)]
+fn test_float_key() {
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone)]
     struct Float;
     impl Serialize for Float {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
         {
-            serializer.serialize_f32(1.0)
+            serializer.serialize_f32(1.23)
+        }
+    }
+    impl<'de> Deserialize<'de> for Float {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: de::Deserializer<'de>,
+        {
+            f32::deserialize(deserializer).map(|_| Float)
         }
     }
 
     // map with float key
-    let map = treemap!(Float => "x");
-    assert!(serde_json::to_value(map).is_err());
+    let map = treemap!(Float => "x".to_owned());
+    let j = r#"{"1.23":"x"}"#;
+
+    test_encode_ok(&[(&map, j)]);
+    test_parse_ok(vec![(j, map)]);
+
+    let j = r#"{"x": null}"#;
+    test_parse_err::<BTreeMap<Float, ()>>(&[(
+        j,
+        "invalid type: string \"x\", expected f32 at line 1 column 4",
+    )]);
 }
 
 #[test]
