@@ -61,9 +61,7 @@ jobs:
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,arbitrary_precision
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,raw_value
       - run: cargo check --features preserve_order
-        if: matrix.rust != '1.53.0' && matrix.rust != '1.46.0' && matrix.rust != '1.45.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,preserve_order
-        if: matrix.rust != '1.53.0' && matrix.rust != '1.46.0' && matrix.rust != '1.45.0' && matrix.rust != '1.40.0' && matrix.rust != '1.38.0' && matrix.rust != '1.36.0'
       - name: Build without std
         run: cargo check --manifest-path tests/crate/Cargo.toml --target ${{matrix.target}} --no-default-features --features alloc
         if: matrix.target
