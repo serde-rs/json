@@ -69,6 +69,18 @@ jobs:
         run: cargo check --manifest-path tests/crate/Cargo.toml --target ${{matrix.target}} --no-default-features --features alloc
         if: matrix.target
 
+  minimal:
+    name: Minimal versions
+    needs: pre_ci
+    if: needs.pre_ci.outputs.continue
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: cargo generate-lockfile -Z minimal-versions
+      - run: cargo check --locked
+
   miri:
     name: Miri
     runs-on: ubuntu-latest
