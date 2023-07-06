@@ -4,8 +4,6 @@ use crate::value::{to_value, Value};
 use alloc::borrow::ToOwned;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-#[cfg(not(feature = "arbitrary_precision"))]
-use core::convert::TryFrom;
 use core::fmt::Display;
 use core::result;
 use serde::ser::{Impossible, Serialize};

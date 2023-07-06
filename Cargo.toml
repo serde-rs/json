@@ -5,11 +5,11 @@ authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay
 categories = ["encoding", "parser-implementations", "no-std"]
 description = "A JSON serialization file format"
 documentation = "https://docs.rs/serde_json"
-edition = "2018"
+edition = "2021"
 keywords = ["json", "serde", "serialization"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/serde-rs/json"
-rust-version = "1.36"
+rust-version = "1.56"
 
 [dependencies]
 indexmap = { version = "2", optional = true }

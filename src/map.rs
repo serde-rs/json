@@ -11,7 +11,7 @@ use alloc::string::String;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::Hash;
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::FusedIterator;
 #[cfg(feature = "preserve_order")]
 use core::mem;
 use core::ops;
