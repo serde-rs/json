@@ -529,7 +529,7 @@ impl serde::Serializer for MapKeySerializer {
             let mut formatter = CompactFormatter;
 
             // `Vec`'s `Write` implementation never returns an error.
-            formatter.write_f32(&mut buf, value).unwrap();
+            let _ = formatter.write_f32(&mut buf, value);
 
             // `CompactFormatter` does not emit invalid UTF-8.
             Ok(String::from_utf8(buf).unwrap())
@@ -545,7 +545,7 @@ impl serde::Serializer for MapKeySerializer {
             let mut formatter = CompactFormatter;
 
             // `Vec`'s `Write` implementation never returns an error.
-            formatter.write_f64(&mut buf, value).unwrap();
+            let _ = formatter.write_f64(&mut buf, value);
 
             // `CompactFormatter` does not emit invalid UTF-8.
             Ok(String::from_utf8(buf).unwrap())
