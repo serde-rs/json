@@ -70,6 +70,7 @@ impl Error {
             | ErrorCode::InvalidUnicodeCodePoint
             | ErrorCode::ControlCharacterWhileParsingString
             | ErrorCode::KeyMustBeAString
+            | ErrorCode::FloatKeyMustBeFinite
             | ErrorCode::LoneLeadingSurrogateInHexEscape
             | ErrorCode::TrailingComma
             | ErrorCode::TrailingCharacters
@@ -282,6 +283,9 @@ pub(crate) enum ErrorCode {
     /// Object key is not a string.
     KeyMustBeAString,
 
+    /// Object key is a non-finite float value.
+    FloatKeyMustBeFinite,
+
     /// Lone leading surrogate in hex escape.
     LoneLeadingSurrogateInHexEscape,
 
@@ -356,6 +360,9 @@ impl Display for ErrorCode {
                 f.write_str("control character (\\u0000-\\u001F) found while parsing a string")
             }
             ErrorCode::KeyMustBeAString => f.write_str("key must be a string"),
+            ErrorCode::FloatKeyMustBeFinite => {
+                f.write_str("float key must be finite (got NaN or +/-inf)")
+            }
             ErrorCode::LoneLeadingSurrogateInHexEscape => {
                 f.write_str("lone leading surrogate in hex escape")
             }

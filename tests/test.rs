@@ -1949,6 +1949,64 @@ fn test_float_key() {
 }
 
 #[test]
+fn test_deny_non_finite_f32_key() {
+    // We store float bits so that we can derive `Ord`, and other traits. In a real context, we
+    // would use a crate like `ordered-float` instead.
+
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone)]
+    struct F32Bits(u32);
+    impl Serialize for F32Bits {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_f32(f32::from_bits(self.0))
+        }
+    }
+
+    let map = treemap!(F32Bits(f32::INFINITY.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+
+    let map = treemap!(F32Bits(f32::NEG_INFINITY.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+
+    let map = treemap!(F32Bits(f32::NAN.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+}
+
+#[test]
+fn test_deny_non_finite_f64_key() {
+    // We store float bits so that we can derive `Ord`, and other traits. In a real context, we
+    // would use a crate like `ordered-float` instead.
+
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone)]
+    struct F64Bits(u64);
+    impl Serialize for F64Bits {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_f64(f64::from_bits(self.0))
+        }
+    }
+
+    let map = treemap!(F64Bits(f64::INFINITY.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+
+    let map = treemap!(F64Bits(f64::NEG_INFINITY.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+
+    let map = treemap!(F64Bits(f64::NAN.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+}
+
+#[test]
 fn test_borrowed_key() {
     let map: BTreeMap<&str, ()> = from_str("{\"borrowed\":null}").unwrap();
     let expected = treemap! { "borrowed" => () };

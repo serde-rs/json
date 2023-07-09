@@ -789,6 +789,10 @@ fn key_must_be_a_string() -> Error {
     Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
 }
 
+fn float_key_must_be_finite() -> Error {
+    Error::syntax(ErrorCode::FloatKeyMustBeFinite, 0, 0)
+}
+
 impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
 where
     W: io::Write,
@@ -1003,6 +1007,10 @@ where
     }
 
     fn serialize_f32(self, value: f32) -> Result<()> {
+        if !value.is_finite() {
+            return Err(float_key_must_be_finite());
+        }
+
         tri!(self
             .ser
             .formatter
@@ -1020,6 +1028,10 @@ where
     }
 
     fn serialize_f64(self, value: f64) -> Result<()> {
+        if !value.is_finite() {
+            return Err(float_key_must_be_finite());
+        }
+
         tri!(self
             .ser
             .formatter
