@@ -1126,7 +1126,8 @@ macro_rules! deserialize_numeric_key {
         where
             V: Visitor<'de>,
         {
-            match (self.key.parse(), self.key) {
+            let parsed = crate::from_str(&self.key);
+            match (parsed, self.key) {
                 (Ok(integer), _) => visitor.$visit(integer),
                 (Err(_), Cow::Borrowed(s)) => visitor.visit_borrowed_str(s),
                 #[cfg(any(feature = "std", feature = "alloc"))]
