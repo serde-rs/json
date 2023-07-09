@@ -1897,10 +1897,7 @@ fn test_integer_key() {
     test_parse_ok(vec![(j, map)]);
 
     let j = r#"{"x":null}"#;
-    test_parse_err::<BTreeMap<i32, ()>>(&[(
-        j,
-        "invalid type: string \"x\", expected i32 at line 1 column 4",
-    )]);
+    test_parse_err::<BTreeMap<i32, ()>>(&[(j, "expected value at line 1 column 3")]);
 }
 
 #[test]
