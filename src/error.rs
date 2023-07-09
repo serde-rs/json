@@ -64,6 +64,7 @@ impl Error {
             | ErrorCode::ExpectedObjectCommaOrEnd
             | ErrorCode::ExpectedSomeIdent
             | ErrorCode::ExpectedSomeValue
+            | ErrorCode::ExpectedDoubleQuote
             | ErrorCode::InvalidEscape
             | ErrorCode::InvalidNumber
             | ErrorCode::NumberOutOfRange
@@ -265,6 +266,9 @@ pub(crate) enum ErrorCode {
     /// Expected this character to start a JSON value.
     ExpectedSomeValue,
 
+    /// Expected this character to be a `"`.
+    ExpectedDoubleQuote,
+
     /// Invalid hex escape code.
     InvalidEscape,
 
@@ -352,6 +356,7 @@ impl Display for ErrorCode {
             ErrorCode::ExpectedObjectCommaOrEnd => f.write_str("expected `,` or `}`"),
             ErrorCode::ExpectedSomeIdent => f.write_str("expected ident"),
             ErrorCode::ExpectedSomeValue => f.write_str("expected value"),
+            ErrorCode::ExpectedDoubleQuote => f.write_str("expected `\"`"),
             ErrorCode::InvalidEscape => f.write_str("invalid escape"),
             ErrorCode::InvalidNumber => f.write_str("invalid number"),
             ErrorCode::NumberOutOfRange => f.write_str("number out of range"),

@@ -1944,7 +1944,7 @@ fn test_float_key() {
     let j = r#"{"x": null}"#;
     test_parse_err::<BTreeMap<Float, ()>>(&[(
         j,
-        "invalid type: string \"x\", expected f32 at line 1 column 4",
+        "expected value at line 1 column 3",
     )]);
 }
 

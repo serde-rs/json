@@ -2118,7 +2118,7 @@ struct MapKey<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
 }
 
-macro_rules! deserialize_numeric_key {
+macro_rules! deserialize_integer_key {
     ($method:ident => $visit:ident) => {
         fn $method<V>(self, visitor: V) -> Result<V::Value>
         where
@@ -2132,6 +2132,25 @@ macro_rules! deserialize_numeric_key {
                 (Err(_), Reference::Borrowed(s)) => visitor.visit_borrowed_str(s),
                 (Err(_), Reference::Copied(s)) => visitor.visit_str(s),
             }
+        }
+    };
+}
+
+macro_rules! deserialize_float_key {
+    ($method:ident) => {
+        fn $method<V>(self, visitor: V) -> Result<V::Value>
+        where
+            V: de::Visitor<'de>,
+        {
+            self.de.eat_char();
+            let value = self.de.$method(visitor)?;
+
+            match self.de.peek()? {
+                Some(b'"') => self.de.eat_char(),
+                _ => return Err(self.de.peek_error(ErrorCode::ExpectedDoubleQuote)),
+            }
+
+            Ok(value)
         }
     };
 }
@@ -2155,18 +2174,19 @@ where
         }
     }
 
-    deserialize_numeric_key!(deserialize_i8 => visit_i8);
-    deserialize_numeric_key!(deserialize_i16 => visit_i16);
-    deserialize_numeric_key!(deserialize_i32 => visit_i32);
-    deserialize_numeric_key!(deserialize_i64 => visit_i64);
-    deserialize_numeric_key!(deserialize_i128 => visit_i128);
-    deserialize_numeric_key!(deserialize_u8 => visit_u8);
-    deserialize_numeric_key!(deserialize_u16 => visit_u16);
-    deserialize_numeric_key!(deserialize_u32 => visit_u32);
-    deserialize_numeric_key!(deserialize_u64 => visit_u64);
-    deserialize_numeric_key!(deserialize_u128 => visit_u128);
-    deserialize_numeric_key!(deserialize_f32 => visit_f32);
-    deserialize_numeric_key!(deserialize_f64 => visit_f64);
+    deserialize_integer_key!(deserialize_i8 => visit_i8);
+    deserialize_integer_key!(deserialize_i16 => visit_i16);
+    deserialize_integer_key!(deserialize_i32 => visit_i32);
+    deserialize_integer_key!(deserialize_i64 => visit_i64);
+    deserialize_integer_key!(deserialize_i128 => visit_i128);
+    deserialize_integer_key!(deserialize_u8 => visit_u8);
+    deserialize_integer_key!(deserialize_u16 => visit_u16);
+    deserialize_integer_key!(deserialize_u32 => visit_u32);
+    deserialize_integer_key!(deserialize_u64 => visit_u64);
+    deserialize_integer_key!(deserialize_u128 => visit_u128);
+
+    deserialize_float_key!(deserialize_f32);
+    deserialize_float_key!(deserialize_f64);
 
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
