@@ -1,6 +1,5 @@
 use crate::error::{Error, ErrorCode, Result};
 use crate::map::Map;
-use crate::ser::{CompactFormatter, Formatter};
 use crate::value::{to_value, Value};
 use alloc::borrow::ToOwned;
 use alloc::string::{String, ToString};
@@ -524,15 +523,8 @@ impl serde::Serializer for MapKeySerializer {
 
     fn serialize_f32(self, value: f32) -> Result<String> {
         if value.is_finite() {
-            // We initialize our output buffer with a heuristic capacity.
-            let mut buf = Vec::with_capacity(8);
-            let mut formatter = CompactFormatter;
-
-            // `Vec`'s `Write` implementation never returns an error.
-            let _ = formatter.write_f32(&mut buf, value);
-
-            // `CompactFormatter` does not emit invalid UTF-8.
-            Ok(String::from_utf8(buf).unwrap())
+            let mut buffer = ryu::Buffer::new();
+            Ok(buffer.format_finite(value).to_owned())
         } else {
             Err(float_key_must_be_finite())
         }
@@ -540,15 +532,8 @@ impl serde::Serializer for MapKeySerializer {
 
     fn serialize_f64(self, value: f64) -> Result<String> {
         if value.is_finite() {
-            // We initialize our output buffer with a heuristic capacity.
-            let mut buf = Vec::with_capacity(8);
-            let mut formatter = CompactFormatter;
-
-            // `Vec`'s `Write` implementation never returns an error.
-            let _ = formatter.write_f64(&mut buf, value);
-
-            // `CompactFormatter` does not emit invalid UTF-8.
-            Ok(String::from_utf8(buf).unwrap())
+            let mut buffer = ryu::Buffer::new();
+            Ok(buffer.format_finite(value).to_owned())
         } else {
             Err(float_key_must_be_finite())
         }
