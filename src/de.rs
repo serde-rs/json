@@ -2125,7 +2125,12 @@ macro_rules! deserialize_numeric_key {
             V: de::Visitor<'de>,
         {
             self.de.eat_char();
-            let value = self.de.$method(visitor)?;
+
+            if let Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') = tri!(self.de.peek()) {
+                return Err(self.de.peek_error(ErrorCode::UnexpectedWhitespaceInKey));
+            }
+
+            let value = tri!(self.de.$method(visitor));
 
             match self.de.peek()? {
                 Some(b'"') => self.de.eat_char(),

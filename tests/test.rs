@@ -1901,6 +1901,15 @@ fn test_integer_key() {
 }
 
 #[test]
+fn test_integer_key_leading_whitespace() {
+    let j = r#"{" 123":null}"#;
+    test_parse_err::<BTreeMap<i32, ()>>(&[(
+        j,
+        "unexpected whitespace in object key at line 1 column 3",
+    )]);
+}
+
+#[test]
 fn test_integer128_key() {
     let map = treemap! {
         100000000000000000000000000000000000000u128 => ()
