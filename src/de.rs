@@ -2126,16 +2126,19 @@ macro_rules! deserialize_numeric_key {
         {
             self.de.eat_char();
 
-            if let Some(b'0'..=b'9' | b'-') = tri!(self.de.peek()) {
-                let value = tri!(self.de.$method(visitor));
-                match tri!(self.de.peek()) {
-                    Some(b'"') => self.de.eat_char(),
-                    _ => return Err(self.de.peek_error(ErrorCode::ExpectedDoubleQuote)),
-                }
-                Ok(value)
-            } else {
-                Err(self.de.error(ErrorCode::ExpectedNumericKey))
+            match tri!(self.de.peek()) {
+                Some(b'0'..=b'9' | b'-') => {}
+                _ => return Err(self.de.error(ErrorCode::ExpectedNumericKey)),
             }
+
+            let value = tri!(self.de.$method(visitor));
+
+            match tri!(self.de.peek()) {
+                Some(b'"') => self.de.eat_char(),
+                _ => return Err(self.de.peek_error(ErrorCode::ExpectedDoubleQuote)),
+            }
+
+            Ok(value)
         }
     };
 }
