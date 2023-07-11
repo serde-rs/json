@@ -1897,7 +1897,10 @@ fn test_integer_key() {
     test_parse_ok(vec![(j, map)]);
 
     let j = r#"{"x":null}"#;
-    test_parse_err::<BTreeMap<i32, ()>>(&[(j, "expected value at line 1 column 3")]);
+    test_parse_err::<BTreeMap<i32, ()>>(&[(
+        j,
+        "invalid value: expected key to be a number in quotes at line 1 column 2",
+    )]);
 }
 
 #[test]
@@ -1948,7 +1951,10 @@ fn test_float_key() {
     test_parse_ok(vec![(j, map)]);
 
     let j = r#"{"x": null}"#;
-    test_parse_err::<BTreeMap<Float, ()>>(&[(j, "expected value at line 1 column 3")]);
+    test_parse_err::<BTreeMap<Float, ()>>(&[(
+        j,
+        "invalid value: expected key to be a number in quotes at line 1 column 2",
+    )]);
 }
 
 #[test]

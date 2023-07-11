@@ -71,6 +71,7 @@ impl Error {
             | ErrorCode::InvalidUnicodeCodePoint
             | ErrorCode::ControlCharacterWhileParsingString
             | ErrorCode::KeyMustBeAString
+            | ErrorCode::ExpectedNumericKey
             | ErrorCode::FloatKeyMustBeFinite
             | ErrorCode::UnexpectedWhitespaceInKey
             | ErrorCode::LoneLeadingSurrogateInHexEscape
@@ -288,6 +289,9 @@ pub(crate) enum ErrorCode {
     /// Object key is not a string.
     KeyMustBeAString,
 
+    /// Contents of key were supposed to be a number.
+    ExpectedNumericKey,
+
     /// Object key is a non-finite float value.
     FloatKeyMustBeFinite,
 
@@ -369,6 +373,9 @@ impl Display for ErrorCode {
                 f.write_str("control character (\\u0000-\\u001F) found while parsing a string")
             }
             ErrorCode::KeyMustBeAString => f.write_str("key must be a string"),
+            ErrorCode::ExpectedNumericKey => {
+                f.write_str("invalid value: expected key to be a number in quotes")
+            }
             ErrorCode::FloatKeyMustBeFinite => {
                 f.write_str("float key must be finite (got NaN or +/-inf)")
             }
