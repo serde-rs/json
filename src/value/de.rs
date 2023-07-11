@@ -1127,17 +1127,9 @@ macro_rules! deserialize_numeric_key {
             V: Visitor<'de>,
         {
             let mut de = crate::Deserializer::from_str(&self.key);
-            let parsed = Deserialize::deserialize(&mut de);
-            if let Ok(integer) = parsed {
-                if de.end().is_ok() {
-                    return visitor.$visit(integer);
-                }
-            }
-            match self.key {
-                Cow::Borrowed(s) => visitor.visit_borrowed_str(s),
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                Cow::Owned(s) => visitor.visit_string(s),
-            }
+            let parsed = tri!(Deserialize::deserialize(&mut de));
+            tri!(de.end());
+            visitor.$visit(parsed)
         }
     };
 }
