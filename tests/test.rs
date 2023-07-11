@@ -1905,6 +1905,7 @@ fn test_integer_key() {
             r#"{" 123":null}"#,
             "invalid value: expected key to be a number in quotes at line 1 column 2",
         ),
+        (r#"{"123 ":null}"#, "expected `\"` at line 1 column 6"),
     ]);
 }
 
