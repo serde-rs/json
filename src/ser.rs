@@ -193,7 +193,7 @@ where
             .formatter
             .begin_array(&mut self.writer)
             .map_err(Error::io));
-        let mut seq = if value.is_empty() {
+        let seq = if value.is_empty() {
             tri!(self
                 .formatter
                 .end_array(&mut self.writer)
@@ -203,14 +203,21 @@ where
                 state: State::Empty,
             }
         } else {
-            Compound::Map {
-                ser: self,
-                state: State::First,
+            let mut state = State::First;
+            for byte in value {
+                tri!(self
+                    .formatter
+                    .begin_array_value(&mut self.writer, state == State::First)
+                    .map_err(Error::io));
+                state = State::Rest;
+                tri!(byte.serialize(&mut *self));
+                tri!(self
+                    .formatter
+                    .end_array_value(&mut self.writer)
+                    .map_err(Error::io));
             }
+            Compound::Map { ser: self, state }
         };
-        for byte in value {
-            tri!(seq.serialize_element(byte));
-        }
         seq.end()
     }
 
