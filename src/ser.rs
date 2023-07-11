@@ -192,31 +192,22 @@ where
             .formatter
             .begin_array(&mut self.writer)
             .map_err(Error::io));
-        if value.is_empty() {
+        let mut first = true;
+        for byte in value {
             tri!(self
                 .formatter
-                .end_array(&mut self.writer)
+                .begin_array_value(&mut self.writer, first)
                 .map_err(Error::io));
-        } else {
-            let mut state = State::First;
-            for byte in value {
-                tri!(self
-                    .formatter
-                    .begin_array_value(&mut self.writer, state == State::First)
-                    .map_err(Error::io));
-                state = State::Rest;
-                tri!(byte.serialize(&mut *self));
-                tri!(self
-                    .formatter
-                    .end_array_value(&mut self.writer)
-                    .map_err(Error::io));
-            }
+            tri!(byte.serialize(&mut *self));
             tri!(self
                 .formatter
-                .end_array(&mut self.writer)
+                .end_array_value(&mut self.writer)
                 .map_err(Error::io));
+            first = false;
         }
-        Ok(())
+        self.formatter
+            .end_array(&mut self.writer)
+            .map_err(Error::io)
     }
 
     #[inline]
