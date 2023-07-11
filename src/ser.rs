@@ -187,10 +187,27 @@ where
         format_escaped_str(&mut self.writer, &mut self.formatter, value).map_err(Error::io)
     }
 
-    #[inline]
     fn serialize_bytes(self, value: &[u8]) -> Result<()> {
         use serde::ser::SerializeSeq;
-        let mut seq = tri!(self.serialize_seq(Some(value.len())));
+        tri!(self
+            .formatter
+            .begin_array(&mut self.writer)
+            .map_err(Error::io));
+        let mut seq = if value.is_empty() {
+            tri!(self
+                .formatter
+                .end_array(&mut self.writer)
+                .map_err(Error::io));
+            Compound::Map {
+                ser: self,
+                state: State::Empty,
+            }
+        } else {
+            Compound::Map {
+                ser: self,
+                state: State::First,
+            }
+        };
         for byte in value {
             tri!(seq.serialize_element(byte));
         }
