@@ -2124,6 +2124,15 @@ macro_rules! deserialize_numeric_key {
         where
             V: de::Visitor<'de>,
         {
+            self.deserialize_number(visitor)
+        }
+    };
+
+    ($method:ident, $delegate:ident) => {
+        fn $method<V>(self, visitor: V) -> Result<V::Value>
+        where
+            V: de::Visitor<'de>,
+        {
             self.de.eat_char();
 
             match tri!(self.de.peek()) {
@@ -2131,7 +2140,7 @@ macro_rules! deserialize_numeric_key {
                 _ => return Err(self.de.error(ErrorCode::ExpectedNumericKey)),
             }
 
-            let value = tri!(self.de.$method(visitor));
+            let value = tri!(self.de.$delegate(visitor));
 
             match tri!(self.de.peek()) {
                 Some(b'"') => self.de.eat_char(),
@@ -2141,6 +2150,13 @@ macro_rules! deserialize_numeric_key {
             Ok(value)
         }
     };
+}
+
+impl<'de, 'a, R> MapKey<'a, R>
+where
+    R: Read<'de>,
+{
+    deserialize_numeric_key!(deserialize_number, deserialize_number);
 }
 
 impl<'de, 'a, R> de::Deserializer<'de> for MapKey<'a, R>
@@ -2166,13 +2182,16 @@ where
     deserialize_numeric_key!(deserialize_i16);
     deserialize_numeric_key!(deserialize_i32);
     deserialize_numeric_key!(deserialize_i64);
-    deserialize_numeric_key!(deserialize_i128);
+    deserialize_numeric_key!(deserialize_i128, deserialize_i128);
     deserialize_numeric_key!(deserialize_u8);
     deserialize_numeric_key!(deserialize_u16);
     deserialize_numeric_key!(deserialize_u32);
     deserialize_numeric_key!(deserialize_u64);
-    deserialize_numeric_key!(deserialize_u128);
+    deserialize_numeric_key!(deserialize_u128, deserialize_u128);
+    #[cfg(not(feature = "float_roundtrip"))]
     deserialize_numeric_key!(deserialize_f32);
+    #[cfg(feature = "float_roundtrip")]
+    deserialize_numeric_key!(deserialize_f32, deserialize_f32);
     deserialize_numeric_key!(deserialize_f64);
 
     #[inline]
