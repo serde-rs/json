@@ -1909,10 +1909,16 @@ fn test_integer_key() {
     ]);
 
     let err = from_value::<BTreeMap<i32, ()>>(json!({" 123":null})).unwrap_err();
-    assert_eq!(err.to_string(), "invalid value: expected key to be a number in quotes");
+    assert_eq!(
+        err.to_string(),
+        "invalid value: expected key to be a number in quotes",
+    );
 
     let err = from_value::<BTreeMap<i32, ()>>(json!({"123 ":null})).unwrap_err();
-    assert_eq!(err.to_string(), "invalid value: expected key to be a number in quotes");
+    assert_eq!(
+        err.to_string(),
+        "invalid value: expected key to be a number in quotes",
+    );
 }
 
 #[test]
