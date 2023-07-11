@@ -1896,17 +1896,16 @@ fn test_integer_key() {
     test_encode_ok(&[(&map, j)]);
     test_parse_ok(vec![(j, map)]);
 
-    let j = r#"{"x":null}"#;
-    test_parse_err::<BTreeMap<i32, ()>>(&[(
-        j,
-        "invalid value: expected key to be a number in quotes at line 1 column 2",
-    )]);
-
-    let j = r#"{" 123":null}"#;
-    test_parse_err::<BTreeMap<i32, ()>>(&[(
-        j,
-        "invalid value: expected key to be a number in quotes at line 1 column 2",
-    )]);
+    test_parse_err::<BTreeMap<i32, ()>>(&[
+        (
+            r#"{"x":null}"#,
+            "invalid value: expected key to be a number in quotes at line 1 column 2",
+        ),
+        (
+            r#"{" 123":null}"#,
+            "invalid value: expected key to be a number in quotes at line 1 column 2",
+        ),
+    ]);
 }
 
 #[test]
