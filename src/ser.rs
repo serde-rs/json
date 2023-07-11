@@ -439,17 +439,15 @@ where
             .formatter
             .begin_string(&mut self.writer)
             .map_err(Error::io));
-        {
-            let mut adapter = Adapter {
-                writer: &mut self.writer,
-                formatter: &mut self.formatter,
-                error: None,
-            };
-            match write!(adapter, "{}", value) {
-                Ok(()) => debug_assert!(adapter.error.is_none()),
-                Err(fmt::Error) => {
-                    return Err(Error::io(adapter.error.expect("there should be an error")));
-                }
+        let mut adapter = Adapter {
+            writer: &mut self.writer,
+            formatter: &mut self.formatter,
+            error: None,
+        };
+        match write!(adapter, "{}", value) {
+            Ok(()) => debug_assert!(adapter.error.is_none()),
+            Err(fmt::Error) => {
+                return Err(Error::io(adapter.error.expect("there should be an error")));
             }
         }
         self.formatter
