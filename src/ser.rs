@@ -789,6 +789,10 @@ fn key_must_be_a_string() -> Error {
     Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
 }
 
+fn float_key_must_be_finite() -> Error {
+    Error::syntax(ErrorCode::FloatKeyMustBeFinite, 0, 0)
+}
+
 impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
 where
     W: io::Write,
@@ -1002,12 +1006,46 @@ where
             .map_err(Error::io)
     }
 
-    fn serialize_f32(self, _value: f32) -> Result<()> {
-        Err(key_must_be_a_string())
+    fn serialize_f32(self, value: f32) -> Result<()> {
+        if !value.is_finite() {
+            return Err(float_key_must_be_finite());
+        }
+
+        tri!(self
+            .ser
+            .formatter
+            .begin_string(&mut self.ser.writer)
+            .map_err(Error::io));
+        tri!(self
+            .ser
+            .formatter
+            .write_f32(&mut self.ser.writer, value)
+            .map_err(Error::io));
+        self.ser
+            .formatter
+            .end_string(&mut self.ser.writer)
+            .map_err(Error::io)
     }
 
-    fn serialize_f64(self, _value: f64) -> Result<()> {
-        Err(key_must_be_a_string())
+    fn serialize_f64(self, value: f64) -> Result<()> {
+        if !value.is_finite() {
+            return Err(float_key_must_be_finite());
+        }
+
+        tri!(self
+            .ser
+            .formatter
+            .begin_string(&mut self.ser.writer)
+            .map_err(Error::io));
+        tri!(self
+            .ser
+            .formatter
+            .write_f64(&mut self.ser.writer, value)
+            .map_err(Error::io));
+        self.ser
+            .formatter
+            .end_string(&mut self.ser.writer)
+            .map_err(Error::io)
     }
 
     fn serialize_char(self, value: char) -> Result<()> {

@@ -449,6 +449,10 @@ fn key_must_be_a_string() -> Error {
     Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
 }
 
+fn float_key_must_be_finite() -> Error {
+    Error::syntax(ErrorCode::FloatKeyMustBeFinite, 0, 0)
+}
+
 impl serde::Serializer for MapKeySerializer {
     type Ok = String;
     type Error = Error;
@@ -515,12 +519,20 @@ impl serde::Serializer for MapKeySerializer {
         Ok(value.to_string())
     }
 
-    fn serialize_f32(self, _value: f32) -> Result<String> {
-        Err(key_must_be_a_string())
+    fn serialize_f32(self, value: f32) -> Result<String> {
+        if value.is_finite() {
+            Ok(ryu::Buffer::new().format_finite(value).to_owned())
+        } else {
+            Err(float_key_must_be_finite())
+        }
     }
 
-    fn serialize_f64(self, _value: f64) -> Result<String> {
-        Err(key_must_be_a_string())
+    fn serialize_f64(self, value: f64) -> Result<String> {
+        if value.is_finite() {
+            Ok(ryu::Buffer::new().format_finite(value).to_owned())
+        } else {
+            Err(float_key_must_be_finite())
+        }
     }
 
     #[inline]

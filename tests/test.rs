@@ -1897,9 +1897,15 @@ fn test_integer_key() {
     test_parse_ok(vec![(j, map)]);
 
     let j = r#"{"x":null}"#;
+    test_parse_err::<BTreeMap<i32, ()>>(&[(j, "expected value at line 1 column 3")]);
+}
+
+#[test]
+fn test_integer_key_leading_whitespace() {
+    let j = r#"{" 123":null}"#;
     test_parse_err::<BTreeMap<i32, ()>>(&[(
         j,
-        "invalid type: string \"x\", expected i32 at line 1 column 4",
+        "unexpected whitespace in object key at line 1 column 3",
     )]);
 }
 
@@ -1914,20 +1920,92 @@ fn test_integer128_key() {
 }
 
 #[test]
-fn test_deny_float_key() {
-    #[derive(Eq, PartialEq, Ord, PartialOrd)]
+fn test_float_key() {
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone)]
     struct Float;
     impl Serialize for Float {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
         {
-            serializer.serialize_f32(1.0)
+            serializer.serialize_f32(1.23)
+        }
+    }
+    impl<'de> Deserialize<'de> for Float {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: de::Deserializer<'de>,
+        {
+            f32::deserialize(deserializer).map(|_| Float)
         }
     }
 
     // map with float key
-    let map = treemap!(Float => "x");
+    let map = treemap!(Float => "x".to_owned());
+    let j = r#"{"1.23":"x"}"#;
+
+    test_encode_ok(&[(&map, j)]);
+    test_parse_ok(vec![(j, map)]);
+
+    let j = r#"{"x": null}"#;
+    test_parse_err::<BTreeMap<Float, ()>>(&[(j, "expected value at line 1 column 3")]);
+}
+
+#[test]
+fn test_deny_non_finite_f32_key() {
+    // We store float bits so that we can derive `Ord`, and other traits. In a real context, we
+    // would use a crate like `ordered-float` instead.
+
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone)]
+    struct F32Bits(u32);
+    impl Serialize for F32Bits {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_f32(f32::from_bits(self.0))
+        }
+    }
+
+    let map = treemap!(F32Bits(f32::INFINITY.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+
+    let map = treemap!(F32Bits(f32::NEG_INFINITY.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+
+    let map = treemap!(F32Bits(f32::NAN.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+}
+
+#[test]
+fn test_deny_non_finite_f64_key() {
+    // We store float bits so that we can derive `Ord`, and other traits. In a real context, we
+    // would use a crate like `ordered-float` instead.
+
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone)]
+    struct F64Bits(u64);
+    impl Serialize for F64Bits {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_f64(f64::from_bits(self.0))
+        }
+    }
+
+    let map = treemap!(F64Bits(f64::INFINITY.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+
+    let map = treemap!(F64Bits(f64::NEG_INFINITY.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
+    assert!(serde_json::to_value(map).is_err());
+
+    let map = treemap!(F64Bits(f64::NAN.to_bits()) => "x".to_owned());
+    assert!(serde_json::to_string(&map).is_err());
     assert!(serde_json::to_value(map).is_err());
 }
 
