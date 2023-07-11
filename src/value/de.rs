@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{Error, ErrorCode};
 use crate::map::Map;
 use crate::number::Number;
 use crate::value::Value;
@@ -1131,8 +1131,18 @@ macro_rules! deserialize_numeric_key {
             V: Visitor<'de>,
         {
             let mut de = crate::Deserializer::from_str(&self.key);
+
+            match tri!(de.peek()) {
+                Some(b'0'..=b'9' | b'-') => {}
+                _ => return Err(Error::syntax(ErrorCode::ExpectedNumericKey, 0, 0)),
+            }
+
             let number = tri!(de.$using(visitor));
-            tri!(de.end());
+
+            if tri!(de.peek()).is_some() {
+                return Err(Error::syntax(ErrorCode::ExpectedNumericKey, 0, 0));
+            }
+
             Ok(number)
         }
     };
