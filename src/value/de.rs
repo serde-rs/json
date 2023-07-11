@@ -106,15 +106,15 @@ impl<'de> Deserialize<'de> for Value {
             where
                 V: MapAccess<'de>,
             {
-                match visitor.next_key_seed(KeyClassifier)? {
+                match tri!(visitor.next_key_seed(KeyClassifier)) {
                     #[cfg(feature = "arbitrary_precision")]
                     Some(KeyClass::Number) => {
-                        let number: NumberFromString = visitor.next_value()?;
+                        let number: NumberFromString = tri!(visitor.next_value());
                         Ok(Value::Number(number.value))
                     }
                     #[cfg(feature = "raw_value")]
                     Some(KeyClass::RawValue) => {
-                        let value = visitor.next_value_seed(crate::raw::BoxedFromString)?;
+                        let value = tri!(visitor.next_value_seed(crate::raw::BoxedFromString));
                         crate::from_str(value.get()).map_err(de::Error::custom)
                     }
                     Some(KeyClass::Map(first_key)) => {
@@ -1330,7 +1330,7 @@ impl<'de> de::EnumAccess<'de> for BorrowedCowStrDeserializer<'de> {
     where
         T: de::DeserializeSeed<'de>,
     {
-        let value = seed.deserialize(self)?;
+        let value = tri!(seed.deserialize(self));
         Ok((value, UnitOnly))
     }
 }

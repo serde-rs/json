@@ -178,7 +178,7 @@ impl RawValue {
     /// - the input has capacity equal to its length.
     pub fn from_string(json: String) -> Result<Box<Self>, Error> {
         {
-            let borrowed = crate::from_str::<&Self>(&json)?;
+            let borrowed = tri!(crate::from_str::<&Self>(&json));
             if borrowed.json.len() < json.len() {
                 return Ok(borrowed.to_owned());
             }
@@ -287,7 +287,7 @@ pub fn to_raw_value<T>(value: &T) -> Result<Box<RawValue>, Error>
 where
     T: ?Sized + Serialize,
 {
-    let json_string = crate::to_string(value)?;
+    let json_string = tri!(crate::to_string(value));
     Ok(RawValue::from_owned(json_string.into_boxed_str()))
 }
 
@@ -298,8 +298,8 @@ impl Serialize for RawValue {
     where
         S: Serializer,
     {
-        let mut s = serializer.serialize_struct(TOKEN, 1)?;
-        s.serialize_field(TOKEN, &self.json)?;
+        let mut s = tri!(serializer.serialize_struct(TOKEN, 1));
+        tri!(s.serialize_field(TOKEN, &self.json));
         s.end()
     }
 }
@@ -322,7 +322,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for &'a RawValue {
             where
                 V: MapAccess<'de>,
             {
-                let value = visitor.next_key::<RawKey>()?;
+                let value = tri!(visitor.next_key::<RawKey>());
                 if value.is_none() {
                     return Err(de::Error::invalid_type(Unexpected::Map, &self));
                 }
@@ -352,7 +352,7 @@ impl<'de> Deserialize<'de> for Box<RawValue> {
             where
                 V: MapAccess<'de>,
             {
-                let value = visitor.next_key::<RawKey>()?;
+                let value = tri!(visitor.next_key::<RawKey>());
                 if value.is_none() {
                     return Err(de::Error::invalid_type(Unexpected::Map, &self));
                 }
@@ -392,7 +392,7 @@ impl<'de> Deserialize<'de> for RawKey {
             }
         }
 
-        deserializer.deserialize_identifier(FieldVisitor)?;
+        tri!(deserializer.deserialize_identifier(FieldVisitor));
         Ok(RawKey)
     }
 }

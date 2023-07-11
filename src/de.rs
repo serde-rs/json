@@ -860,7 +860,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         if !positive {
             buf.push('-');
         }
-        self.scan_integer(&mut buf)?;
+        tri!(self.scan_integer(&mut buf));
         if positive {
             if let Ok(unsigned) = buf.parse() {
                 return Ok(ParserNumber::U64(unsigned));
@@ -1204,9 +1204,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
-        self.parse_whitespace()?;
+        tri!(self.parse_whitespace());
         self.read.begin_raw_buffering();
-        self.ignore_value()?;
+        tri!(self.ignore_value());
         self.read.end_raw_buffering(visitor)
     }
 }

@@ -182,11 +182,11 @@ impl Debug for Value {
             Value::Number(number) => Debug::fmt(number, formatter),
             Value::String(string) => write!(formatter, "String({:?})", string),
             Value::Array(vec) => {
-                formatter.write_str("Array ")?;
+                tri!(formatter.write_str("Array "));
                 Debug::fmt(vec, formatter)
             }
             Value::Object(map) => {
-                formatter.write_str("Object ")?;
+                tri!(formatter.write_str("Object "));
                 Debug::fmt(map, formatter)
             }
         }
