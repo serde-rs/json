@@ -198,7 +198,10 @@ where
                 .formatter
                 .begin_array_value(&mut self.writer, first)
                 .map_err(Error::io));
-            tri!(self.serialize_u8(*byte));
+            tri!(self
+                .formatter
+                .write_u8(&mut self.writer, *byte)
+                .map_err(Error::io));
             tri!(self
                 .formatter
                 .end_array_value(&mut self.writer)
