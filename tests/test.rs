@@ -1956,8 +1956,8 @@ fn test_float_key() {
 
 #[test]
 fn test_deny_non_finite_f32_key() {
-    // We store float bits so that we can derive `Ord`, and other traits. In a real context, we
-    // would use a crate like `ordered-float` instead.
+    // We store float bits so that we can derive Ord, and other traits. In a
+    // real context the code might involve a crate like ordered-float.
 
     #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone)]
     struct F32Bits(u32);
@@ -1985,8 +1985,8 @@ fn test_deny_non_finite_f32_key() {
 
 #[test]
 fn test_deny_non_finite_f64_key() {
-    // We store float bits so that we can derive `Ord`, and other traits. In a real context, we
-    // would use a crate like `ordered-float` instead.
+    // We store float bits so that we can derive Ord, and other traits. In a
+    // real context the code might involve a crate like ordered-float.
 
     #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone)]
     struct F64Bits(u64);
