@@ -209,7 +209,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.disable_recursion_limit = true;
     }
 
-    fn peek(&mut self) -> Result<Option<u8>> {
+    pub(crate) fn peek(&mut self) -> Result<Option<u8>> {
         self.read.peek()
     }
 
@@ -309,9 +309,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.fix_position(err)
     }
 
-    fn deserialize_number<V>(&mut self, visitor: V) -> Result<V::Value>
+    pub(crate) fn deserialize_number<'any, V>(&mut self, visitor: V) -> Result<V::Value>
     where
-        V: de::Visitor<'de>,
+        V: de::Visitor<'any>,
     {
         let peek = match tri!(self.parse_whitespace()) {
             Some(b) => b,
@@ -327,6 +327,79 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             b'0'..=b'9' => tri!(self.parse_integer(true)).visit(visitor),
             _ => Err(self.peek_invalid_type(&visitor)),
+        };
+
+        match value {
+            Ok(value) => Ok(value),
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+
+    #[cfg(feature = "float_roundtrip")]
+    pub(crate) fn do_deserialize_f32<'any, V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'any>,
+    {
+        self.single_precision = true;
+        let val = self.deserialize_number(visitor);
+        self.single_precision = false;
+        val
+    }
+
+    pub(crate) fn do_deserialize_i128<'any, V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'any>,
+    {
+        let mut buf = String::new();
+
+        match tri!(self.parse_whitespace()) {
+            Some(b'-') => {
+                self.eat_char();
+                buf.push('-');
+            }
+            Some(_) => {}
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        tri!(self.scan_integer128(&mut buf));
+
+        let value = match buf.parse() {
+            Ok(int) => visitor.visit_i128(int),
+            Err(_) => {
+                return Err(self.error(ErrorCode::NumberOutOfRange));
+            }
+        };
+
+        match value {
+            Ok(value) => Ok(value),
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+
+    pub(crate) fn do_deserialize_u128<'any, V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'any>,
+    {
+        match tri!(self.parse_whitespace()) {
+            Some(b'-') => {
+                return Err(self.peek_error(ErrorCode::NumberOutOfRange));
+            }
+            Some(_) => {}
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        }
+
+        let mut buf = String::new();
+        tri!(self.scan_integer128(&mut buf));
+
+        let value = match buf.parse() {
+            Ok(int) => visitor.visit_u128(int),
+            Err(_) => {
+                return Err(self.error(ErrorCode::NumberOutOfRange));
+            }
         };
 
         match value {
@@ -1258,11 +1331,15 @@ static POW10: [f64; 309] = [
 
 macro_rules! deserialize_number {
     ($method:ident) => {
+        deserialize_number!($method, deserialize_number);
+    };
+
+    ($method:ident, $using:ident) => {
         fn $method<V>(self, visitor: V) -> Result<V::Value>
         where
             V: de::Visitor<'de>,
         {
-            self.deserialize_number(visitor)
+            self.$using(visitor)
         }
     };
 }
@@ -1424,77 +1501,9 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     deserialize_number!(deserialize_f64);
 
     #[cfg(feature = "float_roundtrip")]
-    fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        self.single_precision = true;
-        let val = self.deserialize_number(visitor);
-        self.single_precision = false;
-        val
-    }
-
-    fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        let mut buf = String::new();
-
-        match tri!(self.parse_whitespace()) {
-            Some(b'-') => {
-                self.eat_char();
-                buf.push('-');
-            }
-            Some(_) => {}
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
-
-        tri!(self.scan_integer128(&mut buf));
-
-        let value = match buf.parse() {
-            Ok(int) => visitor.visit_i128(int),
-            Err(_) => {
-                return Err(self.error(ErrorCode::NumberOutOfRange));
-            }
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
-    }
-
-    fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value>
-    where
-        V: de::Visitor<'de>,
-    {
-        match tri!(self.parse_whitespace()) {
-            Some(b'-') => {
-                return Err(self.peek_error(ErrorCode::NumberOutOfRange));
-            }
-            Some(_) => {}
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        }
-
-        let mut buf = String::new();
-        tri!(self.scan_integer128(&mut buf));
-
-        let value = match buf.parse() {
-            Ok(int) => visitor.visit_u128(int),
-            Err(_) => {
-                return Err(self.error(ErrorCode::NumberOutOfRange));
-            }
-        };
-
-        match value {
-            Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
-        }
-    }
+    deserialize_number!(deserialize_f32, do_deserialize_f32);
+    deserialize_number!(deserialize_i128, do_deserialize_i128);
+    deserialize_number!(deserialize_u128, do_deserialize_u128);
 
     fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
     where
