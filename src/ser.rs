@@ -188,20 +188,15 @@ where
     }
 
     fn serialize_bytes(self, value: &[u8]) -> Result<()> {
-        use serde::ser::SerializeSeq;
         tri!(self
             .formatter
             .begin_array(&mut self.writer)
             .map_err(Error::io));
-        let seq = if value.is_empty() {
+        if value.is_empty() {
             tri!(self
                 .formatter
                 .end_array(&mut self.writer)
                 .map_err(Error::io));
-            Compound::Map {
-                ser: self,
-                state: State::Empty,
-            }
         } else {
             let mut state = State::First;
             for byte in value {
@@ -216,9 +211,12 @@ where
                     .end_array_value(&mut self.writer)
                     .map_err(Error::io));
             }
-            Compound::Map { ser: self, state }
-        };
-        seq.end()
+            tri!(self
+                .formatter
+                .end_array(&mut self.writer)
+                .map_err(Error::io));
+        }
+        Ok(())
     }
 
     #[inline]
