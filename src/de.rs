@@ -248,7 +248,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn parse_whitespace(&mut self) -> Result<Option<u8>> {
         loop {
             match tri!(self.peek()) {
-                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') => {
+                Some(b' ' | b'\n' | b'\t' | b'\r') => {
                     self.eat_char();
                 }
                 other => {
@@ -913,7 +913,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn scan_number(&mut self, buf: &mut String) -> Result<()> {
         match tri!(self.peek_or_null()) {
             b'.' => self.scan_decimal(buf),
-            e @ b'e' | e @ b'E' => self.scan_exponent(e as char, buf),
+            e @ (b'e' | b'E') => self.scan_exponent(e as char, buf),
             _ => Ok(()),
         }
     }
@@ -938,7 +938,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         match tri!(self.peek_or_null()) {
-            e @ b'e' | e @ b'E' => self.scan_exponent(e as char, buf),
+            e @ (b'e' | b'E') => self.scan_exponent(e as char, buf),
             _ => Ok(()),
         }
     }
@@ -1059,7 +1059,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     tri!(self.read.ignore_str());
                     None
                 }
-                frame @ b'[' | frame @ b'{' => {
+                frame @ (b'[' | b'{') => {
                     self.scratch.extend(enclosing.take());
                     self.eat_char();
                     Some(frame)
@@ -2328,8 +2328,8 @@ where
 
     fn peek_end_of_value(&mut self) -> Result<()> {
         match tri!(self.de.peek()) {
-            Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b'"') | Some(b'[')
-            | Some(b']') | Some(b'{') | Some(b'}') | Some(b',') | Some(b':') | None => Ok(()),
+            Some(b' ' | b'\n' | b'\t' | b'\r' | b'"' | b'[' | b']' | b'{' | b'}' | b',' | b':')
+            | None => Ok(()),
             Some(_) => {
                 let position = self.de.read.peek_position();
                 Err(Error::syntax(

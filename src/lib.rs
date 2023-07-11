@@ -320,8 +320,6 @@
     clippy::return_self_not_must_use,
     clippy::transmute_ptr_to_ptr,
     clippy::unnecessary_wraps,
-    // clippy bug: https://github.com/rust-lang/rust-clippy/issues/5704
-    clippy::unnested_or_patterns,
 )]
 // Ignored clippy_pedantic lints
 #![allow(
