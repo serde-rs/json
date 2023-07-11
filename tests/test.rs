@@ -53,7 +53,7 @@ macro_rules! treemap {
     () => {
         BTreeMap::new()
     };
-    ($($k:expr => $v:expr),+) => {
+    ($($k:expr => $v:expr),+ $(,)?) => {
         {
             let mut m = BTreeMap::new();
             $(
@@ -264,7 +264,7 @@ fn test_write_object() {
         (
             treemap!(
                 "a".to_string() => true,
-                "b".to_string() => false
+                "b".to_string() => false,
             ),
             "{\"a\":true,\"b\":false}",
         ),
@@ -275,7 +275,7 @@ fn test_write_object() {
             treemap![
                 "a".to_string() => treemap![],
                 "b".to_string() => treemap![],
-                "c".to_string() => treemap![]
+                "c".to_string() => treemap![],
             ],
             "{\"a\":{},\"b\":{},\"c\":{}}",
         ),
@@ -284,10 +284,10 @@ fn test_write_object() {
                 "a".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
                     "b".to_string() => treemap![],
-                    "c".to_string() => treemap![]
+                    "c".to_string() => treemap![],
                 ],
                 "b".to_string() => treemap![],
-                "c".to_string() => treemap![]
+                "c".to_string() => treemap![],
             ],
             "{\"a\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"b\":{},\"c\":{}}",
         ),
@@ -297,9 +297,9 @@ fn test_write_object() {
                 "b".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
                     "b".to_string() => treemap![],
-                    "c".to_string() => treemap![]
+                    "c".to_string() => treemap![],
                 ],
-                "c".to_string() => treemap![]
+                "c".to_string() => treemap![],
             ],
             "{\"a\":{},\"b\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"c\":{}}",
         ),
@@ -310,8 +310,8 @@ fn test_write_object() {
                 "c".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
                     "b".to_string() => treemap![],
-                    "c".to_string() => treemap![]
-                ]
+                    "c".to_string() => treemap![],
+                ],
             ],
             "{\"a\":{},\"b\":{},\"c\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}}}",
         ),
@@ -324,7 +324,7 @@ fn test_write_object() {
             treemap![
                 "a".to_string() => treemap![],
                 "b".to_string() => treemap![],
-                "c".to_string() => treemap![]
+                "c".to_string() => treemap![],
             ],
             pretty_str!({
                 "a": {},
@@ -337,10 +337,10 @@ fn test_write_object() {
                 "a".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
                     "b".to_string() => treemap![],
-                    "c".to_string() => treemap![]
+                    "c".to_string() => treemap![],
                 ],
                 "b".to_string() => treemap![],
-                "c".to_string() => treemap![]
+                "c".to_string() => treemap![],
             ],
             pretty_str!({
                 "a": {
@@ -364,9 +364,9 @@ fn test_write_object() {
                 "b".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
                     "b".to_string() => treemap![],
-                    "c".to_string() => treemap![]
+                    "c".to_string() => treemap![],
                 ],
-                "c".to_string() => treemap![]
+                "c".to_string() => treemap![],
             ],
             pretty_str!({
                 "a": {},
@@ -391,8 +391,8 @@ fn test_write_object() {
                 "c".to_string() => treemap![
                     "a".to_string() => treemap!["a" => vec![1,2,3]],
                     "b".to_string() => treemap![],
-                    "c".to_string() => treemap![]
-                ]
+                    "c".to_string() => treemap![],
+                ],
             ],
             pretty_str!({
                 "a": {},
@@ -423,7 +423,7 @@ fn test_write_object() {
         (
             treemap!(
                 "a".to_string() => true,
-                "b".to_string() => false
+                "b".to_string() => false,
             ),
             pretty_str!( {
                 "a": true,
@@ -1192,8 +1192,8 @@ fn test_parse_object() {
         treemap!(
             "a".to_string() => treemap!(
                 "b".to_string() => 3u64,
-                "c".to_string() => 4
-            )
+                "c".to_string() => 4,
+            ),
         ),
     )]);
 
@@ -1369,7 +1369,7 @@ fn test_parse_enum() {
         ),
         treemap!(
             "a".to_string() => Animal::Dog,
-            "b".to_string() => Animal::Frog("Henry".to_string(), vec![])
+            "b".to_string() => Animal::Frog("Henry".to_string(), vec![]),
         ),
     )]);
 }
@@ -1664,7 +1664,7 @@ fn test_deserialize_from_stream() {
 fn test_serialize_rejects_bool_keys() {
     let map = treemap!(
         true => 2,
-        false => 4
+        false => 4,
     );
 
     let err = to_vec(&map).unwrap_err();
@@ -1676,7 +1676,7 @@ fn test_serialize_rejects_adt_keys() {
     let map = treemap!(
         Some("a") => 2,
         Some("b") => 4,
-        None => 6
+        None => 6,
     );
 
     let err = to_vec(&map).unwrap_err();
@@ -1890,7 +1890,7 @@ fn test_integer_key() {
     // map with integer keys
     let map = treemap!(
         1 => 2,
-        -1 => 6
+        -1 => 6,
     );
     let j = r#"{"-1":6,"1":2}"#;
     test_encode_ok(&[(&map, j)]);
@@ -1911,7 +1911,7 @@ fn test_integer_key() {
 #[test]
 fn test_integer128_key() {
     let map = treemap! {
-        100000000000000000000000000000000000000u128 => ()
+        100000000000000000000000000000000000000u128 => (),
     };
     let j = r#"{"100000000000000000000000000000000000000":null}"#;
     assert_eq!(to_string(&map).unwrap(), j);
@@ -2034,7 +2034,7 @@ fn test_effectively_string_keys() {
     }
     let map = treemap! {
         Enum::One => 1,
-        Enum::Two => 2
+        Enum::Two => 2,
     };
     let expected = r#"{"One":1,"Two":2}"#;
     test_encode_ok(&[(&map, expected)]);
@@ -2044,7 +2044,7 @@ fn test_effectively_string_keys() {
     struct Wrapper(String);
     let map = treemap! {
         Wrapper("zero".to_owned()) => 0,
-        Wrapper("one".to_owned()) => 1
+        Wrapper("one".to_owned()) => 1,
     };
     let expected = r#"{"one":1,"zero":0}"#;
     test_encode_ok(&[(&map, expected)]);
