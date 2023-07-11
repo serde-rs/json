@@ -309,7 +309,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.fix_position(err)
     }
 
-    fn deserialize_number<'any, V>(&mut self, visitor: V) -> Result<V::Value>
+    pub(crate) fn deserialize_number<'any, V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'any>,
     {
@@ -336,7 +336,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(feature = "float_roundtrip")]
-    fn do_deserialize_f32<'any, V>(&mut self, visitor: V) -> Result<V::Value>
+    pub(crate) fn do_deserialize_f32<'any, V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'any>,
     {
@@ -346,7 +346,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         val
     }
 
-    fn do_deserialize_i128<'any, V>(&mut self, visitor: V) -> Result<V::Value>
+    pub(crate) fn do_deserialize_i128<'any, V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'any>,
     {
@@ -378,7 +378,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    fn do_deserialize_u128<'any, V>(&mut self, visitor: V) -> Result<V::Value>
+    pub(crate) fn do_deserialize_u128<'any, V>(&mut self, visitor: V) -> Result<V::Value>
     where
         V: de::Visitor<'any>,
     {

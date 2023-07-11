@@ -1121,15 +1121,19 @@ struct MapKeyDeserializer<'de> {
 }
 
 macro_rules! deserialize_numeric_key {
-    ($method:ident => $visit:ident) => {
+    ($method:ident) => {
+        deserialize_numeric_key!($method, deserialize_number);
+    };
+
+    ($method:ident, $using:ident) => {
         fn $method<V>(self, visitor: V) -> Result<V::Value, Error>
         where
             V: Visitor<'de>,
         {
             let mut de = crate::Deserializer::from_str(&self.key);
-            let parsed = tri!(Deserialize::deserialize(&mut de));
+            let number = tri!(de.$using(visitor));
             tri!(de.end());
-            visitor.$visit(parsed)
+            Ok(number)
         }
     };
 }
@@ -1144,18 +1148,22 @@ impl<'de> serde::Deserializer<'de> for MapKeyDeserializer<'de> {
         BorrowedCowStrDeserializer::new(self.key).deserialize_any(visitor)
     }
 
-    deserialize_numeric_key!(deserialize_i8 => visit_i8);
-    deserialize_numeric_key!(deserialize_i16 => visit_i16);
-    deserialize_numeric_key!(deserialize_i32 => visit_i32);
-    deserialize_numeric_key!(deserialize_i64 => visit_i64);
-    deserialize_numeric_key!(deserialize_i128 => visit_i128);
-    deserialize_numeric_key!(deserialize_u8 => visit_u8);
-    deserialize_numeric_key!(deserialize_u16 => visit_u16);
-    deserialize_numeric_key!(deserialize_u32 => visit_u32);
-    deserialize_numeric_key!(deserialize_u64 => visit_u64);
-    deserialize_numeric_key!(deserialize_u128 => visit_u128);
-    deserialize_numeric_key!(deserialize_f32 => visit_f32);
-    deserialize_numeric_key!(deserialize_f64 => visit_f64);
+    deserialize_numeric_key!(deserialize_i8);
+    deserialize_numeric_key!(deserialize_i16);
+    deserialize_numeric_key!(deserialize_i32);
+    deserialize_numeric_key!(deserialize_i64);
+    deserialize_numeric_key!(deserialize_u8);
+    deserialize_numeric_key!(deserialize_u16);
+    deserialize_numeric_key!(deserialize_u32);
+    deserialize_numeric_key!(deserialize_u64);
+    #[cfg(not(feature = "float_roundtrip"))]
+    deserialize_numeric_key!(deserialize_f32);
+    deserialize_numeric_key!(deserialize_f64);
+
+    #[cfg(feature = "float_roundtrip")]
+    deserialize_numeric_key!(deserialize_f32, do_deserialize_f32);
+    deserialize_numeric_key!(deserialize_i128, do_deserialize_i128);
+    deserialize_numeric_key!(deserialize_u128, do_deserialize_u128);
 
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Error>
