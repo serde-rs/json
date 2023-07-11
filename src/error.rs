@@ -73,7 +73,6 @@ impl Error {
             | ErrorCode::KeyMustBeAString
             | ErrorCode::ExpectedNumericKey
             | ErrorCode::FloatKeyMustBeFinite
-            | ErrorCode::UnexpectedWhitespaceInKey
             | ErrorCode::LoneLeadingSurrogateInHexEscape
             | ErrorCode::TrailingComma
             | ErrorCode::TrailingCharacters
@@ -295,9 +294,6 @@ pub(crate) enum ErrorCode {
     /// Object key is a non-finite float value.
     FloatKeyMustBeFinite,
 
-    /// Unexpected whitespace in a numeric key.
-    UnexpectedWhitespaceInKey,
-
     /// Lone leading surrogate in hex escape.
     LoneLeadingSurrogateInHexEscape,
 
@@ -378,9 +374,6 @@ impl Display for ErrorCode {
             }
             ErrorCode::FloatKeyMustBeFinite => {
                 f.write_str("float key must be finite (got NaN or +/-inf)")
-            }
-            ErrorCode::UnexpectedWhitespaceInKey => {
-                f.write_str("unexpected whitespace in object key")
             }
             ErrorCode::LoneLeadingSurrogateInHexEscape => {
                 f.write_str("lone leading surrogate in hex escape")

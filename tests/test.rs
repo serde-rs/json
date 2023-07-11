@@ -1901,14 +1901,11 @@ fn test_integer_key() {
         j,
         "invalid value: expected key to be a number in quotes at line 1 column 2",
     )]);
-}
 
-#[test]
-fn test_integer_key_leading_whitespace() {
     let j = r#"{" 123":null}"#;
     test_parse_err::<BTreeMap<i32, ()>>(&[(
         j,
-        "unexpected whitespace in object key at line 1 column 3",
+        "invalid value: expected key to be a number in quotes at line 1 column 2",
     )]);
 }
 
