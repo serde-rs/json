@@ -189,12 +189,9 @@ where
 
     #[inline]
     fn serialize_bytes(self, value: &[u8]) -> Result<()> {
-        use serde::ser::SerializeSeq;
-        let mut seq = tri!(self.serialize_seq(Some(value.len())));
-        for byte in value {
-            tri!(seq.serialize_element(byte));
-        }
-        seq.end()
+        self.formatter
+            .write_byte_array(&mut self.writer, value)
+            .map_err(Error::io)
     }
 
     #[inline]
@@ -1768,6 +1765,24 @@ pub trait Formatter {
         };
 
         writer.write_all(s)
+    }
+
+    /// Writes the representation of a byte array. Formatters can choose whether
+    /// to represent bytes as a JSON array of integers (the default), or some
+    /// JSON string encoding like hex or base64.
+    fn write_byte_array<W>(&mut self, writer: &mut W, value: &[u8]) -> io::Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        tri!(self.begin_array(writer));
+        let mut first = true;
+        for byte in value {
+            tri!(self.begin_array_value(writer, first));
+            tri!(self.write_u8(writer, *byte));
+            tri!(self.end_array_value(writer));
+            first = false;
+        }
+        self.end_array(writer)
     }
 
     /// Called before every array.  Writes a `[` to the specified
