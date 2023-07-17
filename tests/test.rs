@@ -1452,7 +1452,6 @@ fn test_serialize_seq_with_no_len() {
     where
         T: ser::Serialize,
     {
-        #[inline]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: ser::Serializer,
@@ -1479,7 +1478,6 @@ fn test_serialize_seq_with_no_len() {
             formatter.write_str("array")
         }
 
-        #[inline]
         fn visit_unit<E>(self) -> Result<MyVec<T>, E>
         where
             E: de::Error,
@@ -1487,7 +1485,6 @@ fn test_serialize_seq_with_no_len() {
             Ok(MyVec(Vec::new()))
         }
 
-        #[inline]
         fn visit_seq<V>(self, mut visitor: V) -> Result<MyVec<T>, V::Error>
         where
             V: de::SeqAccess<'de>,
@@ -1538,7 +1535,6 @@ fn test_serialize_map_with_no_len() {
         K: ser::Serialize + Ord,
         V: ser::Serialize,
     {
-        #[inline]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: ser::Serializer,
@@ -1566,7 +1562,6 @@ fn test_serialize_map_with_no_len() {
             formatter.write_str("map")
         }
 
-        #[inline]
         fn visit_unit<E>(self) -> Result<MyMap<K, V>, E>
         where
             E: de::Error,
@@ -1574,7 +1569,6 @@ fn test_serialize_map_with_no_len() {
             Ok(MyMap(BTreeMap::new()))
         }
 
-        #[inline]
         fn visit_map<Visitor>(self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
         where
             Visitor: de::MapAccess<'de>,
