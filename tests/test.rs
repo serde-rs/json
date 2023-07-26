@@ -2472,6 +2472,12 @@ fn test_value_into_deserializer() {
     let mut map = BTreeMap::new();
     map.insert("inner", json!({ "string": "Hello World" }));
 
+    let outer = Outer::deserialize(serde::de::value::MapDeserializer::new(
+        map.iter().map(|(k, v)| (*k, v)),
+    ))
+    .unwrap();
+    assert_eq!(outer.inner.string, "Hello World");
+
     let outer = Outer::deserialize(map.into_deserializer()).unwrap();
     assert_eq!(outer.inner.string, "Hello World");
 }
