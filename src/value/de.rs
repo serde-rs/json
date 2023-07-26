@@ -482,6 +482,14 @@ impl<'de> IntoDeserializer<'de, Error> for Value {
     }
 }
 
+impl<'de> IntoDeserializer<'de, Error> for &'de Value {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
 struct VariantDeserializer {
     value: Option<Value>,
 }
