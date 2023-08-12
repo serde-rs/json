@@ -2406,7 +2406,7 @@ where
                         if self_delineated_value {
                             Ok(value)
                         } else {
-                            self.peek_end_of_value().map(|_| value)
+                            self.peek_end_of_value().map(|()| value)
                         }
                     }
                     Err(e) => {
