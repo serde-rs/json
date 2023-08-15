@@ -827,8 +827,21 @@ where
     type SerializeStruct = Impossible<(), Error>;
     type SerializeStructVariant = Impossible<(), Error>;
 
-    fn serialize_bool(self, _value: bool) -> Result<()> {
-        Err(key_must_be_a_string())
+    fn serialize_bool(self, value: bool) -> Result<()> {
+        tri!(self
+            .ser
+            .formatter
+            .begin_string(&mut self.ser.writer)
+            .map_err(Error::io));
+        tri!(self
+            .ser
+            .formatter
+            .write_bool(&mut self.ser.writer, value)
+            .map_err(Error::io));
+        self.ser
+            .formatter
+            .end_string(&mut self.ser.writer)
+            .map_err(Error::io)
     }
 
     fn serialize_i8(self, value: i8) -> Result<()> {
