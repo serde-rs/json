@@ -2019,6 +2019,14 @@ fn test_deny_non_finite_f64_key() {
 }
 
 #[test]
+fn test_boolean_key() {
+    let map = treemap!(false => 0, true => 1);
+    let j = r#"{"false":0,"true":1}"#;
+    test_encode_ok(&[(&map, j)]);
+    test_parse_ok(vec![(j, map)]);
+}
+
+#[test]
 fn test_borrowed_key() {
     let map: BTreeMap<&str, ()> = from_str("{\"borrowed\":null}").unwrap();
     let expected = treemap! { "borrowed" => () };
