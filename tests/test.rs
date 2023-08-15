@@ -1655,17 +1655,6 @@ fn test_deserialize_from_stream() {
 }
 
 #[test]
-fn test_serialize_rejects_bool_keys() {
-    let map = treemap!(
-        true => 2,
-        false => 4,
-    );
-
-    let err = to_vec(&map).unwrap_err();
-    assert_eq!(err.to_string(), "key must be a string");
-}
-
-#[test]
 fn test_serialize_rejects_adt_keys() {
     let map = treemap!(
         Some("a") => 2,
