@@ -888,7 +888,6 @@ fn parse_escape<'de, R: Read<'de>>(
                         read.discard();
                     } else {
                         return if validate {
-                            read.discard();
                             error(read, ErrorCode::UnexpectedEndOfHexEscape)
                         } else {
                             encode_surrogate(scratch, n1);
