@@ -20,19 +20,14 @@ mod digit;
 mod errors;
 pub(crate) mod exponent;
 pub(crate) mod float;
-mod large_powers;
+mod large_powers32;
+mod large_powers64;
 pub(crate) mod math;
 pub(crate) mod num;
 pub(crate) mod parse;
 pub(crate) mod rounding;
 mod shift;
 mod small_powers;
-
-#[cfg(limb_width_32)]
-mod large_powers32;
-
-#[cfg(limb_width_64)]
-mod large_powers64;
 
 // API
 pub use self::parse::{parse_concise_float, parse_truncated_float};
