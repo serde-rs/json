@@ -18,12 +18,22 @@ impl Math for Bigint {
     }
 }
 
-#[cfg(limb_width_32)]
+#[cfg(not(any(
+    target_arch = "aarch64",
+    target_arch = "mips64",
+    target_arch = "powerpc64",
+    target_arch = "x86_64"
+)))]
 pub(crate) fn from_u32(x: &[u32]) -> Vec<Limb> {
     x.iter().cloned().collect()
 }
 
-#[cfg(limb_width_64)]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "mips64",
+    target_arch = "powerpc64",
+    target_arch = "x86_64"
+))]
 pub(crate) fn from_u32(x: &[u32]) -> Vec<Limb> {
     let mut v = Vec::<Limb>::default();
     for xi in x.chunks(2) {

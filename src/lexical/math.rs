@@ -67,9 +67,19 @@ impl LimbConfig for LimbConfig64 {
     const LARGE_POWERS: &'static [&'static [Self::Limb]] = &super::large_powers64::POW5;
 }
 
-#[cfg(any(target_arch = "aarch64", target_arch = "mips64", target_arch = "powerpc64", target_arch = x86_64))]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "mips64",
+    target_arch = "powerpc64",
+    target_arch = "x86_64"
+))]
 type PlatformLimbConfig = LimbConfig64;
-#[cfg(not(any(target_arch = "aarch64", target_arch = "mips64", target_arch = "powerpc64", target_arch = x86_64)))]
+#[cfg(not(any(
+    target_arch = "aarch64",
+    target_arch = "mips64",
+    target_arch = "powerpc64",
+    target_arch = "x86_64"
+)))]
 type PlatformLimbConfig = LimbConfig32;
 
 pub type Limb = <PlatformLimbConfig as LimbConfig>::Limb;
@@ -95,14 +105,24 @@ fn as_wide<T: Integer>(t: T) -> Wide {
 
 /// Split u64 into limbs, in little-endian order.
 #[inline]
-#[cfg(limb_width_32)]
+#[cfg(not(any(
+    target_arch = "aarch64",
+    target_arch = "mips64",
+    target_arch = "powerpc64",
+    target_arch = "x86_64"
+)))]
 fn split_u64(x: u64) -> [Limb; 2] {
     [as_limb(x), as_limb(x >> 32)]
 }
 
 /// Split u64 into limbs, in little-endian order.
 #[inline]
-#[cfg(limb_width_64)]
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "mips64",
+    target_arch = "powerpc64",
+    target_arch = "x86_64"
+))]
 fn split_u64(x: u64) -> [Limb; 1] {
     [as_limb(x)]
 }
