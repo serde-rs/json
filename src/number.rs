@@ -279,6 +279,7 @@ impl Number {
         }
     }
 
+    #[cfg(feature = "arbitrary_precision")]
     /// Returns the `&str` representation of the `Number`.
     /// ```
     /// # use serde_json::Number;
