@@ -1667,7 +1667,13 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 self.eat_char();
                 tri!(self.parse_ident(b"ull"));
                 visitor.visit_none()
-            }
+            },
+            Some(b',') => {                
+                visitor.visit_none()
+            },
+            Some(b']') => {                
+                visitor.visit_none()
+            },          
             _ => visitor.visit_some(self),
         }
     }
@@ -1943,7 +1949,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
         };
 
         match peek {
-            Some(b']') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
+            //Some(b']') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
             Some(_) => Ok(Some(tri!(seed.deserialize(&mut *self.de)))),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
