@@ -279,6 +279,16 @@ impl Number {
         }
     }
 
+    /// Returns the `&str` representation of the `Number`.
+    /// ```
+    /// # use serde_json::Number;
+    ///
+    /// assert_eq!(Number::from_f64(256.0).unwrap().as_str(), "256.0");
+    /// assert_eq!(Number::from_f64(34.0).unwrap().as_str(), "34.0");
+    pub fn as_str(&self) -> &str {
+        &self.n
+    }
+
     pub(crate) fn as_f32(&self) -> Option<f32> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
