@@ -507,7 +507,7 @@ impl Value {
     /// assert_eq!(v["a"].as_number().unwrap(), &Number::from(1u64));
     ///
     /// // The number `2.2` is an f64.
-    /// assert_eq!(v["b"].as_number().unwrap(), &Number::from_f64(2.2f64).unwrap());
+    /// assert_eq!(v["b"].as_number().unwrap(), &Number::from_f64(2.2).unwrap());
     ///
     /// // The number `-3` is an i64.
     /// assert_eq!(v["c"].as_number().unwrap(), &Number::from(-3i64));
