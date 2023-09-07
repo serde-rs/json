@@ -291,7 +291,6 @@ impl Number {
     ///     "343412345678910111213141516171819202122232425262728293034",
     ///     "-343412345678910111213141516171819202122232425262728293031",
     /// ] {
-    ///     println!("{value}");
     ///     let number: Number = serde_json::from_str(value).unwrap();
     ///     assert_eq!(number.as_str(), value);
     /// }
