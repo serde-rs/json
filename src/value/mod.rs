@@ -504,13 +504,13 @@ impl Value {
     /// let v = json!({ "a": 1, "b": 2.2, "c": -3, "d": "4" });
     ///
     /// // The number `1` is an u64.
-    /// assert_eq!(v["a"].as_number().unwrap(), &Number::from(1u64));
+    /// assert_eq!(v["a"].as_number(), Some(&Number::from(1u64)));
     ///
     /// // The number `2.2` is an f64.
-    /// assert_eq!(v["b"].as_number().unwrap(), &Number::from_f64(2.2).unwrap());
+    /// assert_eq!(v["b"].as_number(), Some(&Number::from_f64(2.2).unwrap()));
     ///
     /// // The number `-3` is an i64.
-    /// assert_eq!(v["c"].as_number().unwrap(), &Number::from(-3i64));
+    /// assert_eq!(v["c"].as_number(), Some(&Number::from(-3i64)));
     ///
     /// // The string `"4"` is not a number.
     /// assert_eq!(v["d"].as_number(), None);
