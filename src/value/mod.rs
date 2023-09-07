@@ -495,6 +495,34 @@ impl Value {
         }
     }
 
+    /// If the `Value` is an Number, returns the associated [`Number`]. Returns None
+    /// otherwise.
+    ///
+    /// ```
+    /// # use serde_json::{json, Number};
+    /// #
+    /// let v = json!({ "a": 1, "b": 2.2, "c": -3, "d": "4" });
+    ///
+    /// // The number `1` is an u64.
+    /// assert_eq!(v["a"].as_number().unwrap(), &Number::from(1u64));
+    ///
+    /// // The number `2.2` is an f64.
+    /// assert_eq!(v["b"].as_number().unwrap(), &Number::from_f64(2.2f64).unwrap());
+    ///
+    /// // The number `-3` is an i64.
+    /// assert_eq!(v["c"].as_number().unwrap(), &Number::from(-3i64));
+    ///
+    /// // The string `"4"` is not a number.
+    /// assert_eq!(v["d"].as_number(), None);
+    ///  
+    /// ```
+    pub fn as_number(&self) -> Option<&Number> {
+        match self {
+            Value::Number(number) => Some(number),
+            _ => None,
+        }
+    }
+
     /// Returns true if the `Value` is a Number. Returns false otherwise.
     ///
     /// ```
