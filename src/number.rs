@@ -283,9 +283,18 @@ impl Number {
     /// Returns the `&str` representation of the `Number`.
     /// ```
     /// # use serde_json::Number;
-    ///
-    /// assert_eq!(Number::from_f64(256.0).unwrap().as_str(), "256.0");
-    /// assert_eq!(Number::from_f64(34.0).unwrap().as_str(), "34.0");
+    /// for value in [
+    ///     "7",
+    ///     "12.34",
+    ///     "34e-56789",
+    ///     "0.0123456789000000012345678900000001234567890000123456789",
+    ///     "343412345678910111213141516171819202122232425262728293034",
+    ///     "-343412345678910111213141516171819202122232425262728293031",
+    /// ] {
+    ///     println!("{value}");
+    ///     let number: Number = serde_json::from_str(value).unwrap();
+    ///     assert_eq!(number.as_str(), value);
+    /// }
     pub fn as_str(&self) -> &str {
         &self.n
     }
