@@ -495,8 +495,8 @@ impl Value {
         }
     }
 
-    /// If the `Value` is an Number, returns the associated [`Number`]. Returns None
-    /// otherwise.
+    /// If the `Value` is an Number, returns the associated [`Number`]. Returns
+    /// None otherwise.
     ///
     /// ```
     /// # use serde_json::{json, Number};
@@ -509,7 +509,6 @@ impl Value {
     ///
     /// // The string `"4"` is not a number.
     /// assert_eq!(v["d"].as_number(), None);
-    ///
     /// ```
     pub fn as_number(&self) -> Option<&Number> {
         match self {
