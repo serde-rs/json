@@ -514,7 +514,7 @@ impl Value {
         }
     }
 
-    /// If the `Value` is an Number, returns the associated [`Number`]. Returns
+    /// If the `Value` is a Number, returns the associated [`Number`]. Returns
     /// None otherwise.
     ///
     /// ```
