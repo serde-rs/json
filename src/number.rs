@@ -296,6 +296,7 @@ impl Number {
     /// }
     /// ```
     #[cfg(feature = "arbitrary_precision")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "arbitrary_precision")))]
     pub fn as_str(&self) -> &str {
         &self.n
     }
