@@ -509,7 +509,7 @@ impl Value {
     ///
     /// // The string `"4"` is not a number.
     /// assert_eq!(v["d"].as_number(), None);
-    ///  
+    ///
     /// ```
     pub fn as_number(&self) -> Option<&Number> {
         match self {
