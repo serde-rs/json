@@ -279,8 +279,8 @@ impl Number {
         }
     }
 
-    #[cfg(feature = "arbitrary_precision")]
     /// Returns the `&str` representation of the `Number`.
+    ///
     /// ```
     /// # use serde_json::Number;
     /// for value in [
@@ -294,6 +294,8 @@ impl Number {
     ///     let number: Number = serde_json::from_str(value).unwrap();
     ///     assert_eq!(number.as_str(), value);
     /// }
+    /// ```
+    #[cfg(feature = "arbitrary_precision")]
     pub fn as_str(&self) -> &str {
         &self.n
     }
