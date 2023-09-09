@@ -279,6 +279,25 @@ impl Number {
         }
     }
 
+    #[cfg(feature = "arbitrary_precision")]
+    /// Returns the `&str` representation of the `Number`.
+    /// ```
+    /// # use serde_json::Number;
+    /// for value in [
+    ///     "7",
+    ///     "12.34",
+    ///     "34e-56789",
+    ///     "0.0123456789000000012345678900000001234567890000123456789",
+    ///     "343412345678910111213141516171819202122232425262728293034",
+    ///     "-343412345678910111213141516171819202122232425262728293031",
+    /// ] {
+    ///     let number: Number = serde_json::from_str(value).unwrap();
+    ///     assert_eq!(number.as_str(), value);
+    /// }
+    pub fn as_str(&self) -> &str {
+        &self.n
+    }
+
     pub(crate) fn as_f32(&self) -> Option<f32> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
