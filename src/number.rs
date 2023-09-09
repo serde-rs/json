@@ -279,7 +279,12 @@ impl Number {
         }
     }
 
-    /// Returns the `&str` representation of the `Number`.
+    /// Returns the exact original JSON representation that this Number was
+    /// parsed from.
+    ///
+    /// For numbers constructed not via parsing, such as by `From<i32>`, returns
+    /// the JSON representation that serde\_json would serialize for this
+    /// number.
     ///
     /// ```
     /// # use serde_json::Number;
