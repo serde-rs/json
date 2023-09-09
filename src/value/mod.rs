@@ -495,6 +495,25 @@ impl Value {
         }
     }
 
+    /// Returns true if the `Value` is a Number. Returns false otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!({ "a": 1, "b": "2" });
+    ///
+    /// assert!(v["a"].is_number());
+    ///
+    /// // The string `"2"` is a string, not a number.
+    /// assert!(!v["b"].is_number());
+    /// ```
+    pub fn is_number(&self) -> bool {
+        match *self {
+            Value::Number(_) => true,
+            _ => false,
+        }
+    }
+
     /// If the `Value` is an Number, returns the associated [`Number`]. Returns
     /// None otherwise.
     ///
@@ -514,25 +533,6 @@ impl Value {
         match self {
             Value::Number(number) => Some(number),
             _ => None,
-        }
-    }
-
-    /// Returns true if the `Value` is a Number. Returns false otherwise.
-    ///
-    /// ```
-    /// # use serde_json::json;
-    /// #
-    /// let v = json!({ "a": 1, "b": "2" });
-    ///
-    /// assert!(v["a"].is_number());
-    ///
-    /// // The string `"2"` is a string, not a number.
-    /// assert!(!v["b"].is_number());
-    /// ```
-    pub fn is_number(&self) -> bool {
-        match *self {
-            Value::Number(_) => true,
-            _ => false,
         }
     }
 
