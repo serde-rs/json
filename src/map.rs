@@ -434,6 +434,15 @@ impl<'de> de::Deserialize<'de> for Map<String, Value> {
     }
 }
 
+#[cfg(not(no_const_generics))]
+impl<const N: usize> From<[(String, Value); N]> for Map<String, Value> {
+    fn from(arr: [(String, Value); N]) -> Self {
+        // FromIterator::from_iter cannot be used before Rust 1.53
+        #[allow(deprecated)]
+        core::array::IntoIter::new(arr).collect()
+    }
+}
+
 impl FromIterator<(String, Value)> for Map<String, Value> {
     fn from_iter<T>(iter: T) -> Self
     where

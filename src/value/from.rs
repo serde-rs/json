@@ -227,6 +227,25 @@ impl<T: Into<Value>> FromIterator<T> for Value {
     }
 }
 
+#[cfg(not(no_const_generics))]
+impl<K: Into<String>, V: Into<Value>, const N: usize> From<[(K, V); N]> for Value {
+    /// Convert a list of map entry tuples to `Value`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use serde_json::Value;
+    ///
+    /// let v = [("lorem", 40), ("ipsum", 2)];
+    /// let x: Value = v.into();
+    /// ```
+    fn from(arr: [(K, V); N]) -> Self {
+        // FromIterator::from_iter cannot be used before Rust 1.53
+        #[allow(deprecated)]
+        core::array::IntoIter::new(arr).collect()
+    }
+}
+
 impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
     /// Convert an iteratable type to a `Value`
     ///
