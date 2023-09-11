@@ -152,7 +152,7 @@ impl Map<String, Value> {
         String: Borrow<Q>,
         Q: ?Sized + Ord + Eq + Hash,
     {
-        return self.map.remove_entry(key);
+        self.map.remove_entry(key)
     }
 
     /// Moves all elements from other into self, leaving other empty.
