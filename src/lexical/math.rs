@@ -6,6 +6,7 @@
 //! buffers, so for a `vec![0, 1, 2, 3]`, `3` is the most significant limb,
 //! and `0` is the least significant limb.
 
+use super::large_powers;
 use super::num::*;
 use super::small_powers::*;
 use alloc::vec::Vec;
@@ -35,58 +36,31 @@ use core::{cmp, iter, mem};
 //  requiring software emulation.
 //      sparc64 (`UMUL` only supported double-word arguments).
 
-#[doc(hidden)]
-pub trait LimbConfig {
-    type Limb: 'static;
-    type Wide: 'static;
-    const POW5_LIMB: &'static [Self::Limb];
-    const POW10_LIMB: &'static [Self::Limb];
-    const LARGE_POWERS: &'static [&'static [Self::Limb]];
-}
-
 // 32-BIT LIMB
-#[doc(hidden)]
-pub struct LimbConfig32;
+#[cfg(limb_width_32)]
+pub type Limb = u32;
 
-impl LimbConfig for LimbConfig32 {
-    type Limb = u32;
-    type Wide = u64;
-    const POW5_LIMB: &'static [Self::Limb] = &POW5_32;
-    const POW10_LIMB: &'static [Self::Limb] = &POW10_32;
-    const LARGE_POWERS: &'static [&'static [Self::Limb]] = &super::large_powers32::POW5;
-}
+#[cfg(limb_width_32)]
+pub const POW5_LIMB: &[Limb] = &POW5_32;
+
+#[cfg(limb_width_32)]
+pub const POW10_LIMB: &[Limb] = &POW10_32;
+
+#[cfg(limb_width_32)]
+type Wide = u64;
 
 // 64-BIT LIMB
-#[doc(hidden)]
-pub struct LimbConfig64;
-impl LimbConfig for LimbConfig64 {
-    type Limb = u64;
-    type Wide = u128;
-    const POW5_LIMB: &'static [Self::Limb] = &POW5_64;
-    const POW10_LIMB: &'static [Self::Limb] = &POW10_64;
-    const LARGE_POWERS: &'static [&'static [Self::Limb]] = &super::large_powers64::POW5;
-}
+#[cfg(limb_width_64)]
+pub type Limb = u64;
 
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "mips64",
-    target_arch = "powerpc64",
-    target_arch = "x86_64"
-))]
-type PlatformLimbConfig = LimbConfig64;
-#[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "mips64",
-    target_arch = "powerpc64",
-    target_arch = "x86_64"
-)))]
-type PlatformLimbConfig = LimbConfig32;
+#[cfg(limb_width_64)]
+pub const POW5_LIMB: &[Limb] = &POW5_64;
 
-pub type Limb = <PlatformLimbConfig as LimbConfig>::Limb;
-type Wide = <PlatformLimbConfig as LimbConfig>::Wide;
-pub const POW5_LIMB: &[Limb] = PlatformLimbConfig::POW5_LIMB;
-pub const POW10_LIMB: &[Limb] = PlatformLimbConfig::POW10_LIMB;
-const LARGE_POWERS: &'static [&'static [Limb]] = PlatformLimbConfig::LARGE_POWERS;
+#[cfg(limb_width_64)]
+pub const POW10_LIMB: &[Limb] = &POW10_64;
+
+#[cfg(limb_width_64)]
+type Wide = u128;
 
 /// Cast to limb type.
 #[inline]
@@ -105,24 +79,14 @@ fn as_wide<T: Integer>(t: T) -> Wide {
 
 /// Split u64 into limbs, in little-endian order.
 #[inline]
-#[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "mips64",
-    target_arch = "powerpc64",
-    target_arch = "x86_64"
-)))]
+#[cfg(limb_width_32)]
 fn split_u64(x: u64) -> [Limb; 2] {
     [as_limb(x), as_limb(x >> 32)]
 }
 
 /// Split u64 into limbs, in little-endian order.
 #[inline]
-#[cfg(any(
-    target_arch = "aarch64",
-    target_arch = "mips64",
-    target_arch = "powerpc64",
-    target_arch = "x86_64"
-))]
+#[cfg(limb_width_64)]
 fn split_u64(x: u64) -> [Limb; 1] {
     [as_limb(x)]
 }
@@ -427,7 +391,7 @@ mod small {
         use super::large::KARATSUBA_CUTOFF;
 
         let small_powers = POW5_LIMB;
-        let large_powers = LARGE_POWERS;
+        let large_powers = large_powers::POW5;
 
         if n == 0 {
             // No exponent, just return.
