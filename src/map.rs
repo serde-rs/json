@@ -106,7 +106,6 @@ impl Map<String, Value> {
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
     #[inline]
-    #[cfg(any(feature = "preserve_order", not(no_btreemap_get_key_value)))]
     pub fn get_key_value<Q>(&self, key: &Q) -> Option<(&String, &Value)>
     where
         String: Borrow<Q>,
@@ -153,44 +152,7 @@ impl Map<String, Value> {
         String: Borrow<Q>,
         Q: ?Sized + Ord + Eq + Hash,
     {
-        #[cfg(any(feature = "preserve_order", not(no_btreemap_remove_entry)))]
-        return self.map.remove_entry(key);
-        #[cfg(all(
-            not(feature = "preserve_order"),
-            no_btreemap_remove_entry,
-            not(no_btreemap_get_key_value),
-        ))]
-        {
-            let (key, _value) = self.map.get_key_value(key)?;
-            let key = key.clone();
-            let value = self.map.remove::<String>(&key)?;
-            Some((key, value))
-        }
-        #[cfg(all(
-            not(feature = "preserve_order"),
-            no_btreemap_remove_entry,
-            no_btreemap_get_key_value,
-        ))]
-        {
-            use core::ops::{Bound, RangeBounds};
-
-            struct Key<'a, Q: ?Sized>(&'a Q);
-
-            impl<'a, Q: ?Sized> RangeBounds<Q> for Key<'a, Q> {
-                fn start_bound(&self) -> Bound<&Q> {
-                    Bound::Included(self.0)
-                }
-                fn end_bound(&self) -> Bound<&Q> {
-                    Bound::Included(self.0)
-                }
-            }
-
-            let mut range = self.map.range(Key(key));
-            let (key, _value) = range.next()?;
-            let key = key.clone();
-            let value = self.map.remove::<String>(&key)?;
-            Some((key, value))
-        }
+        self.map.remove_entry(key)
     }
 
     /// Moves all elements from other into self, leaving other empty.
@@ -276,7 +238,6 @@ impl Map<String, Value> {
     ///
     /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)`
     /// returns `false`.
-    #[cfg(not(no_btreemap_retain))]
     #[inline]
     pub fn retain<F>(&mut self, f: F)
     where
