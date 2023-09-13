@@ -528,6 +528,14 @@ impl<'de> MapAccess<'de> for BorrowedRawDeserializer<'de> {
     }
 }
 
+impl<'de> IntoDeserializer<'de, Error> for &'de RawValue {
+    type Deserializer = &'de RawValue;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
 impl<'de> Deserializer<'de> for &'de RawValue {
     type Error = Error;
 
