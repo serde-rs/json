@@ -103,16 +103,17 @@ jobs:
       - run: cargo clippy --tests -- -Dclippy::all -Dclippy::pedantic
       - run: cargo clippy --all-features --tests -- -Dclippy::all -Dclippy::pedantic
 
-  docs:
+  doc:
     name: Documentation
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      RUSTDOCFLAGS: -Dwarnings
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo doc --features raw_value,unbounded_depth
-        env:
-          RUSTDOCFLAGS: --cfg docsrs
+      - uses: dtolnay/install@cargo-docs-rs
+      - run: cargo docs-rs
 
   fuzz:
     name: Fuzz
