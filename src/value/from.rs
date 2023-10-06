@@ -91,7 +91,7 @@ impl From<String> for Value {
     }
 }
 
-impl<'a> From<&'a str> for Value {
+impl From<&str> for Value {
     /// Convert string slice to `Value`
     ///
     /// # Examples
@@ -181,7 +181,7 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
     }
 }
 
-impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
+impl<T: Clone + Into<Value>> From<&[T]> for Value {
     /// Convert a slice to `Value`
     ///
     /// # Examples
@@ -192,7 +192,7 @@ impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     /// let v: &[&str] = &["lorem", "ipsum", "dolor"];
     /// let x: Value = v.into();
     /// ```
-    fn from(f: &'a [T]) -> Self {
+    fn from(f: &[T]) -> Self {
         Value::Array(f.iter().cloned().map(Into::into).collect())
     }
 }
