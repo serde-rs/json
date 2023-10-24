@@ -491,7 +491,9 @@ impl<'a, V> Entry<'a, V> {
     /// # Examples
     ///
     /// ```
-    /// let mut map = serde_json::Map::new();
+    /// use serde_json::Value;
+    ///
+    /// let mut map = serde_json::Map::<String, Value>::new();
     /// assert_eq!(map.entry("serde").key(), &"serde");
     /// ```
     pub fn key(&self) -> &String {
@@ -588,8 +590,9 @@ impl<'a, V> VacantEntry<'a, V> {
     ///
     /// ```
     /// use serde_json::map::Entry;
+    /// use serde_json::Value;
     ///
-    /// let mut map = serde_json::Map::new();
+    /// let mut map = serde_json::Map::<String, Value>::new();
     ///
     /// match map.entry("serde") {
     ///     Entry::Vacant(vacant) => {
