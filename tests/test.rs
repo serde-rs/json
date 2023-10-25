@@ -160,16 +160,28 @@ fn test_write_f64() {
 
 #[test]
 fn test_encode_nonfinite_float_yields_null() {
-    let v = to_value(::std::f64::NAN).unwrap();
+    let v = to_value(::std::f64::NAN.copysign(1.0)).unwrap();
+    assert!(v.is_null());
+
+    let v = to_value(::std::f64::NAN.copysign(-1.0)).unwrap();
     assert!(v.is_null());
 
     let v = to_value(::std::f64::INFINITY).unwrap();
     assert!(v.is_null());
 
-    let v = to_value(::std::f32::NAN).unwrap();
+    let v = to_value(-::std::f64::INFINITY).unwrap();
+    assert!(v.is_null());
+
+    let v = to_value(::std::f32::NAN.copysign(1.0)).unwrap();
+    assert!(v.is_null());
+
+    let v = to_value(::std::f32::NAN.copysign(-1.0)).unwrap();
     assert!(v.is_null());
 
     let v = to_value(::std::f32::INFINITY).unwrap();
+    assert!(v.is_null());
+
+    let v = to_value(-::std::f32::INFINITY).unwrap();
     assert!(v.is_null());
 }
 
