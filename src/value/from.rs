@@ -28,7 +28,8 @@ from_integer! {
 }
 
 impl From<f32> for Value {
-    /// Convert 32-bit floating point number to `Value`
+    /// Convert 32-bit floating point number to `Value::Number`, or
+    /// `Value::Null` if infinite or NaN.
     ///
     /// # Examples
     ///
@@ -44,7 +45,8 @@ impl From<f32> for Value {
 }
 
 impl From<f64> for Value {
-    /// Convert 64-bit floating point number to `Value`
+    /// Convert 64-bit floating point number to `Value::Number`, or
+    /// `Value::Null` if infinite or NaN.
     ///
     /// # Examples
     ///
@@ -60,7 +62,7 @@ impl From<f64> for Value {
 }
 
 impl From<bool> for Value {
-    /// Convert boolean to `Value`
+    /// Convert boolean to `Value::Bool`.
     ///
     /// # Examples
     ///
@@ -76,7 +78,7 @@ impl From<bool> for Value {
 }
 
 impl From<String> for Value {
-    /// Convert `String` to `Value`
+    /// Convert `String` to `Value::String`.
     ///
     /// # Examples
     ///
@@ -92,7 +94,7 @@ impl From<String> for Value {
 }
 
 impl From<&str> for Value {
-    /// Convert string slice to `Value`
+    /// Convert string slice to `Value::String`.
     ///
     /// # Examples
     ///
@@ -108,7 +110,7 @@ impl From<&str> for Value {
 }
 
 impl<'a> From<Cow<'a, str>> for Value {
-    /// Convert copy-on-write string to `Value`
+    /// Convert copy-on-write string to `Value::String`.
     ///
     /// # Examples
     ///
@@ -133,7 +135,7 @@ impl<'a> From<Cow<'a, str>> for Value {
 }
 
 impl From<Number> for Value {
-    /// Convert `Number` to `Value`
+    /// Convert `Number` to `Value::Number`.
     ///
     /// # Examples
     ///
@@ -149,7 +151,7 @@ impl From<Number> for Value {
 }
 
 impl From<Map<String, Value>> for Value {
-    /// Convert map (with string keys) to `Value`
+    /// Convert map (with string keys) to `Value::Object`.
     ///
     /// # Examples
     ///
@@ -166,7 +168,7 @@ impl From<Map<String, Value>> for Value {
 }
 
 impl<T: Into<Value>> From<Vec<T>> for Value {
-    /// Convert a `Vec` to `Value`
+    /// Convert a `Vec` to `Value::Array`.
     ///
     /// # Examples
     ///
@@ -182,7 +184,7 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
 }
 
 impl<T: Clone + Into<Value>> From<&[T]> for Value {
-    /// Convert a slice to `Value`
+    /// Convert a slice to `Value::Array`.
     ///
     /// # Examples
     ///
@@ -198,7 +200,7 @@ impl<T: Clone + Into<Value>> From<&[T]> for Value {
 }
 
 impl<T: Into<Value>> FromIterator<T> for Value {
-    /// Convert an iterable type to a `Value`
+    /// Create a `Value::Array` by collecting an iterator of array elements.
     ///
     /// # Examples
     ///
@@ -228,7 +230,7 @@ impl<T: Into<Value>> FromIterator<T> for Value {
 }
 
 impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
-    /// Convert an iterable type to a `Value`
+    /// Create a `Value::Object` by collecting an iterator of key-value pairs.
     ///
     /// # Examples
     ///
@@ -248,7 +250,7 @@ impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
 }
 
 impl From<()> for Value {
-    /// Convert `()` to `Value`
+    /// Convert `()` to `Value::Null`.
     ///
     /// # Examples
     ///
