@@ -81,7 +81,7 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn ignore_str(&mut self) -> Result<()>;
 
-    /// Assumes the previous byte was a hex escape sequnce ('\u') in a string.
+    /// Assumes the previous byte was a hex escape sequence ('\u') in a string.
     /// Parses next hexadecimal sequence.
     #[doc(hidden)]
     fn decode_hex_escape(&mut self) -> Result<u16>;

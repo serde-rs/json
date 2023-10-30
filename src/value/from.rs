@@ -198,7 +198,7 @@ impl<T: Clone + Into<Value>> From<&[T]> for Value {
 }
 
 impl<T: Into<Value>> FromIterator<T> for Value {
-    /// Convert an iteratable type to a `Value`
+    /// Convert an iterable type to a `Value`
     ///
     /// # Examples
     ///
@@ -228,7 +228,7 @@ impl<T: Into<Value>> FromIterator<T> for Value {
 }
 
 impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
-    /// Convert an iteratable type to a `Value`
+    /// Convert an iterable type to a `Value`
     ///
     /// # Examples
     ///
