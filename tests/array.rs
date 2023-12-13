@@ -146,7 +146,7 @@ fn test_nesting() {
                 let mut sub2 = sub.next_array();
                 assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 3);
                 {
-                    let mut sub3 = sub2.next_array();
+                    sub2.next_array();
                 }
             }
         }
@@ -163,7 +163,7 @@ fn test_nesting() {
                 let mut sub2 = sub.next_array();
                 assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 3);
                 {
-                    let mut sub3 = sub2.next_array();
+                    sub2.next_array();
                 }
                 assert!(sub2.next::<IgnoredAny>().is_none());
             }
