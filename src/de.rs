@@ -2478,22 +2478,30 @@ enum ContainerKind {
     Object,
 }
 
-enum NestingDirection {
+enum NestingAction {
     Enter,
     Leave,
 }
 
 struct NestingCommand {
     kind: ContainerKind,
-    direction: NestingDirection,
+    action: NestingAction,
 }
 
+// The underlying deserializer for arrays and objects. The other deserializers are just handles to control this one.
 struct IterativeBaseDeserializer<'de, R> {
     de: Deserializer<R>,
     lifetime: PhantomData<&'de ()>,
+
+    // Queue of all nesting-adjustment-commands that will be applied on the call to `next` before reading
+    // the actual value.
     nesting_change: Vec<NestingCommand>,
-    cur_level: usize,
-    future_level: usize,
+
+    // The nesting depth we are currently at, before applying the queue of commands.
+    cur_depth: usize,
+
+    // The nesting depth we will be at after applying the queue of commands.
+    future_depth: usize,
 }
 
 impl<'de, R> IterativeBaseDeserializer<'de, R>
@@ -2504,12 +2512,13 @@ where
         IterativeBaseDeserializer {
             de,
             lifetime: PhantomData,
+            // First action will be to enter the top-level container
             nesting_change: vec![NestingCommand {
                 kind: initial_kind,
-                direction: NestingDirection::Enter,
+                action: NestingAction::Enter,
             }],
-            cur_level: 0,
-            future_level: 1,
+            cur_depth: 0,
+            future_depth: 1,
         }
     }
 
@@ -2588,27 +2597,27 @@ where
         Ok(())
     }
 
-    // Applies all the queued up nesting commands. Afterwards, current_level and future_level should
+    // Applies all the queued up nesting commands. Afterwards, current_depth and future_depth should
     // be the same.
     fn resolve_nesting(&mut self) -> Result<bool> {
         // When we just entered a container, the next character must not be a comma.
-        // Otherwise, it must be a comma.
+        // Otherwise (on leave but also just on any actual value), it must be a comma.
         let mut last_entered = false;
         for cmd in self.nesting_change.drain(..) {
-            last_entered = match cmd.direction {
-                NestingDirection::Enter => {
+            last_entered = match cmd.action {
+                NestingAction::Enter => {
                     tri!(Self::nest_enter(
                         &mut self.de,
-                        &mut self.cur_level,
+                        &mut self.cur_depth,
                         cmd.kind,
                         last_entered
                     ));
                     true
                 }
-                NestingDirection::Leave => {
+                NestingAction::Leave => {
                     tri!(Self::nest_leave(
                         &mut self.de,
-                        &mut self.cur_level,
+                        &mut self.cur_depth,
                         cmd.kind
                     ));
                     false
@@ -2627,7 +2636,7 @@ where
     // Due to the way the lifetimes work, we can be sure that at this point only an array is expected
     fn next_arr_val<T: de::Deserialize<'de>>(
         &mut self,
-        expected_level: usize,
+        expected_depth: usize,
     ) -> Option<Result<T>> {
         // First, we need to resolve all the nesting that was queued up before.
         let needs_comma = match self.resolve_nesting() {
@@ -2635,7 +2644,9 @@ where
             Err(e) => return Some(Err(e)),
         };
 
-        if self.cur_level == 0 || self.cur_level != expected_level {
+        // if expected_depth differs from our current one at this point, it means we have already nested out of the
+        // container, so there's no more values to get.
+        if self.cur_depth == 0 || self.cur_depth != expected_depth {
             // We already ran `end()` at this point during `nest_leave`
             return None;
         }
@@ -2644,9 +2655,9 @@ where
             Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
             Ok(Some(b']')) => {
                 self.de.eat_char();
-                self.cur_level -= 1;
-                self.future_level -= 1;
-                if self.cur_level == 0 {
+                self.cur_depth -= 1;
+                self.future_depth -= 1;
+                if self.cur_depth == 0 {
                     return match self.de.end() {
                         Ok(()) => None,
                         Err(e) => Some(Err(e)),
@@ -2675,31 +2686,30 @@ where
         }
     }
 
-    fn queue_enter_array<'new_parent>(
-        &'new_parent mut self,
-    ) -> SubArrayDeserializer<'de, 'new_parent, R>
+    // Nest one level deeper
+    fn sub_array<'new_parent>(&'new_parent mut self) -> SubArrayDeserializer<'de, 'new_parent, R>
     where
         'de: 'new_parent,
     {
         self.nesting_change.push(NestingCommand {
             kind: ContainerKind::Array,
-            direction: NestingDirection::Enter,
+            action: NestingAction::Enter,
         });
 
-        self.future_level += 1;
+        self.future_depth += 1;
 
         SubArrayDeserializer {
-            expected_level: self.future_level,
+            expected_depth: self.future_depth,
             base: self,
         }
     }
 
-    fn queue_leave(&mut self, expected_level: usize, kind: ContainerKind) {
-        if self.future_level == expected_level {
-            self.future_level -= 1;
+    fn queue_leave(&mut self, expected_depth: usize, kind: ContainerKind) {
+        if self.future_depth == expected_depth {
+            self.future_depth -= 1;
             self.nesting_change.push(NestingCommand {
                 kind,
-                direction: NestingDirection::Leave,
+                action: NestingAction::Leave,
             });
         }
     }
@@ -2715,7 +2725,7 @@ where
 /// therefore preferable over deserializing into a container type such as `Vec` when the complete
 /// array is too large to fit in memory.
 ///
-/// ```edition2018
+/// ```
 /// use serde_json::{Deserializer, Value};
 ///
 /// fn main() {
@@ -2762,7 +2772,7 @@ where
     where
         'de: 'new_parent,
     {
-        self.base.queue_enter_array()
+        self.base.sub_array()
     }
 }
 
@@ -2780,7 +2790,11 @@ where
     R: read::Read<'de>,
 {
     base: &'parent mut IterativeBaseDeserializer<'de, R>,
-    expected_level: usize,
+    // The nesting depth of this container. It functions like an ID in order to check whether we are still in the
+    // container. This is necessary because there are two ways of leaving a container: Either by calling `next` past
+    // the end (and getting None), or by dropping this struct (for example at the end of the scope). We must make
+    // sure we don't queue up more than one leave command.
+    expected_depth: usize,
 }
 
 impl<'de, 'parent, R> SubArrayDeserializer<'de, 'parent, R>
@@ -2789,7 +2803,7 @@ where
 {
     /// Return the next element from the array. Returns None if there are no more elements.
     pub fn next<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
-        self.base.next_arr_val(self.expected_level)
+        self.base.next_arr_val(self.expected_depth)
     }
 
     /// Some docs TODO
@@ -2799,7 +2813,7 @@ where
     where
         'de: 'new_parent,
     {
-        self.base.queue_enter_array()
+        self.base.sub_array()
     }
 }
 
@@ -2809,7 +2823,7 @@ where
 {
     fn drop(&mut self) {
         self.base
-            .queue_leave(self.expected_level, ContainerKind::Array);
+            .queue_leave(self.expected_depth, ContainerKind::Array);
     }
 }
 
