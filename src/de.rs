@@ -2565,7 +2565,6 @@ where
         }
         de.eat_char();
         *cur_nesting += 1;
-        println!("nest_enter: {}", *cur_nesting);
 
         Ok(())
     }
@@ -2789,10 +2788,6 @@ where
 
 impl<'de1, 'de2, R> Drop for SubArrayDeserializer<'de1, 'de2, R> {
     fn drop(&mut self) {
-        println!(
-            "dropping: C={}, E={}",
-            self.base.cur_expected_level, self.expected_level
-        );
         if self.base.cur_expected_level == self.expected_level {
             self.base.cur_expected_level -= 1;
             self.base.nesting_change.push(NestingCommand {

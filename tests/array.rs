@@ -5,6 +5,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_json;
 
+use serde::de::IgnoredAny;
 use serde_json::de::ArrayDeserializer;
 use serde_json::{de::Read, Deserializer, Value};
 
@@ -41,33 +42,12 @@ fn test_json_array_empty() {
 }
 
 #[test]
-fn test_json_array_empty2() {
-    let data = "[]";
-
-    {
-        struct Test;
-        impl Tester for Test {
-            fn test<'a, R: Read<'a>>(mut stream: ArrayDeserializer<'a, R>) {
-                assert!(stream.next::<Value>().is_none());
-            }
-        }
-        test_stream::<Test>(data);
-    }
-
-    // test_stream!(data, |stream| {
-    //     assert!(stream.next::<Value>().is_none());
-    // });
-}
-
-#[test]
 fn test_json_array_whitespace() {
     let data = "\r [\n{\"x\":42}\t, {\"y\":43}\n] \t\n";
 
     test_stream!(data, |stream| {
         assert_eq!(stream.next::<Value>().unwrap().unwrap()["x"], 42);
-
         assert_eq!(stream.next::<Value>().unwrap().unwrap()["y"], 43);
-
         assert!(stream.next::<Value>().is_none());
     });
 }
@@ -78,45 +58,22 @@ fn test_json_array_truncated() {
 
     test_stream!(data, |stream| {
         assert_eq!(stream.next::<Value>().unwrap().unwrap()["x"], 40);
-
         assert!(stream.next::<Value>().unwrap().unwrap_err().is_eof());
     });
 }
 
 #[test]
 fn test_json_array_primitive() {
-    let data = r#"[{}, true, 1, [], 1.0, "hey", [1.0, []], 2.0, null]"#;
+    let data = r#"[{}, true, 1, [], 1.0, "hey", null]"#;
 
     test_stream!(data, |stream| {
         assert_eq!(stream.next::<Value>().unwrap().unwrap(), json!({}));
-
         assert_eq!(stream.next::<bool>().unwrap().unwrap(), true);
-
         assert_eq!(stream.next::<u32>().unwrap().unwrap(), 1);
-
         assert_eq!(stream.next::<Value>().unwrap().unwrap(), json!([]));
-
         assert_eq!(stream.next::<f32>().unwrap().unwrap(), 1.0);
-
         assert_eq!(stream.next::<String>().unwrap().unwrap(), "hey");
-
-        {
-            let mut sub = stream.next_array();
-
-            assert_eq!(sub.next::<f32>().unwrap().unwrap(), 1.0);
-
-            {
-                let mut sub2 = sub.next_array();
-                assert!(sub2.next::<f32>().is_none());
-            }
-            println!("after sub2");
-            assert!(sub.next::<f32>().is_none());
-            println!("is_none");
-        }
-        assert_eq!(stream.next::<f32>().unwrap().unwrap(), 2.0);
-
         assert_eq!(stream.next::<Value>().unwrap().unwrap(), Value::Null);
-
         assert!(stream.next::<Value>().is_none());
     });
 }
@@ -153,5 +110,65 @@ fn test_json_array_eof() {
             second.to_string(),
             "EOF while parsing a value at line 1 column 0"
         );
+    });
+}
+
+#[test]
+fn test_nesting() {
+    let data = r#"[1, [[3, []]], 4]"#;
+
+    // With explicit is_none checks
+    test_stream!(data, |stream| {
+        assert_eq!(stream.next::<u32>().unwrap().unwrap(), 1);
+        {
+            let mut sub = stream.next_array();
+            {
+                let mut sub2 = sub.next_array();
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 3);
+                {
+                    let mut sub3 = sub2.next_array();
+                    assert!(sub3.next::<IgnoredAny>().is_none());
+                }
+                assert!(sub2.next::<IgnoredAny>().is_none());
+            }
+            assert!(sub.next::<IgnoredAny>().is_none());
+        }
+        assert_eq!(stream.next::<u32>().unwrap().unwrap(), 4);
+        assert!(stream.next::<Value>().is_none());
+    });
+
+    // Without inner is_none checks
+    test_stream!(data, |stream| {
+        assert_eq!(stream.next::<u32>().unwrap().unwrap(), 1);
+        {
+            let mut sub = stream.next_array();
+            {
+                let mut sub2 = sub.next_array();
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 3);
+                {
+                    let mut sub3 = sub2.next_array();
+                }
+            }
+        }
+        assert_eq!(stream.next::<u32>().unwrap().unwrap(), 4);
+        assert!(stream.next::<Value>().is_none());
+    });
+
+    // Mixed is_none checks
+    test_stream!(data, |stream| {
+        assert_eq!(stream.next::<u32>().unwrap().unwrap(), 1);
+        {
+            let mut sub = stream.next_array();
+            {
+                let mut sub2 = sub.next_array();
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 3);
+                {
+                    let mut sub3 = sub2.next_array();
+                }
+                assert!(sub2.next::<IgnoredAny>().is_none());
+            }
+        }
+        assert_eq!(stream.next::<u32>().unwrap().unwrap(), 4);
+        assert!(stream.next::<Value>().is_none());
     });
 }
