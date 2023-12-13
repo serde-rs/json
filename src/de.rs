@@ -15,6 +15,7 @@ use core::result;
 use core::str::FromStr;
 use serde::de::{self, Expected, Unexpected};
 use serde::forward_to_deserialize_any;
+use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "arbitrary_precision")]
 use crate::number::NumberDeserializer;
@@ -161,7 +162,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     /// Parse the JSON array as a stream of values.
-    pub fn into_array(self) -> ArrayDeserializer<'de, R> {
+    pub fn into_array(self) -> ArrayDeserializer<'de, 'de, R> {
         self.into()
     }
 
@@ -2687,7 +2688,7 @@ where
     }
 
     // Nest one level deeper
-    fn sub_array<'new_parent>(&'new_parent mut self) -> SubArrayDeserializer<'de, 'new_parent, R>
+    fn sub_array<'new_parent>(&'new_parent mut self) -> ArrayDeserializer<'de, 'new_parent, R>
     where
         'de: 'new_parent,
     {
@@ -2698,9 +2699,9 @@ where
 
         self.future_depth += 1;
 
-        SubArrayDeserializer {
+        ArrayDeserializer {
             expected_depth: self.future_depth,
-            base: self,
+            base: OwnedOrBorrowed::Borrowed(self),
         }
     }
 
@@ -2738,11 +2739,19 @@ where
 ///     }
 /// }
 /// ```
-pub struct ArrayDeserializer<'de, R> {
-    base: IterativeBaseDeserializer<'de, R>,
+pub struct ArrayDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    base: OwnedOrBorrowed<'parent, IterativeBaseDeserializer<'de, R>>,
+    // The nesting depth of this container. It functions like an ID in order to check whether we are still in the
+    // container. This is necessary because there are two ways of leaving a container: Either by calling `next` past
+    // the end (and getting None), or by dropping this struct (for example at the end of the scope). We must make
+    // sure we don't queue up more than one leave command.
+    expected_depth: usize,
 }
 
-impl<'de, R> ArrayDeserializer<'de, R>
+impl<'de, 'parent, R> ArrayDeserializer<'de, 'parent, R>
 where
     R: read::Read<'de>,
 {
@@ -2756,60 +2765,21 @@ where
     ///   - Deserializer::from_reader(...).into_array()
     pub fn new(read: R) -> Self {
         ArrayDeserializer {
-            base: IterativeBaseDeserializer::new(Deserializer::new(read), ContainerKind::Array),
+            base: OwnedOrBorrowed::Owned(IterativeBaseDeserializer::new(
+                Deserializer::new(read),
+                ContainerKind::Array,
+            )),
+            expected_depth: 1,
         }
     }
 
-    /// Return the next element from the array. Returns None if there are no more elements.
-    pub fn next<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
-        self.base.next_arr_val(1)
-    }
-
-    /// Some docs TODO
-    pub fn next_array<'new_parent>(
-        &'new_parent mut self,
-    ) -> SubArrayDeserializer<'de, 'new_parent, R>
-    where
-        'de: 'new_parent,
-    {
-        self.base.sub_array()
-    }
-}
-
-impl<'de, R: read::Read<'de>> From<Deserializer<R>> for ArrayDeserializer<'de, R> {
-    fn from(de: Deserializer<R>) -> Self {
-        ArrayDeserializer {
-            base: IterativeBaseDeserializer::new(de, ContainerKind::Array),
-        }
-    }
-}
-
-/// docs TODO
-pub struct SubArrayDeserializer<'de, 'parent, R>
-where
-    R: read::Read<'de>,
-{
-    base: &'parent mut IterativeBaseDeserializer<'de, R>,
-    // The nesting depth of this container. It functions like an ID in order to check whether we are still in the
-    // container. This is necessary because there are two ways of leaving a container: Either by calling `next` past
-    // the end (and getting None), or by dropping this struct (for example at the end of the scope). We must make
-    // sure we don't queue up more than one leave command.
-    expected_depth: usize,
-}
-
-impl<'de, 'parent, R> SubArrayDeserializer<'de, 'parent, R>
-where
-    R: read::Read<'de>,
-{
     /// Return the next element from the array. Returns None if there are no more elements.
     pub fn next<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
         self.base.next_arr_val(self.expected_depth)
     }
 
     /// Some docs TODO
-    pub fn next_array<'new_parent>(
-        &'new_parent mut self,
-    ) -> SubArrayDeserializer<'de, 'new_parent, R>
+    pub fn next_array<'new_parent>(&'new_parent mut self) -> ArrayDeserializer<'de, 'new_parent, R>
     where
         'de: 'new_parent,
     {
@@ -2817,13 +2787,51 @@ where
     }
 }
 
-impl<'de, 'parent, R> Drop for SubArrayDeserializer<'de, 'parent, R>
+impl<'de, 'parent, R> From<Deserializer<R>> for ArrayDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    fn from(de: Deserializer<R>) -> Self {
+        ArrayDeserializer {
+            base: OwnedOrBorrowed::Owned(IterativeBaseDeserializer::new(de, ContainerKind::Array)),
+            expected_depth: 1,
+        }
+    }
+}
+
+impl<'de, 'parent, R> Drop for ArrayDeserializer<'de, 'parent, R>
 where
     R: read::Read<'de>,
 {
     fn drop(&mut self) {
-        self.base
-            .queue_leave(self.expected_depth, ContainerKind::Array);
+        if let OwnedOrBorrowed::Borrowed(base) = &mut self.base {
+            base.queue_leave(self.expected_depth, ContainerKind::Array);
+        }
+    }
+}
+
+enum OwnedOrBorrowed<'a, T> {
+    Owned(T),
+    Borrowed(&'a mut T),
+}
+
+impl<'a, T> Deref for OwnedOrBorrowed<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            OwnedOrBorrowed::Owned(f) => f,
+            OwnedOrBorrowed::Borrowed(f) => *f,
+        }
+    }
+}
+
+impl<'a, T> DerefMut for OwnedOrBorrowed<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            OwnedOrBorrowed::Owned(f) => f,
+            OwnedOrBorrowed::Borrowed(f) => *f,
+        }
     }
 }
 

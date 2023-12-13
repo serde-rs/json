@@ -16,7 +16,7 @@ fn test_stream<T: Tester>(data: &str) {
 }
 
 trait Tester {
-    fn test<'reader, R: Read<'reader>>(stream: ArrayDeserializer<'reader, R>);
+    fn test<'reader, R: Read<'reader>>(stream: ArrayDeserializer<'reader, 'reader, R>);
 }
 
 macro_rules! test_stream {
@@ -24,7 +24,7 @@ macro_rules! test_stream {
         {
             struct Test;
             impl Tester for Test {
-                fn test<'r, R: Read<'r>>(mut $stream: ArrayDeserializer<'r, R>)
+                fn test<'r, R: Read<'r>>(mut $stream: ArrayDeserializer<'r, 'r, R>)
                     $test
             }
             test_stream::<Test>($data);
