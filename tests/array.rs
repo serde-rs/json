@@ -1,31 +1,32 @@
-#![cfg(not(feature = "preserve_order"))]
+// #![cfg(not(feature = "preserve_order"))] TODO
 
 extern crate serde;
 
 #[macro_use]
 extern crate serde_json;
 
-use serde_json::{Deserializer, Value};
+use serde_json::de::ArrayDeserializer;
+use serde_json::{de::Read, Deserializer, Value};
 
-// Rustfmt issue https://github.com/rust-lang-nursery/rustfmt/issues/2740
-#[cfg_attr(rustfmt, rustfmt_skip)]
+fn test_stream<T: Tester>(data: &str) {
+    T::test(Deserializer::from_str(data).into_array());
+    T::test(Deserializer::from_slice(data.as_bytes()).into_array());
+    T::test(Deserializer::from_reader(data.as_bytes()).into_array());
+}
+
+trait Tester {
+    fn test<'reader, R: Read<'reader>>(stream: ArrayDeserializer<'reader, R>);
+}
+
 macro_rules! test_stream {
     ($data:expr, |$stream:ident| $test:block) => {
         {
-            let de = Deserializer::from_str($data);
-            let mut $stream = de.into_array();
-            $test
-        }
-        {
-            let de = Deserializer::from_slice($data.as_bytes());
-            let mut $stream = de.into_array();
-            $test
-        }
-        {
-            let mut bytes = $data.as_bytes();
-            let de = Deserializer::from_reader(&mut bytes);
-            let mut $stream = de.into_array();
-            $test
+            struct Test;
+            impl Tester for Test {
+                fn test<'r, R: Read<'r>>(mut $stream: ArrayDeserializer<'r, R>)
+                    $test
+            }
+            test_stream::<Test>($data);
         }
     };
 }
@@ -37,6 +38,25 @@ fn test_json_array_empty() {
     test_stream!(data, |stream| {
         assert!(stream.next::<Value>().is_none());
     });
+}
+
+#[test]
+fn test_json_array_empty2() {
+    let data = "[]";
+
+    {
+        struct Test;
+        impl Tester for Test {
+            fn test<'a, R: Read<'a>>(mut stream: ArrayDeserializer<'a, R>) {
+                assert!(stream.next::<Value>().is_none());
+            }
+        }
+        test_stream::<Test>(data);
+    }
+
+    // test_stream!(data, |stream| {
+    //     assert!(stream.next::<Value>().is_none());
+    // });
 }
 
 #[test]
