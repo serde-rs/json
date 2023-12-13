@@ -15,7 +15,6 @@ use core::result;
 use core::str::FromStr;
 use serde::de::{self, Expected, Unexpected};
 use serde::forward_to_deserialize_any;
-use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "arbitrary_precision")]
 use crate::number::NumberDeserializer;
@@ -2473,14 +2472,25 @@ where
 
 //////////////////////////////////////////////////////////////////////////////
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Clone, Copy)]
 enum ContainerKind {
     Array,
     Object,
 }
 
+impl ContainerKind {
+    #[inline]
+    const fn end_char(self) -> u8 {
+        match self {
+            ContainerKind::Array => b']',
+            ContainerKind::Object => b'}',
+        }
+    }
+}
+
 enum NestingAction {
-    Enter,
+    // The nesting happens after a comma if we're inside an array, or after a colon if we're inside an object.
+    Enter(bool),
     Leave,
 }
 
@@ -2516,7 +2526,7 @@ where
             // First action will be to enter the top-level container
             nesting_change: vec![NestingCommand {
                 kind: initial_kind,
-                action: NestingAction::Enter,
+                action: NestingAction::Enter(false),
             }],
             cur_depth: 0,
             future_depth: 1,
@@ -2528,18 +2538,21 @@ where
         de: &mut Deserializer<R>,
         cur_nesting: &mut usize,
         kind: ContainerKind,
+        needs_comma: bool,
         last_entered: bool,
     ) -> Result<()> {
         // We don't want a preceding comma if we just entered a container.
-        // In the case of cur_nesting == 0, we are before the top-level container, and we also don't want commas there!
-        let needs_comma = *cur_nesting != 0 && !last_entered;
+        let needs_comma = needs_comma && !last_entered;
         if needs_comma {
             tri!(match de.parse_whitespace() {
                 Ok(Some(b',')) => {
                     de.eat_char();
                     Ok(())
                 }
-                Ok(Some(_)) => Err(de.peek_error(ErrorCode::ExpectedComma)),
+                Ok(Some(token)) => {
+                    println!("expected comma: {}", token as char);
+                    Err(de.peek_error(ErrorCode::ExpectedComma))
+                }
                 Ok(None) => Err(de.peek_error(ErrorCode::EofWhileParsingValue)),
                 Err(e) => Err(e),
             });
@@ -2606,11 +2619,12 @@ where
         let mut last_entered = false;
         for cmd in self.nesting_change.drain(..) {
             last_entered = match cmd.action {
-                NestingAction::Enter => {
+                NestingAction::Enter(needs_comma) => {
                     tri!(Self::nest_enter(
                         &mut self.de,
                         &mut self.cur_depth,
                         cmd.kind,
+                        needs_comma,
                         last_entered
                     ));
                     true
@@ -2629,16 +2643,8 @@ where
         Ok(last_entered)
     }
 
-    // Gets the actual JSON value that was requested
-    fn next_value<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
-        Some(de::Deserialize::deserialize(&mut self.de))
-    }
-
-    // Due to the way the lifetimes work, we can be sure that at this point only an array is expected
-    fn next_arr_val<T: de::Deserialize<'de>>(
-        &mut self,
-        expected_depth: usize,
-    ) -> Option<Result<T>> {
+    // The lifetimes prevent the container types from accidentally getting mixed up.
+    fn advance(&mut self, expected_depth: usize, kind: ContainerKind) -> Option<Result<()>> {
         // First, we need to resolve all the nesting that was queued up before.
         let needs_comma = match self.resolve_nesting() {
             Ok(entered) => !entered,
@@ -2654,33 +2660,32 @@ where
 
         match self.de.parse_whitespace() {
             Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
-            Ok(Some(b']')) => {
-                self.de.eat_char();
-                self.cur_depth -= 1;
-                self.future_depth -= 1;
-                if self.cur_depth == 0 {
-                    return match self.de.end() {
-                        Ok(()) => None,
-                        Err(e) => Some(Err(e)),
-                    };
-                }
-                None
-            }
             Ok(Some(b',')) if needs_comma => {
                 self.de.eat_char();
 
                 match self.de.parse_whitespace() {
                     Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
                     Ok(Some(b']')) => Some(Err(self.de.peek_error(ErrorCode::TrailingComma))),
-                    Ok(Some(_)) => self.next_value(),
+                    Ok(Some(_)) => Some(Ok(())),
                     Err(e) => Some(Err(e)),
                 }
             }
-            Ok(Some(_)) => {
-                if !needs_comma {
-                    self.next_value()
+            Ok(Some(token)) => {
+                if token == kind.end_char() {
+                    self.de.eat_char();
+                    self.cur_depth -= 1;
+                    self.future_depth -= 1;
+                    if self.cur_depth == 0 {
+                        return match self.de.end() {
+                            Ok(()) => None,
+                            Err(e) => Some(Err(e)),
+                        };
+                    }
+                    None
+                } else if needs_comma {
+                    Some(Err(self.de.peek_error(ErrorCode::ExpectedComma)))
                 } else {
-                    Some(Err(self.de.peek_error(ErrorCode::ExpectedSomeValue)))
+                    Some(Ok(()))
                 }
             }
             Err(e) => Some(Err(e)),
@@ -2688,13 +2693,16 @@ where
     }
 
     // Nest one level deeper
-    fn sub_array<'new_parent>(&'new_parent mut self) -> ArrayDeserializer<'de, 'new_parent, R>
+    fn sub_array<'new_parent>(
+        &'new_parent mut self,
+        needs_comma: bool,
+    ) -> ArrayDeserializer<'de, 'new_parent, R>
     where
         'de: 'new_parent,
     {
         self.nesting_change.push(NestingCommand {
             kind: ContainerKind::Array,
-            action: NestingAction::Enter,
+            action: NestingAction::Enter(needs_comma),
         });
 
         self.future_depth += 1;
@@ -2705,6 +2713,101 @@ where
                 base: self,
             },
         }
+    }
+
+    fn sub_object<'new_parent>(
+        &'new_parent mut self,
+        needs_comma: bool,
+    ) -> ObjectDeserializer<'de, 'new_parent, R>
+    where
+        'de: 'new_parent,
+    {
+        self.nesting_change.push(NestingCommand {
+            kind: ContainerKind::Object,
+            action: NestingAction::Enter(needs_comma),
+        });
+
+        self.future_depth += 1;
+
+        ObjectDeserializer {
+            inner: ObjectDeserializerInner::Borrowed {
+                expected_depth: self.future_depth,
+                base: self,
+            },
+        }
+    }
+
+    fn object_key(&mut self, expected_depth: usize) -> Option<Result<String>> {
+        match self.advance(expected_depth, ContainerKind::Object) {
+            Some(Ok(())) => {}
+            Some(Err(e)) => return Some(Err(e)),
+            None => return None,
+        };
+
+        let key: String = match de::Deserialize::deserialize(&mut self.de) {
+            Ok(key) => key,
+            Err(e) => return Some(Err(e)),
+        };
+
+        if let Err(e) = self.de.parse_object_colon() {
+            return Some(Err(e));
+        };
+
+        Some(Ok(key))
+    }
+
+    fn next_arr_val<T: de::Deserialize<'de>>(
+        &mut self,
+        expected_depth: usize,
+    ) -> Option<Result<T>> {
+        match self.advance(expected_depth, ContainerKind::Array) {
+            Some(Ok(())) => {}
+            Some(Err(e)) => return Some(Err(e)),
+            None => return None,
+        };
+
+        // Gets the actual JSON value that was requested
+        Some(de::Deserialize::deserialize(&mut self.de))
+    }
+
+    fn next_obj_val<ValueType: de::Deserialize<'de>>(
+        &mut self,
+        expected_depth: usize,
+    ) -> Option<Result<(String, ValueType)>> {
+        self.object_key(expected_depth).map(|r| {
+            r.and_then(|k| {
+                Ok((
+                    k,
+                    match de::Deserialize::deserialize(&mut self.de) {
+                        Ok(value) => value,
+                        Err(e) => return Err(e),
+                    },
+                ))
+            })
+        })
+    }
+
+    // Nest one level deeper from within an object to a new array.
+    fn object_sub_array<'new_parent>(
+        &'new_parent mut self,
+        expected_depth: usize,
+    ) -> Option<Result<(String, ArrayDeserializer<'de, 'new_parent, R>)>>
+    where
+        'de: 'new_parent,
+    {
+        self.object_key(expected_depth)
+            .map(|r| r.map(|k| (k, self.sub_array(false))))
+    }
+
+    fn object_sub_object<'new_parent>(
+        &'new_parent mut self,
+        expected_depth: usize,
+    ) -> Option<Result<(String, ObjectDeserializer<'de, 'new_parent, R>)>>
+    where
+        'de: 'new_parent,
+    {
+        self.object_key(expected_depth)
+            .map(|r| r.map(|k| (k, self.sub_object(false))))
     }
 
     fn queue_leave(&mut self, expected_depth: usize, kind: ContainerKind) {
@@ -2796,13 +2899,24 @@ where
     }
 
     /// Some docs TODO
-    pub fn next_array<'new_parent>(&'new_parent mut self) -> ArrayDeserializer<'de, 'new_parent, R>
+    pub fn sub_array<'new_parent>(&'new_parent mut self) -> ArrayDeserializer<'de, 'new_parent, R>
     where
         'de: 'new_parent,
     {
         match &mut self.inner {
-            ArrayDeserializerInner::Owned(base) => base.sub_array(),
-            ArrayDeserializerInner::Borrowed { base, .. } => base.sub_array(),
+            ArrayDeserializerInner::Owned(base) => base.sub_array(true),
+            ArrayDeserializerInner::Borrowed { base, .. } => base.sub_array(true),
+        }
+    }
+
+    /// Some docs TODO
+    pub fn sub_object<'new_parent>(&'new_parent mut self) -> ObjectDeserializer<'de, 'new_parent, R>
+    where
+        'de: 'new_parent,
+    {
+        match &mut self.inner {
+            ArrayDeserializerInner::Owned(base) => base.sub_object(true),
+            ArrayDeserializerInner::Borrowed { base, .. } => base.sub_object(true),
         }
     }
 }
@@ -2832,6 +2946,123 @@ where
         } = &mut self.inner
         {
             base.queue_leave(*expected_depth, ContainerKind::Array);
+        }
+    }
+}
+
+/// TODO
+pub struct ObjectDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    inner: ObjectDeserializerInner<'de, 'parent, R>,
+}
+
+enum ObjectDeserializerInner<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    Owned(IterativeBaseDeserializer<'de, R>),
+    Borrowed {
+        base: &'parent mut IterativeBaseDeserializer<'de, R>,
+        // The nesting depth of this container. It functions like an ID in order to check whether we are still in the
+        // container. This is necessary because there are two ways of leaving a container: Either by calling `next` past
+        // the end (and getting None), or by dropping this struct (for example at the end of the scope). We must make
+        // sure we don't queue up more than one leave command.
+        expected_depth: usize,
+    },
+}
+
+impl<'de, 'parent, R> ObjectDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    /// Create a JSON array deserializer from one of the possible serde_json
+    /// input sources.
+    ///
+    /// Typically it is more convenient to use one of these methods instead:
+    ///
+    ///   - Deserializer::from_str(...).into_array()
+    ///   - Deserializer::from_bytes(...).into_array()
+    ///   - Deserializer::from_reader(...).into_array()
+    pub fn new(read: R) -> Self {
+        Self {
+            inner: ObjectDeserializerInner::Owned(IterativeBaseDeserializer::new(
+                Deserializer::new(read),
+                ContainerKind::Object,
+            )),
+        }
+    }
+
+    /// Return the next element from the array. Returns None if there are no more elements.
+    pub fn next<T: de::Deserialize<'de>>(&mut self) -> Option<Result<(String, T)>> {
+        match &mut self.inner {
+            ObjectDeserializerInner::Owned(base) => base.next_obj_val(1),
+            ObjectDeserializerInner::Borrowed {
+                base,
+                expected_depth,
+            } => base.next_obj_val(*expected_depth),
+        }
+    }
+
+    /// Some docs TODO
+    pub fn sub_array<'new_parent>(
+        &'new_parent mut self,
+    ) -> Option<Result<(String, ArrayDeserializer<'de, 'new_parent, R>)>>
+    where
+        'de: 'new_parent,
+    {
+        match &mut self.inner {
+            ObjectDeserializerInner::Owned(base) => base.object_sub_array(1),
+            ObjectDeserializerInner::Borrowed {
+                base,
+                expected_depth,
+            } => base.object_sub_array(*expected_depth),
+        }
+    }
+
+    /// Some docs TODO
+    pub fn sub_object<'new_parent>(
+        &'new_parent mut self,
+    ) -> Option<Result<(String, ObjectDeserializer<'de, 'new_parent, R>)>>
+    where
+        'de: 'new_parent,
+    {
+        match &mut self.inner {
+            ObjectDeserializerInner::Owned(base) => base.object_sub_object(1),
+            ObjectDeserializerInner::Borrowed {
+                base,
+                expected_depth,
+            } => base.object_sub_object(*expected_depth),
+        }
+    }
+}
+
+impl<'de, 'parent, R> From<Deserializer<R>> for ObjectDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    fn from(de: Deserializer<R>) -> Self {
+        Self {
+            inner: ObjectDeserializerInner::Owned(IterativeBaseDeserializer::new(
+                de,
+                ContainerKind::Object,
+            )),
+        }
+    }
+}
+
+impl<'de, 'parent, R> Drop for ObjectDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    fn drop(&mut self) {
+        if let ObjectDeserializerInner::Borrowed {
+            base,
+            expected_depth,
+        } = &mut self.inner
+        {
+            base.queue_leave(*expected_depth, ContainerKind::Object);
         }
     }
 }

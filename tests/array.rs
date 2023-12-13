@@ -115,18 +115,24 @@ fn test_json_array_eof() {
 
 #[test]
 fn test_nesting() {
-    let data = r#"[1, [[3, []]], 4]"#;
+    let data = r#"[1, [[3, []]], 4, {
+        "x": 5,
+        "y": {
+            "z": 6
+        },
+        "w": [7, 8]
+    }]"#;
 
     // With explicit is_none checks
     test_stream!(data, |stream| {
         assert_eq!(stream.next::<u32>().unwrap().unwrap(), 1);
         {
-            let mut sub = stream.next_array();
+            let mut sub = stream.sub_array();
             {
-                let mut sub2 = sub.next_array();
+                let mut sub2 = sub.sub_array();
                 assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 3);
                 {
-                    let mut sub3 = sub2.next_array();
+                    let mut sub3 = sub2.sub_array();
                     assert!(sub3.next::<IgnoredAny>().is_none());
                 }
                 assert!(sub2.next::<IgnoredAny>().is_none());
@@ -134,6 +140,24 @@ fn test_nesting() {
             assert!(sub.next::<IgnoredAny>().is_none());
         }
         assert_eq!(stream.next::<u32>().unwrap().unwrap(), 4);
+        {
+            let mut sub = stream.sub_object();
+            assert_eq!(sub.next::<u32>().unwrap().unwrap(), ("x".to_string(), 5));
+            {
+                let (k, mut sub2) = sub.sub_object().unwrap().unwrap();
+                assert_eq!(k, "y");
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), ("z".to_string(), 6));
+                assert!(sub2.next::<Value>().is_none());
+            }
+            {
+                let (k, mut sub2) = sub.sub_array().unwrap().unwrap();
+                assert_eq!(k, "w");
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 7);
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 8);
+                assert!(sub2.next::<Value>().is_none());
+            }
+            assert!(sub.next::<Value>().is_none());
+        }
         assert!(stream.next::<Value>().is_none());
     });
 
@@ -141,16 +165,31 @@ fn test_nesting() {
     test_stream!(data, |stream| {
         assert_eq!(stream.next::<u32>().unwrap().unwrap(), 1);
         {
-            let mut sub = stream.next_array();
+            let mut sub = stream.sub_array();
             {
-                let mut sub2 = sub.next_array();
+                let mut sub2 = sub.sub_array();
                 assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 3);
                 {
-                    sub2.next_array();
+                    sub2.sub_array();
                 }
             }
         }
         assert_eq!(stream.next::<u32>().unwrap().unwrap(), 4);
+        {
+            let mut sub = stream.sub_object();
+            assert_eq!(sub.next::<u32>().unwrap().unwrap(), ("x".to_string(), 5));
+            {
+                let (k, mut sub2) = sub.sub_object().unwrap().unwrap();
+                assert_eq!(k, "y");
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), ("z".to_string(), 6));
+            }
+            {
+                let (k, mut sub2) = sub.sub_array().unwrap().unwrap();
+                assert_eq!(k, "w");
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 7);
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 8);
+            }
+        }
         assert!(stream.next::<Value>().is_none());
     });
 
@@ -158,17 +197,33 @@ fn test_nesting() {
     test_stream!(data, |stream| {
         assert_eq!(stream.next::<u32>().unwrap().unwrap(), 1);
         {
-            let mut sub = stream.next_array();
+            let mut sub = stream.sub_array();
             {
-                let mut sub2 = sub.next_array();
+                let mut sub2 = sub.sub_array();
                 assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 3);
                 {
-                    sub2.next_array();
+                    sub2.sub_array();
                 }
                 assert!(sub2.next::<IgnoredAny>().is_none());
             }
         }
         assert_eq!(stream.next::<u32>().unwrap().unwrap(), 4);
+        {
+            let mut sub = stream.sub_object();
+            assert_eq!(sub.next::<u32>().unwrap().unwrap(), ("x".to_string(), 5));
+            {
+                let (k, mut sub2) = sub.sub_object().unwrap().unwrap();
+                assert_eq!(k, "y");
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), ("z".to_string(), 6));
+            }
+            {
+                let (k, mut sub2) = sub.sub_array().unwrap().unwrap();
+                assert_eq!(k, "w");
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 7);
+                assert_eq!(sub2.next::<u32>().unwrap().unwrap(), 8);
+                assert!(sub2.next::<Value>().is_none());
+            }
+        }
         assert!(stream.next::<Value>().is_none());
     });
 }
