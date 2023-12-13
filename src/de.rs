@@ -2700,8 +2700,10 @@ where
         self.future_depth += 1;
 
         ArrayDeserializer {
-            expected_depth: self.future_depth,
-            base: OwnedOrBorrowed::Borrowed(self),
+            inner: ArrayDeserializerInner::Borrowed {
+                expected_depth: self.future_depth,
+                base: self,
+            },
         }
     }
 
@@ -2743,12 +2745,22 @@ pub struct ArrayDeserializer<'de, 'parent, R>
 where
     R: read::Read<'de>,
 {
-    base: OwnedOrBorrowed<'parent, IterativeBaseDeserializer<'de, R>>,
-    // The nesting depth of this container. It functions like an ID in order to check whether we are still in the
-    // container. This is necessary because there are two ways of leaving a container: Either by calling `next` past
-    // the end (and getting None), or by dropping this struct (for example at the end of the scope). We must make
-    // sure we don't queue up more than one leave command.
-    expected_depth: usize,
+    inner: ArrayDeserializerInner<'de, 'parent, R>,
+}
+
+enum ArrayDeserializerInner<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    Owned(IterativeBaseDeserializer<'de, R>),
+    Borrowed {
+        base: &'parent mut IterativeBaseDeserializer<'de, R>,
+        // The nesting depth of this container. It functions like an ID in order to check whether we are still in the
+        // container. This is necessary because there are two ways of leaving a container: Either by calling `next` past
+        // the end (and getting None), or by dropping this struct (for example at the end of the scope). We must make
+        // sure we don't queue up more than one leave command.
+        expected_depth: usize,
+    },
 }
 
 impl<'de, 'parent, R> ArrayDeserializer<'de, 'parent, R>
@@ -2764,18 +2776,23 @@ where
     ///   - Deserializer::from_bytes(...).into_array()
     ///   - Deserializer::from_reader(...).into_array()
     pub fn new(read: R) -> Self {
-        ArrayDeserializer {
-            base: OwnedOrBorrowed::Owned(IterativeBaseDeserializer::new(
+        Self {
+            inner: ArrayDeserializerInner::Owned(IterativeBaseDeserializer::new(
                 Deserializer::new(read),
                 ContainerKind::Array,
             )),
-            expected_depth: 1,
         }
     }
 
     /// Return the next element from the array. Returns None if there are no more elements.
     pub fn next<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
-        self.base.next_arr_val(self.expected_depth)
+        match &mut self.inner {
+            ArrayDeserializerInner::Owned(base) => base.next_arr_val(1),
+            ArrayDeserializerInner::Borrowed {
+                base,
+                expected_depth,
+            } => base.next_arr_val(*expected_depth),
+        }
     }
 
     /// Some docs TODO
@@ -2783,7 +2800,10 @@ where
     where
         'de: 'new_parent,
     {
-        self.base.sub_array()
+        match &mut self.inner {
+            ArrayDeserializerInner::Owned(base) => base.sub_array(),
+            ArrayDeserializerInner::Borrowed { base, .. } => base.sub_array(),
+        }
     }
 }
 
@@ -2792,9 +2812,11 @@ where
     R: read::Read<'de>,
 {
     fn from(de: Deserializer<R>) -> Self {
-        ArrayDeserializer {
-            base: OwnedOrBorrowed::Owned(IterativeBaseDeserializer::new(de, ContainerKind::Array)),
-            expected_depth: 1,
+        Self {
+            inner: ArrayDeserializerInner::Owned(IterativeBaseDeserializer::new(
+                de,
+                ContainerKind::Array,
+            )),
         }
     }
 }
@@ -2804,33 +2826,12 @@ where
     R: read::Read<'de>,
 {
     fn drop(&mut self) {
-        if let OwnedOrBorrowed::Borrowed(base) = &mut self.base {
-            base.queue_leave(self.expected_depth, ContainerKind::Array);
-        }
-    }
-}
-
-enum OwnedOrBorrowed<'a, T> {
-    Owned(T),
-    Borrowed(&'a mut T),
-}
-
-impl<'a, T> Deref for OwnedOrBorrowed<'a, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            OwnedOrBorrowed::Owned(f) => f,
-            OwnedOrBorrowed::Borrowed(f) => *f,
-        }
-    }
-}
-
-impl<'a, T> DerefMut for OwnedOrBorrowed<'a, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            OwnedOrBorrowed::Owned(f) => f,
-            OwnedOrBorrowed::Borrowed(f) => *f,
+        if let ArrayDeserializerInner::Borrowed {
+            base,
+            expected_depth,
+        } = &mut self.inner
+        {
+            base.queue_leave(*expected_depth, ContainerKind::Array);
         }
     }
 }
