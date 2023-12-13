@@ -162,11 +162,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     /// Parse the JSON array as a stream of values.
     pub fn into_array(self) -> ArrayDeserializer<'de, R> {
-        ArrayDeserializer {
-            de: self,
-            started: false,
-            lifetime: PhantomData,
-        }
+        self.into()
     }
 
     /// Parse arbitrarily deep JSON structures without any consideration for
@@ -2476,6 +2472,230 @@ where
 
 //////////////////////////////////////////////////////////////////////////////
 
+#[derive(Eq, PartialEq)]
+enum ContainerKind {
+    Array,
+    Object,
+}
+
+enum NestingDirection {
+    Enter,
+    Leave,
+}
+
+struct NestingCommand {
+    kind: ContainerKind,
+    direction: NestingDirection,
+}
+
+struct IterativeBaseDeserializer<'de, R> {
+    de: Deserializer<R>,
+    lifetime: PhantomData<&'de ()>,
+    nesting_change: Vec<NestingCommand>,
+    cur_resolved_level: usize,
+    cur_expected_level: usize,
+}
+
+impl<'de, R> IterativeBaseDeserializer<'de, R>
+where
+    R: read::Read<'de>,
+{
+    pub fn new(de: Deserializer<R>, initial_kind: ContainerKind) -> Self {
+        IterativeBaseDeserializer {
+            de,
+            lifetime: PhantomData,
+            nesting_change: vec![NestingCommand {
+                kind: initial_kind,
+                direction: NestingDirection::Enter,
+            }],
+            cur_resolved_level: 0,
+            cur_expected_level: 1,
+        }
+    }
+
+    fn next_value<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
+        Some(de::Deserialize::deserialize(&mut self.de))
+    }
+
+    fn nest_enter(
+        de: &mut Deserializer<R>,
+        cur_nesting: &mut usize,
+        kind: ContainerKind,
+        last_entered: bool,
+    ) -> Result<()> {
+        let needs_comma = *cur_nesting != 0 && !last_entered;
+        if needs_comma {
+            match de.parse_whitespace() {
+                Ok(Some(b',')) => {
+                    de.eat_char();
+                }
+                Ok(Some(_)) => {
+                    return Err(de.peek_error(ErrorCode::Message("Expected Comma".into())))
+                }
+                Ok(None) => return Err(de.peek_error(ErrorCode::EofWhileParsingValue)),
+                Err(e) => return Err(e),
+            }
+        }
+
+        match de.parse_whitespace() {
+            Ok(Some(b'[')) => {
+                if !matches!(kind, ContainerKind::Array) {
+                    // TODO: ErrorCode
+                    return Err(de.peek_error(ErrorCode::Message(
+                        "Unexpected value while nesting 1".into(),
+                    )));
+                }
+            }
+            Ok(Some(b'{')) => {
+                if !matches!(kind, ContainerKind::Object) {
+                    // TODO: ErrorCode
+                    return Err(de.peek_error(ErrorCode::Message(
+                        "Unexpected value while nesting 2".into(),
+                    )));
+                }
+            }
+            Ok(None) => return Err(de.peek_error(ErrorCode::EofWhileParsingValue)),
+            Err(e) => return Err(e),
+            Ok(Some(_)) => {
+                // TODO: ErrorCode
+                return Err(de.peek_error(ErrorCode::Message(
+                    "Unexpected value while nesting 3".into(),
+                )));
+            }
+        }
+        de.eat_char();
+        *cur_nesting += 1;
+        println!("nest_enter: {}", *cur_nesting);
+
+        Ok(())
+    }
+
+    fn nest_leave(
+        de: &mut Deserializer<R>,
+        cur_nesting: &mut usize,
+        kind: ContainerKind,
+    ) -> Result<()> {
+        match de.parse_whitespace() {
+            Ok(Some(b']')) => {
+                if !matches!(kind, ContainerKind::Array) {
+                    // TODO: ErrorCode
+                    return Err(de.peek_error(ErrorCode::Message(
+                        "Unexpected value while unnesting".into(),
+                    )));
+                }
+            }
+            Ok(Some(b'}')) => {
+                if !matches!(kind, ContainerKind::Object) {
+                    // TODO: ErrorCode
+                    return Err(de.peek_error(ErrorCode::Message(
+                        "Unexpected value while unnesting".into(),
+                    )));
+                }
+            }
+            Ok(None) => return Err(de.peek_error(ErrorCode::EofWhileParsingValue)),
+            Err(e) => return Err(e),
+            Ok(Some(_)) => {
+                // TODO: ErrorCode
+                return Err(de.peek_error(ErrorCode::Message(
+                    "Unexpected value while unnesting".into(),
+                )));
+            }
+        }
+        de.eat_char();
+        *cur_nesting -= 1;
+        if *cur_nesting == 0 {
+            return de.end();
+        }
+
+        Ok(())
+    }
+
+    fn adjust_nesting(&mut self) -> Result<bool> {
+        let mut last_entered = false;
+        for cmd in self.nesting_change.drain(..) {
+            last_entered = match cmd.direction {
+                NestingDirection::Enter => {
+                    Self::nest_enter(
+                        &mut self.de,
+                        &mut self.cur_resolved_level,
+                        cmd.kind,
+                        last_entered,
+                    )?;
+                    true
+                }
+                NestingDirection::Leave => {
+                    Self::nest_leave(&mut self.de, &mut self.cur_resolved_level, cmd.kind)?;
+                    false
+                }
+            };
+        }
+
+        Ok(last_entered)
+    }
+
+    fn next_arr_val<T: de::Deserialize<'de>>(
+        &mut self,
+        expected_level: usize,
+    ) -> Option<Result<T>> {
+        let entered = match self.adjust_nesting() {
+            Ok(entered) => entered,
+            Err(e) => return Some(Err(e)),
+        };
+
+        if self.cur_resolved_level == 0 || self.cur_resolved_level != expected_level {
+            // We already ran `end()` at this point during `nest_leave`
+            dbg!(self.cur_resolved_level, expected_level);
+            return None;
+        }
+
+        match self.de.parse_whitespace() {
+            Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
+            Ok(Some(b']')) => {
+                self.de.eat_char();
+                self.cur_resolved_level -= 1;
+                self.cur_expected_level -= 1;
+                if self.cur_resolved_level == 0 {
+                    return match self.de.end() {
+                        Ok(()) => None,
+                        Err(e) => Some(Err(e)),
+                    };
+                }
+                None
+            }
+            Ok(Some(b',')) if !entered => {
+                self.de.eat_char();
+
+                match self.de.parse_whitespace() {
+                    Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
+                    Ok(Some(b']')) => Some(Err(self.de.peek_error(ErrorCode::TrailingComma))),
+                    Ok(Some(_)) => self.next_value(),
+                    Err(e) => Some(Err(e)),
+                }
+            }
+            Ok(Some(_)) if entered => self.next_value(),
+            Ok(Some(_)) => Some(Err(self.de.peek_error(ErrorCode::ExpectedSomeValue))),
+            Err(e) => Some(Err(e)),
+        }
+    }
+
+    fn next_array<'a>(&'a mut self) -> SubArrayDeserializer<'de, 'a, R>
+    where
+        'de: 'a,
+    {
+        self.nesting_change.push(NestingCommand {
+            kind: ContainerKind::Array,
+            direction: NestingDirection::Enter,
+        });
+
+        self.cur_expected_level += 1;
+
+        SubArrayDeserializer {
+            expected_level: self.cur_expected_level,
+            base: self,
+        }
+    }
+}
+
 /// A streaming JSON array deserializer.
 ///
 /// An array deserializer can be created from any JSON deserializer using the
@@ -2500,9 +2720,7 @@ where
 /// }
 /// ```
 pub struct ArrayDeserializer<'de, R> {
-    de: Deserializer<R>,
-    started: bool, // True if we have consumed the first '['
-    lifetime: PhantomData<&'de ()>,
+    base: IterativeBaseDeserializer<'de, R>,
 }
 
 impl<'de, R> ArrayDeserializer<'de, R>
@@ -2519,56 +2737,68 @@ where
     ///   - Deserializer::from_reader(...).into_array()
     pub fn new(read: R) -> Self {
         ArrayDeserializer {
-            de: Deserializer::new(read),
-            started: false,
-            lifetime: PhantomData,
-        }
-    }
-
-    fn end<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
-        self.de.eat_char();
-        match self.de.end() {
-            Ok(_) => None,
-            Err(e) => Some(Err(e)),
-        }
-    }
-
-    fn next_value<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
-        match de::Deserialize::deserialize(&mut self.de) {
-            Ok(v) => Some(Ok(v)),
-            Err(e) => Some(Err(e)),
+            base: IterativeBaseDeserializer::new(Deserializer::new(read), ContainerKind::Array),
         }
     }
 
     /// Return the next element from the array. Returns None if there are no more elements.
     pub fn next<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
-        match self.de.parse_whitespace() {
-            Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
-            Ok(Some(b'[')) if !self.started => {
-                self.started = true;
-                self.de.eat_char();
+        self.base.next_arr_val(1)
+    }
 
-                // We have to peek at the next character here to handle an empty array.
-                match self.de.parse_whitespace() {
-                    Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
-                    Ok(Some(b']')) => self.end(),
-                    Ok(Some(_)) => self.next_value(),
-                    Err(e) => Some(Err(e)),
-                }
-            }
-            Ok(Some(b']')) if self.started => self.end(),
-            Ok(Some(b',')) if self.started => {
-                self.de.eat_char();
+    /// Some docs TODO
+    pub fn next_array<'a>(&'a mut self) -> SubArrayDeserializer<'de, 'a, R>
+    where
+        'de: 'a,
+    {
+        self.base.next_array()
+    }
+}
 
-                match self.de.parse_whitespace() {
-                    Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
-                    Ok(Some(b']')) => Some(Err(self.de.peek_error(ErrorCode::TrailingComma))),
-                    Ok(Some(_)) => self.next_value(),
-                    Err(e) => Some(Err(e)),
-                }
-            }
-            Ok(Some(_)) => Some(Err(self.de.peek_error(ErrorCode::ExpectedSomeValue))),
-            Err(e) => Some(Err(e)),
+impl<'de, R: read::Read<'de>> From<Deserializer<R>> for ArrayDeserializer<'de, R> {
+    fn from(de: Deserializer<R>) -> Self {
+        ArrayDeserializer {
+            base: IterativeBaseDeserializer::new(de, ContainerKind::Array),
+        }
+    }
+}
+
+/// docs TODO
+pub struct SubArrayDeserializer<'de1, 'de2, R> {
+    base: &'de2 mut IterativeBaseDeserializer<'de1, R>,
+    expected_level: usize,
+}
+
+impl<'de1, 'de2, R> SubArrayDeserializer<'de1, 'de2, R>
+where
+    R: read::Read<'de1>,
+{
+    /// Return the next element from the array. Returns None if there are no more elements.
+    pub fn next<T: de::Deserialize<'de1>>(&mut self) -> Option<Result<T>> {
+        self.base.next_arr_val(self.expected_level)
+    }
+
+    /// Some docs TODO
+    pub fn next_array<'a>(&'a mut self) -> SubArrayDeserializer<'de1, 'a, R>
+    where
+        'de1: 'a,
+    {
+        self.base.next_array()
+    }
+}
+
+impl<'de1, 'de2, R> Drop for SubArrayDeserializer<'de1, 'de2, R> {
+    fn drop(&mut self) {
+        println!(
+            "dropping: C={}, E={}",
+            self.base.cur_expected_level, self.expected_level
+        );
+        if self.base.cur_expected_level == self.expected_level {
+            self.base.cur_expected_level -= 1;
+            self.base.nesting_change.push(NestingCommand {
+                kind: ContainerKind::Array,
+                direction: NestingDirection::Leave,
+            });
         }
     }
 }

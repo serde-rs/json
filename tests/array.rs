@@ -65,7 +65,7 @@ fn test_json_array_truncated() {
 
 #[test]
 fn test_json_array_primitive() {
-    let data = "[{}, true, 1, [], 1.0, \"hey\", null]";
+    let data = r#"[{}, true, 1, [], 1.0, "hey", [1.0, []], 2.0, null]"#;
 
     test_stream!(data, |stream| {
         assert_eq!(stream.next::<Value>().unwrap().unwrap(), json!({}));
@@ -79,6 +79,21 @@ fn test_json_array_primitive() {
         assert_eq!(stream.next::<f32>().unwrap().unwrap(), 1.0);
 
         assert_eq!(stream.next::<String>().unwrap().unwrap(), "hey");
+
+        {
+            let mut sub = stream.next_array();
+
+            assert_eq!(sub.next::<f32>().unwrap().unwrap(), 1.0);
+
+            {
+                let mut sub2 = sub.next_array();
+                assert!(sub2.next::<f32>().is_none());
+            }
+            println!("after sub2");
+            assert!(sub.next::<f32>().is_none());
+            println!("is_none");
+        }
+        assert_eq!(stream.next::<f32>().unwrap().unwrap(), 2.0);
 
         assert_eq!(stream.next::<Value>().unwrap().unwrap(), Value::Null);
 
