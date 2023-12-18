@@ -3158,7 +3158,7 @@ where
     /// use serde_json::Deserializer;
     ///
     /// fn main() {
-    ///     let data = r#"{"some-obj": {"k1": 1, "k2": 2}}"#;
+    ///     let data = r#"{"some-obj": {"k1": 1, "k2": 2}, "some-num": 3}"#;
     ///
     ///     let mut iter = Deserializer::from_str(data).into_object();
     ///     
