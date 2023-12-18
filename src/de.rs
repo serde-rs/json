@@ -2526,14 +2526,17 @@ where
     R: read::Read<'de>,
 {
     pub fn new(de: Deserializer<R>, initial_kind: ContainerKind) -> Self {
+        let mut nesting_change = Vec::new();
+        nesting_change.push(NestingCommand {
+            kind: initial_kind,
+            action: NestingAction::Enter { needs_comma: false },
+        });
+
         IterativeBaseDeserializer {
             de,
             lifetime: PhantomData,
             // First action will be to enter the top-level container
-            nesting_change: vec![NestingCommand {
-                kind: initial_kind,
-                action: NestingAction::Enter { needs_comma: false },
-            }],
+            nesting_change,
             cur_depth: 0,
             future_depth: 1,
         }
@@ -2555,8 +2558,7 @@ where
                     de.eat_char();
                     Ok(())
                 }
-                Ok(Some(token)) => {
-                    println!("expected comma: {}", token as char);
+                Ok(Some(_)) => {
                     Err(de.peek_error(ErrorCode::ExpectedComma))
                 }
                 Ok(None) => Err(de.peek_error(ErrorCode::EofWhileParsingValue)),
