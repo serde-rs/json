@@ -1,5 +1,3 @@
-// #![cfg(not(feature = "preserve_order"))] TODO
-
 extern crate serde;
 
 #[macro_use]
