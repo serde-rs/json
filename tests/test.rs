@@ -2492,15 +2492,14 @@ fn test_value_into_deserializer() {
 #[test]
 fn hash_positive_and_negative_zero() {
     let rand = std::hash::RandomState::new();
-    let hash = |obj| rand.hash_one(obj);
 
     let k1 = serde_json::from_str::<Number>("0.0").unwrap();
     let k2 = serde_json::from_str::<Number>("-0.0").unwrap();
     if cfg!(feature = "arbitrary_precision") {
         assert_ne!(k1, k2);
-        assert_ne!(hash(k1), hash(k2));
+        assert_ne!(rand.hash_one(k1), rand.hash_one(k2));
     } else {
         assert_eq!(k1, k2);
-        assert_eq!(hash(k1), hash(k2));
+        assert_eq!(rand.hash_one(k1), rand.hash_one(k2));
     }
 }
