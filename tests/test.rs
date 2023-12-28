@@ -14,9 +14,6 @@
     clippy::vec_init_then_push,
     clippy::zero_sized_map_values
 )]
-#![cfg_attr(feature = "trace-macros", feature(trace_macros))]
-#[cfg(feature = "trace-macros")]
-trace_macros!(true);
 
 #[macro_use]
 mod macros;
