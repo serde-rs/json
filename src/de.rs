@@ -22,6 +22,7 @@ use crate::number::NumberDeserializer;
 pub use crate::read::{Read, SliceRead, StrRead};
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use crate::read::IoRead;
 
 //////////////////////////////////////////////////////////////////////////////

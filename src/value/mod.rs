@@ -106,6 +106,7 @@ pub use crate::map::Map;
 pub use crate::number::Number;
 
 #[cfg(feature = "raw_value")]
+#[cfg_attr(docsrs, doc(cfg(feature = "raw_value")))]
 pub use crate::raw::{to_raw_value, RawValue};
 
 /// Represents any valid JSON value.
