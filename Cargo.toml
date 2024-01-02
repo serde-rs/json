@@ -15,14 +15,14 @@ rust-version = "1.56"
 indexmap = { version = "2", optional = true }
 itoa = "1.0"
 ryu = "1.0"
-serde = { version = "1.0.166", default-features = false }
+serde = { version = "1.0.194", default-features = false }
 
 [dev-dependencies]
 automod = "1.0.11"
 indoc = "2.0.2"
 ref-cast = "1.0.18"
 rustversion = "1.0.13"
-serde = { version = "1.0.166", features = ["derive"] }
+serde = { version = "1.0.194", features = ["derive"] }
 serde_bytes = "0.11.10"
 serde_derive = "1.0.166"
 serde_stacker = "0.1.8"
