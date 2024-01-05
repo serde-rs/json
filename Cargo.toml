@@ -12,7 +12,8 @@ repository = "https://github.com/serde-rs/json"
 rust-version = "1.56"
 
 [dependencies]
-indexmap = { version = "2", optional = true }
+ahash = { version = "0.8", default-features = false, optional = true }
+indexmap = { version = "2", default-features = false, optional = true }
 itoa = "1.0"
 ryu = "1.0"
 serde = { version = "1.0.194", default-features = false }
@@ -55,7 +56,7 @@ alloc = ["serde/alloc"]
 # Make serde_json::Map use a representation which maintains insertion order.
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
-preserve_order = ["indexmap", "std"]
+preserve_order = ["ahash", "indexmap"]
 
 # Use sufficient precision when parsing fixed precision floats from JSON to
 # ensure that they maintain accuracy when round-tripped through JSON. This comes
