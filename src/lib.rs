@@ -316,6 +316,7 @@
     clippy::needless_late_init,
     clippy::return_self_not_must_use,
     clippy::transmute_ptr_to_ptr,
+    clippy::unconditional_recursion, // https://github.com/rust-lang/rust-clippy/issues/12133
     clippy::unnecessary_wraps
 )]
 // Ignored clippy_pedantic lints
