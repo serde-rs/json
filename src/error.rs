@@ -466,10 +466,14 @@ struct JsonUnexpected<'a>(de::Unexpected<'a>);
 
 impl<'a> Display for JsonUnexpected<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        if let de::Unexpected::Unit = self.0 {
-            formatter.write_str("null")
-        } else {
-            Display::fmt(&self.0, formatter)
+        match self.0 {
+            de::Unexpected::Unit => formatter.write_str("null"),
+            de::Unexpected::Float(value) => write!(
+                formatter,
+                "floating point `{}`",
+                ryu::Buffer::new().format(value),
+            ),
+            unexp => Display::fmt(&unexp, formatter),
         }
     }
 }
