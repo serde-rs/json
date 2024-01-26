@@ -223,7 +223,7 @@ pub trait Float: Number {
     const NEGATIVE_INFINITY_BITS: Self::Unsigned;
     /// Size of the significand (mantissa) without hidden bit.
     const MANTISSA_SIZE: i32;
-    /// Bias of the exponet
+    /// Bias of the exponent
     const EXPONENT_BIAS: i32;
     /// Exponent portion of a denormal float.
     const DENORMAL_EXPONENT: i32;
