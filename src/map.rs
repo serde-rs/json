@@ -7,6 +7,8 @@
 //! [`IndexMap`]: https://docs.rs/indexmap/*/indexmap/map/struct.IndexMap.html
 
 use crate::value::Value;
+#[cfg(feature = "preserve_order")]
+use ahash::RandomState;
 use alloc::string::String;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
@@ -30,14 +32,17 @@ pub struct Map<K, V> {
 #[cfg(not(feature = "preserve_order"))]
 type MapImpl<K, V> = BTreeMap<K, V>;
 #[cfg(feature = "preserve_order")]
-type MapImpl<K, V> = IndexMap<K, V>;
+type MapImpl<K, V> = IndexMap<K, V, RandomState>;
 
 impl Map<String, Value> {
     /// Makes a new empty Map.
     #[inline]
     pub fn new() -> Self {
         Map {
+            #[cfg(not(feature = "preserve_order"))]
             map: MapImpl::new(),
+            #[cfg(feature = "preserve_order")]
+            map: MapImpl::with_hasher(RandomState::new()),
         }
     }
 
@@ -52,7 +57,7 @@ impl Map<String, Value> {
                 BTreeMap::new()
             },
             #[cfg(feature = "preserve_order")]
-            map: IndexMap::with_capacity(capacity),
+            map: IndexMap::with_capacity_and_hasher(capacity, RandomState::new()),
         }
     }
 
@@ -159,8 +164,10 @@ impl Map<String, Value> {
     #[inline]
     pub fn append(&mut self, other: &mut Self) {
         #[cfg(feature = "preserve_order")]
-        self.map
-            .extend(mem::replace(&mut other.map, MapImpl::default()));
+        self.map.extend(mem::replace(
+            &mut other.map,
+            MapImpl::with_hasher(RandomState::new()),
+        ));
         #[cfg(not(feature = "preserve_order"))]
         self.map.append(&mut other.map);
     }
@@ -252,7 +259,10 @@ impl Default for Map<String, Value> {
     #[inline]
     fn default() -> Self {
         Map {
+            #[cfg(not(feature = "preserve_order"))]
             map: MapImpl::new(),
+            #[cfg(feature = "preserve_order")]
+            map: MapImpl::with_hasher(RandomState::new()),
         }
     }
 }
@@ -400,8 +410,16 @@ impl FromIterator<(String, Value)> for Map<String, Value> {
     where
         T: IntoIterator<Item = (String, Value)>,
     {
-        Map {
+        Self {
+            #[cfg(not(feature = "preserve_order"))]
             map: FromIterator::from_iter(iter),
+            #[cfg(feature = "preserve_order")]
+            map: {
+                // TODO: replace with `iter.into_iter().collect();` when RandomState will impl Default
+                let mut map = MapImpl::with_hasher(RandomState::new());
+                map.extend(iter);
+                map
+            },
         }
     }
 }
