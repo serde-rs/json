@@ -130,6 +130,12 @@ impl Map<String, Value> {
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
+    ///
+    /// If serde_json's "preserve_order" is enabled, `.remove(key)` is
+    /// equivalent to [`.swap_remove(key)`][Self::swap_remove], replacing this
+    /// entry's position with the last element. If you need to preserve the
+    /// relative order of the keys in the map, use
+    /// [`.shift_remove(key)`][Self::shift_remove] instead.
     #[inline]
     pub fn remove<Q>(&mut self, key: &Q) -> Option<Value>
     where
@@ -137,7 +143,7 @@ impl Map<String, Value> {
         Q: ?Sized + Ord + Eq + Hash,
     {
         #[cfg(feature = "preserve_order")]
-        return self.map.swap_remove(key);
+        return self.swap_remove(key);
         #[cfg(not(feature = "preserve_order"))]
         return self.map.remove(key);
     }
@@ -147,12 +153,86 @@ impl Map<String, Value> {
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
+    ///
+    /// If serde_json's "preserve_order" is enabled, `.remove_entry(key)` is
+    /// equivalent to [`.swap_remove_entry(key)`][Self::swap_remove_entry],
+    /// replacing this entry's position with the last element. If you need to
+    /// preserve the relative order of the keys in the map, use
+    /// [`.shift_remove_entry(key)`][Self::shift_remove_entry] instead.
+    #[inline]
     pub fn remove_entry<Q>(&mut self, key: &Q) -> Option<(String, Value)>
     where
         String: Borrow<Q>,
         Q: ?Sized + Ord + Eq + Hash,
     {
-        self.map.remove_entry(key)
+        #[cfg(feature = "preserve_order")]
+        return self.swap_remove_entry(key);
+        #[cfg(not(feature = "preserve_order"))]
+        return self.map.remove_entry(key);
+    }
+
+    /// Removes and returns the value corresponding to the key from the map.
+    ///
+    /// Like [`Vec::swap_remove`], the entry is removed by swapping it with the
+    /// last element of the map and popping it off. This perturbs the position
+    /// of what used to be the last element!
+    #[cfg(feature = "preserve_order")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
+    #[inline]
+    pub fn swap_remove<Q>(&mut self, key: &Q) -> Option<Value>
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Ord + Eq + Hash,
+    {
+        self.map.swap_remove(key)
+    }
+
+    /// Remove and return the key-value pair.
+    ///
+    /// Like [`Vec::swap_remove`], the entry is removed by swapping it with the
+    /// last element of the map and popping it off. This perturbs the position
+    /// of what used to be the last element!
+    #[cfg(feature = "preserve_order")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
+    #[inline]
+    pub fn swap_remove_entry<Q>(&mut self, key: &Q) -> Option<(String, Value)>
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Ord + Eq + Hash,
+    {
+        self.map.swap_remove_entry(key)
+    }
+
+    /// Removes and returns the value corresponding to the key from the map.
+    ///
+    /// Like [`Vec::remove`], the entry is removed by shifting all of the
+    /// elements that follow it, preserving their relative order. This perturbs
+    /// the index of all of those elements!
+    #[cfg(feature = "preserve_order")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
+    #[inline]
+    pub fn shift_remove<Q>(&mut self, key: &Q) -> Option<Value>
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Ord + Eq + Hash,
+    {
+        self.map.shift_remove(key)
+    }
+
+    /// Remove and return the key-value pair.
+    ///
+    /// Like [`Vec::remove`], the entry is removed by shifting all of the
+    /// elements that follow it, preserving their relative order. This perturbs
+    /// the index of all of those elements!
+    #[cfg(feature = "preserve_order")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
+    #[inline]
+    pub fn shift_remove_entry<Q>(&mut self, key: &Q) -> Option<(String, Value)>
+    where
+        String: Borrow<Q>,
+        Q: ?Sized + Ord + Eq + Hash,
+    {
+        self.map.shift_remove_entry(key)
     }
 
     /// Moves all elements from other into self, leaving other empty.
