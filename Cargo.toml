@@ -12,7 +12,7 @@ repository = "https://github.com/serde-rs/json"
 rust-version = "1.56"
 
 [dependencies]
-indexmap = { version = "2", optional = true }
+indexmap = { version = "2.2.1", optional = true }
 itoa = "1.0"
 ryu = "1.0"
 serde = { version = "1.0.194", default-features = false }
@@ -32,7 +32,7 @@ trybuild = { version = "1.0.81", features = ["diff"] }
 doc-scrape-examples = false
 
 [package.metadata.docs.rs]
-features = ["raw_value", "unbounded_depth"]
+features = ["preserve_order", "raw_value", "unbounded_depth"]
 targets = ["x86_64-unknown-linux-gnu"]
 rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
 
