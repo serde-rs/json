@@ -14,6 +14,8 @@ use crate::iter::LineColIterator;
 use crate::raw::BorrowedRawDeserializer;
 #[cfg(all(feature = "raw_value", feature = "std"))]
 use crate::raw::OwnedRawDeserializer;
+#[cfg(all(feature = "raw_value", feature = "std"))]
+use alloc::string::String;
 #[cfg(feature = "raw_value")]
 use serde::de::Visitor;
 

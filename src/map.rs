@@ -20,7 +20,7 @@ use serde::de;
 #[cfg(not(feature = "preserve_order"))]
 use alloc::collections::{btree_map, BTreeMap};
 #[cfg(feature = "preserve_order")]
-use indexmap::{self, IndexMap};
+use indexmap::IndexMap;
 
 /// Represents a JSON key/value type.
 pub struct Map<K, V> {
@@ -176,6 +176,8 @@ impl Map<String, Value> {
     /// Like [`Vec::swap_remove`], the entry is removed by swapping it with the
     /// last element of the map and popping it off. This perturbs the position
     /// of what used to be the last element!
+    ///
+    /// [`Vec::swap_remove`]: std::vec::Vec::swap_remove
     #[cfg(feature = "preserve_order")]
     #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
     #[inline]
@@ -192,6 +194,8 @@ impl Map<String, Value> {
     /// Like [`Vec::swap_remove`], the entry is removed by swapping it with the
     /// last element of the map and popping it off. This perturbs the position
     /// of what used to be the last element!
+    ///
+    /// [`Vec::swap_remove`]: std::vec::Vec::swap_remove
     #[cfg(feature = "preserve_order")]
     #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
     #[inline]
@@ -208,6 +212,8 @@ impl Map<String, Value> {
     /// Like [`Vec::remove`], the entry is removed by shifting all of the
     /// elements that follow it, preserving their relative order. This perturbs
     /// the index of all of those elements!
+    ///
+    /// [`Vec::remove`]: std::vec::Vec::remove
     #[cfg(feature = "preserve_order")]
     #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
     #[inline]
@@ -224,6 +230,8 @@ impl Map<String, Value> {
     /// Like [`Vec::remove`], the entry is removed by shifting all of the
     /// elements that follow it, preserving their relative order. This perturbs
     /// the index of all of those elements!
+    ///
+    /// [`Vec::remove`]: std::vec::Vec::remove
     #[cfg(feature = "preserve_order")]
     #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
     #[inline]
