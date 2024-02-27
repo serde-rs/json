@@ -10,6 +10,10 @@ use alloc::vec::{self, Vec};
 use core::fmt;
 use core::slice;
 use core::str::FromStr;
+
+#[cfg(feature = "no_duplicate_keys")]
+use std::format;
+
 use serde::de::{
     self, Deserialize, DeserializeSeed, EnumAccess, Expected, IntoDeserializer, MapAccess,
     SeqAccess, Unexpected, VariantAccess, Visitor,
@@ -122,6 +126,10 @@ impl<'de> Deserialize<'de> for Value {
 
                         values.insert(first_key, tri!(visitor.next_value()));
                         while let Some((key, value)) = tri!(visitor.next_entry()) {
+                            #[cfg(feature = "no_duplicate_keys")]
+                            if values.contains_key(&key) {
+                                Err(serde::de::Error::custom(format!("duplicate key '{key}'")))?
+                            }
                             values.insert(key, value);
                         }
 
