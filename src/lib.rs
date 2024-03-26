@@ -56,7 +56,7 @@
 //!
 //! A string of JSON data can be parsed into a `serde_json::Value` by the
 //! [`serde_json::from_str`][from_str] function. There is also [`from_slice`]
-//! for parsing from a byte slice &\[u8\] and [`from_reader`] for parsing from
+//! for parsing from a byte slice `&[u8]` and [`from_reader`] for parsing from
 //! any `io::Read` like a File or a TCP stream.
 //!
 //! ```
