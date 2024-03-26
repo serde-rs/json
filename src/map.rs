@@ -17,8 +17,12 @@ use core::mem;
 use core::ops;
 use serde::de;
 
+#[cfg(feature = "no_duplicate_keys")]
+use std::format;
+
 #[cfg(not(feature = "preserve_order"))]
 use alloc::collections::{btree_map, BTreeMap};
+
 #[cfg(feature = "preserve_order")]
 use indexmap::IndexMap;
 
@@ -472,6 +476,10 @@ impl<'de> de::Deserialize<'de> for Map<String, Value> {
                 let mut values = Map::new();
 
                 while let Some((key, value)) = tri!(visitor.next_entry()) {
+                    #[cfg(feature = "no_duplicate_keys")]
+                    if values.contains_key(&key) {
+                        Err(serde::de::Error::custom(format!("duplicate key '{key}'")))?
+                    }
                     values.insert(key, value);
                 }
 
