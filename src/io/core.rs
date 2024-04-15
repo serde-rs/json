@@ -5,10 +5,13 @@ use alloc::vec::Vec;
 use core::fmt::{self, Display};
 use core::result;
 
+/// see [`std::io::ErrorKind`]
 pub enum ErrorKind {
+    /// see [`std::io::ErrorKind::Other`]
     Other,
 }
 
+/// see [`std::io::Error`]
 // I/O errors can never occur in no-std mode. All our no-std I/O implementations
 // are infallible.
 pub struct Error;
@@ -25,11 +28,15 @@ impl Error {
     }
 }
 
+/// see [`std::io::Result`]
 pub type Result<T> = result::Result<T, Error>;
 
+/// see [`std::io::Write`]
 pub trait Write {
+    /// see [`std::io::Write::write`]
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
 
+    /// see [`std::io::Write::write_all`]
     fn write_all(&mut self, buf: &[u8]) -> Result<()> {
         // All our Write impls in no_std mode always write the whole buffer in
         // one call infallibly.
@@ -39,6 +46,7 @@ pub trait Write {
         Ok(())
     }
 
+    /// see [`std::io::Write::flush`]
     fn flush(&mut self) -> Result<()>;
 }
 
