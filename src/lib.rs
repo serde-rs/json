@@ -377,11 +377,7 @@ pub use crate::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
 pub use crate::error::{Error, Result};
 #[doc(inline)]
-pub use crate::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty};
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-#[doc(inline)]
-pub use crate::ser::{to_writer, to_writer_pretty, Serializer};
+pub use crate::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer, to_writer_pretty, Serializer};
 #[doc(inline)]
 pub use crate::value::{from_value, to_value, Map, Number, Value};
 
@@ -402,16 +398,12 @@ mod macros;
 pub mod de;
 pub mod error;
 pub mod map;
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod ser;
-#[cfg(not(feature = "std"))]
-mod ser;
 pub mod value;
 
 mod features_check;
 
-mod io;
+pub mod io;
 #[cfg(feature = "std")]
 mod iter;
 #[cfg(feature = "float_roundtrip")]
