@@ -14,7 +14,9 @@ pub enum ErrorKind {
 /// see [`std::io::Error`]
 // I/O errors can never occur in no-std mode. All our no-std I/O implementations
 // are infallible.
-pub struct Error;
+pub struct Error {
+    _priv: (),
+}
 
 impl Display for Error {
     fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -23,8 +25,9 @@ impl Display for Error {
 }
 
 impl Error {
-    pub(crate) fn new(_kind: ErrorKind, _error: &'static str) -> Error {
-        Error
+    /// see [`std::io::Error::new`]
+    pub fn new(_kind: ErrorKind, _error: &'static str) -> Error {
+        Error(())
     }
 }
 

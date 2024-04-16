@@ -7,7 +7,7 @@
 //! ```
 
 
-use serde_json::io::{Write, Result, Error};
+use serde_json::io::{Write, Result, Error, ErrorKind};
 
 struct X {
 }
@@ -18,7 +18,7 @@ impl Write for X {
 	}
 
 	fn flush(&mut self) -> Result<()> {
-		Err(Error {})
+		Err(Error::new(ErrorKind::Other, "flush not implemented"))
 	}
 }
 
