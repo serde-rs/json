@@ -403,7 +403,8 @@ pub mod value;
 
 mod features_check;
 
-pub mod io;
+pub use io::core as alloc_io;
+mod io;
 #[cfg(feature = "std")]
 mod iter;
 #[cfg(feature = "float_roundtrip")]

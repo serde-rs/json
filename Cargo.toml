@@ -16,6 +16,7 @@ indexmap = { version = "2.2.1", optional = true }
 itoa = "1.0"
 ryu = "1.0"
 serde = { version = "1.0.194", default-features = false }
+core2 = { version = "0.4", optional = true }
 
 [dev-dependencies]
 automod = "1.0.11"
@@ -39,6 +40,9 @@ rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
 [package.metadata.playground]
 features = ["raw_value"]
 
+[[example]]
+name = "test"
+required-features = ["use-core2"]
 
 ### FEATURES #################################################################
 
@@ -86,3 +90,5 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+use-core2 = ["core2"]

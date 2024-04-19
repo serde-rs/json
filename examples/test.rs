@@ -2,26 +2,29 @@
 //! Run via:
 //!
 //! ```sh
-//! cargo run --example test
-//! cargo run --example test --features alloc --no-default-features
+//! cargo run --example test --features use-core2
+//! cargo run --example test --features alloc,use-core2 --no-default-features
 //! ```
 
 
-use serde_json::io::{Write, Result, Error, ErrorKind};
+use serde_json::alloc_io::{Write, Result, Error, ErrorKind};
 
-struct X {
-}
 
-impl Write for X {
-	fn write(&mut self, _buf: &[u8]) -> Result<usize> {
-		Ok(0)
-	}
+struct Buffer {}
 
+impl Write for Buffer {
+	fn write(&mut self, _bytes: &[u8]) -> Result<usize> { panic!() }
 	fn flush(&mut self) -> Result<()> {
 		Err(Error::new(ErrorKind::Other, "flush not implemented"))
 	}
 }
 
+impl core2::io::Write for Buffer {
+	fn write(&mut self, _bytes: &[u8]) -> core2::io::Result<usize> { panic!() }
+	fn flush(&mut self) -> core2::io::Result<()> { panic!() }
+}
+
 fn main() {
-	let _x = &mut X{} as &mut dyn Write;
+	println!("Hello, world!");
+	let _x = &mut Buffer {} as &mut dyn Write;
 }

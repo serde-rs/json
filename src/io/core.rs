@@ -27,7 +27,7 @@ impl Display for Error {
 impl Error {
     /// see [`std::io::Error::new`]
     pub fn new(_kind: ErrorKind, _error: &'static str) -> Error {
-        Error(())
+        Error { _priv: () }
     }
 }
 

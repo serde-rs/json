@@ -9,9 +9,11 @@
 
 pub use self::imp::{Error, ErrorKind, Result, Write};
 
+// no-std implementation
+pub mod core;
+
 #[cfg(not(feature = "std"))]
-#[path = "core.rs"]
-mod imp;
+use core as imp;
 
 #[cfg(feature = "std")]
 use std::io as imp;
