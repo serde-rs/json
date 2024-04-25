@@ -8,6 +8,8 @@
 
 use crate::value::Value;
 use alloc::string::String;
+#[cfg(feature = "preserve_order")]
+use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::Hash;
@@ -367,6 +369,23 @@ impl PartialEq for Map<String, Value> {
 }
 
 impl Eq for Map<String, Value> {}
+
+#[cfg(not(feature = "preserve_order"))]
+impl Hash for Map<String, Value> {
+    #[inline]
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.map.hash(state)
+    }
+}
+#[cfg(feature = "preserve_order")]
+impl Hash for Map<String, Value> {
+    #[inline]
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        let mut kv = self.map.iter().collect::<Vec<_>>();
+        kv.sort_unstable_by(|a, b| a.0.cmp(b.0));
+        kv.hash(state);
+    }
+}
 
 /// Access an element of this map. Panics if the given key is not present in the
 /// map.
