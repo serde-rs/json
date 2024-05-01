@@ -2385,7 +2385,7 @@ fn test_boxed_raw_value() {
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.get());
 
     let wrapper_from_value: Wrapper =
-        serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3})).unwrap();
+        serde_json::from_value(&json!({"a": 1, "b": {"foo": 2}, "c": 3})).unwrap();
     assert_eq!(r#"{"foo":2}"#, wrapper_from_value.b.get());
 
     let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
