@@ -614,11 +614,11 @@ where
         assert_eq!(v, value);
 
         // Make sure we can deserialize from a `Value`.
-        let v: T = from_value(json_value.clone()).unwrap();
+        let v: T = from_value(&json_value).unwrap();
         assert_eq!(v, value);
 
         // Make sure we can round trip back to `Value`.
-        let json_value2: Value = from_value(json_value.clone()).unwrap();
+        let json_value2: Value = from_value(&json_value).unwrap();
         assert_eq!(json_value2, json_value);
 
         // Make sure we can fully ignore.
@@ -1413,10 +1413,10 @@ fn test_missing_option_field() {
     let value: Foo = from_str("{\"x\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(json!({})).unwrap();
+    let value: Foo = from_value(&json!({})).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(json!({"x": 5})).unwrap();
+    let value: Foo = from_value(&json!({"x": 5})).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
 
@@ -1444,10 +1444,10 @@ fn test_missing_renamed_field() {
     let value: Foo = from_str("{\"y\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(json!({})).unwrap();
+    let value: Foo = from_value(&json!({})).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(json!({"y": 5})).unwrap();
+    let value: Foo = from_value(&json!({"y": 5})).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
 
@@ -1899,13 +1899,13 @@ fn test_integer_key() {
         (r#"{"123 ":null}"#, "expected `\"` at line 1 column 6"),
     ]);
 
-    let err = from_value::<BTreeMap<i32, ()>>(json!({" 123":null})).unwrap_err();
+    let err = from_value::<BTreeMap<i32, ()>>(&json!({" 123":null})).unwrap_err();
     assert_eq!(
         err.to_string(),
         "invalid value: expected key to be a number in quotes",
     );
 
-    let err = from_value::<BTreeMap<i32, ()>>(json!({"123 ":null})).unwrap_err();
+    let err = from_value::<BTreeMap<i32, ()>>(&json!({"123 ":null})).unwrap_err();
     assert_eq!(
         err.to_string(),
         "invalid value: expected key to be a number in quotes",
