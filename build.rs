@@ -3,7 +3,6 @@ use std::env;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
-    println!("cargo:rustc-check-cfg=cfg(integer128)");
     println!("cargo:rustc-check-cfg=cfg(limb_width_32)");
     println!("cargo:rustc-check-cfg=cfg(limb_width_64)");
 
