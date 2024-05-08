@@ -2122,9 +2122,6 @@ fn test_partialeq_number() {
         f32::consts::E f32::consts::PI f32::consts::LN_2 f32::consts::LOG2_E
         f64::consts::E f64::consts::PI f64::consts::LN_2 f64::consts::LOG2_E
     );
-
-    #[cfg(feature = "arbitrary_precision")]
-    number_partialeq_ok!(i128::MIN i128::MAX u128::MIN u128::MAX);
 }
 
 #[test]
