@@ -1926,6 +1926,7 @@ impl Formatter for CompactFormatter {}
 #[derive(Clone, Debug)]
 pub struct PrettyFormatter<'a> {
     current_indent: usize,
+    array_breaks: bool,
     has_value: bool,
     indent: &'a [u8],
 }
@@ -1940,8 +1941,19 @@ impl<'a> PrettyFormatter<'a> {
     pub fn with_indent(indent: &'a [u8]) -> Self {
         PrettyFormatter {
             current_indent: 0,
+            array_breaks: true,
             has_value: false,
             indent,
+        }
+    }
+
+    /// Construct a pretty printer formatter that optionally break arrays into multiple lines.
+    pub fn with_array_breaks(array_breaks: bool) -> Self {
+        PrettyFormatter {
+            current_indent: 0,
+            array_breaks,
+            has_value: false,
+            indent: b"  ",
         }
     }
 }
@@ -1970,7 +1982,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     {
         self.current_indent -= 1;
 
-        if self.has_value {
+        if self.has_value && self.array_breaks {
             tri!(writer.write_all(b"\n"));
             tri!(indent(writer, self.current_indent, self.indent));
         }
@@ -1983,6 +1995,14 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     where
         W: ?Sized + io::Write,
     {
+        if !self.array_breaks {
+            if !first {
+                tri!(writer.write_all(b", "));
+            }
+
+            return Ok(());
+        }
+
         tri!(writer.write_all(if first { b"\n" } else { b",\n" }));
         indent(writer, self.current_indent, self.indent)
     }
