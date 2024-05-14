@@ -187,15 +187,6 @@ where
     }
 }
 
-fn visit_object<'de, V>(object: Map<String, Value>, visitor: V) -> Result<V::Value, Error>
-where
-    V: Visitor<'de>,
-{
-    use serde::de::Deserializer;
-
-    object.deserialize_any(visitor)
-}
-
 impl<'de> serde::Deserializer<'de> for Map<String, Value> {
     type Error = Error;
 
@@ -282,7 +273,7 @@ impl<'de> serde::Deserializer<'de> for Value {
             #[cfg(not(any(feature = "std", feature = "alloc")))]
             Value::String(_) => unreachable!(),
             Value::Array(v) => visit_array(v, visitor),
-            Value::Object(v) => visit_object(v, visitor),
+            Value::Object(v) => v.deserialize_any(visitor),
         }
     }
 
@@ -461,7 +452,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Object(v) => visit_object(v, visitor),
+            Value::Object(v) => v.deserialize_any(visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -477,7 +468,7 @@ impl<'de> serde::Deserializer<'de> for Value {
     {
         match self {
             Value::Array(v) => visit_array(v, visitor),
-            Value::Object(v) => visit_object(v, visitor),
+            Value::Object(v) => v.deserialize_any(visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -591,8 +582,10 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
     where
         V: Visitor<'de>,
     {
+        use serde::de::Deserializer;
+
         match self.value {
-            Some(Value::Object(v)) => visit_object(v, visitor),
+            Some(Value::Object(v)) => v.deserialize_any(visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
                 &"struct variant",
@@ -733,15 +726,6 @@ where
     }
 }
 
-fn visit_object_ref<'de, V>(object: &'de Map<String, Value>, visitor: V) -> Result<V::Value, Error>
-where
-    V: Visitor<'de>,
-{
-    use serde::de::Deserializer;
-
-    object.deserialize_any(visitor)
-}
-
 impl<'de> serde::Deserializer<'de> for &'de Map<String, Value> {
     type Error = Error;
 
@@ -823,7 +807,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             Value::Number(n) => n.deserialize_any(visitor),
             Value::String(v) => visitor.visit_borrowed_str(v),
             Value::Array(v) => visit_array_ref(v, visitor),
-            Value::Object(v) => visit_object_ref(v, visitor),
+            Value::Object(v) => v.deserialize_any(visitor),
         }
     }
 
@@ -998,7 +982,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Object(v) => visit_object_ref(v, visitor),
+            Value::Object(v) => v.deserialize_any(visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -1014,7 +998,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     {
         match self {
             Value::Array(v) => visit_array_ref(v, visitor),
-            Value::Object(v) => visit_object_ref(v, visitor),
+            Value::Object(v) => v.deserialize_any(visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -1111,8 +1095,10 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
+        use serde::de::Deserializer;
+
         match self.value {
-            Some(Value::Object(v)) => visit_object_ref(v, visitor),
+            Some(Value::Object(v)) => v.deserialize_any(visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
                 &"struct variant",
