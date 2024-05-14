@@ -535,6 +535,22 @@ macro_rules! delegate_iterator {
     }
 }
 
+impl<'de> de::IntoDeserializer<'de, crate::Error> for Map<String, Value> {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
+impl<'de> de::IntoDeserializer<'de, crate::Error> for &'de Map<String, Value> {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
