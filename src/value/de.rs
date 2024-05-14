@@ -311,18 +311,17 @@ impl<'de> serde::Deserializer<'de> for Value {
     where
         V: Visitor<'de>,
     {
-        let (variant, value) = match self {
-            Value::Object(value) => return value.deserialize_enum(name, variants, visitor),
-            Value::String(variant) => (variant, None),
-            other => {
-                return Err(serde::de::Error::invalid_type(
-                    other.unexpected(),
-                    &"string or map",
-                ));
-            }
-        };
-
-        visitor.visit_enum(EnumDeserializer { variant, value })
+        match self {
+            Value::Object(value) => value.deserialize_enum(name, variants, visitor),
+            Value::String(variant) => visitor.visit_enum(EnumDeserializer {
+                variant,
+                value: None,
+            }),
+            other => Err(serde::de::Error::invalid_type(
+                other.unexpected(),
+                &"string or map",
+            )),
+        }
     }
 
     #[inline]
@@ -843,18 +842,17 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     where
         V: Visitor<'de>,
     {
-        let (variant, value) = match self {
-            Value::Object(value) => return value.deserialize_enum(name, variants, visitor),
-            Value::String(variant) => (variant, None),
-            other => {
-                return Err(serde::de::Error::invalid_type(
-                    other.unexpected(),
-                    &"string or map",
-                ));
-            }
-        };
-
-        visitor.visit_enum(EnumRefDeserializer { variant, value })
+        match self {
+            Value::Object(value) => value.deserialize_enum(name, variants, visitor),
+            Value::String(variant) => visitor.visit_enum(EnumRefDeserializer {
+                variant,
+                value: None,
+            }),
+            other => Err(serde::de::Error::invalid_type(
+                other.unexpected(),
+                &"string or map",
+            )),
+        }
     }
 
     #[inline]
