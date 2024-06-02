@@ -1,4 +1,3 @@
-#![cfg(not(feature = "preserve_order"))]
 #![allow(
     clippy::assertions_on_result_states,
     clippy::cast_precision_loss,
