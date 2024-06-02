@@ -7,6 +7,7 @@
     clippy::float_cmp,
     clippy::incompatible_msrv, // https://github.com/rust-lang/rust-clippy/issues/12257
     clippy::items_after_statements,
+    clippy::large_digit_groups,
     clippy::let_underscore_untyped,
     clippy::shadow_unrelated,
     clippy::too_many_lines,
