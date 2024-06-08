@@ -206,8 +206,6 @@ pub trait Float: Number {
 
     // MASKS
 
-    /// Bitmask for the sign bit.
-    const SIGN_MASK: Self::Unsigned;
     /// Bitmask for the exponent, including the hidden bit.
     const EXPONENT_MASK: Self::Unsigned;
     /// Bitmask for the hidden bit in exponent, which is an implicit 1 in the fraction.
@@ -313,7 +311,6 @@ impl Float for f32 {
 
     const ZERO: f32 = 0.0;
     const MAX_DIGITS: usize = 114;
-    const SIGN_MASK: u32 = 0x80000000;
     const EXPONENT_MASK: u32 = 0x7F800000;
     const HIDDEN_BIT_MASK: u32 = 0x00800000;
     const MANTISSA_MASK: u32 = 0x007FFFFF;
@@ -371,7 +368,6 @@ impl Float for f64 {
 
     const ZERO: f64 = 0.0;
     const MAX_DIGITS: usize = 769;
-    const SIGN_MASK: u64 = 0x8000000000000000;
     const EXPONENT_MASK: u64 = 0x7FF0000000000000;
     const HIDDEN_BIT_MASK: u64 = 0x0010000000000000;
     const MANTISSA_MASK: u64 = 0x000FFFFFFFFFFFFF;
