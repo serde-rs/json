@@ -202,6 +202,31 @@ impl Number {
         self.n.parse().ok()
     }
 
+    /// If the `Number` is an integer, represent it as i128 if possible. Returns
+    /// None otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let big = i64::MAX as u64 + 10;
+    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    ///
+    /// assert_eq!(v["a"].as_i128(), Some(64));
+    /// assert_eq!(v["b"].as_i128(), None);
+    /// assert_eq!(v["c"].as_i128(), None);
+    /// ```
+    #[inline]
+    pub fn as_i128(&self) -> Option<i128> {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        match self.n {
+            N::PosInt(n) => Some(n as i128),
+            N::NegInt(n) => Some(n as i128),
+            N::Float(_) => None,
+        }
+        #[cfg(feature = "arbitrary_precision")]
+        self.n.parse().ok()
+    }
+
     /// If the `Number` is an integer, represent it as u64 if possible. Returns
     /// None otherwise.
     ///
@@ -276,6 +301,33 @@ impl Number {
             Some(Number { n })
         } else {
             None
+        }
+    }
+
+    /// Converts an `i128` to a `Number`. Greater than u64::MAX values are not JSON
+    /// numbers.
+    ///
+    /// ```
+    /// # use std::i128;
+    /// #
+    /// # use serde_json::Number;
+    /// #
+    /// assert!(Number::from_i128(256).is_some());
+    /// ```
+    #[inline]
+    pub fn from_i128(i: i128) -> Option<Number> {
+        match u64::try_from(i) {
+            Ok(u) => Some(Number{ n: N::PosInt(u) }),
+            Err(_) => match i64::try_from(i) {
+                Ok(i) => {
+                    if i >= 0 {
+                        Some(Number{ n: N::PosInt(i as u64) })
+                    } else {
+                        Some(Number{ n: N::NegInt(i) })
+                    }
+                },
+                Err(_) => None
+            }
         }
     }
 
@@ -414,6 +466,13 @@ impl<'de> Deserialize<'de> for Number {
                 Ok(value.into())
             }
 
+            fn visit_i128<E>(self, value: i128) -> Result<Number, E>
+            where
+                E: de::Error,
+            {
+                Number::from_i128(value).ok_or_else(|| de::Error::custom("not a JSON number"))
+            }
+
             #[inline]
             fn visit_u64<E>(self, value: u64) -> Result<Number, E> {
                 Ok(value.into())
@@ -543,6 +602,8 @@ macro_rules! deserialize_any {
                 return visitor.visit_u64(u);
             } else if let Some(i) = self.as_i64() {
                 return visitor.visit_i64(i);
+            } else if let Some(i) = self.as_i128() {
+                return visitor.visit_i128(i);
             } else if let Some(f) = self.as_f64() {
                 if ryu::Buffer::new().format_finite(f) == self.n || f.to_string() == self.n {
                     return visitor.visit_f64(f);
