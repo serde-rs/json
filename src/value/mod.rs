@@ -635,6 +635,24 @@ impl Value {
         }
     }
 
+    /// If the `Value` is an integer, represent it as i128 if possible. Returns
+    /// None otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!({ "a": 64, "b": 256.0 });
+    ///
+    /// assert_eq!(v["a"].as_i128(), Some(64));
+    /// assert_eq!(v["b"].as_i128(), None);
+    /// ```
+    pub fn as_i128(&self) -> Option<i128> {
+        match self {
+            Value::Number(n) => n.as_i128(),
+            _ => None,
+        }
+    }
+
     /// If the `Value` is an integer, represent it as u64 if possible. Returns
     /// None otherwise.
     ///

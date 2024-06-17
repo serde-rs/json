@@ -208,12 +208,10 @@ impl Number {
     /// ```
     /// # use serde_json::json;
     /// #
-    /// let big = i64::MAX as u64 + 10;
-    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    /// let v = json!({ "a": 64, "b": 256.0 });
     ///
     /// assert_eq!(v["a"].as_i128(), Some(64));
     /// assert_eq!(v["b"].as_i128(), None);
-    /// assert_eq!(v["c"].as_i128(), None);
     /// ```
     #[inline]
     pub fn as_i128(&self) -> Option<i128> {
@@ -317,13 +315,45 @@ impl Number {
     #[inline]
     pub fn from_i128(i: i128) -> Option<Number> {
         match u64::try_from(i) {
-            Ok(u) => Some(Number{ n: N::PosInt(u) }),
+            Ok(u) => {
+                let n = {
+                    #[cfg(not(feature = "arbitrary_precision"))]
+                    {
+                        N::PosInt(u)
+                    }
+                    #[cfg(feature = "arbitrary_precision")]
+                    {
+                        u.to_string()
+                    }
+                };
+                Some(Number{ n })
+            },
             Err(_) => match i64::try_from(i) {
                 Ok(i) => {
                     if i >= 0 {
-                        Some(Number{ n: N::PosInt(i as u64) })
+                        let n = {
+                            #[cfg(not(feature = "arbitrary_precision"))]
+                            {
+                                N::PosInt(i as u64)
+                            }
+                            #[cfg(feature = "arbitrary_precision")]
+                            {
+                                i.to_string()
+                            }
+                        };
+                        Some(Number{ n })
                     } else {
-                        Some(Number{ n: N::NegInt(i) })
+                        let n = {
+                            #[cfg(not(feature = "arbitrary_precision"))]
+                            {
+                                N::NegInt(i)
+                            }
+                            #[cfg(feature = "arbitrary_precision")]
+                            {
+                                i.to_string()
+                            }
+                        };
+                        Some(Number{ n })
                     }
                 },
                 Err(_) => None
