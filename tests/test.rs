@@ -1,4 +1,3 @@
-#![cfg(not(feature = "preserve_order"))]
 #![allow(
     clippy::assertions_on_result_states,
     clippy::cast_precision_loss,
@@ -7,6 +6,7 @@
     clippy::float_cmp,
     clippy::incompatible_msrv, // https://github.com/rust-lang/rust-clippy/issues/12257
     clippy::items_after_statements,
+    clippy::large_digit_groups,
     clippy::let_underscore_untyped,
     clippy::shadow_unrelated,
     clippy::too_many_lines,
@@ -2100,20 +2100,20 @@ fn issue_220() {
     assert_eq!(from_str::<E>(r#"{"V": 0}"#).unwrap(), E::V(0));
 }
 
-macro_rules! number_partialeq_ok {
-    ($($n:expr)*) => {
-        $(
-            let value = to_value($n).unwrap();
-            let s = $n.to_string();
-            assert_eq!(value, $n);
-            assert_eq!($n, value);
-            assert_ne!(value, s);
-        )*
-    }
-}
-
 #[test]
 fn test_partialeq_number() {
+    macro_rules! number_partialeq_ok {
+        ($($n:expr)*) => {
+            $(
+                let value = to_value($n).unwrap();
+                let s = $n.to_string();
+                assert_eq!(value, $n);
+                assert_eq!($n, value);
+                assert_ne!(value, s);
+            )*
+        };
+    }
+
     number_partialeq_ok!(0 1 100
         i8::MIN i8::MAX i16::MIN i16::MAX i32::MIN i32::MAX i64::MIN i64::MAX
         u8::MIN u8::MAX u16::MIN u16::MAX u32::MIN u32::MAX u64::MIN u64::MAX
@@ -2122,13 +2122,6 @@ fn test_partialeq_number() {
         f32::consts::E f32::consts::PI f32::consts::LN_2 f32::consts::LOG2_E
         f64::consts::E f64::consts::PI f64::consts::LN_2 f64::consts::LOG2_E
     );
-}
-
-#[test]
-#[cfg(integer128)]
-#[cfg(feature = "arbitrary_precision")]
-fn test_partialeq_integer128() {
-    number_partialeq_ok!(i128::MIN i128::MAX u128::MIN u128::MAX)
 }
 
 #[test]
@@ -2318,9 +2311,9 @@ fn test_borrowed_raw_value() {
     let array_from_str: Vec<&RawValue> =
         serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
     assert_eq!(r#""a""#, array_from_str[0].get());
-    assert_eq!(r#"42"#, array_from_str[1].get());
+    assert_eq!("42", array_from_str[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
-    assert_eq!(r#"null"#, array_from_str[3].get());
+    assert_eq!("null", array_from_str[3].get());
 
     let array_to_string = serde_json::to_string(&array_from_str).unwrap();
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
@@ -2397,16 +2390,16 @@ fn test_boxed_raw_value() {
     let array_from_str: Vec<Box<RawValue>> =
         serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
     assert_eq!(r#""a""#, array_from_str[0].get());
-    assert_eq!(r#"42"#, array_from_str[1].get());
+    assert_eq!("42", array_from_str[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
-    assert_eq!(r#"null"#, array_from_str[3].get());
+    assert_eq!("null", array_from_str[3].get());
 
     let array_from_reader: Vec<Box<RawValue>> =
         serde_json::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
     assert_eq!(r#""a""#, array_from_reader[0].get());
-    assert_eq!(r#"42"#, array_from_reader[1].get());
+    assert_eq!("42", array_from_reader[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());
-    assert_eq!(r#"null"#, array_from_reader[3].get());
+    assert_eq!("null", array_from_reader[3].get());
 
     let array_to_string = serde_json::to_string(&array_from_str).unwrap();
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
