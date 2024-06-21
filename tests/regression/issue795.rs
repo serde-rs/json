@@ -58,5 +58,5 @@ fn test() {
     assert!(serde_json::from_str::<Enum>(s).is_err());
 
     let j = json!({"Variant":{"x":0,"y":0}});
-    assert!(serde_json::from_value::<Enum>(j).is_err());
+    assert!(serde_json::from_value::<Enum, serde_json::Value>(j).is_err());
 }
