@@ -987,7 +987,7 @@ where
 ///         "location": "Menlo Park, CA"
 ///     });
 ///
-///     let u: User = serde_json::from_value(&j).unwrap();
+///     let u: User = serde_json::from_value(j).unwrap();
 ///     println!("{:#?}", u);
 /// }
 /// ```
@@ -1001,7 +1001,7 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
-pub fn from_value<T>(value: &Value) -> Result<T, Error>
+pub fn from_value<T>(value: Value) -> Result<T, Error>
 where
     T: DeserializeOwned,
 {
