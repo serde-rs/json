@@ -374,7 +374,7 @@ impl Eq for Map<String, Value> {}
 impl Hash for Map<String, Value> {
     #[inline]
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        self.map.hash(state)
+        self.map.hash(state);
     }
 }
 #[cfg(feature = "preserve_order")]
