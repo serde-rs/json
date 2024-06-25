@@ -12,7 +12,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
-use core::hash::Hash;
+use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
 #[cfg(feature = "preserve_order")]
 use core::mem;
@@ -373,15 +373,15 @@ impl Eq for Map<String, Value> {}
 #[cfg(not(feature = "preserve_order"))]
 impl Hash for Map<String, Value> {
     #[inline]
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.map.hash(state);
     }
 }
+
 #[cfg(feature = "preserve_order")]
 impl Hash for Map<String, Value> {
-    #[inline]
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        let mut kv = self.map.iter().collect::<Vec<_>>();
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let mut kv = Vec::from_iter(&self.map);
         kv.sort_unstable_by(|a, b| a.0.cmp(b.0));
         kv.hash(state);
     }
