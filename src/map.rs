@@ -370,20 +370,19 @@ impl PartialEq for Map<String, Value> {
 
 impl Eq for Map<String, Value> {}
 
-#[cfg(not(feature = "preserve_order"))]
 impl Hash for Map<String, Value> {
-    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.map.hash(state);
-    }
-}
+        #[cfg(not(feature = "preserve_order"))]
+        {
+            self.map.hash(state);
+        }
 
-#[cfg(feature = "preserve_order")]
-impl Hash for Map<String, Value> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let mut kv = Vec::from_iter(&self.map);
-        kv.sort_unstable_by(|a, b| a.0.cmp(b.0));
-        kv.hash(state);
+        #[cfg(feature = "preserve_order")]
+        {
+            let mut kv = Vec::from_iter(&self.map);
+            kv.sort_unstable_by(|a, b| a.0.cmp(b.0));
+            kv.hash(state);
+        }
     }
 }
 
