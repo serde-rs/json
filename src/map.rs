@@ -135,6 +135,7 @@ impl Map<String, Value> {
     /// position, the value is updated, and the old value is returned.
     #[cfg(feature = "preserve_order")]
     #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
+    #[inline]
     pub fn shift_insert(&mut self, index: usize, k: String, v: Value) -> Option<Value> {
         self.map.shift_insert(index, k, v)
     }
