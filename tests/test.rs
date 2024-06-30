@@ -2407,6 +2407,21 @@ fn test_boxed_raw_value() {
 
 #[cfg(feature = "raw_value")]
 #[test]
+fn test_lost_raw_value() {
+    let value = Value::Object({
+        let mut value = serde_json::Map::default();
+        value.insert(
+            "$serde_json::private::RawValue".into(),
+            Value::String("0".into()),
+        );
+        value
+    });
+
+    assert_eq!(value.to_string(), "0");
+}
+
+#[cfg(feature = "raw_value")]
+#[test]
 fn test_raw_invalid_utf8() {
     let j = &[b'"', b'\xCE', b'\xF8', b'"'];
     let value_err = serde_json::from_slice::<Value>(j).unwrap_err();

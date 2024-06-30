@@ -23,6 +23,14 @@ impl Serialize for Value {
             #[cfg(any(feature = "std", feature = "alloc"))]
             Value::Object(m) => {
                 use serde::ser::SerializeMap;
+                #[cfg(feature = "raw_value")]
+                if m.len() == 1 {
+                    if let Some(Value::String(value)) = m.get(crate::raw::TOKEN) {
+                        if let Ok(value) = crate::raw::RawValue::from_string(value.clone()) {
+                            return value.serialize(serializer);
+                        }
+                    }
+                }
                 let mut map = tri!(serializer.serialize_map(Some(m.len())));
                 for (k, v) in m {
                     tri!(map.serialize_entry(k, v));
