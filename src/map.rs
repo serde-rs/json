@@ -134,6 +134,7 @@ impl Map<String, Value> {
     /// If the map did have this key present, the key is moved to the new
     /// position, the value is updated, and the old value is returned.
     #[cfg(feature = "preserve_order")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
     pub fn shift_insert(&mut self, index: usize, k: String, v: Value) -> Option<Value> {
         self.map.shift_insert(index, k, v)
     }
