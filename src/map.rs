@@ -127,6 +127,17 @@ impl Map<String, Value> {
         self.map.insert(k, v)
     }
 
+    /// Insert a key-value pair in the map at the given index.
+    ///
+    /// If the map did not have this key present, `None` is returned.
+    ///
+    /// If the map did have this key present, the key is moved to the new
+    /// position, the value is updated, and the old value is returned.
+    #[cfg(feature = "preserve_order")]
+    pub fn shift_insert(&mut self, index: usize, k: String, v: Value) -> Option<Value> {
+        self.map.shift_insert(index, k, v)
+    }
+
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
