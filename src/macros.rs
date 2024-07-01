@@ -235,6 +235,119 @@ macro_rules! json_internal {
         json_internal!(@object $object ($($key)* $tt) ($($rest)*) ($($rest)*));
     };
 
+
+    //////////////////////////////////////////////////////////////////////////
+    // TT muncher for counting the elements inside of an object {...}.
+    // Each entry is replaced with `1 + ` (or `1` if it is the last element).
+    // 0 is inserted if the object has a trailing comma.
+    //
+    // Must be invoked as: json_internal!(@object_capacity () ($($tt)*) ($($tt)*))
+    //
+    // We require two copies of the input tokens so that we can match on one
+    // copy and trigger errors on the other copy.
+    //////////////////////////////////////////////////////////////////////////
+
+    // Done.
+    (@object_capacity () () ()) => {0};
+
+    // Current entry followed by trailing comma.
+    (@object_capacity entry , $($rest:tt)*) => {
+        1 + json_internal!(@object_capacity () ($($rest)*) ($($rest)*))
+    };
+
+    // Current entry followed by unexpected token. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
+    (@object_capacity entry $unexpected:tt $($rest:tt)*) => {
+        0
+    };
+
+    // Insert the last entry without trailing comma.
+    (@object_capacity entry) => {
+        1
+    };
+
+    // Next value is `null`.
+    (@object_capacity ($($key:tt)+) (: null $($rest:tt)*) $copy:tt) => {
+        json_internal!(@object_capacity entry $($rest)*)
+    };
+
+    // Next value is `true`.
+    (@object_capacity ($($key:tt)+) (: true $($rest:tt)*) $copy:tt) => {
+        json_internal!(@object_capacity entry $($rest)*)
+    };
+
+    // Next value is `false`.
+    (@object_capacity ($($key:tt)+) (: false $($rest:tt)*) $copy:tt) => {
+        json_internal!(@object_capacity entry $($rest)*)
+    };
+
+    // Next value is an array.
+    (@object_capacity ($($key:tt)+) (: [$($array:tt)*] $($rest:tt)*) $copy:tt) => {
+        json_internal!(@object_capacity entry $($rest)*)
+    };
+
+    // Next value is a map.
+    (@object_capacity ($($key:tt)+) (: {$($map:tt)*} $($rest:tt)*) $copy:tt) => {
+        json_internal!(@object_capacity entry $($rest)*)
+    };
+
+    // Next value is an expression followed by comma.
+    (@object_capacity ($($key:tt)+) (: $value:expr , $($rest:tt)*) $copy:tt) => {
+        json_internal!(@object_capacity entry , $($rest)*)
+    };
+
+    // Last value is an expression with no trailing comma.
+    (@object_capacity ($($key:tt)+) (: $value:expr) $copy:tt) => {
+        json_internal!(@object_capacity entry)
+    };
+
+    // Missing value for last entry. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
+    (@object_capacity ($($key:tt)+) (:) $copy:tt) => {
+        0
+    };
+
+    // Missing colon and value for last entry. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
+    (@object_capacity ($($key:tt)+) () $copy:tt) => {
+        0
+    };
+
+    // Misplaced colon. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
+    (@object_capacity () (: $($rest:tt)*) ($colon:tt $($copy:tt)*)) => {
+        0
+    };
+
+    // Found a comma inside a key. The part that parses the values
+    // will trigger a reasonable error message; here, we just return 0
+    // so that there is not a duplicated error message.
+    (@object_capacity ($($key:tt)*) (, $($rest:tt)*) ($comma:tt $($copy:tt)*)) => {
+        0
+    };
+
+    // Key is fully parenthesized. This is not necessary for counting capacity
+    // since we don't evaluate $key anyway, so just use the munching below.
+    // (@object_capacity () (($key:expr) : $($rest:tt)*) $copy:tt) => {
+    //     json_internal!(@object_capacity ($key) (: $($rest)*) (: $($rest)*))
+    // };
+
+    // Refuse to absorb colon token into key expression.
+    // The part that parses the values will trigger a reasonable error message;
+    // here, we just return 0 so that there is not a duplicated error message.
+    (@object_capacity ($($key:tt)*) (: $($unexpected:tt)+) $copy:tt) => {
+        0
+    };
+
+    // Munch a token into the current key.
+    (@object_capacity ($($key:tt)*) ($tt:tt $($rest:tt)*) $copy:tt) => {
+        json_internal!(@object_capacity ($($key)* $tt) ($($rest)*) ($($rest)*))
+    };
+
     //////////////////////////////////////////////////////////////////////////
     // The main implementation.
     //
@@ -267,7 +380,8 @@ macro_rules! json_internal {
 
     ({ $($tt:tt)+ }) => {
         $crate::Value::Object({
-            let mut object = $crate::Map::new();
+            let capacity = json_internal!(@object_capacity () ($($tt)+) ($($tt)+));
+            let mut object = $crate::Map::with_capacity(capacity);
             json_internal!(@object object () ($($tt)+) ($($tt)+));
             object
         })
