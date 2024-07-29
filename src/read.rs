@@ -443,32 +443,36 @@ impl<'a> SliceRead<'a> {
         // benchmarks and is faster than both SSE2 and AVX-based code, and it's cross-platform, so
         // probably the right fit.
         // [1]: https://groups.google.com/forum/#!original/comp.lang.c/2HtQXvg7iKc/xOJeipH6KLMJ
+        const STEP: usize = mem::size_of::<usize>();
 
-        // Pad the chunk to a whole count of units if possible. This ensures that SWAR code is used
-        // to handle the tail in the hot path.
-        let block_end = (self.index + (end - self.index).next_multiple_of(mem::size_of::<usize>()))
-            .min(self.slice.len());
-        let mut block = &self.slice[self.index..block_end];
+        // Moving this to a local variable removes a spill in the hot loop.
+        let mut index = self.index;
 
-        while let Some((chars, block_remainder)) = block.split_first_chunk() {
-            const ONE_BYTES: usize = usize::MAX / 255;
-            let chars = usize::from_ne_bytes(*chars);
-            let mask = chars.wrapping_sub(ONE_BYTES * 0x20) & !chars & (ONE_BYTES << 7);
+        if self.slice.len() >= STEP {
+            while index < end.min(self.slice.len() - STEP + 1) {
+                // We can safely overread past end in most cases. This ensures that SWAR code is
+                // used to handle the tail in the hot path.
+                const ONE_BYTES: usize = usize::MAX / 255;
+                let chars = usize::from_ne_bytes(self.slice[index..][..STEP].try_into().unwrap());
+                let mask = chars.wrapping_sub(ONE_BYTES * 0x20) & !chars & (ONE_BYTES << 7);
 
-            if mask != 0 {
-                let control_index = block_end - block.len() + mask.trailing_zeros() as usize / 8;
-                self.index = control_index.min(end);
+                if mask != 0 {
+                    index += mask.trailing_zeros() as usize / 8;
+                    break;
+                }
+
+                index += STEP;
+            }
+        }
+
+        if index < end {
+            if let Some(offset) = self.slice[index..end].iter().position(|&c| c <= 0x1F) {
+                self.index = index + offset;
                 return;
             }
-
-            block = block_remainder;
         }
 
-        if let Some(offset) = block.iter().position(|&c| c <= 0x1F) {
-            self.index = (block_end - block.len() + offset).min(end);
-        } else {
-            self.index = end;
-        }
+        self.index = end;
     }
 
     /// The big optimization here over IoRead is that if the string contains no
