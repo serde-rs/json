@@ -2,6 +2,7 @@ use crate::error::{Error, ErrorCode, Result};
 use alloc::vec::Vec;
 use core::char;
 use core::cmp;
+use core::mem;
 use core::ops::Deref;
 use core::str;
 
@@ -425,6 +426,51 @@ impl<'a> SliceRead<'a> {
         }
     }
 
+    #[inline(always)]
+    fn skip_to_escape(&mut self, forbid_control_characters: bool) {
+        let rest = &self.slice[self.index..];
+        let end = self.index + memchr::memchr2(b'"', b'\\', rest).unwrap_or(rest.len());
+
+        if !forbid_control_characters {
+            self.index = end;
+            return;
+        }
+
+        // We now wish to check if the chunk contains a byte in range 0x00..=0x1F. Ideally, this
+        // would be integrated this into the memchr2 check above, but memchr does not support this
+        // at the moment. Therefore, use a variation on Mycroft's algorithm [1] to provide
+        // performance better than a naive loop. It runs faster than just a single memchr call on
+        // benchmarks and is faster than both SSE2 and AVX-based code, and it's cross-platform, so
+        // probably the right fit.
+        // [1]: https://groups.google.com/forum/#!original/comp.lang.c/2HtQXvg7iKc/xOJeipH6KLMJ
+
+        // Pad the chunk to a whole count of units if possible. This ensures that SWAR code is used
+        // to handle the tail in the hot path.
+        let block_end = (self.index + (end - self.index).next_multiple_of(mem::size_of::<usize>()))
+            .min(self.slice.len());
+        let mut block = &self.slice[self.index..block_end];
+
+        while let Some((chars, block_remainder)) = block.split_first_chunk() {
+            const ONE_BYTES: usize = usize::MAX / 255;
+            let chars = usize::from_ne_bytes(*chars);
+            let mask = chars.wrapping_sub(ONE_BYTES * 0x20) & !chars & (ONE_BYTES << 7);
+
+            if mask != 0 {
+                let control_index = block_end - block.len() + mask.trailing_zeros() as usize / 8;
+                self.index = control_index.min(end);
+                return;
+            }
+
+            block = block_remainder;
+        }
+
+        if let Some(offset) = block.iter().position(|&c| c <= 0x1F) {
+            self.index = (block_end - block.len() + offset).min(end);
+        } else {
+            self.index = end;
+        }
+    }
+
     /// The big optimization here over IoRead is that if the string contains no
     /// backslash escape sequences, the returned &str is a slice of the raw JSON
     /// data so we avoid copying into the scratch space.
@@ -442,9 +488,7 @@ impl<'a> SliceRead<'a> {
         let mut start = self.index;
 
         loop {
-            while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
-                self.index += 1;
-            }
+            self.skip_to_escape(validate);
             if self.index == self.slice.len() {
                 return error(self, ErrorCode::EofWhileParsingString);
             }
@@ -470,9 +514,7 @@ impl<'a> SliceRead<'a> {
                 }
                 _ => {
                     self.index += 1;
-                    if validate {
-                        return error(self, ErrorCode::ControlCharacterWhileParsingString);
-                    }
+                    return error(self, ErrorCode::ControlCharacterWhileParsingString);
                 }
             }
         }
@@ -538,9 +580,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
 
     fn ignore_str(&mut self) -> Result<()> {
         loop {
-            while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
-                self.index += 1;
-            }
+            self.skip_to_escape(true);
             if self.index == self.slice.len() {
                 return error(self, ErrorCode::EofWhileParsingString);
             }
