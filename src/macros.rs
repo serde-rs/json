@@ -77,12 +77,12 @@ macro_rules! json_internal {
 
     // Done with trailing comma.
     (@array [$($elems:expr,)*]) => {
-        vec![$($elems,)*]
+        $crate::__private::vec![$($elems,)*]
     };
 
     // Done without trailing comma.
     (@array [$($elems:expr),*]) => {
-        vec![$($elems),*]
+        $crate::__private::vec![$($elems),*]
     };
 
     // Next element is `null`.
@@ -254,7 +254,7 @@ macro_rules! json_internal {
     };
 
     ([]) => {
-        $crate::Value::Array(vec![])
+        $crate::Value::Array($crate::__private::vec![])
     };
 
     ([ $($tt:tt)+ ]) => {
