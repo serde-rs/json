@@ -376,6 +376,7 @@ extern crate std;
 // Not public API. Used from macro-generated code.
 #[doc(hidden)]
 pub mod __private {
+    #[doc(hidden)]
     pub use alloc::vec;
 }
 
