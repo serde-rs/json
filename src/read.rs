@@ -2,6 +2,7 @@ use crate::error::{Error, ErrorCode, Result};
 use alloc::vec::Vec;
 use core::char;
 use core::cmp;
+use core::mem;
 use core::ops::Deref;
 use core::str;
 
@@ -221,7 +222,7 @@ where
     {
         loop {
             let ch = tri!(next_or_eof(self));
-            if !ESCAPE[ch as usize] {
+            if !is_escape(ch) {
                 scratch.push(ch);
                 continue;
             }
@@ -342,7 +343,7 @@ where
     fn ignore_str(&mut self) -> Result<()> {
         loop {
             let ch = tri!(next_or_eof(self));
-            if !ESCAPE[ch as usize] {
+            if !is_escape(ch) {
                 continue;
             }
             match ch {
@@ -425,6 +426,55 @@ impl<'a> SliceRead<'a> {
         }
     }
 
+    #[inline(always)]
+    fn skip_to_escape(&mut self, forbid_control_characters: bool) {
+        let rest = &self.slice[self.index..];
+        let end = self.index + memchr::memchr2(b'"', b'\\', rest).unwrap_or(rest.len());
+
+        if !forbid_control_characters {
+            self.index = end;
+            return;
+        }
+
+        // We now wish to check if the chunk contains a byte in range 0x00..=0x1F. Ideally, this
+        // would be integrated this into the memchr2 check above, but memchr does not support this
+        // at the moment. Therefore, use a variation on Mycroft's algorithm [1] to provide
+        // performance better than a naive loop. It runs faster than just a single memchr call on
+        // benchmarks and is faster than both SSE2 and AVX-based code, and it's cross-platform, so
+        // probably the right fit.
+        // [1]: https://groups.google.com/forum/#!original/comp.lang.c/2HtQXvg7iKc/xOJeipH6KLMJ
+        const STEP: usize = mem::size_of::<usize>();
+
+        // Moving this to a local variable removes a spill in the hot loop.
+        let mut index = self.index;
+
+        if self.slice.len() >= STEP {
+            while index < end.min(self.slice.len() - STEP + 1) {
+                // We can safely overread past end in most cases. This ensures that SWAR code is
+                // used to handle the tail in the hot path.
+                const ONE_BYTES: usize = usize::MAX / 255;
+                let chars = usize::from_ne_bytes(self.slice[index..][..STEP].try_into().unwrap());
+                let mask = chars.wrapping_sub(ONE_BYTES * 0x20) & !chars & (ONE_BYTES << 7);
+
+                if mask != 0 {
+                    index += mask.trailing_zeros() as usize / 8;
+                    break;
+                }
+
+                index += STEP;
+            }
+        }
+
+        if index < end {
+            if let Some(offset) = self.slice[index..end].iter().position(|&c| c <= 0x1F) {
+                self.index = index + offset;
+                return;
+            }
+        }
+
+        self.index = end;
+    }
+
     /// The big optimization here over IoRead is that if the string contains no
     /// backslash escape sequences, the returned &str is a slice of the raw JSON
     /// data so we avoid copying into the scratch space.
@@ -442,9 +492,7 @@ impl<'a> SliceRead<'a> {
         let mut start = self.index;
 
         loop {
-            while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
-                self.index += 1;
-            }
+            self.skip_to_escape(validate);
             if self.index == self.slice.len() {
                 return error(self, ErrorCode::EofWhileParsingString);
             }
@@ -470,9 +518,7 @@ impl<'a> SliceRead<'a> {
                 }
                 _ => {
                     self.index += 1;
-                    if validate {
-                        return error(self, ErrorCode::ControlCharacterWhileParsingString);
-                    }
+                    return error(self, ErrorCode::ControlCharacterWhileParsingString);
                 }
             }
         }
@@ -538,9 +584,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
 
     fn ignore_str(&mut self) -> Result<()> {
         loop {
-            while self.index < self.slice.len() && !ESCAPE[self.slice[self.index] as usize] {
-                self.index += 1;
-            }
+            self.skip_to_escape(true);
             if self.index == self.slice.len() {
                 return error(self, ErrorCode::EofWhileParsingString);
             }
@@ -779,33 +823,11 @@ pub trait Fused: private::Sealed {}
 impl<'a> Fused for SliceRead<'a> {}
 impl<'a> Fused for StrRead<'a> {}
 
-// Lookup table of bytes that must be escaped. A value of true at index i means
-// that byte i requires an escape sequence in the input.
-static ESCAPE: [bool; 256] = {
-    const CT: bool = true; // control character \x00..=\x1F
-    const QU: bool = true; // quote \x22
-    const BS: bool = true; // backslash \x5C
-    const __: bool = false; // allow unescaped
-    [
-        //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
-        CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, // 0
-        CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, CT, // 1
-        __, __, QU, __, __, __, __, __, __, __, __, __, __, __, __, __, // 2
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 3
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 4
-        __, __, __, __, __, __, __, __, __, __, __, __, BS, __, __, __, // 5
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 6
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 7
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 8
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 9
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // A
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // B
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // C
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // D
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // E
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
-    ]
-};
+// This is only used in IoRead. SliceRead hardcodes the arguments to memchr.
+#[cfg(feature = "std")]
+fn is_escape(ch: u8) -> bool {
+    ch == b'"' || ch == b'\\' || ch < 0x20
+}
 
 fn next_or_eof<'de, R>(read: &mut R) -> Result<u8>
 where
