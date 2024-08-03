@@ -414,6 +414,11 @@ impl<'a> SliceRead<'a> {
         }
     }
 
+    /// Get the byte index of the data that will be read next
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
     fn position_of_index(&self, i: usize) -> Position {
         let start_of_line = match memchr::memrchr(b'\n', &self.slice[..i]) {
             Some(position) => position + 1,
@@ -619,6 +624,11 @@ impl<'a> StrRead<'a> {
             #[cfg(feature = "raw_value")]
             data: s,
         }
+    }
+
+    /// Get the byte index of the data that will be read next
+    pub fn index(&self) -> usize {
+        self.delegate.index()
     }
 }
 
