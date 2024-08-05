@@ -426,13 +426,11 @@ impl<'a> SliceRead<'a> {
         }
     }
 
-    #[inline(always)]
     fn skip_to_escape(&mut self, forbid_control_characters: bool) {
         let rest = &self.slice[self.index..];
-        let end = self.index + memchr::memchr2(b'"', b'\\', rest).unwrap_or(rest.len());
 
         if !forbid_control_characters {
-            self.index = end;
+            self.index += memchr::memchr2(b'"', b'\\', rest).unwrap_or(rest.len());
             return;
         }
 
@@ -443,36 +441,39 @@ impl<'a> SliceRead<'a> {
         // benchmarks and is faster than both SSE2 and AVX-based code, and it's cross-platform, so
         // probably the right fit.
         // [1]: https://groups.google.com/forum/#!original/comp.lang.c/2HtQXvg7iKc/xOJeipH6KLMJ
-        const STEP: usize = mem::size_of::<usize>();
+        type Chunk = usize;
+        const STEP: usize = mem::size_of::<Chunk>();
+        const ONE_BYTES: Chunk = Chunk::MAX / 255;
 
-        // Moving this to a local variable removes a spill in the hot loop.
-        let mut index = self.index;
+        let mut ptr = unsafe { self.slice.as_ptr().add(self.index) };
+        let end_ptr = unsafe { ptr.add(rest.len() / STEP * STEP) };
+        while ptr < end_ptr {
+            let chars = unsafe { ptr.cast::<Chunk>().read_unaligned() };
+            let contains_ctrl = chars.wrapping_sub(ONE_BYTES * 0x20) & !chars;
+            let chars_quote = chars ^ (ONE_BYTES * b'"' as Chunk);
+            let contains_quote = chars_quote.wrapping_sub(ONE_BYTES) & !chars_quote;
+            let chars_backslash = chars ^ (ONE_BYTES * b'\\' as Chunk);
+            let contains_backslash = chars_backslash.wrapping_sub(ONE_BYTES) & !chars_backslash;
+            let masked = (contains_ctrl | contains_quote | contains_backslash) & (ONE_BYTES << 7);
 
-        if self.slice.len() >= STEP {
-            while index < end.min(self.slice.len() - STEP + 1) {
-                // We can safely overread past end in most cases. This ensures that SWAR code is
-                // used to handle the tail in the hot path.
-                const ONE_BYTES: usize = usize::MAX / 255;
-                let chars = usize::from_ne_bytes(self.slice[index..][..STEP].try_into().unwrap());
-                let mask = chars.wrapping_sub(ONE_BYTES * 0x20) & !chars & (ONE_BYTES << 7);
-
-                if mask != 0 {
-                    index += mask.trailing_zeros() as usize / 8;
-                    break;
-                }
-
-                index += STEP;
-            }
-        }
-
-        if index < end {
-            if let Some(offset) = self.slice[index..end].iter().position(|&c| c <= 0x1F) {
-                self.index = index + offset;
+            if masked != 0 {
+                self.index = unsafe { ptr.offset_from(self.slice.as_ptr()) } as usize
+                    + masked.trailing_zeros() as usize / 8;
                 return;
             }
+
+            ptr = unsafe { ptr.add(STEP) };
         }
 
-        self.index = end;
+        self.skip_to_escape_slow();
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn skip_to_escape_slow(&mut self) {
+        while self.index < self.slice.len() && !is_escape(self.slice[self.index]) {
+            self.index += 1;
+        }
     }
 
     /// The big optimization here over IoRead is that if the string contains no
@@ -823,8 +824,6 @@ pub trait Fused: private::Sealed {}
 impl<'a> Fused for SliceRead<'a> {}
 impl<'a> Fused for StrRead<'a> {}
 
-// This is only used in IoRead. SliceRead hardcodes the arguments to memchr.
-#[cfg(feature = "std")]
 fn is_escape(ch: u8) -> bool {
     ch == b'"' || ch == b'\\' || ch < 0x20
 }
