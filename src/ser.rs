@@ -2145,6 +2145,24 @@ where
     value.serialize(&mut ser)
 }
 
+/// Serialize the given data structure as JSON into the pre-existing [`String``].
+///
+/// # Errors
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+#[inline]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub fn to_string_mut<T>(s: &mut String, value: &T) -> Result<()>
+where
+    T: ?Sized + Serialize,
+{
+    // to_writer() guarantees that it feeds only valid UTF-8 to the writer.
+    let buf = unsafe { s.as_mut_vec() };
+    let mut writer = std::io::Cursor::new(buf);
+    to_writer(&mut writer, value)
+}
+
 /// Serialize the given data structure as pretty-printed JSON into the I/O
 /// stream.
 ///
@@ -2163,6 +2181,24 @@ where
 {
     let mut ser = Serializer::pretty(writer);
     value.serialize(&mut ser)
+}
+
+/// Serialize the given data structure as pretty-printed JSON into the pre-existing [`String`].
+///
+/// # Errors
+///
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail, or if `T` contains a map with non-string keys.
+#[inline]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub fn to_string_mut_pretty<T>(s: &mut String, value: &T) -> Result<()>
+where
+    T: ?Sized + Serialize,
+{
+    // to_writer_pretty() guarantees that it feeds only valid UTF-8 to the writer.
+    let buf = unsafe { s.as_mut_vec() };
+    let mut writer = std::io::Cursor::new(buf);
+    to_writer_pretty(&mut writer, value)
 }
 
 /// Serialize the given data structure as a JSON byte vector.
