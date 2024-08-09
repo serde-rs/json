@@ -26,11 +26,13 @@ use serde::de::{self, IgnoredAny, IntoDeserializer};
 use serde::ser::{self, SerializeMap, SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_bytes::{ByteBuf, Bytes};
+#[cfg(feature = "std")]
+use serde_json::from_reader;
 #[cfg(feature = "raw_value")]
 use serde_json::value::RawValue;
 use serde_json::{
-    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
-    to_vec, Deserializer, Number, Value,
+    from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value, to_vec,
+    Deserializer, Number, Value,
 };
 use std::collections::BTreeMap;
 #[cfg(feature = "raw_value")]
@@ -39,6 +41,7 @@ use std::fmt::{self, Debug};
 use std::hash::BuildHasher;
 #[cfg(feature = "raw_value")]
 use std::hash::{Hash, Hasher};
+#[cfg(feature = "std")]
 use std::io;
 use std::iter;
 use std::marker::PhantomData;
@@ -1622,7 +1625,7 @@ fn test_serialize_map_with_no_len() {
     assert_eq!(s, expected);
 }
 
-#[cfg(not(miri))]
+#[cfg(all(not(miri), feature = "std"))]
 #[test]
 fn test_deserialize_from_stream() {
     use serde_json::to_writer;
@@ -2146,8 +2149,10 @@ fn test_partialeq_bool() {
     assert_ne!(v, 0);
 }
 
+#[cfg(feature = "std")]
 struct FailReader(io::ErrorKind);
 
+#[cfg(feature = "std")]
 impl io::Read for FailReader {
     fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
         Err(io::Error::new(self.0, "oh no!"))
@@ -2155,6 +2160,7 @@ impl io::Read for FailReader {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn test_category() {
     assert!(from_str::<String>("123").unwrap_err().is_data());
 
@@ -2195,6 +2201,7 @@ fn test_category() {
 #[test]
 // Clippy false positive: https://github.com/Manishearth/rust-clippy/issues/292
 #[allow(clippy::needless_lifetimes)]
+#[cfg(feature = "std")]
 fn test_into_io_error() {
     fn io_error<'de, T: Deserialize<'de> + Debug>(j: &'static str) -> io::Error {
         from_str::<T>(j).unwrap_err().into()

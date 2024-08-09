@@ -18,6 +18,7 @@ macro_rules! test_stream {
             assert_eq!($stream.byte_offset(), 0);
             $test
         }
+        #[cfg(feature = "std")]
         {
             let mut bytes = $data.as_bytes();
             let de = Deserializer::from_reader(&mut bytes);
