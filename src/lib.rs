@@ -393,7 +393,9 @@ pub use crate::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty};
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[doc(inline)]
-pub use crate::ser::{to_writer, to_writer_pretty, Serializer};
+pub use crate::ser::{
+    to_string_mut, to_string_mut_pretty, to_writer, to_writer_pretty, Serializer,
+};
 #[doc(inline)]
 pub use crate::value::{from_value, to_value, Map, Number, Value};
 
