@@ -2160,7 +2160,6 @@ impl io::Read for FailReader {
 }
 
 #[test]
-#[cfg(feature = "std")]
 fn test_category() {
     assert!(from_str::<String>("123").unwrap_err().is_data());
 
@@ -2194,8 +2193,11 @@ fn test_category() {
         .unwrap_err()
         .is_eof());
 
-    let fail = FailReader(io::ErrorKind::NotConnected);
-    assert!(from_reader::<_, String>(fail).unwrap_err().is_io());
+    #[cfg(feature = "std")]
+    {
+        let fail = FailReader(io::ErrorKind::NotConnected);
+        assert!(from_reader::<_, String>(fail).unwrap_err().is_io());
+    }
 }
 
 #[test]
