@@ -44,7 +44,7 @@ features = ["raw_value"]
 ### FEATURES #################################################################
 
 [features]
-default = ["std"]
+default = ["alloc"]
 
 std = ["memchr/std", "serde/std"]
 

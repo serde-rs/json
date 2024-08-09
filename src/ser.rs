@@ -2135,7 +2135,6 @@ static ESCAPE: [u8; 256] = [
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
 #[inline]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn to_writer<W, T>(writer: W, value: &T) -> Result<()>
 where
     W: io::Write,
@@ -2152,6 +2151,7 @@ where
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
 #[inline]
+#[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn to_string_mut<T>(s: &mut String, value: &T) -> Result<()>
 where
@@ -2173,8 +2173,6 @@ where
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
 /// fail, or if `T` contains a map with non-string keys.
 #[inline]
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn to_writer_pretty<W, T>(writer: W, value: &T) -> Result<()>
 where
     W: io::Write,
