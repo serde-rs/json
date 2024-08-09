@@ -2381,9 +2381,12 @@ fn test_boxed_raw_value() {
         serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.get());
 
-    let wrapper_from_reader: Wrapper =
-        serde_json::from_reader(br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref()).unwrap();
-    assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.get());
+    #[cfg(feature = "std")]
+    {
+        let wrapper_from_reader: Wrapper =
+            serde_json::from_reader(br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref()).unwrap();
+        assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.get());
+    }
 
     let wrapper_from_value: Wrapper =
         serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3})).unwrap();
@@ -2402,12 +2405,15 @@ fn test_boxed_raw_value() {
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
     assert_eq!("null", array_from_str[3].get());
 
-    let array_from_reader: Vec<Box<RawValue>> =
-        serde_json::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
-    assert_eq!(r#""a""#, array_from_reader[0].get());
-    assert_eq!("42", array_from_reader[1].get());
-    assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());
-    assert_eq!("null", array_from_reader[3].get());
+    #[cfg(feature = "std")]
+    {
+        let array_from_reader: Vec<Box<RawValue>> =
+            serde_json::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
+        assert_eq!(r#""a""#, array_from_reader[0].get());
+        assert_eq!("42", array_from_reader[1].get());
+        assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());
+        assert_eq!("null", array_from_reader[3].get());
+    }
 
     let array_to_string = serde_json::to_string(&array_from_str).unwrap();
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
