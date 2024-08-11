@@ -1091,15 +1091,15 @@ fn test_parse_string() {
         ),
         (
             &[b'"', b'\\', b'u', 250, 48, 51, 48, b'"'],
-            "invalid escape at line 1 column 4",
+            "invalid escape at line 1 column 7",
         ),
         (
             &[b'"', b'\\', b'u', 48, 250, 51, 48, b'"'],
-            "invalid escape at line 1 column 5",
+            "invalid escape at line 1 column 7",
         ),
         (
             &[b'"', b'\\', b'u', 48, 48, 250, 48, b'"'],
-            "invalid escape at line 1 column 6",
+            "invalid escape at line 1 column 7",
         ),
         (
             &[b'"', b'\\', b'u', 48, 48, 51, 250, b'"'],
