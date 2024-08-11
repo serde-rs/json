@@ -2512,7 +2512,7 @@ fn test_control_character_search() {
 
     // Multiple occurrences
     test_parse_err::<String>(&[(
-        &"\"\t\n\r\"",
+        "\"\t\n\r\"",
         "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 2",
     )]);
 }
