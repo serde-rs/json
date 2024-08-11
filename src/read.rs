@@ -222,7 +222,7 @@ where
     {
         loop {
             let ch = tri!(next_or_eof(self));
-            if !is_escape(ch) {
+            if !is_escape(ch, true) {
                 scratch.push(ch);
                 continue;
             }
@@ -343,7 +343,7 @@ where
     fn ignore_str(&mut self) -> Result<()> {
         loop {
             let ch = tri!(next_or_eof(self));
-            if !is_escape(ch) {
+            if !is_escape(ch, true) {
                 continue;
             }
             match ch {
@@ -427,6 +427,14 @@ impl<'a> SliceRead<'a> {
     }
 
     fn skip_to_escape(&mut self, forbid_control_characters: bool) {
+        // Immediately bail-out on empty strings and consecutive escapes (e.g. \u041b\u0435)
+        if self.index == self.slice.len()
+            || is_escape(self.slice[self.index], forbid_control_characters)
+        {
+            return;
+        }
+        self.index += 1;
+
         let rest = &self.slice[self.index..];
 
         if !forbid_control_characters {
@@ -472,7 +480,7 @@ impl<'a> SliceRead<'a> {
     #[cold]
     #[inline(never)]
     fn skip_to_escape_slow(&mut self) {
-        while self.index < self.slice.len() && !is_escape(self.slice[self.index]) {
+        while self.index < self.slice.len() && !is_escape(self.slice[self.index], true) {
             self.index += 1;
         }
     }
@@ -825,8 +833,8 @@ pub trait Fused: private::Sealed {}
 impl<'a> Fused for SliceRead<'a> {}
 impl<'a> Fused for StrRead<'a> {}
 
-fn is_escape(ch: u8) -> bool {
-    ch == b'"' || ch == b'\\' || ch < 0x20
+fn is_escape(ch: u8, including_control_characters: bool) -> bool {
+    ch == b'"' || ch == b'\\' || (including_control_characters && ch < 0x20)
 }
 
 fn next_or_eof<'de, R>(read: &mut R) -> Result<u8>
