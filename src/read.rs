@@ -465,6 +465,7 @@ impl<'a> SliceRead<'a> {
             }
         }
 
+        self.index += rest.len() / STEP * STEP;
         self.skip_to_escape_slow();
     }
 
