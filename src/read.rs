@@ -453,9 +453,14 @@ impl<'a> SliceRead<'a> {
             let contains_backslash = chars_backslash.wrapping_sub(ONE_BYTES) & !chars_backslash;
             let masked = (contains_ctrl | contains_quote | contains_backslash) & (ONE_BYTES << 7);
             if masked != 0 {
+                let addresswise_first_bit = if cfg!(target_endian = "little") {
+                    masked.trailing_zeros()
+                } else {
+                    masked.leading_zeros()
+                };
                 // SAFETY: chunk is in-bounds for slice
                 self.index = unsafe { chunk.as_ptr().offset_from(self.slice.as_ptr()) } as usize
-                    + masked.trailing_zeros() as usize / 8;
+                    + addresswise_first_bit as usize / 8;
                 return;
             }
         }
