@@ -2504,7 +2504,7 @@ fn test_control_character_search() {
     for n in 0..16 {
         for m in 0..16 {
             test_parse_err::<String>(&[(
-                &format!("\"{}\n{}\"", ".".repeat(n), ".".repeat(m)),
+                &format!("\"{}\n{}\"", " ".repeat(n), " ".repeat(m)),
                 "control character (\\u0000-\\u001F) found while parsing a string at line 2 column 0",
             )]);
         }
