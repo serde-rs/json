@@ -340,6 +340,7 @@
     clippy::wildcard_imports,
     // things are often more readable this way
     clippy::cast_lossless,
+    clippy::items_after_statements,
     clippy::module_name_repetitions,
     clippy::redundant_else,
     clippy::shadow_unrelated,
