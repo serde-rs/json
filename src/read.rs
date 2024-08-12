@@ -361,16 +361,14 @@ where
     }
 
     fn decode_hex_escape(&mut self) -> Result<u16> {
-        let mut n = 0;
-        for _ in 0..4 {
-            match decode_hex_val(tri!(next_or_eof(self))) {
-                None => return error(self, ErrorCode::InvalidEscape),
-                Some(val) => {
-                    n = (n << 4) + val;
-                }
-            }
+        let a = tri!(next_or_eof(self));
+        let b = tri!(next_or_eof(self));
+        let c = tri!(next_or_eof(self));
+        let d = tri!(next_or_eof(self));
+        match decode_four_hex_digits(a, b, c, d) {
+            Some(val) => Ok(val),
+            None => error(self, ErrorCode::InvalidEscape),
         }
-        Ok(n)
     }
 
     #[cfg(feature = "raw_value")]
@@ -609,24 +607,21 @@ impl<'a> Read<'a> for SliceRead<'a> {
         }
     }
 
+    #[inline]
     fn decode_hex_escape(&mut self) -> Result<u16> {
-        if self.index + 4 > self.slice.len() {
-            self.index = self.slice.len();
-            return error(self, ErrorCode::EofWhileParsingString);
-        }
-
-        let mut n = 0;
-        for _ in 0..4 {
-            let ch = decode_hex_val(self.slice[self.index]);
-            self.index += 1;
-            match ch {
-                None => return error(self, ErrorCode::InvalidEscape),
-                Some(val) => {
-                    n = (n << 4) + val;
+        match self.slice[self.index..] {
+            [a, b, c, d, ..] => {
+                self.index += 4;
+                match decode_four_hex_digits(a, b, c, d) {
+                    Some(val) => Ok(val),
+                    None => error(self, ErrorCode::InvalidEscape),
                 }
             }
+            _ => {
+                self.index = self.slice.len();
+                error(self, ErrorCode::EofWhileParsingString)
+            }
         }
-        Ok(n)
     }
 
     #[cfg(feature = "raw_value")]
@@ -993,34 +988,41 @@ where
     Ok(())
 }
 
-static HEX: [u8; 256] = {
-    const __: u8 = 255; // not a hex digit
-    [
-        //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 0
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 1
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 2
-        00, 01, 02, 03, 04, 05, 06, 07, 08, 09, __, __, __, __, __, __, // 3
-        __, 10, 11, 12, 13, 14, 15, __, __, __, __, __, __, __, __, __, // 4
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 5
-        __, 10, 11, 12, 13, 14, 15, __, __, __, __, __, __, __, __, __, // 6
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 7
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 8
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 9
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // A
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // B
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // C
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // D
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // E
-        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
-    ]
-};
-
-fn decode_hex_val(val: u8) -> Option<u16> {
-    let n = HEX[val as usize] as u16;
-    if n == 255 {
-        None
-    } else {
-        Some(n)
+const fn decode_hex_val_slow(val: u8) -> Option<u8> {
+    match val {
+        b'0'..=b'9' => Some(val - b'0'),
+        b'A'..=b'F' => Some(val - b'A' + 10),
+        b'a'..=b'f' => Some(val - b'a' + 10),
+        _ => None,
     }
+}
+
+const fn build_hex_table(shift: usize) -> [i16; 256] {
+    let mut table = [0; 256];
+    let mut ch = 0;
+    while ch < 256 {
+        table[ch] = match decode_hex_val_slow(ch as u8) {
+            Some(val) => (val as i16) << shift,
+            None => -1,
+        };
+        ch += 1;
+    }
+    table
+}
+
+static HEX0: [i16; 256] = build_hex_table(0);
+static HEX1: [i16; 256] = build_hex_table(4);
+
+fn decode_four_hex_digits(a: u8, b: u8, c: u8, d: u8) -> Option<u16> {
+    let a = HEX1[a as usize];
+    let b = HEX0[b as usize];
+    let c = HEX1[c as usize];
+    let d = HEX0[d as usize];
+
+    // A single sign bit check.
+    if (a | b | c | d) < 0 {
+        return None;
+    }
+
+    Some((((a | b) << 8) | c | d) as u16)
 }
