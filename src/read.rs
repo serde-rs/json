@@ -1,6 +1,5 @@
 use crate::error::{Error, ErrorCode, Result};
 use alloc::vec::Vec;
-use core::char;
 use core::cmp;
 use core::mem;
 use core::ops::Deref;
@@ -957,23 +956,62 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
                 return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
             }
 
-            let n = (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
-
-            match char::from_u32(n) {
-                Some(c) => c,
-                None => {
-                    return error(read, ErrorCode::InvalidUnicodeCodePoint);
-                }
-            }
+            // This value is in range U+10000..=U+10FFFF, which is always a
+            // valid codepoint.
+            (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000
         }
 
         // Every u16 outside of the surrogate ranges above is guaranteed
         // to be a legal char.
-        n => char::from_u32(n as u32).unwrap(),
+        n => n as u32,
     };
 
-    scratch.extend_from_slice(c.encode_utf8(&mut [0_u8; 4]).as_bytes());
+    // SAFETY: c is always a codepoint.
+    unsafe {
+        push_utf8_codepoint(c, scratch);
+    }
     Ok(())
+}
+
+/// Adds a UTF-8 codepoint to the end of the buffer. This is a more efficient
+/// implementation of String::push. n must be a valid codepoint.
+#[inline]
+unsafe fn push_utf8_codepoint(n: u32, scratch: &mut Vec<u8>) {
+    if n < 0x80 {
+        scratch.push(n as u8);
+        return;
+    }
+
+    scratch.reserve(4);
+
+    unsafe {
+        let ptr = scratch.as_mut_ptr().add(scratch.len());
+
+        let encoded_len = match n {
+            0..=0x7F => unreachable!(),
+            0x80..=0x7FF => {
+                ptr.write((n >> 6 & 0b0001_1111) as u8 | 0b1100_0000);
+                2
+            }
+            0x800..=0xFFFF => {
+                ptr.write((n >> 12 & 0b0000_1111) as u8 | 0b1110_0000);
+                ptr.add(1).write((n >> 6 & 0b0011_1111) as u8 | 0b1000_0000);
+                3
+            }
+            0x1_0000..=0x10_FFFF => {
+                ptr.write((n >> 18 & 0b0000_0111) as u8 | 0b1111_0000);
+                ptr.add(1)
+                    .write((n >> 12 & 0b0011_1111) as u8 | 0b1000_0000);
+                ptr.add(2).write((n >> 6 & 0b0011_1111) as u8 | 0b1000_0000);
+                4
+            }
+            0x11_0000.. => unreachable!(),
+        };
+        ptr.add(encoded_len - 1)
+            .write((n & 0b0011_1111) as u8 | 0b1000_0000);
+
+        scratch.set_len(scratch.len() + encoded_len);
+    }
 }
 
 /// Parses a JSON escape sequence and discards the value. Assumes the previous
