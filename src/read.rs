@@ -882,87 +882,97 @@ fn parse_escape<'de, R: Read<'de>>(
         b'n' => scratch.push(b'\n'),
         b'r' => scratch.push(b'\r'),
         b't' => scratch.push(b'\t'),
-        b'u' => {
-            fn encode_surrogate(scratch: &mut Vec<u8>, n: u16) {
-                scratch.extend_from_slice(&[
-                    (n >> 12 & 0b0000_1111) as u8 | 0b1110_0000,
-                    (n >> 6 & 0b0011_1111) as u8 | 0b1000_0000,
-                    (n & 0b0011_1111) as u8 | 0b1000_0000,
-                ]);
-            }
-
-            let c = match tri!(read.decode_hex_escape()) {
-                n @ 0xDC00..=0xDFFF => {
-                    return if validate {
-                        error(read, ErrorCode::LoneLeadingSurrogateInHexEscape)
-                    } else {
-                        encode_surrogate(scratch, n);
-                        Ok(())
-                    };
-                }
-
-                // Non-BMP characters are encoded as a sequence of two hex
-                // escapes, representing UTF-16 surrogates. If deserializing a
-                // utf-8 string the surrogates are required to be paired,
-                // whereas deserializing a byte string accepts lone surrogates.
-                n1 @ 0xD800..=0xDBFF => {
-                    if tri!(peek_or_eof(read)) == b'\\' {
-                        read.discard();
-                    } else {
-                        return if validate {
-                            read.discard();
-                            error(read, ErrorCode::UnexpectedEndOfHexEscape)
-                        } else {
-                            encode_surrogate(scratch, n1);
-                            Ok(())
-                        };
-                    }
-
-                    if tri!(peek_or_eof(read)) == b'u' {
-                        read.discard();
-                    } else {
-                        return if validate {
-                            read.discard();
-                            error(read, ErrorCode::UnexpectedEndOfHexEscape)
-                        } else {
-                            encode_surrogate(scratch, n1);
-                            // The \ prior to this byte started an escape sequence,
-                            // so we need to parse that now. This recursive call
-                            // does not blow the stack on malicious input because
-                            // the escape is not \u, so it will be handled by one
-                            // of the easy nonrecursive cases.
-                            parse_escape(read, validate, scratch)
-                        };
-                    }
-
-                    let n2 = tri!(read.decode_hex_escape());
-
-                    if n2 < 0xDC00 || n2 > 0xDFFF {
-                        return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
-                    }
-
-                    let n = (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
-
-                    match char::from_u32(n) {
-                        Some(c) => c,
-                        None => {
-                            return error(read, ErrorCode::InvalidUnicodeCodePoint);
-                        }
-                    }
-                }
-
-                // Every u16 outside of the surrogate ranges above is guaranteed
-                // to be a legal char.
-                n => char::from_u32(n as u32).unwrap(),
-            };
-
-            scratch.extend_from_slice(c.encode_utf8(&mut [0_u8; 4]).as_bytes());
-        }
+        b'u' => return parse_unicode_escape(read, validate, scratch),
         _ => {
             return error(read, ErrorCode::InvalidEscape);
         }
     }
 
+    Ok(())
+}
+
+/// Parses a JSON \u escape and appends it into the scratch space. Assumes \u
+/// has just been read.
+#[cold]
+fn parse_unicode_escape<'de, R: Read<'de>>(
+    read: &mut R,
+    validate: bool,
+    scratch: &mut Vec<u8>,
+) -> Result<()> {
+    fn encode_surrogate(scratch: &mut Vec<u8>, n: u16) {
+        scratch.extend_from_slice(&[
+            (n >> 12 & 0b0000_1111) as u8 | 0b1110_0000,
+            (n >> 6 & 0b0011_1111) as u8 | 0b1000_0000,
+            (n & 0b0011_1111) as u8 | 0b1000_0000,
+        ]);
+    }
+
+    let c = match tri!(read.decode_hex_escape()) {
+        n @ 0xDC00..=0xDFFF => {
+            return if validate {
+                error(read, ErrorCode::LoneLeadingSurrogateInHexEscape)
+            } else {
+                encode_surrogate(scratch, n);
+                Ok(())
+            };
+        }
+
+        // Non-BMP characters are encoded as a sequence of two hex
+        // escapes, representing UTF-16 surrogates. If deserializing a
+        // utf-8 string the surrogates are required to be paired,
+        // whereas deserializing a byte string accepts lone surrogates.
+        n1 @ 0xD800..=0xDBFF => {
+            if tri!(peek_or_eof(read)) == b'\\' {
+                read.discard();
+            } else {
+                return if validate {
+                    read.discard();
+                    error(read, ErrorCode::UnexpectedEndOfHexEscape)
+                } else {
+                    encode_surrogate(scratch, n1);
+                    Ok(())
+                };
+            }
+
+            if tri!(peek_or_eof(read)) == b'u' {
+                read.discard();
+            } else {
+                return if validate {
+                    read.discard();
+                    error(read, ErrorCode::UnexpectedEndOfHexEscape)
+                } else {
+                    encode_surrogate(scratch, n1);
+                    // The \ prior to this byte started an escape sequence,
+                    // so we need to parse that now. This recursive call
+                    // does not blow the stack on malicious input because
+                    // the escape is not \u, so it will be handled by one
+                    // of the easy nonrecursive cases.
+                    parse_escape(read, validate, scratch)
+                };
+            }
+
+            let n2 = tri!(read.decode_hex_escape());
+
+            if n2 < 0xDC00 || n2 > 0xDFFF {
+                return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
+            }
+
+            let n = (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
+
+            match char::from_u32(n) {
+                Some(c) => c,
+                None => {
+                    return error(read, ErrorCode::InvalidUnicodeCodePoint);
+                }
+            }
+        }
+
+        // Every u16 outside of the surrogate ranges above is guaranteed
+        // to be a legal char.
+        n => char::from_u32(n as u32).unwrap(),
+    };
+
+    scratch.extend_from_slice(c.encode_utf8(&mut [0_u8; 4]).as_bytes());
     Ok(())
 }
 
