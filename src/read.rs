@@ -898,20 +898,12 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
     validate: bool,
     scratch: &mut Vec<u8>,
 ) -> Result<()> {
-    fn encode_surrogate(scratch: &mut Vec<u8>, n: u16) {
-        scratch.extend_from_slice(&[
-            (n >> 12 & 0b0000_1111) as u8 | 0b1110_0000,
-            (n >> 6 & 0b0011_1111) as u8 | 0b1000_0000,
-            (n & 0b0011_1111) as u8 | 0b1000_0000,
-        ]);
-    }
-
     let c = match tri!(read.decode_hex_escape()) {
         n @ 0xDC00..=0xDFFF => {
             return if validate {
                 error(read, ErrorCode::LoneLeadingSurrogateInHexEscape)
             } else {
-                encode_surrogate(scratch, n);
+                push_wtf8_codepoint(n as u32, scratch);
                 Ok(())
             };
         }
@@ -928,7 +920,7 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
                     read.discard();
                     error(read, ErrorCode::UnexpectedEndOfHexEscape)
                 } else {
-                    encode_surrogate(scratch, n1);
+                    push_wtf8_codepoint(n1 as u32, scratch);
                     Ok(())
                 };
             }
@@ -940,7 +932,7 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
                     read.discard();
                     error(read, ErrorCode::UnexpectedEndOfHexEscape)
                 } else {
-                    encode_surrogate(scratch, n1);
+                    push_wtf8_codepoint(n1 as u32, scratch);
                     // The \ prior to this byte started an escape sequence,
                     // so we need to parse that now. This recursive call
                     // does not blow the stack on malicious input because
@@ -966,17 +958,14 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
         n => n as u32,
     };
 
-    // SAFETY: c is always a codepoint.
-    unsafe {
-        push_utf8_codepoint(c, scratch);
-    }
+    push_wtf8_codepoint(c, scratch);
     Ok(())
 }
 
-/// Adds a UTF-8 codepoint to the end of the buffer. This is a more efficient
-/// implementation of String::push. n must be a valid codepoint.
+/// Adds a WTF-8 codepoint to the end of the buffer. This is a more efficient
+/// implementation of String::push. The codepoint may be a surrogate.
 #[inline]
-unsafe fn push_utf8_codepoint(n: u32, scratch: &mut Vec<u8>) {
+fn push_wtf8_codepoint(n: u32, scratch: &mut Vec<u8>) {
     if n < 0x80 {
         scratch.push(n as u8);
         return;
