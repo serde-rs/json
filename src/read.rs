@@ -877,15 +877,13 @@ fn parse_escape<'de, R: Read<'de>>(
         b'r' => scratch.push(b'\r'),
         b't' => scratch.push(b'\t'),
         b'u' => return parse_unicode_escape(read, validate, scratch),
-        _ => {
-            return error(read, ErrorCode::InvalidEscape);
-        }
+        _ => return error(read, ErrorCode::InvalidEscape),
     }
 
     Ok(())
 }
 
-/// Parses a JSON \u escape and appends it into the scratch space. Assumes \u
+/// Parses a JSON \u escape and appends it into the scratch space. Assumes `\u`
 /// has just been read.
 #[cold]
 fn parse_unicode_escape<'de, R: Read<'de>>(
@@ -895,10 +893,10 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
 ) -> Result<()> {
     let mut n = tri!(read.decode_hex_escape());
 
-    // Non-BMP characters are encoded as a sequence of two hex
-    // escapes, representing UTF-16 surrogates. If deserializing a
-    // utf-8 string the surrogates are required to be paired,
-    // whereas deserializing a byte string accepts lone surrogates.
+    // Non-BMP characters are encoded as a sequence of two hex escapes,
+    // representing UTF-16 surrogates. If deserializing a utf-8 string the
+    // surrogates are required to be paired, whereas deserializing a byte string
+    // accepts lone surrogates.
     if validate && n >= 0xDC00 && n <= 0xDFFF {
         // XXX: This is actually a trailing surrogate.
         return error(read, ErrorCode::LoneLeadingSurrogateInHexEscape);
@@ -935,11 +933,10 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
                 error(read, ErrorCode::UnexpectedEndOfHexEscape)
             } else {
                 push_wtf8_codepoint(n1 as u32, scratch);
-                // The \ prior to this byte started an escape sequence,
-                // so we need to parse that now. This recursive call
-                // does not blow the stack on malicious input because
-                // the escape is not \u, so it will be handled by one
-                // of the easy nonrecursive cases.
+                // The \ prior to this byte started an escape sequence, so we
+                // need to parse that now. This recursive call does not blow the
+                // stack on malicious input because the escape is not \u, so it
+                // will be handled by one of the easy nonrecursive cases.
                 parse_escape(read, validate, scratch)
             };
         }
@@ -956,8 +953,8 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
             continue;
         }
 
-        // This value is in range U+10000..=U+10FFFF, which is always a
-        // valid codepoint.
+        // This value is in range U+10000..=U+10FFFF, which is always a valid
+        // codepoint.
         let n = (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
         push_wtf8_codepoint(n, scratch);
         return Ok(());
