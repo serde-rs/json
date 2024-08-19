@@ -900,6 +900,69 @@ impl<'a> OccupiedEntry<'a> {
         #[cfg(not(feature = "preserve_order"))]
         return self.occupied.remove();
     }
+
+    /// Removes the entry from the map, returning the stored key and value.
+    ///
+    /// If serde_json's "preserve_order" is enabled, `.remove_entry()` is
+    /// equivalent to [`.swap_remove_entry()`][Self::swap_remove_entry],
+    /// replacing this entry's position with the last element. If you need to
+    /// preserve the relative order of the keys in the map, use
+    /// [`.shift_remove_entry()`][Self::shift_remove_entry] instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// use serde_json::map::Entry;
+    ///
+    /// let mut map = serde_json::Map::new();
+    /// map.insert("serde".to_owned(), json!(12));
+    ///
+    /// match map.entry("serde") {
+    ///     Entry::Occupied(occupied) => {
+    ///         let (key, value) = occupied.remove_entry();
+    ///         assert_eq!(key, "serde");
+    ///         assert_eq!(value, 12);
+    ///     }
+    ///     Entry::Vacant(_) => unimplemented!(),
+    /// }
+    /// ```
+    #[inline]
+    pub fn remove_entry(self) -> (String, Value) {
+        #[cfg(feature = "preserve_order")]
+        return self.swap_remove_entry();
+        #[cfg(not(feature = "preserve_order"))]
+        return self.occupied.remove_entry();
+    }
+
+    /// Removes the entry from the map, returning the stored key and value.
+    ///
+    /// Like [`Vec::swap_remove`], the entry is removed by swapping it with the
+    /// last element of the map and popping it off. This perturbs the position
+    /// of what used to be the last element!
+    ///
+    /// [`Vec::swap_remove`]: std::vec::Vec::swap_remove
+    #[cfg(feature = "preserve_order")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
+    #[inline]
+    pub fn swap_remove_entry(self) -> (String, Value) {
+        self.occupied.swap_remove_entry()
+    }
+
+    /// Removes the entry from the map, returning the stored key and value.
+    ///
+    /// Like [`Vec::remove`], the entry is removed by shifting all of the
+    /// elements that follow it, preserving their relative order. This perturbs
+    /// the index of all of those elements!
+    ///
+    /// [`Vec::remove`]: std::vec::Vec::remove
+    #[cfg(feature = "preserve_order")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "preserve_order")))]
+    #[inline]
+    pub fn shift_remove_entry(self) -> (String, Value) {
+        self.occupied.shift_remove_entry()
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
