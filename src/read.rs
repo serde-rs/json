@@ -446,9 +446,9 @@ impl<'a> SliceRead<'a> {
         // benchmarks and it's cross-platform, so probably the right fit.
         // [1]: https://groups.google.com/forum/#!original/comp.lang.c/2HtQXvg7iKc/xOJeipH6KLMJ
 
-        #[cfg(arithmetic64)]
+        #[cfg(fast_arithmetic = "64")]
         type Chunk = u64;
-        #[cfg(arithmetic32)]
+        #[cfg(fast_arithmetic = "32")]
         type Chunk = u32;
 
         const STEP: usize = mem::size_of::<Chunk>();

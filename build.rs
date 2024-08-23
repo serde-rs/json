@@ -3,8 +3,7 @@ use std::env;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
-    println!("cargo:rustc-check-cfg=cfg(arithmetic32)");
-    println!("cargo:rustc-check-cfg=cfg(arithmetic64)");
+    println!("cargo:rustc-check-cfg=cfg(fast_arithmetic, values(\"32\", \"64\"))");
 
     // Decide ideal limb width for arithmetic in the float parser and string
     // parser.
@@ -23,8 +22,8 @@ fn main() {
         // pointer width. Examples include aarch64-unknown-linux-gnu_ilp32 and
         // x86_64-unknown-linux-gnux32. So our choice of limb width is not
         // equivalent to using usize everywhere.
-        println!("cargo:rustc-cfg=arithmetic64");
+        println!("cargo:rustc-cfg=fast_arithmetic=\"64\"");
     } else {
-        println!("cargo:rustc-cfg=arithmetic32");
+        println!("cargo:rustc-cfg=fast_arithmetic=\"32\"");
     }
 }
