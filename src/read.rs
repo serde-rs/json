@@ -445,7 +445,22 @@ impl<'a> SliceRead<'a> {
         // than a naive loop. It runs faster than equivalent two-pass memchr2+SWAR code on
         // benchmarks and it's cross-platform, so probably the right fit.
         // [1]: https://groups.google.com/forum/#!original/comp.lang.c/2HtQXvg7iKc/xOJeipH6KLMJ
+
+        // The following architectures have native support for 64-bit integers,
+        // but have targets where usize is not 64-bit.
+        #[cfg(any(
+            target_arch = "aarch64",
+            target_arch = "x86_64",
+            target_arch = "wasm32",
+        ))]
+        type Chunk = u64;
+        #[cfg(not(any(
+            target_arch = "aarch64",
+            target_arch = "x86_64",
+            target_arch = "wasm32",
+        )))]
         type Chunk = usize;
+
         const STEP: usize = mem::size_of::<Chunk>();
         const ONE_BYTES: Chunk = Chunk::MAX / 255; // 0x0101...01
 
