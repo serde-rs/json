@@ -692,7 +692,7 @@ impl From<ParserNumber> for Number {
                 }
                 #[cfg(feature = "arbitrary_precision")]
                 {
-                    f.to_string()
+                    ryu::Buffer::new().format_finite(f).to_owned()
                 }
             }
             ParserNumber::U64(u) => {
