@@ -486,7 +486,7 @@ impl serde::Serializer for MapKeySerializer {
     }
 
     fn serialize_bool(self, value: bool) -> Result<String> {
-        Ok(value.to_string())
+        Ok(if value { "true" } else { "false" }.to_owned())
     }
 
     fn serialize_i8(self, value: i8) -> Result<String> {
