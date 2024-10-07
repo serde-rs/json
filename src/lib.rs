@@ -314,6 +314,7 @@
     clippy::match_single_binding,
     clippy::needless_doctest_main,
     clippy::needless_late_init,
+    clippy::needless_lifetimes,
     clippy::return_self_not_must_use,
     clippy::transmute_ptr_to_ptr,
     clippy::unconditional_recursion, // https://github.com/rust-lang/rust-clippy/issues/12133
