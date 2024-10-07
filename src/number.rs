@@ -609,7 +609,7 @@ impl<'de> Deserializer<'de> for Number {
     }
 }
 
-impl<'de, 'a> Deserializer<'de> for &'a Number {
+impl<'de> Deserializer<'de> for &Number {
     type Error = Error;
 
     deserialize_any!(ref);
