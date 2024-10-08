@@ -12,7 +12,7 @@ enum E {
 fn test() {
     let e = E::Float(159.1);
     let v = serde_json::to_value(e).unwrap();
-    let e = serde_json::from_value::<E>(v).unwrap();
+    let e = serde_json::from_value::<E, serde_json::Value>(v).unwrap();
 
     match e {
         E::Float(f) => assert_eq!(f, 159.1),
