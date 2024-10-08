@@ -26,11 +26,13 @@ use serde::de::{self, IgnoredAny, IntoDeserializer};
 use serde::ser::{self, SerializeMap, SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_bytes::{ByteBuf, Bytes};
+#[cfg(feature = "std")]
+use serde_json::from_reader;
 #[cfg(feature = "raw_value")]
 use serde_json::value::RawValue;
 use serde_json::{
-    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
-    to_vec, Deserializer, Number, Value,
+    from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value, to_vec,
+    Deserializer, Number, Value,
 };
 use std::collections::BTreeMap;
 #[cfg(feature = "raw_value")]
@@ -39,6 +41,7 @@ use std::fmt::{self, Debug};
 use std::hash::BuildHasher;
 #[cfg(feature = "raw_value")]
 use std::hash::{Hash, Hasher};
+#[cfg(feature = "std")]
 use std::io;
 use std::iter;
 use std::marker::PhantomData;
@@ -1622,7 +1625,7 @@ fn test_serialize_map_with_no_len() {
     assert_eq!(s, expected);
 }
 
-#[cfg(not(miri))]
+#[cfg(all(not(miri), feature = "std"))]
 #[test]
 fn test_deserialize_from_stream() {
     use serde_json::to_writer;
@@ -2188,8 +2191,10 @@ fn test_partialeq_bool() {
     assert_ne!(v, 0);
 }
 
+#[cfg(feature = "std")]
 struct FailReader(io::ErrorKind);
 
+#[cfg(feature = "std")]
 impl io::Read for FailReader {
     fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
         Err(io::Error::new(self.0, "oh no!"))
@@ -2230,13 +2235,17 @@ fn test_category() {
         .unwrap_err()
         .is_eof());
 
-    let fail = FailReader(io::ErrorKind::NotConnected);
-    assert!(from_reader::<_, String>(fail).unwrap_err().is_io());
+    #[cfg(feature = "std")]
+    {
+        let fail = FailReader(io::ErrorKind::NotConnected);
+        assert!(from_reader::<_, String>(fail).unwrap_err().is_io());
+    }
 }
 
 #[test]
 // Clippy false positive: https://github.com/Manishearth/rust-clippy/issues/292
 #[allow(clippy::needless_lifetimes)]
+#[cfg(feature = "std")]
 fn test_into_io_error() {
     fn io_error<'de, T: Deserialize<'de> + Debug>(j: &'static str) -> io::Error {
         from_str::<T>(j).unwrap_err().into()
@@ -2416,9 +2425,12 @@ fn test_boxed_raw_value() {
         serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.get());
 
-    let wrapper_from_reader: Wrapper =
-        serde_json::from_reader(br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref()).unwrap();
-    assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.get());
+    #[cfg(feature = "std")]
+    {
+        let wrapper_from_reader: Wrapper =
+            serde_json::from_reader(br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref()).unwrap();
+        assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.get());
+    }
 
     let wrapper_from_value: Wrapper =
         serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3})).unwrap();
@@ -2437,12 +2449,15 @@ fn test_boxed_raw_value() {
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
     assert_eq!("null", array_from_str[3].get());
 
-    let array_from_reader: Vec<Box<RawValue>> =
-        serde_json::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
-    assert_eq!(r#""a""#, array_from_reader[0].get());
-    assert_eq!("42", array_from_reader[1].get());
-    assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());
-    assert_eq!("null", array_from_reader[3].get());
+    #[cfg(feature = "std")]
+    {
+        let array_from_reader: Vec<Box<RawValue>> =
+            serde_json::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
+        assert_eq!(r#""a""#, array_from_reader[0].get());
+        assert_eq!("42", array_from_reader[1].get());
+        assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());
+        assert_eq!("null", array_from_reader[3].get());
+    }
 
     let array_to_string = serde_json::to_string(&array_from_str).unwrap();
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
