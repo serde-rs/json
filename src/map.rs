@@ -348,6 +348,28 @@ impl Map<String, Value> {
     {
         self.map.retain(f);
     }
+
+    /// Sorts this map's entries in-place using `str`'s usual ordering.
+    ///
+    /// If serde_json's "preserve_order" feature is not enabled, this method
+    /// does no work because all JSON maps are always kept in a sorted state.
+    ///
+    /// If serde_json's "preserve_order" feature is enabled, this method
+    /// destroys the original source order or insertion order of this map in
+    /// favor of an alphanumerical order that matches how a BTreeMap with the
+    /// same contents would be ordered. This takes **O(n log n + c)** time where
+    /// _n_ is the length of the map and _c_ is the capacity.
+    ///
+    /// Other maps nested within the values of this map are not sorted. If you
+    /// need the entire data structure to be sorted at all levels, you must also
+    /// call `map.`[`values_mut`]`().for_each(`[`Value::sort_all_objects`]`)`.
+    ///
+    /// [`values_mut`]: Map::values_mut
+    #[inline]
+    pub fn sort_keys(&mut self) {
+        #[cfg(feature = "preserve_order")]
+        self.map.sort_unstable_keys();
+    }
 }
 
 #[allow(clippy::derivable_impls)] // clippy bug: https://github.com/rust-lang/rust-clippy/issues/7655
