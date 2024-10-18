@@ -45,6 +45,11 @@ impl<'de> Deserialize<'de> for Value {
             }
 
             #[inline]
+            fn visit_i128<E>(self, value: i128) -> Result<Value, E> {
+                Ok(Number::from_i128(value).map_or(Value::Null, Value::Number))
+            }
+
+            #[inline]
             fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
                 Ok(Value::Number(value.into()))
             }
