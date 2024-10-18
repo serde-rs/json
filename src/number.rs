@@ -330,31 +330,17 @@ impl Number {
             }
             Err(_) => match i64::try_from(i) {
                 Ok(i) => {
-                    if i >= 0 {
-                        let n = {
-                            #[cfg(not(feature = "arbitrary_precision"))]
-                            {
-                                N::PosInt(i as u64)
-                            }
-                            #[cfg(feature = "arbitrary_precision")]
-                            {
-                                i.to_string()
-                            }
-                        };
-                        Some(Number { n })
-                    } else {
-                        let n = {
-                            #[cfg(not(feature = "arbitrary_precision"))]
-                            {
-                                N::NegInt(i)
-                            }
-                            #[cfg(feature = "arbitrary_precision")]
-                            {
-                                i.to_string()
-                            }
-                        };
-                        Some(Number { n })
-                    }
+                    let n = {
+                        #[cfg(not(feature = "arbitrary_precision"))]
+                        {
+                            N::NegInt(i)
+                        }
+                        #[cfg(feature = "arbitrary_precision")]
+                        {
+                            i.to_string()
+                        }
+                    };
+                    Some(Number { n })
                 }
                 Err(_) => None,
             },
