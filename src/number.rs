@@ -292,8 +292,9 @@ impl Number {
         }
     }
 
-    /// Converts an `i128` to a `Number`. Greater than u64::MAX values are not JSON
-    /// numbers.
+    /// Converts an `i128` to a `Number`. Numbers smaller than i64::MIN or
+    /// larger than u64::MAX can only be represented in `Number` if serde_json's
+    /// "arbitrary_precision" feature is enabled.
     ///
     /// ```
     /// # use serde_json::Number;
