@@ -326,8 +326,8 @@ impl Number {
                         u.to_string()
                     }
                 };
-                Some(Number{ n })
-            },
+                Some(Number { n })
+            }
             Err(_) => match i64::try_from(i) {
                 Ok(i) => {
                     if i >= 0 {
@@ -341,7 +341,7 @@ impl Number {
                                 i.to_string()
                             }
                         };
-                        Some(Number{ n })
+                        Some(Number { n })
                     } else {
                         let n = {
                             #[cfg(not(feature = "arbitrary_precision"))]
@@ -353,11 +353,11 @@ impl Number {
                                 i.to_string()
                             }
                         };
-                        Some(Number{ n })
+                        Some(Number { n })
                     }
-                },
-                Err(_) => None
-            }
+                }
+                Err(_) => None,
+            },
         }
     }
 
