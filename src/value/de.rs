@@ -57,6 +57,14 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(Value::Number(value.into()))
             }
 
+            fn visit_u128<E>(self, value: u128) -> Result<Value, E>
+            where
+                E: serde::de::Error,
+            {
+                let de = serde::de::value::U128Deserializer::new(value);
+                Number::deserialize(de).map(Value::Number)
+            }
+
             #[inline]
             fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
                 Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
