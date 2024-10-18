@@ -6,6 +6,7 @@
 //! [`BTreeMap`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
 //! [`IndexMap`]: https://docs.rs/indexmap/*/indexmap/map/struct.IndexMap.html
 
+use crate::error::Error;
 use crate::value::Value;
 use alloc::string::String;
 #[cfg(feature = "preserve_order")]
@@ -589,7 +590,7 @@ macro_rules! delegate_iterator {
     }
 }
 
-impl<'de> de::IntoDeserializer<'de, crate::Error> for Map<String, Value> {
+impl<'de> de::IntoDeserializer<'de, Error> for Map<String, Value> {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {
@@ -597,7 +598,7 @@ impl<'de> de::IntoDeserializer<'de, crate::Error> for Map<String, Value> {
     }
 }
 
-impl<'de> de::IntoDeserializer<'de, crate::Error> for &'de Map<String, Value> {
+impl<'de> de::IntoDeserializer<'de, Error> for &'de Map<String, Value> {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {

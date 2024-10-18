@@ -11,8 +11,8 @@ use core::fmt;
 use core::slice;
 use core::str::FromStr;
 use serde::de::{
-    self, Deserialize, DeserializeSeed, EnumAccess, Expected, IntoDeserializer, MapAccess,
-    SeqAccess, Unexpected, VariantAccess, Visitor,
+    self, Deserialize, DeserializeSeed, Deserializer as _, EnumAccess, Expected, IntoDeserializer,
+    MapAccess, SeqAccess, Unexpected, VariantAccess, Visitor,
 };
 use serde::forward_to_deserialize_any;
 
@@ -597,8 +597,6 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
     where
         V: Visitor<'de>,
     {
-        use serde::de::Deserializer;
-
         match self.value {
             Some(Value::Object(v)) => v.deserialize_any(visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
@@ -1109,8 +1107,6 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        use serde::de::Deserializer;
-
         match self.value {
             Some(Value::Object(v)) => v.deserialize_any(visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
