@@ -314,36 +314,32 @@ impl Number {
     /// ```
     #[inline]
     pub fn from_i128(i: i128) -> Option<Number> {
-        match u64::try_from(i) {
-            Ok(u) => {
-                let n = {
-                    #[cfg(not(feature = "arbitrary_precision"))]
-                    {
-                        N::PosInt(u)
-                    }
-                    #[cfg(feature = "arbitrary_precision")]
-                    {
-                        u.to_string()
-                    }
-                };
-                Some(Number { n })
-            }
-            Err(_) => match i64::try_from(i) {
-                Ok(i) => {
-                    let n = {
-                        #[cfg(not(feature = "arbitrary_precision"))]
-                        {
-                            N::NegInt(i)
-                        }
-                        #[cfg(feature = "arbitrary_precision")]
-                        {
-                            i.to_string()
-                        }
-                    };
-                    Some(Number { n })
+        if let Ok(u) = u64::try_from(i) {
+            let n = {
+                #[cfg(not(feature = "arbitrary_precision"))]
+                {
+                    N::PosInt(u)
                 }
-                Err(_) => None,
-            },
+                #[cfg(feature = "arbitrary_precision")]
+                {
+                    u.to_string()
+                }
+            };
+            Some(Number { n })
+        } else if let Ok(i) = i64::try_from(i) {
+            let n = {
+                #[cfg(not(feature = "arbitrary_precision"))]
+                {
+                    N::NegInt(i)
+                }
+                #[cfg(feature = "arbitrary_precision")]
+                {
+                    i.to_string()
+                }
+            };
+            Some(Number { n })
+        } else {
+            None
         }
     }
 
