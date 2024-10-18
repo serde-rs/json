@@ -268,8 +268,6 @@ impl Number {
     /// numbers.
     ///
     /// ```
-    /// # use std::f64;
-    /// #
     /// # use serde_json::Number;
     /// #
     /// assert!(Number::from_f64(256.0).is_some());
@@ -298,8 +296,6 @@ impl Number {
     /// numbers.
     ///
     /// ```
-    /// # use std::i128;
-    /// #
     /// # use serde_json::Number;
     /// #
     /// assert!(Number::from_i128(256).is_some());
