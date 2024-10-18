@@ -362,9 +362,10 @@ impl Map<String, Value> {
     ///
     /// Other maps nested within the values of this map are not sorted. If you
     /// need the entire data structure to be sorted at all levels, you must also
-    /// call `map.`[`values_mut`]`().for_each(`[`Value::sort_all_objects`]`)`.
+    /// call
+    /// <code>map.[values_mut]\().for_each([Value::sort_all_objects])</code>.
     ///
-    /// [`values_mut`]: Map::values_mut
+    /// [values_mut]: Map::values_mut
     #[inline]
     pub fn sort_keys(&mut self) {
         #[cfg(feature = "preserve_order")]
