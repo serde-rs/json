@@ -146,19 +146,6 @@ impl Number {
         self.n.parse().ok()
     }
 
-    /// If the `Number` is an integer, represent it as i128 if possible. Returns
-    /// None otherwise.
-    pub fn as_i128(&self) -> Option<i128> {
-        #[cfg(not(feature = "arbitrary_precision"))]
-        match self.n {
-            N::PosInt(n) => Some(n as i128),
-            N::NegInt(n) => Some(n as i128),
-            N::Float(_) => None,
-        }
-        #[cfg(feature = "arbitrary_precision")]
-        self.n.parse().ok()
-    }
-
     /// If the `Number` is an integer, represent it as u64 if possible. Returns
     /// None otherwise.
     pub fn as_u64(&self) -> Option<u64> {
@@ -211,6 +198,31 @@ impl Number {
         }
     }
 
+    /// If the `Number` is an integer, represent it as i128 if possible. Returns
+    /// None otherwise.
+    pub fn as_i128(&self) -> Option<i128> {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        match self.n {
+            N::PosInt(n) => Some(n as i128),
+            N::NegInt(n) => Some(n as i128),
+            N::Float(_) => None,
+        }
+        #[cfg(feature = "arbitrary_precision")]
+        self.n.parse().ok()
+    }
+
+    /// If the `Number` is an integer, represent it as u128 if possible. Returns
+    /// None otherwise.
+    pub fn as_u128(&self) -> Option<u128> {
+        #[cfg(not(feature = "arbitrary_precision"))]
+        match self.n {
+            N::PosInt(n) => Some(n as u128),
+            N::NegInt(_) | N::Float(_) => None,
+        }
+        #[cfg(feature = "arbitrary_precision")]
+        self.n.parse().ok()
+    }
+
     /// Converts an `i128` to a `Number`. Numbers smaller than i64::MIN or
     /// larger than u64::MAX can only be represented in `Number` if serde_json's
     /// "arbitrary_precision" feature is enabled.
@@ -228,6 +240,33 @@ impl Number {
                     N::PosInt(u)
                 } else if let Ok(i) = i64::try_from(i) {
                     N::NegInt(i)
+                } else {
+                    return None;
+                }
+            }
+            #[cfg(feature = "arbitrary_precision")]
+            {
+                i.to_string()
+            }
+        };
+        Some(Number { n })
+    }
+
+    /// Converts a `u128` to a `Number`. Numbers greater than u64::MAX can only
+    /// be represented in `Number` if serde_json's "arbitrary_precision" feature
+    /// is enabled.
+    ///
+    /// ```
+    /// # use serde_json::Number;
+    /// #
+    /// assert!(Number::from_u128(256).is_some());
+    /// ```
+    pub fn from_u128(i: u128) -> Option<Number> {
+        let n = {
+            #[cfg(not(feature = "arbitrary_precision"))]
+            {
+                if let Ok(u) = u64::try_from(i) {
+                    N::PosInt(u)
                 } else {
                     return None;
                 }
@@ -376,11 +415,20 @@ impl<'de> Deserialize<'de> for Number {
             where
                 E: de::Error,
             {
-                Number::from_i128(value).ok_or_else(|| de::Error::custom("not a JSON number"))
+                Number::from_i128(value)
+                    .ok_or_else(|| de::Error::custom("JSON number out of range"))
             }
 
             fn visit_u64<E>(self, value: u64) -> Result<Number, E> {
                 Ok(value.into())
+            }
+
+            fn visit_u128<E>(self, value: u128) -> Result<Number, E>
+            where
+                E: de::Error,
+            {
+                Number::from_u128(value)
+                    .ok_or_else(|| de::Error::custom("JSON number out of range"))
             }
 
             fn visit_f64<E>(self, value: f64) -> Result<Number, E>
@@ -503,6 +551,8 @@ macro_rules! deserialize_any {
                 return visitor.visit_u64(u);
             } else if let Some(i) = self.as_i64() {
                 return visitor.visit_i64(i);
+            } else if let Some(u) = self.as_u128() {
+                return visitor.visit_u128(u);
             } else if let Some(i) = self.as_i128() {
                 return visitor.visit_i128(i);
             } else if let Some(f) = self.as_f64() {
