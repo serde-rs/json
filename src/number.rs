@@ -93,7 +93,6 @@ impl Number {
     /// // Numbers with a decimal point are not considered integers.
     /// assert!(!v["c"].is_i64());
     /// ```
-    #[inline]
     pub fn is_i64(&self) -> bool {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
@@ -123,7 +122,6 @@ impl Number {
     /// // Numbers with a decimal point are not considered integers.
     /// assert!(!v["c"].is_u64());
     /// ```
-    #[inline]
     pub fn is_u64(&self) -> bool {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
@@ -153,7 +151,6 @@ impl Number {
     /// assert!(!v["b"].is_f64());
     /// assert!(!v["c"].is_f64());
     /// ```
-    #[inline]
     pub fn is_f64(&self) -> bool {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
@@ -184,7 +181,6 @@ impl Number {
     /// assert_eq!(v["b"].as_i64(), None);
     /// assert_eq!(v["c"].as_i64(), None);
     /// ```
-    #[inline]
     pub fn as_i64(&self) -> Option<i64> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
@@ -213,7 +209,6 @@ impl Number {
     /// assert_eq!(v["a"].as_i128(), Some(64));
     /// assert_eq!(v["b"].as_i128(), None);
     /// ```
-    #[inline]
     pub fn as_i128(&self) -> Option<i128> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
@@ -237,7 +232,6 @@ impl Number {
     /// assert_eq!(v["b"].as_u64(), None);
     /// assert_eq!(v["c"].as_u64(), None);
     /// ```
-    #[inline]
     pub fn as_u64(&self) -> Option<u64> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
@@ -259,7 +253,6 @@ impl Number {
     /// assert_eq!(v["b"].as_f64(), Some(64.0));
     /// assert_eq!(v["c"].as_f64(), Some(-64.0));
     /// ```
-    #[inline]
     pub fn as_f64(&self) -> Option<f64> {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
@@ -283,7 +276,6 @@ impl Number {
     ///
     /// assert!(Number::from_f64(f64::NAN).is_none());
     /// ```
-    #[inline]
     pub fn from_f64(f: f64) -> Option<Number> {
         if f.is_finite() {
             let n = {
@@ -312,7 +304,6 @@ impl Number {
     /// #
     /// assert!(Number::from_i128(256).is_some());
     /// ```
-    #[inline]
     pub fn from_i128(i: i128) -> Option<Number> {
         let n = {
             #[cfg(not(feature = "arbitrary_precision"))]
@@ -422,7 +413,6 @@ impl Debug for Number {
 
 impl Serialize for Number {
     #[cfg(not(feature = "arbitrary_precision"))]
-    #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -435,7 +425,6 @@ impl Serialize for Number {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -463,7 +452,6 @@ impl<'de> Deserialize<'de> for Number {
                 formatter.write_str("a JSON number")
             }
 
-            #[inline]
             fn visit_i64<E>(self, value: i64) -> Result<Number, E> {
                 Ok(value.into())
             }
@@ -475,12 +463,10 @@ impl<'de> Deserialize<'de> for Number {
                 Number::from_i128(value).ok_or_else(|| de::Error::custom("not a JSON number"))
             }
 
-            #[inline]
             fn visit_u64<E>(self, value: u64) -> Result<Number, E> {
                 Ok(value.into())
             }
 
-            #[inline]
             fn visit_f64<E>(self, value: f64) -> Result<Number, E>
             where
                 E: de::Error,
@@ -489,7 +475,6 @@ impl<'de> Deserialize<'de> for Number {
             }
 
             #[cfg(feature = "arbitrary_precision")]
-            #[inline]
             fn visit_map<V>(self, mut visitor: V) -> Result<Number, V::Error>
             where
                 V: de::MapAccess<'de>,
@@ -583,7 +568,6 @@ fn invalid_number() -> Error {
 macro_rules! deserialize_any {
     (@expand [$($num_string:tt)*]) => {
         #[cfg(not(feature = "arbitrary_precision"))]
-        #[inline]
         fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
         where
             V: Visitor<'de>,
@@ -596,7 +580,6 @@ macro_rules! deserialize_any {
         }
 
         #[cfg(feature = "arbitrary_precision")]
-        #[inline]
         fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
             where V: Visitor<'de>
         {
@@ -791,7 +774,6 @@ macro_rules! impl_from_unsigned {
     ) => {
         $(
             impl From<$ty> for Number {
-                #[inline]
                 fn from(u: $ty) -> Self {
                     let n = {
                         #[cfg(not(feature = "arbitrary_precision"))]
@@ -814,7 +796,6 @@ macro_rules! impl_from_signed {
     ) => {
         $(
             impl From<$ty> for Number {
-                #[inline]
                 fn from(i: $ty) -> Self {
                     let n = {
                         #[cfg(not(feature = "arbitrary_precision"))]
