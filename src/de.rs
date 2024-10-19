@@ -1926,31 +1926,41 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
     where
         T: de::DeserializeSeed<'de>,
     {
-        let peek = match tri!(self.de.parse_whitespace()) {
-            Some(b']') => {
-                return Ok(None);
-            }
-            Some(b',') if !self.first => {
-                self.de.eat_char();
-                tri!(self.de.parse_whitespace())
-            }
-            Some(b) => {
-                if self.first {
-                    self.first = false;
-                    Some(b)
-                } else {
-                    return Err(self.de.peek_error(ErrorCode::ExpectedListCommaOrEnd));
+        fn has_next_element<'de, 'a, R: Read<'de> + 'a>(
+            seq: &mut SeqAccess<'a, R>,
+        ) -> Result<bool> {
+            let peek = match tri!(seq.de.parse_whitespace()) {
+                Some(b']') => {
+                    return Ok(false);
                 }
-            }
-            None => {
-                return Err(self.de.peek_error(ErrorCode::EofWhileParsingList));
-            }
-        };
+                Some(b',') if !seq.first => {
+                    seq.de.eat_char();
+                    tri!(seq.de.parse_whitespace())
+                }
+                Some(b) => {
+                    if seq.first {
+                        seq.first = false;
+                        Some(b)
+                    } else {
+                        return Err(seq.de.peek_error(ErrorCode::ExpectedListCommaOrEnd));
+                    }
+                }
+                None => {
+                    return Err(seq.de.peek_error(ErrorCode::EofWhileParsingList));
+                }
+            };
 
-        match peek {
-            Some(b']') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
-            Some(_) => Ok(Some(tri!(seed.deserialize(&mut *self.de)))),
-            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
+            match peek {
+                Some(b']') => Err(seq.de.peek_error(ErrorCode::TrailingComma)),
+                Some(_) => Ok(true),
+                None => Err(seq.de.peek_error(ErrorCode::EofWhileParsingValue)),
+            }
+        }
+
+        if tri!(has_next_element(self)) {
+            Ok(Some(tri!(seed.deserialize(&mut *self.de))))
+        } else {
+            Ok(None)
         }
     }
 }
@@ -1973,32 +1983,40 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
     where
         K: de::DeserializeSeed<'de>,
     {
-        let peek = match tri!(self.de.parse_whitespace()) {
-            Some(b'}') => {
-                return Ok(None);
-            }
-            Some(b',') if !self.first => {
-                self.de.eat_char();
-                tri!(self.de.parse_whitespace())
-            }
-            Some(b) => {
-                if self.first {
-                    self.first = false;
-                    Some(b)
-                } else {
-                    return Err(self.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
+        fn has_next_key<'de, 'a, R: Read<'de> + 'a>(map: &mut MapAccess<'a, R>) -> Result<bool> {
+            let peek = match tri!(map.de.parse_whitespace()) {
+                Some(b'}') => {
+                    return Ok(false);
                 }
-            }
-            None => {
-                return Err(self.de.peek_error(ErrorCode::EofWhileParsingObject));
-            }
-        };
+                Some(b',') if !map.first => {
+                    map.de.eat_char();
+                    tri!(map.de.parse_whitespace())
+                }
+                Some(b) => {
+                    if map.first {
+                        map.first = false;
+                        Some(b)
+                    } else {
+                        return Err(map.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
+                    }
+                }
+                None => {
+                    return Err(map.de.peek_error(ErrorCode::EofWhileParsingObject));
+                }
+            };
 
-        match peek {
-            Some(b'"') => seed.deserialize(MapKey { de: &mut *self.de }).map(Some),
-            Some(b'}') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
-            Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
-            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
+            match peek {
+                Some(b'"') => Ok(true),
+                Some(b'}') => Err(map.de.peek_error(ErrorCode::TrailingComma)),
+                Some(_) => Err(map.de.peek_error(ErrorCode::KeyMustBeAString)),
+                None => Err(map.de.peek_error(ErrorCode::EofWhileParsingValue)),
+            }
+        }
+
+        if tri!(has_next_key(self)) {
+            Ok(Some(tri!(seed.deserialize(MapKey { de: &mut *self.de }))))
+        } else {
+            Ok(None)
         }
     }
 
