@@ -1936,24 +1936,20 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
                 }
             };
 
-            match peek {
-                b']' => Ok(false),
-                b',' if !seq.first => {
-                    seq.de.eat_char();
-                    match tri!(seq.de.parse_whitespace()) {
-                        Some(b']') => Err(seq.de.peek_error(ErrorCode::TrailingComma)),
-                        Some(_) => Ok(true),
-                        None => Err(seq.de.peek_error(ErrorCode::EofWhileParsingValue)),
-                    }
+            if peek == b']' {
+                Ok(false)
+            } else if seq.first {
+                seq.first = false;
+                Ok(true)
+            } else if peek == b',' {
+                seq.de.eat_char();
+                match tri!(seq.de.parse_whitespace()) {
+                    Some(b']') => Err(seq.de.peek_error(ErrorCode::TrailingComma)),
+                    Some(_) => Ok(true),
+                    None => Err(seq.de.peek_error(ErrorCode::EofWhileParsingValue)),
                 }
-                _ => {
-                    if seq.first {
-                        seq.first = false;
-                        Ok(true)
-                    } else {
-                        Err(seq.de.peek_error(ErrorCode::ExpectedListCommaOrEnd))
-                    }
-                }
+            } else {
+                Err(seq.de.peek_error(ErrorCode::ExpectedListCommaOrEnd))
             }
         }
 
@@ -1991,29 +1987,25 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
                 }
             };
 
-            match peek {
-                b'}' => Ok(false),
-                b',' if !map.first => {
-                    map.de.eat_char();
-                    match tri!(map.de.parse_whitespace()) {
-                        Some(b'"') => Ok(true),
-                        Some(b'}') => Err(map.de.peek_error(ErrorCode::TrailingComma)),
-                        Some(_) => Err(map.de.peek_error(ErrorCode::KeyMustBeAString)),
-                        None => Err(map.de.peek_error(ErrorCode::EofWhileParsingValue)),
-                    }
+            if peek == b'}' {
+                Ok(false)
+            } else if map.first {
+                map.first = false;
+                if peek == b'"' {
+                    Ok(true)
+                } else {
+                    Err(map.de.peek_error(ErrorCode::KeyMustBeAString))
                 }
-                _ => {
-                    if map.first {
-                        map.first = false;
-                        if peek == b'"' {
-                            Ok(true)
-                        } else {
-                            Err(map.de.peek_error(ErrorCode::KeyMustBeAString))
-                        }
-                    } else {
-                        Err(map.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd))
-                    }
+            } else if peek == b',' {
+                map.de.eat_char();
+                match tri!(map.de.parse_whitespace()) {
+                    Some(b'"') => Ok(true),
+                    Some(b'}') => Err(map.de.peek_error(ErrorCode::TrailingComma)),
+                    Some(_) => Err(map.de.peek_error(ErrorCode::KeyMustBeAString)),
+                    None => Err(map.de.peek_error(ErrorCode::EofWhileParsingValue)),
                 }
+            } else {
+                Err(map.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd))
             }
         }
 
