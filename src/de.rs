@@ -1929,31 +1929,25 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
         fn has_next_element<'de, 'a, R: Read<'de> + 'a>(
             seq: &mut SeqAccess<'a, R>,
         ) -> Result<bool> {
-            let peek = match tri!(seq.de.parse_whitespace()) {
-                Some(b']') => {
-                    return Ok(false);
-                }
+            match tri!(seq.de.parse_whitespace()) {
+                Some(b']') => Ok(false),
                 Some(b',') if !seq.first => {
                     seq.de.eat_char();
-                    tri!(seq.de.parse_whitespace())
-                }
-                Some(b) => {
-                    if seq.first {
-                        seq.first = false;
-                        Some(b)
-                    } else {
-                        return Err(seq.de.peek_error(ErrorCode::ExpectedListCommaOrEnd));
+                    match tri!(seq.de.parse_whitespace()) {
+                        Some(b']') => Err(seq.de.peek_error(ErrorCode::TrailingComma)),
+                        Some(_) => Ok(true),
+                        None => Err(seq.de.peek_error(ErrorCode::EofWhileParsingValue)),
                     }
                 }
-                None => {
-                    return Err(seq.de.peek_error(ErrorCode::EofWhileParsingList));
+                Some(_) => {
+                    if seq.first {
+                        seq.first = false;
+                        Ok(true)
+                    } else {
+                        Err(seq.de.peek_error(ErrorCode::ExpectedListCommaOrEnd))
+                    }
                 }
-            };
-
-            match peek {
-                Some(b']') => Err(seq.de.peek_error(ErrorCode::TrailingComma)),
-                Some(_) => Ok(true),
-                None => Err(seq.de.peek_error(ErrorCode::EofWhileParsingValue)),
+                None => Err(seq.de.peek_error(ErrorCode::EofWhileParsingList)),
             }
         }
 
@@ -1984,32 +1978,30 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
         K: de::DeserializeSeed<'de>,
     {
         fn has_next_key<'de, 'a, R: Read<'de> + 'a>(map: &mut MapAccess<'a, R>) -> Result<bool> {
-            let peek = match tri!(map.de.parse_whitespace()) {
-                Some(b'}') => {
-                    return Ok(false);
-                }
+            match tri!(map.de.parse_whitespace()) {
+                Some(b'}') => Ok(false),
                 Some(b',') if !map.first => {
                     map.de.eat_char();
-                    tri!(map.de.parse_whitespace())
+                    match tri!(map.de.parse_whitespace()) {
+                        Some(b'"') => Ok(true),
+                        Some(b'}') => Err(map.de.peek_error(ErrorCode::TrailingComma)),
+                        Some(_) => Err(map.de.peek_error(ErrorCode::KeyMustBeAString)),
+                        None => Err(map.de.peek_error(ErrorCode::EofWhileParsingValue)),
+                    }
                 }
                 Some(b) => {
                     if map.first {
                         map.first = false;
-                        Some(b)
+                        if b == b'"' {
+                            Ok(true)
+                        } else {
+                            Err(map.de.peek_error(ErrorCode::KeyMustBeAString))
+                        }
                     } else {
-                        return Err(map.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
+                        Err(map.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd))
                     }
                 }
-                None => {
-                    return Err(map.de.peek_error(ErrorCode::EofWhileParsingObject));
-                }
-            };
-
-            match peek {
-                Some(b'"') => Ok(true),
-                Some(b'}') => Err(map.de.peek_error(ErrorCode::TrailingComma)),
-                Some(_) => Err(map.de.peek_error(ErrorCode::KeyMustBeAString)),
-                None => Err(map.de.peek_error(ErrorCode::EofWhileParsingValue)),
+                None => Err(map.de.peek_error(ErrorCode::EofWhileParsingObject)),
             }
         }
 
