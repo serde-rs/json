@@ -1192,8 +1192,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     Some(_) => {
                         if accept_comma {
                             return Err(self.peek_error(match frame {
-                                b'[' => ErrorCode::ExpectedNextOrEnd { end: b'[' },
-                                b'{' => ErrorCode::ExpectedNextOrEnd { end: b'{' },
+                                b'[' => ErrorCode::ExpectedNextOrEnd { end: b']' },
+                                b'{' => ErrorCode::ExpectedNextOrEnd { end: b'}' },
                                 _ => unreachable!(),
                             }));
                         } else {
