@@ -1,4 +1,4 @@
-# Serde JSON &emsp; [![Build Status]][actions] [![Latest Version]][crates.io] [![Rustc Version 1.36+]][rustc]
+# Serde JSON &emsp; [![Build Status]][actions] [![Latest Version]][crates.io] [![Rustc Version 1.36+]][rustc] [![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Serde%20JSON%20Guru-006BFF)](https://gurubase.io/g/serde-json)
 
 [Build Status]: https://img.shields.io/github/actions/workflow/status/serde-rs/json/ci.yml?branch=master
 [actions]: https://github.com/serde-rs/json/actions?query=branch%3Amaster
