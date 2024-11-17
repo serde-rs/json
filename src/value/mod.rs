@@ -388,6 +388,24 @@ impl Value {
         }
     }
 
+    /// If the `Value` is an Object, returns the associated Map consuming it.
+    /// Returns None otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!({ "a": { "nested": true }, "b": ["an", "array"] });
+    ///
+    /// // The length of `{ "a": ..., "b": ... }` is 2 entries.
+    /// assert_eq!(v.into_object().unwrap().len(), 2);
+    /// ```
+    pub fn into_object(self) -> Option<Map<String, Value>> {
+        match self {
+            Value::Object(map) => Some(map),
+            _ => None,
+        }
+    }
+
     /// Returns true if the `Value` is an Array. Returns false otherwise.
     ///
     /// For any Value on which `is_array` returns true, `as_array` and
@@ -447,6 +465,24 @@ impl Value {
         }
     }
 
+    /// If the `Value` is an Array, returns the associated vector consuming it.
+    /// Returns None otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!(["an", "array"]);
+    ///
+    /// // The length of `["an", "array"]` is 2 elements.
+    /// assert_eq!(v.into_array().unwrap().len(), 2);
+    /// ```
+    pub fn into_array(self) -> Option<Vec<Value>> {
+        match self {
+            Value::Array(array) => Some(array),
+            _ => None,
+        }
+    }
+
     /// Returns true if the `Value` is a String. Returns false otherwise.
     ///
     /// For any Value on which `is_string` returns true, `as_str` is guaranteed
@@ -496,6 +532,23 @@ impl Value {
         }
     }
 
+    /// If the `Value` is a String, returns the associated String consuming it.
+    /// Returns None otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!("some string");
+    ///
+    /// assert_eq!(v.into_string().unwrap(), "some string");
+    /// ```
+    pub fn into_string(self) -> Option<String> {
+        match self {
+            Value::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
     /// Returns true if the `Value` is a Number. Returns false otherwise.
     ///
     /// ```
@@ -531,6 +584,23 @@ impl Value {
     /// assert_eq!(v["d"].as_number(), None);
     /// ```
     pub fn as_number(&self) -> Option<&Number> {
+        match self {
+            Value::Number(number) => Some(number),
+            _ => None,
+        }
+    }
+
+    /// If the `Value` is a Number, returns the associated [`Number`] consuming it.
+    /// Returns None otherwise.
+    ///
+    /// ```
+    /// # use serde_json::{json, Number};
+    /// #
+    /// let v = json!(1);
+    ///
+    /// assert_eq!(v.into_number(), Some(Number::from(1u64)));
+    /// ```
+    pub fn into_number(self) -> Option<Number> {
         match self {
             Value::Number(number) => Some(number),
             _ => None,
