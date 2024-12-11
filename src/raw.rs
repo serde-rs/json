@@ -227,6 +227,130 @@ impl RawValue {
     pub fn get(&self) -> &str {
         &self.json
     }
+
+    /// Returns the kind of JSON value contained within.
+    pub fn kind(&self) -> RawKind {
+        let first = self
+            .json
+            .as_bytes()
+            .first()
+            .expect("The `str` contained in `RawValue` can`t be an empty");
+
+        // `RawValue` has whitespace stripped so we know the first char is non-whitespace.
+        // `RawValue` is also valid JSON so the only possible set of chars that can come next
+        // are `[0-9]` or `[-pub fnt"[{]`.
+        match *first {
+            b'n' => RawKind::Null,
+            b't' | b'f' => RawKind::Bool,
+            b'"' => RawKind::String,
+            b'[' => RawKind::Array,
+            b'{' => RawKind::Object,
+            // A `RawValue` is already known to be valid, the only other possibility for
+            // valid JSON is that this is a number
+            _ => RawKind::Number,
+        }
+    }
+
+    /// Returns true if the `Value` is a Null. Returns false otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let val= json!(null);
+    /// let val = serde_json::value::to_raw_value(&val).unwrap();
+    ///
+    /// assert!(val.is_null());
+    /// ```
+    pub fn is_null(&self) -> bool {
+        matches!(self.kind(), RawKind::Null)
+    }
+
+    /// Returns true if the `Value` is a Boolean. Returns false otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let val = json!(true);
+    /// let val = serde_json::value::to_raw_value(&val).unwrap();
+    ///
+    /// assert!(val.is_boolean());
+    /// ```
+    pub fn is_boolean(&self) -> bool {
+        matches!(self.kind(), RawKind::Bool)
+    }
+
+    /// Returns true if the `Value` is a Number. Returns false otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let val = json!(101);
+    /// let val = serde_json::value::to_raw_value(&val).unwrap();
+    ///
+    /// assert!(val.is_number());
+    /// ```
+    pub fn is_number(&self) -> bool {
+        matches!(self.kind(), RawKind::Number)
+    }
+
+    /// Returns true if the `Value` is a String. Returns false otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let val = json!("some string");
+    /// let val = serde_json::value::to_raw_value(&val).unwrap();
+    ///
+    /// assert!(val.is_string());
+    /// ```
+    pub fn is_string(&self) -> bool {
+        matches!(self.kind(), RawKind::String)
+    }
+
+    /// Returns true if the `Value` is an Array. Returns false otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let val = json!(["an", "array"]);
+    /// let val = serde_json::value::to_raw_value(&val).unwrap();
+    ///
+    /// assert!(val.is_array());
+    /// ```
+    pub fn is_array(&self) -> bool {
+        matches!(self.kind(), RawKind::Array)
+    }
+
+    /// Returns true if the `Value` is an Object. Returns false otherwise.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let val = json!({ "a": { "nested": true }, "b": ["an", "array"] });
+    /// let val = serde_json::value::to_raw_value(&val).unwrap();
+    ///
+    /// assert!(val.is_object());
+    /// ```
+    pub fn is_object(&self) -> bool {
+        matches!(self.kind(), RawKind::Object)
+    }
+}
+
+// A kind of JSON value the `RawValue` contains.
+#[derive(Debug, Copy, Clone)]
+pub enum RawKind {
+    /// Represents a JSON null value.
+    Null,
+    /// Represents a JSON boolean.
+    Bool,
+    /// Represents a JSON number, whether integer or floating point.
+    Number,
+    /// Represents a JSON string.
+    String,
+    /// Represents a JSON array.
+    Array,
+    /// Represents a JSON object.
+    Object,
 }
 
 impl From<Box<RawValue>> for Box<str> {
