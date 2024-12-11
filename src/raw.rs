@@ -120,11 +120,11 @@ pub struct RawValue {
 
 impl RawValue {
     /// A literal JSON null value as `RawValue`.
-    pub const NULL: &RawValue = RawValue::from_borrowed("null");
+    pub const NULL: &'static RawValue = RawValue::from_borrowed("null");
     /// A literal JSON boolean true value as `RawValue`.
-    pub const TRUE: &RawValue = RawValue::from_borrowed("true");
+    pub const TRUE: &'static RawValue = RawValue::from_borrowed("true");
     /// A literal JSON boolean false value as `RawValue`.
-    pub const FALSE: &RawValue = RawValue::from_borrowed("false");
+    pub const FALSE: &'static RawValue = RawValue::from_borrowed("false");
 
     const fn from_borrowed(json: &str) -> &Self {
         unsafe { mem::transmute::<&str, &RawValue>(json) }
