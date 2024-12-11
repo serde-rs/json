@@ -119,13 +119,6 @@ pub struct RawValue {
 }
 
 impl RawValue {
-    /// A literal JSON null value as `RawValue`.
-    pub const NULL: &'static RawValue = RawValue::from_borrowed("null");
-    /// A literal JSON boolean true value as `RawValue`.
-    pub const TRUE: &'static RawValue = RawValue::from_borrowed("true");
-    /// A literal JSON boolean false value as `RawValue`.
-    pub const FALSE: &'static RawValue = RawValue::from_borrowed("false");
-
     const fn from_borrowed(json: &str) -> &Self {
         unsafe { mem::transmute::<&str, &RawValue>(json) }
     }
@@ -175,6 +168,13 @@ impl Display for RawValue {
 }
 
 impl RawValue {
+    /// A literal JSON null value as `RawValue`.
+    pub const NULL: &'static RawValue = RawValue::from_borrowed("null");
+    /// A literal JSON boolean true value as `RawValue`.
+    pub const TRUE: &'static RawValue = RawValue::from_borrowed("true");
+    /// A literal JSON boolean false value as `RawValue`.
+    pub const FALSE: &'static RawValue = RawValue::from_borrowed("false");
+
     /// Convert an owned `String` of JSON data to an owned `RawValue`.
     ///
     /// This function is equivalent to `serde_json::from_str::<Box<RawValue>>`
