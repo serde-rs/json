@@ -168,11 +168,11 @@ impl Display for RawValue {
 }
 
 impl RawValue {
-    /// A literal JSON null value as `RawValue`.
+    /// A constant RawValue with the JSON value `null`.
     pub const NULL: &'static RawValue = RawValue::from_borrowed("null");
-    /// A literal JSON boolean true value as `RawValue`.
+    /// A constant RawValue with the JSON value `true`.
     pub const TRUE: &'static RawValue = RawValue::from_borrowed("true");
-    /// A literal JSON boolean false value as `RawValue`.
+    /// A constant RawValue with the JSON value `false`.
     pub const FALSE: &'static RawValue = RawValue::from_borrowed("false");
 
     /// Convert an owned `String` of JSON data to an owned `RawValue`.
