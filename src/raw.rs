@@ -118,6 +118,12 @@ pub struct RawValue {
     json: str,
 }
 
+impl PartialEq for RawValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.json == other.json
+    }
+}
+
 impl RawValue {
     const fn from_borrowed(json: &str) -> &Self {
         unsafe { mem::transmute::<&str, &RawValue>(json) }
