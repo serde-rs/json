@@ -1,4 +1,5 @@
-artifacts/
-corpus/
-coverage/
-target/
+/artifacts/
+/corpus/
+/coverage/
+/target/
+/Cargo.lock
