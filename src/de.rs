@@ -2582,9 +2582,8 @@ where
 ///     location: String,
 /// }
 ///
-/// fn read_user_from_stream(tcp_stream: TcpStream) -> Result<User, Box<dyn Error>> {
-///     let buf_tcp_stream = BufReader::new(tcp_stream);
-///     let mut de = serde_json::Deserializer::from_reader(buf_tcp_stream);
+/// fn read_user_from_stream(stream: &mut BufReader<TcpStream>) -> Result<User, Box<dyn Error>> {
+///     let mut de = serde_json::Deserializer::from_reader(stream);
 ///     let u = User::deserialize(&mut de)?;
 ///
 ///     Ok(u)
@@ -2595,8 +2594,9 @@ where
 /// # fn fake_main() {
 ///     let listener = TcpListener::bind("127.0.0.1:4000").unwrap();
 ///
-///     for stream in listener.incoming() {
-///         println!("{:#?}", read_user_from_stream(stream.unwrap()));
+///     for tcp_stream in listener.incoming() {
+///         let mut buffered = BufReader::new(tcp_stream.unwrap());
+///         println!("{:#?}", read_user_from_stream(&mut buffered));
 ///     }
 /// }
 /// ```
