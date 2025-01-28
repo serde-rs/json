@@ -2573,8 +2573,8 @@ where
 /// use serde::Deserialize;
 ///
 /// use std::error::Error;
-/// use std::net::{TcpListener, TcpStream};
 /// use std::io::BufReader;
+/// use std::net::{TcpListener, TcpStream};
 ///
 /// #[derive(Deserialize, Debug)]
 /// struct User {
