@@ -45,11 +45,17 @@ where
     /// Create a JSON deserializer from one of the possible serde_json input
     /// sources.
     ///
+    /// When reading from a source against which short reads are not efficient, such
+    /// as a [`File`], you will want to apply your own buffering because serde_json
+    /// will not buffer the input. See [`std::io::BufReader`].
+    ///
     /// Typically it is more convenient to use one of these methods instead:
     ///
     ///   - Deserializer::from_str
     ///   - Deserializer::from_slice
     ///   - Deserializer::from_reader
+    ///
+    /// [`File`]: https://doc.rust-lang.org/std/fs/struct.File.html
     pub fn new(read: R) -> Self {
         Deserializer {
             read,
