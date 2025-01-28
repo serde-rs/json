@@ -2568,6 +2568,7 @@ where
 ///
 /// use std::error::Error;
 /// use std::net::{TcpListener, TcpStream};
+/// use std::io::BufReader;
 ///
 /// #[derive(Deserialize, Debug)]
 /// struct User {
@@ -2576,7 +2577,8 @@ where
 /// }
 ///
 /// fn read_user_from_stream(tcp_stream: TcpStream) -> Result<User, Box<dyn Error>> {
-///     let mut de = serde_json::Deserializer::from_reader(tcp_stream);
+///     let buf_tcp_stream = BufReader::new(tcp_stream);
+///     let mut de = serde_json::Deserializer::from_reader(buf_tcp_stream);
 ///     let u = User::deserialize(&mut de)?;
 ///
 ///     Ok(u)
