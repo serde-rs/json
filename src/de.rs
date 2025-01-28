@@ -45,11 +45,17 @@ where
     /// Create a JSON deserializer from one of the possible serde_json input
     /// sources.
     ///
+    /// When reading from a source against which short reads are not efficient, such
+    /// as a [`File`], you will want to apply your own buffering because serde_json
+    /// will not buffer the input. See [`std::io::BufReader`].
+    ///
     /// Typically it is more convenient to use one of these methods instead:
     ///
     ///   - Deserializer::from_str
     ///   - Deserializer::from_slice
     ///   - Deserializer::from_reader
+    ///
+    /// [`File`]: https://doc.rust-lang.org/std/fs/struct.File.html
     pub fn new(read: R) -> Self {
         Deserializer {
             read,
@@ -2568,6 +2574,7 @@ where
 ///
 /// use std::error::Error;
 /// use std::net::{TcpListener, TcpStream};
+/// use std::io::BufReader;
 ///
 /// #[derive(Deserialize, Debug)]
 /// struct User {
@@ -2576,7 +2583,8 @@ where
 /// }
 ///
 /// fn read_user_from_stream(tcp_stream: TcpStream) -> Result<User, Box<dyn Error>> {
-///     let mut de = serde_json::Deserializer::from_reader(tcp_stream);
+///     let buf_tcp_stream = BufReader::new(tcp_stream);
+///     let mut de = serde_json::Deserializer::from_reader(buf_tcp_stream);
 ///     let u = User::deserialize(&mut de)?;
 ///
 ///     Ok(u)
