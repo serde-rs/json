@@ -368,7 +368,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             None => {
                 return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
             }
-        };
+        }
 
         tri!(self.scan_integer128(&mut buf));
 
