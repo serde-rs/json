@@ -29,9 +29,6 @@ serde_derive = "1.0.166"
 serde_stacker = "0.1.8"
 trybuild = { version = "1.0.81", features = ["diff"] }
 
-[lib]
-doc-scrape-examples = false
-
 [package.metadata.docs.rs]
 features = ["preserve_order", "raw_value", "unbounded_depth"]
 targets = ["x86_64-unknown-linux-gnu"]
