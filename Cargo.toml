@@ -32,7 +32,12 @@ trybuild = { version = "1.0.81", features = ["diff"] }
 [package.metadata.docs.rs]
 features = ["preserve_order", "raw_value", "unbounded_depth"]
 targets = ["x86_64-unknown-linux-gnu"]
-rustdoc-args = ["--generate-link-to-definition"]
+rustdoc-args = [
+    "--generate-link-to-definition",
+    "--extern-html-root-url=core=https://doc.rust-lang.org",
+    "--extern-html-root-url=alloc=https://doc.rust-lang.org",
+    "--extern-html-root-url=std=https://doc.rust-lang.org",
+]
 
 [package.metadata.playground]
 features = ["float_roundtrip", "raw_value", "unbounded_depth"]
