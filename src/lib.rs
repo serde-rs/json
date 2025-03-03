@@ -306,6 +306,7 @@
     clippy::comparison_chain,
     clippy::deprecated_cfg_attr,
     clippy::doc_markdown,
+    clippy::elidable_lifetime_names,
     clippy::excessive_precision,
     clippy::explicit_auto_deref,
     clippy::float_cmp,
