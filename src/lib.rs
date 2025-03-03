@@ -318,6 +318,7 @@
     clippy::needless_lifetimes,
     clippy::return_self_not_must_use,
     clippy::transmute_ptr_to_ptr,
+    clippy::unbuffered_bytes,
     clippy::unconditional_recursion, // https://github.com/rust-lang/rust-clippy/issues/12133
     clippy::unnecessary_wraps
 )]
