@@ -1,9 +1,7 @@
-//! The Value enum, a loosely typed way of representing any valid JSON value.
+//! The `SpannedValue` enum, a loosely typed way of representing any valid JSON value.
+//! This is the same as [`Value`][value], but with additional span information.
 //!
 //! # Constructing JSON
-//!
-//! Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
-//! objects with very natural JSON syntax.
 //!
 //! ```
 //! use serde_json::json;
@@ -25,101 +23,38 @@
 //!     println!("{}", john.to_string());
 //! }
 //! ```
-//!
-//! The `Value::to_string()` function converts a `serde_json::Value` into a
-//! `String` of JSON text.
-//!
-//! One neat thing about the `json!` macro is that variables and expressions can
-//! be interpolated directly into the JSON value as you are building it. Serde
-//! will check at compile time that the value you are interpolating is able to
-//! be represented as JSON.
-//!
-//! ```
-//! # use serde_json::json;
-//! #
-//! # fn random_phone() -> u16 { 0 }
-//! #
-//! let full_name = "John Doe";
-//! let age_last_year = 42;
-//!
-//! // The type of `john` is `serde_json::Value`
-//! let john = json!({
-//!     "name": full_name,
-//!     "age": age_last_year + 1,
-//!     "phones": [
-//!         format!("+44 {}", random_phone())
-//!     ]
-//! });
-//! ```
-//!
-//! A string of JSON data can be parsed into a `serde_json::Value` by the
-//! [`serde_json::from_str`][from_str] function. There is also
-//! [`from_slice`][from_slice] for parsing from a byte slice `&[u8]` and
-//! [`from_reader`][from_reader] for parsing from any `io::Read` like a File or
-//! a TCP stream.
-//!
-//! ```
-//! use serde_json::{json, Value, Error};
-//!
-//! fn untyped_example() -> Result<(), Error> {
-//!     // Some JSON input data as a &str. Maybe this comes from the user.
-//!     let data = r#"
-//!         {
-//!             "name": "John Doe",
-//!             "age": 43,
-//!             "phones": [
-//!                 "+44 1234567",
-//!                 "+44 2345678"
-//!             ]
-//!         }"#;
-//!
-//!     // Parse the string of data into serde_json::Value.
-//!     let v: Value = serde_json::from_str(data)?;
-//!
-//!     // Access parts of the data by indexing with square brackets.
-//!     println!("Please call {} at the number {}", v["name"], v["phones"][0]);
-//!
-//!     Ok(())
-//! }
-//! #
-//! # untyped_example().unwrap();
-//! ```
-//!
-//! [macro]: crate::json
-//! [from_str]: crate::de::from_str
-//! [from_slice]: crate::de::from_slice
-//! [from_reader]: crate::de::from_reader
+//! [value]: crate::value::Value
 
 use crate::error::Error;
 use crate::io;
+use crate::spanned::spanned::Spanned;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::{self, Debug, Display};
 use core::mem;
 use core::str;
 use serde::de::DeserializeOwned;
-use serde::ser::Serialize;
 
 pub use self::index::Index;
 pub use self::ser::Serializer;
-pub use crate::map::Map;
+pub use crate::map::SpannedMap;
 pub use crate::number::Number;
 
-#[cfg(feature = "raw_value")]
-#[cfg_attr(docsrs, doc(cfg(feature = "raw_value")))]
-pub use crate::raw::{to_raw_value, RawValue};
-
-/// Represents any valid JSON value.
+/// Represents any valid JSON value tracking the position of its potential children.
 ///
+/// TODO: document
 /// See the [`serde_json::value` module documentation](self) for usage examples.
+#[cfg_attr(docsrs, doc(cfg(feature = "spanned")))]
 #[derive(Clone, Eq, PartialEq, Hash)]
-pub enum Value {
+pub enum SpannedValue {
     /// Represents a JSON null value.
     ///
     /// ```
-    /// # use serde_json::json;
+    /// use serde_json::spanned::{from_str_spanned, Spanned, SpannedValue};
+    ///
+    /// let v: Spanned<SpannedValue>= from_str_spanned("null").unwrap();
     /// #
-    /// let v = json!(null);
+    /// # assert_eq!(v.into_inner(), SpannedValue::Null);
     /// ```
     Null,
 
@@ -157,7 +92,7 @@ pub enum Value {
     /// #
     /// let v = json!(["an", "array"]);
     /// ```
-    Array(Vec<Value>),
+    Array(Vec<Spanned<SpannedValue>>),
 
     /// Represents a JSON object.
     ///
@@ -172,21 +107,21 @@ pub enum Value {
     /// #
     /// let v = json!({ "an": "object" });
     /// ```
-    Object(Map),
+    Object(SpannedMap),
 }
 
-impl Debug for Value {
+impl Debug for SpannedValue {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Value::Null => formatter.write_str("Null"),
-            Value::Bool(boolean) => write!(formatter, "Bool({})", boolean),
-            Value::Number(number) => Debug::fmt(number, formatter),
-            Value::String(string) => write!(formatter, "String({:?})", string),
-            Value::Array(vec) => {
+            SpannedValue::Null => formatter.write_str("Null"),
+            SpannedValue::Bool(boolean) => write!(formatter, "Bool({})", boolean),
+            SpannedValue::Number(number) => Debug::fmt(number, formatter),
+            SpannedValue::String(string) => write!(formatter, "String({:?})", string),
+            SpannedValue::Array(vec) => {
                 tri!(formatter.write_str("Array "));
                 Debug::fmt(vec, formatter)
             }
-            Value::Object(map) => {
+            SpannedValue::Object(map) => {
                 tri!(formatter.write_str("Object "));
                 Debug::fmt(map, formatter)
             }
@@ -194,7 +129,7 @@ impl Debug for Value {
     }
 }
 
-impl Display for Value {
+impl Display for SpannedValue {
     /// Display a JSON value as a string.
     ///
     /// ```
@@ -248,10 +183,10 @@ impl Display for Value {
         let mut wr = WriterFormatter { inner: f };
         if alternate {
             // {:#}
-            super::ser::to_writer_pretty(&mut wr, self).map_err(|_| fmt::Error)
+            crate::ser::to_writer_pretty(&mut wr, self).map_err(|_| fmt::Error)
         } else {
             // {}
-            super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
+            crate::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
         }
     }
 }
@@ -263,7 +198,7 @@ fn parse_index(s: &str) -> Option<usize> {
     s.parse().ok()
 }
 
-impl Value {
+impl SpannedValue {
     /// Index into a JSON array or map. A string index can be used to access a
     /// value in a map, and a usize index can be used to access an element of an
     /// array.
@@ -302,7 +237,7 @@ impl Value {
     /// assert_eq!(object["D"], json!(null));
     /// assert_eq!(object[0]["x"]["y"]["z"], json!(null));
     /// ```
-    pub fn get<I: Index>(&self, index: I) -> Option<&Value> {
+    pub fn get<I: Index>(&self, index: I) -> Option<&Spanned<SpannedValue>> {
         index.index_into(self)
     }
 
@@ -324,7 +259,7 @@ impl Value {
     /// let mut array = json!([ "A", "B", "C" ]);
     /// *array.get_mut(2).unwrap() = json!("D");
     /// ```
-    pub fn get_mut<I: Index>(&mut self, index: I) -> Option<&mut Value> {
+    pub fn get_mut<I: Index>(&mut self, index: I) -> Option<&mut Spanned<SpannedValue>> {
         index.index_into_mut(self)
     }
 
@@ -363,9 +298,9 @@ impl Value {
     /// // The array `["an", "array"]` is not an object.
     /// assert_eq!(v["b"].as_object(), None);
     /// ```
-    pub fn as_object(&self) -> Option<&Map> {
+    pub fn as_object(&self) -> Option<&SpannedMap> {
         match self {
-            Value::Object(map) => Some(map),
+            SpannedValue::Object(map) => Some(map),
             _ => None,
         }
     }
@@ -381,9 +316,9 @@ impl Value {
     /// v["a"].as_object_mut().unwrap().clear();
     /// assert_eq!(v, json!({ "a": {} }));
     /// ```
-    pub fn as_object_mut(&mut self) -> Option<&mut Map> {
+    pub fn as_object_mut(&mut self) -> Option<&mut SpannedMap> {
         match self {
-            Value::Object(map) => Some(map),
+            SpannedValue::Object(map) => Some(map),
             _ => None,
         }
     }
@@ -422,9 +357,9 @@ impl Value {
     /// // The object `{"an": "object"}` is not an array.
     /// assert_eq!(v["b"].as_array(), None);
     /// ```
-    pub fn as_array(&self) -> Option<&Vec<Value>> {
+    pub fn as_array(&self) -> Option<&Vec<Spanned<SpannedValue>>> {
         match self {
-            Value::Array(array) => Some(array),
+            SpannedValue::Array(array) => Some(array),
             _ => None,
         }
     }
@@ -440,9 +375,9 @@ impl Value {
     /// v["a"].as_array_mut().unwrap().clear();
     /// assert_eq!(v, json!({ "a": [] }));
     /// ```
-    pub fn as_array_mut(&mut self) -> Option<&mut Vec<Value>> {
+    pub fn as_array_mut(&mut self) -> Option<&mut Vec<Spanned<SpannedValue>>> {
         match self {
-            Value::Array(list) => Some(list),
+            SpannedValue::Array(list) => Some(list),
             _ => None,
         }
     }
@@ -491,7 +426,7 @@ impl Value {
     /// ```
     pub fn as_str(&self) -> Option<&str> {
         match self {
-            Value::String(s) => Some(s),
+            SpannedValue::String(s) => Some(s),
             _ => None,
         }
     }
@@ -510,7 +445,7 @@ impl Value {
     /// ```
     pub fn is_number(&self) -> bool {
         match *self {
-            Value::Number(_) => true,
+            SpannedValue::Number(_) => true,
             _ => false,
         }
     }
@@ -532,7 +467,7 @@ impl Value {
     /// ```
     pub fn as_number(&self) -> Option<&Number> {
         match self {
-            Value::Number(number) => Some(number),
+            SpannedValue::Number(number) => Some(number),
             _ => None,
         }
     }
@@ -559,7 +494,7 @@ impl Value {
     /// ```
     pub fn is_i64(&self) -> bool {
         match self {
-            Value::Number(n) => n.is_i64(),
+            SpannedValue::Number(n) => n.is_i64(),
             _ => false,
         }
     }
@@ -584,7 +519,7 @@ impl Value {
     /// ```
     pub fn is_u64(&self) -> bool {
         match self {
-            Value::Number(n) => n.is_u64(),
+            SpannedValue::Number(n) => n.is_u64(),
             _ => false,
         }
     }
@@ -610,7 +545,7 @@ impl Value {
     /// ```
     pub fn is_f64(&self) -> bool {
         match self {
-            Value::Number(n) => n.is_f64(),
+            SpannedValue::Number(n) => n.is_f64(),
             _ => false,
         }
     }
@@ -630,7 +565,7 @@ impl Value {
     /// ```
     pub fn as_i64(&self) -> Option<i64> {
         match self {
-            Value::Number(n) => n.as_i64(),
+            SpannedValue::Number(n) => n.as_i64(),
             _ => None,
         }
     }
@@ -649,7 +584,7 @@ impl Value {
     /// ```
     pub fn as_u64(&self) -> Option<u64> {
         match self {
-            Value::Number(n) => n.as_u64(),
+            SpannedValue::Number(n) => n.as_u64(),
             _ => None,
         }
     }
@@ -668,7 +603,7 @@ impl Value {
     /// ```
     pub fn as_f64(&self) -> Option<f64> {
         match self {
-            Value::Number(n) => n.as_f64(),
+            SpannedValue::Number(n) => n.as_f64(),
             _ => None,
         }
     }
@@ -707,7 +642,7 @@ impl Value {
     /// ```
     pub fn as_bool(&self) -> Option<bool> {
         match *self {
-            Value::Bool(b) => Some(b),
+            SpannedValue::Bool(b) => Some(b),
             _ => None,
         }
     }
@@ -745,7 +680,7 @@ impl Value {
     /// ```
     pub fn as_null(&self) -> Option<()> {
         match *self {
-            Value::Null => Some(()),
+            SpannedValue::Null => Some(()),
             _ => None,
         }
     }
@@ -766,17 +701,18 @@ impl Value {
     ///
     /// ```
     /// # use serde_json::json;
+    /// # use serde_json::spanned::{from_str_spanned, SpannedValue};
     /// #
-    /// let data = json!({
+    /// let data: SpannedValue = from_str_spanned(r#"{
     ///     "x": {
     ///         "y": ["z", "zz"]
     ///     }
-    /// });
+    /// }"#).unwrap();
     ///
-    /// assert_eq!(data.pointer("/x/y/1").unwrap(), &json!("zz"));
+    /// assert_eq!(data.pointer("/x/y/1").unwrap(), &SpannedValue::String("zz".into()));
     /// assert_eq!(data.pointer("/a/b/c"), None);
     /// ```
-    pub fn pointer(&self, pointer: &str) -> Option<&Value> {
+    pub fn pointer(&self, pointer: &str) -> Option<&SpannedValue> {
         if pointer.is_empty() {
             return Some(self);
         }
@@ -788,8 +724,12 @@ impl Value {
             .skip(1)
             .map(|x| x.replace("~1", "/").replace("~0", "~"))
             .try_fold(self, |target, token| match target {
-                Value::Object(map) => map.get(&token),
-                Value::Array(list) => parse_index(&token).and_then(|x| list.get(x)),
+                SpannedValue::Object(map) => map
+                    .get(&Spanned::new_default_span(token))
+                    .map(Spanned::get_ref),
+                SpannedValue::Array(list) => parse_index(&token)
+                    .and_then(|x| list.get(x))
+                    .map(Spanned::get_ref),
                 _ => None,
             })
     }
@@ -831,7 +771,7 @@ impl Value {
     ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Null);
     /// }
     /// ```
-    pub fn pointer_mut(&mut self, pointer: &str) -> Option<&mut Value> {
+    pub fn pointer_mut(&mut self, pointer: &str) -> Option<&mut SpannedValue> {
         if pointer.is_empty() {
             return Some(self);
         }
@@ -843,8 +783,12 @@ impl Value {
             .skip(1)
             .map(|x| x.replace("~1", "/").replace("~0", "~"))
             .try_fold(self, |target, token| match target {
-                Value::Object(map) => map.get_mut(&token),
-                Value::Array(list) => parse_index(&token).and_then(move |x| list.get_mut(x)),
+                SpannedValue::Object(map) => map
+                    .get_mut(&Spanned::new_default_span(token))
+                    .map(Spanned::get_mut),
+                SpannedValue::Array(list) => parse_index(&token)
+                    .and_then(move |x| list.get_mut(x))
+                    .map(Spanned::get_mut),
                 _ => None,
             })
     }
@@ -858,8 +802,8 @@ impl Value {
     /// assert_eq!(v["x"].take(), json!("y"));
     /// assert_eq!(v, json!({ "x": null }));
     /// ```
-    pub fn take(&mut self) -> Value {
-        mem::replace(self, Value::Null)
+    pub fn take(&mut self) -> SpannedValue {
+        mem::replace(self, SpannedValue::Null)
     }
 
     /// Reorders the entries of all `Value::Object` nested within this JSON
@@ -876,12 +820,14 @@ impl Value {
         #[cfg(feature = "preserve_order")]
         {
             match self {
-                Value::Object(map) => {
+                SpannedValue::Object(map) => {
                     map.sort_keys();
-                    map.values_mut().for_each(Value::sort_all_objects);
+                    map.values_mut()
+                        .for_each(|v| SpannedValue::sort_all_objects(v.get_mut()));
                 }
-                Value::Array(list) => {
-                    list.iter_mut().for_each(Value::sort_all_objects);
+                SpannedValue::Array(list) => {
+                    list.iter_mut()
+                        .for_each(|v| SpannedValue::sort_all_objects(v.get_mut()));
                 }
                 _ => {}
             }
@@ -918,9 +864,9 @@ impl Value {
 /// #
 /// # try_main().unwrap()
 /// ```
-impl Default for Value {
-    fn default() -> Value {
-        Value::Null
+impl Default for SpannedValue {
+    fn default() -> SpannedValue {
+        SpannedValue::Null
     }
 }
 
@@ -929,68 +875,6 @@ mod from;
 mod index;
 mod partial_eq;
 mod ser;
-
-/// Convert a `T` into `serde_json::Value` which is an enum that can represent
-/// any valid JSON data.
-///
-/// # Example
-///
-/// ```
-/// use serde::Serialize;
-/// use serde_json::json;
-/// use std::error::Error;
-///
-/// #[derive(Serialize)]
-/// struct User {
-///     fingerprint: String,
-///     location: String,
-/// }
-///
-/// fn compare_json_values() -> Result<(), Box<dyn Error>> {
-///     let u = User {
-///         fingerprint: "0xF9BA143B95FF6D82".to_owned(),
-///         location: "Menlo Park, CA".to_owned(),
-///     };
-///
-///     // The type of `expected` is `serde_json::Value`
-///     let expected = json!({
-///         "fingerprint": "0xF9BA143B95FF6D82",
-///         "location": "Menlo Park, CA",
-///     });
-///
-///     let v = serde_json::to_value(u).unwrap();
-///     assert_eq!(v, expected);
-///
-///     Ok(())
-/// }
-/// #
-/// # compare_json_values().unwrap();
-/// ```
-///
-/// # Errors
-///
-/// This conversion can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
-///
-/// ```
-/// use std::collections::BTreeMap;
-///
-/// fn main() {
-///     // The keys in this map are vectors, not strings.
-///     let mut map = BTreeMap::new();
-///     map.insert(vec![32, 64], "x86");
-///
-///     println!("{}", serde_json::to_value(map).unwrap_err());
-/// }
-/// ```
-// Taking by value is more friendly to iterator adapters, option and result
-// consumers, etc. See https://github.com/serde-rs/json/pull/149.
-pub fn to_value<T>(value: T) -> Result<Value, Error>
-where
-    T: Serialize,
-{
-    value.serialize(Serializer)
-}
 
 /// Interpret a `serde_json::Value` as an instance of type `T`.
 ///
@@ -1027,7 +911,7 @@ where
 /// is wrong with the data, for example required struct fields are missing from
 /// the JSON map or some number is too big to fit in the expected primitive
 /// type.
-pub fn from_value<T>(value: Value) -> Result<T, Error>
+pub fn from_value<T>(value: SpannedValue) -> Result<T, Error>
 where
     T: DeserializeOwned,
 {
