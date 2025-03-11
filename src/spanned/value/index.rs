@@ -1,5 +1,7 @@
-use super::Value;
-use crate::map::Map;
+use crate::map::SpannedMap;
+use crate::spanned::spanned::Spanned;
+use crate::spanned::value::SpannedValue;
+use crate::spanned::Span;
 use alloc::borrow::ToOwned;
 use alloc::string::String;
 use core::fmt::{self, Display};
@@ -12,9 +14,9 @@ use core::ops;
 /// trait is implemented for strings which are used as the index into a JSON
 /// map, and for `usize` which is used as the index into a JSON array.
 ///
-/// [`get`]: Value::get
-/// [`get_mut`]: Value::get_mut
-/// [square-bracket indexing operator]: Value#impl-Index%3CI%3E-for-Value
+/// [`get`]: SpannedValue::get
+/// [`get_mut`]: SpannedValue::get_mut
+/// [square-bracket indexing operator]: SpannedValue#impl-Index%3CI%3E-for-Value
 ///
 /// This trait is sealed and cannot be implemented for types outside of
 /// `serde_json`.
@@ -37,36 +39,36 @@ use core::ops;
 pub trait Index: private::Sealed {
     /// Return None if the key is not already in the array or object.
     #[doc(hidden)]
-    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value>;
+    fn index_into<'v>(&self, v: &'v SpannedValue) -> Option<&'v Spanned<SpannedValue>>;
 
     /// Return None if the key is not already in the array or object.
     #[doc(hidden)]
-    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value>;
+    fn index_into_mut<'v>(&self, v: &'v mut SpannedValue) -> Option<&'v mut Spanned<SpannedValue>>;
 
     /// Panic if array index out of bounds. If key is not already in the object,
     /// insert it with a value of null. Panic if Value is a type that cannot be
     /// indexed into, except if Value is null then it can be treated as an empty
     /// object.
     #[doc(hidden)]
-    fn index_or_insert<'v>(&self, v: &'v mut Value) -> &'v mut Value;
+    fn index_or_insert<'v>(&self, v: &'v mut SpannedValue) -> &'v mut Spanned<SpannedValue>;
 }
 
 impl Index for usize {
-    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
+    fn index_into<'v>(&self, v: &'v SpannedValue) -> Option<&'v Spanned<SpannedValue>> {
         match v {
-            Value::Array(vec) => vec.get(*self),
+            SpannedValue::Array(vec) => vec.get(*self),
             _ => None,
         }
     }
-    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value> {
+    fn index_into_mut<'v>(&self, v: &'v mut SpannedValue) -> Option<&'v mut Spanned<SpannedValue>> {
         match v {
-            Value::Array(vec) => vec.get_mut(*self),
+            SpannedValue::Array(vec) => vec.get_mut(*self),
             _ => None,
         }
     }
-    fn index_or_insert<'v>(&self, v: &'v mut Value) -> &'v mut Value {
+    fn index_or_insert<'v>(&self, v: &'v mut SpannedValue) -> &'v mut Spanned<SpannedValue> {
         match v {
-            Value::Array(vec) => {
+            SpannedValue::Array(vec) => {
                 let len = vec.len();
                 vec.get_mut(*self).unwrap_or_else(|| {
                     panic!(
@@ -81,37 +83,39 @@ impl Index for usize {
 }
 
 impl Index for str {
-    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
+    fn index_into<'v>(&self, v: &'v SpannedValue) -> Option<&'v Spanned<SpannedValue>> {
         match v {
-            Value::Object(map) => map.get(self),
+            SpannedValue::Object(map) => map.get(self),
             _ => None,
         }
     }
-    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value> {
+    fn index_into_mut<'v>(&self, v: &'v mut SpannedValue) -> Option<&'v mut Spanned<SpannedValue>> {
         match v {
-            Value::Object(map) => map.get_mut(self),
+            SpannedValue::Object(map) => map.get_mut(self),
             _ => None,
         }
     }
-    fn index_or_insert<'v>(&self, v: &'v mut Value) -> &'v mut Value {
-        if let Value::Null = v {
-            *v = Value::Object(Map::new());
+    fn index_or_insert<'v>(&self, v: &'v mut SpannedValue) -> &'v mut Spanned<SpannedValue> {
+        if let SpannedValue::Null = v {
+            *v = SpannedValue::Object(SpannedMap::new()).into();
         }
         match v {
-            Value::Object(map) => map.entry(self.to_owned()).or_insert(Value::Null),
+            SpannedValue::Object(map) => map
+                .entry(self.to_owned())
+                .or_insert(SpannedValue::Null.into()),
             _ => panic!("cannot access key {:?} in JSON {}", self, Type(v)),
         }
     }
 }
 
 impl Index for String {
-    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
+    fn index_into<'v>(&self, v: &'v SpannedValue) -> Option<&'v Spanned<SpannedValue>> {
         self[..].index_into(v)
     }
-    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value> {
+    fn index_into_mut<'v>(&self, v: &'v mut SpannedValue) -> Option<&'v mut Spanned<SpannedValue>> {
         self[..].index_into_mut(v)
     }
-    fn index_or_insert<'v>(&self, v: &'v mut Value) -> &'v mut Value {
+    fn index_or_insert<'v>(&self, v: &'v mut SpannedValue) -> &'v mut Spanned<SpannedValue> {
         self[..].index_or_insert(v)
     }
 }
@@ -120,13 +124,13 @@ impl<T> Index for &T
 where
     T: ?Sized + Index,
 {
-    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
+    fn index_into<'v>(&self, v: &'v SpannedValue) -> Option<&'v Spanned<SpannedValue>> {
         (**self).index_into(v)
     }
-    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value> {
+    fn index_into_mut<'v>(&self, v: &'v mut SpannedValue) -> Option<&'v mut Spanned<SpannedValue>> {
         (**self).index_into_mut(v)
     }
-    fn index_or_insert<'v>(&self, v: &'v mut Value) -> &'v mut Value {
+    fn index_or_insert<'v>(&self, v: &'v mut SpannedValue) -> &'v mut Spanned<SpannedValue> {
         (**self).index_or_insert(v)
     }
 }
@@ -141,17 +145,17 @@ mod private {
 }
 
 /// Used in panic messages.
-struct Type<'a>(&'a Value);
+struct Type<'a>(&'a SpannedValue);
 
 impl<'a> Display for Type<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match *self.0 {
-            Value::Null => formatter.write_str("null"),
-            Value::Bool(_) => formatter.write_str("boolean"),
-            Value::Number(_) => formatter.write_str("number"),
-            Value::String(_) => formatter.write_str("string"),
-            Value::Array(_) => formatter.write_str("array"),
-            Value::Object(_) => formatter.write_str("object"),
+            SpannedValue::Null => formatter.write_str("null"),
+            SpannedValue::Bool(_) => formatter.write_str("boolean"),
+            SpannedValue::Number(_) => formatter.write_str("number"),
+            SpannedValue::String(_) => formatter.write_str("string"),
+            SpannedValue::Array(_) => formatter.write_str("array"),
+            SpannedValue::Object(_) => formatter.write_str("object"),
         }
     }
 }
@@ -175,11 +179,11 @@ impl<'a> Display for Type<'a> {
 // as_array, or match. The value of this impl is that it adds a way of working
 // with Value that is not well served by the existing approaches: concise and
 // careless and sometimes that is exactly what you want.
-impl<I> ops::Index<I> for Value
+impl<I> ops::Index<I> for SpannedValue
 where
     I: Index,
 {
-    type Output = Value;
+    type Output = Spanned<SpannedValue>;
 
     /// Index into a `serde_json::Value` using the syntax `value[0]` or
     /// `value["k"]`.
@@ -209,13 +213,16 @@ where
     /// assert_eq!(data["a"], json!(null)); // returns null for undefined values
     /// assert_eq!(data["a"]["b"], json!(null)); // does not panic
     /// ```
-    fn index(&self, index: I) -> &Value {
-        static NULL: Value = Value::Null;
+    fn index(&self, index: I) -> &Spanned<SpannedValue> {
+        static NULL: Spanned<SpannedValue> = Spanned {
+            value: SpannedValue::Null,
+            span: Span::default(),
+        };
         index.index_into(self).unwrap_or(&NULL)
     }
 }
 
-impl<I> ops::IndexMut<I> for Value
+impl<I> ops::IndexMut<I> for SpannedValue
 where
     I: Index,
 {
@@ -252,7 +259,7 @@ where
     ///
     /// println!("{}", data);
     /// ```
-    fn index_mut(&mut self, index: I) -> &mut Value {
+    fn index_mut(&mut self, index: I) -> &mut Spanned<SpannedValue> {
         index.index_or_insert(self)
     }
 }
