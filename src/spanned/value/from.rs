@@ -1,6 +1,7 @@
-use super::Value;
-use crate::map::Map;
+use crate::map::SpannedMap;
 use crate::number::Number;
+use crate::spanned::spanned::Spanned;
+use crate::spanned::value::SpannedValue;
 use alloc::borrow::{Cow, ToOwned};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -8,9 +9,9 @@ use alloc::vec::Vec;
 macro_rules! from_integer {
     ($($ty:ident)*) => {
         $(
-            impl From<$ty> for Value {
+            impl From<$ty> for SpannedValue {
                 fn from(n: $ty) -> Self {
-                    Value::Number(n.into())
+                    SpannedValue::Number(n.into())
                 }
             }
         )*
@@ -27,7 +28,7 @@ from_integer! {
     i128 u128
 }
 
-impl From<f32> for Value {
+impl From<f32> for SpannedValue {
     /// Convert 32-bit floating point number to `Value::Number`, or
     /// `Value::Null` if infinite or NaN.
     ///
@@ -40,11 +41,11 @@ impl From<f32> for Value {
     /// let x: Value = f.into();
     /// ```
     fn from(f: f32) -> Self {
-        Number::from_f32(f).map_or(Value::Null, Value::Number)
+        Number::from_f32(f).map_or(SpannedValue::Null, SpannedValue::Number)
     }
 }
 
-impl From<f64> for Value {
+impl From<f64> for SpannedValue {
     /// Convert 64-bit floating point number to `Value::Number`, or
     /// `Value::Null` if infinite or NaN.
     ///
@@ -57,11 +58,11 @@ impl From<f64> for Value {
     /// let x: Value = f.into();
     /// ```
     fn from(f: f64) -> Self {
-        Number::from_f64(f).map_or(Value::Null, Value::Number)
+        Number::from_f64(f).map_or(SpannedValue::Null, SpannedValue::Number)
     }
 }
 
-impl From<bool> for Value {
+impl From<bool> for SpannedValue {
     /// Convert boolean to `Value::Bool`.
     ///
     /// # Examples
@@ -73,11 +74,11 @@ impl From<bool> for Value {
     /// let x: Value = b.into();
     /// ```
     fn from(f: bool) -> Self {
-        Value::Bool(f)
+        SpannedValue::Bool(f)
     }
 }
 
-impl From<String> for Value {
+impl From<String> for SpannedValue {
     /// Convert `String` to `Value::String`.
     ///
     /// # Examples
@@ -89,11 +90,11 @@ impl From<String> for Value {
     /// let x: Value = s.into();
     /// ```
     fn from(f: String) -> Self {
-        Value::String(f)
+        SpannedValue::String(f)
     }
 }
 
-impl From<&str> for Value {
+impl From<&str> for SpannedValue {
     /// Convert string slice to `Value::String`.
     ///
     /// # Examples
@@ -105,11 +106,11 @@ impl From<&str> for Value {
     /// let x: Value = s.into();
     /// ```
     fn from(f: &str) -> Self {
-        Value::String(f.to_owned())
+        SpannedValue::String(f.to_owned())
     }
 }
 
-impl<'a> From<Cow<'a, str>> for Value {
+impl<'a> From<Cow<'a, str>> for SpannedValue {
     /// Convert copy-on-write string to `Value::String`.
     ///
     /// # Examples
@@ -130,11 +131,11 @@ impl<'a> From<Cow<'a, str>> for Value {
     /// let x: Value = s.into();
     /// ```
     fn from(f: Cow<'a, str>) -> Self {
-        Value::String(f.into_owned())
+        SpannedValue::String(f.into_owned())
     }
 }
 
-impl From<Number> for Value {
+impl From<Number> for SpannedValue {
     /// Convert `Number` to `Value::Number`.
     ///
     /// # Examples
@@ -146,11 +147,11 @@ impl From<Number> for Value {
     /// let x: Value = n.into();
     /// ```
     fn from(f: Number) -> Self {
-        Value::Number(f)
+        SpannedValue::Number(f)
     }
 }
 
-impl From<Map> for Value {
+impl From<SpannedMap> for SpannedValue {
     /// Convert map (with string keys) to `Value::Object`.
     ///
     /// # Examples
@@ -162,12 +163,12 @@ impl From<Map> for Value {
     /// m.insert("Lorem".to_owned(), "ipsum".into());
     /// let x: Value = m.into();
     /// ```
-    fn from(f: Map) -> Self {
-        Value::Object(f)
+    fn from(f: SpannedMap) -> Self {
+        SpannedValue::Object(f)
     }
 }
 
-impl<T: Into<Value>> From<Vec<T>> for Value {
+impl<T: Into<Spanned<SpannedValue>>> From<Vec<T>> for SpannedValue {
     /// Convert a `Vec` to `Value::Array`.
     ///
     /// # Examples
@@ -179,17 +180,17 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
     /// let x: Value = v.into();
     /// ```
     fn from(f: Vec<T>) -> Self {
-        Value::Array(f.into_iter().map(Into::into).collect())
+        SpannedValue::Array(f.into_iter().map(Into::into).collect())
     }
 }
 
-impl<T: Into<Value>, const N: usize> From<[T; N]> for Value {
+impl<T: Into<Spanned<SpannedValue>>, const N: usize> From<[T; N]> for SpannedValue {
     fn from(array: [T; N]) -> Self {
-        Value::Array(array.into_iter().map(Into::into).collect())
+        SpannedValue::Array(array.into_iter().map(Into::into).collect())
     }
 }
 
-impl<T: Clone + Into<Value>> From<&[T]> for Value {
+impl<T: Clone + Into<Spanned<SpannedValue>>> From<&[T]> for SpannedValue {
     /// Convert a slice to `Value::Array`.
     ///
     /// # Examples
@@ -201,11 +202,11 @@ impl<T: Clone + Into<Value>> From<&[T]> for Value {
     /// let x: Value = v.into();
     /// ```
     fn from(f: &[T]) -> Self {
-        Value::Array(f.iter().cloned().map(Into::into).collect())
+        SpannedValue::Array(f.iter().cloned().map(Into::into).collect())
     }
 }
 
-impl<T: Into<Value>> FromIterator<T> for Value {
+impl<T: Into<Spanned<SpannedValue>>> FromIterator<T> for SpannedValue {
     /// Create a `Value::Array` by collecting an iterator of array elements.
     ///
     /// # Examples
@@ -231,11 +232,13 @@ impl<T: Into<Value>> FromIterator<T> for Value {
     /// let x: Value = Value::from_iter(vec!["lorem", "ipsum", "dolor"]);
     /// ```
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Value::Array(iter.into_iter().map(Into::into).collect())
+        SpannedValue::Array(iter.into_iter().map(Into::into).collect())
     }
 }
 
-impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
+impl<K: Into<Spanned<String>>, V: Into<Spanned<SpannedValue>>> FromIterator<(K, V)>
+    for SpannedValue
+{
     /// Create a `Value::Object` by collecting an iterator of key-value pairs.
     ///
     /// # Examples
@@ -247,7 +250,7 @@ impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
     /// let x: Value = v.into_iter().collect();
     /// ```
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
-        Value::Object(
+        SpannedValue::Object(
             iter.into_iter()
                 .map(|(k, v)| (k.into(), v.into()))
                 .collect(),
@@ -255,7 +258,7 @@ impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
     }
 }
 
-impl From<()> for Value {
+impl From<()> for SpannedValue {
     /// Convert `()` to `Value::Null`.
     ///
     /// # Examples
@@ -267,17 +270,17 @@ impl From<()> for Value {
     /// let x: Value = u.into();
     /// ```
     fn from((): ()) -> Self {
-        Value::Null
+        SpannedValue::Null
     }
 }
 
-impl<T> From<Option<T>> for Value
+impl<T> From<Option<T>> for SpannedValue
 where
-    T: Into<Value>,
+    T: Into<SpannedValue>,
 {
     fn from(opt: Option<T>) -> Self {
         match opt {
-            None => Value::Null,
+            None => SpannedValue::Null,
             Some(value) => Into::into(value),
         }
     }

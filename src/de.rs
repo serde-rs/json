@@ -24,7 +24,6 @@ pub use crate::read::{Read, SliceRead, StrRead};
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use crate::read::IoRead;
-
 //////////////////////////////////////////////////////////////////////////////
 
 /// A structure that deserializes JSON into Rust values.
@@ -36,6 +35,8 @@ pub struct Deserializer<R> {
     single_precision: bool,
     #[cfg(feature = "unbounded_depth")]
     disable_recursion_limit: bool,
+    #[cfg(feature = "spanned")]
+    spanned_enabled: bool,
 }
 
 impl<'de, R> Deserializer<R>
@@ -49,7 +50,7 @@ where
     /// as a [`File`], you will want to apply your own buffering because serde_json
     /// will not buffer the input. See [`std::io::BufReader`].
     ///
-    /// Typically it is more convenient to use one of these methods instead:
+    /// Typically, it is more convenient to use one of these methods instead:
     ///
     ///   - Deserializer::from_str
     ///   - Deserializer::from_slice
@@ -65,7 +66,29 @@ where
             single_precision: false,
             #[cfg(feature = "unbounded_depth")]
             disable_recursion_limit: false,
+            #[cfg(feature = "spanned")]
+            spanned_enabled: false,
         }
+    }
+
+    #[cfg(feature = "spanned")]
+    pub(crate) fn new_spanned(read: R) -> Self {
+        let mut de = Self::new(read);
+        de.spanned_enabled = true;
+        de
+    }
+
+    #[cfg(feature = "spanned")]
+    pub(crate) fn position(&self) -> read::Position {
+        // TODO: consider tracking line-breaks to avoid potentially expensive counting in some
+        //       implementations of `Read::position`.
+        // TODO: `Read::position().column` tracks byte offset, not character offset.
+        self.read.position()
+    }
+
+    #[cfg(feature = "spanned")]
+    pub(crate) fn byte_offset(&self) -> usize {
+        self.read.byte_offset()
     }
 }
 
@@ -82,6 +105,13 @@ where
     pub fn from_reader(reader: R) -> Self {
         Deserializer::new(read::IoRead::new(reader))
     }
+
+    /// TODO: document
+    #[cfg(feature = "spanned")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "spanned")))]
+    pub fn from_reader_spanned(reader: R) -> Self {
+        Deserializer::new_spanned(read::IoRead::new(reader))
+    }
 }
 
 impl<'a> Deserializer<read::SliceRead<'a>> {
@@ -89,12 +119,26 @@ impl<'a> Deserializer<read::SliceRead<'a>> {
     pub fn from_slice(bytes: &'a [u8]) -> Self {
         Deserializer::new(read::SliceRead::new(bytes))
     }
+
+    /// TODO: document
+    #[cfg(feature = "spanned")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "spanned")))]
+    pub fn from_slice_spanned(bytes: &'a [u8]) -> Self {
+        Deserializer::new_spanned(read::SliceRead::new(bytes))
+    }
 }
 
 impl<'a> Deserializer<read::StrRead<'a>> {
     /// Creates a JSON deserializer from a `&str`.
     pub fn from_str(s: &'a str) -> Self {
         Deserializer::new(read::StrRead::new(s))
+    }
+
+    /// TODO: document
+    #[cfg(feature = "spanned")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "spanned")))]
+    pub fn from_str_spanned(s: &'a str) -> Self {
+        Deserializer::new_spanned(read::StrRead::new(s))
     }
 }
 
@@ -1824,6 +1868,13 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
+        #[cfg(feature = "spanned")]
+        {
+            if self.spanned_enabled && crate::spanned::is_spanned(_name, _fields) {
+                return visitor.visit_map(crate::spanned::SpannedDeserializer::new(self));
+            }
+        }
+
         let peek = match tri!(self.parse_whitespace()) {
             Some(b) => b,
             None => {
@@ -2146,7 +2197,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for UnitVariantAccess<'a
     }
 }
 
-/// Only deserialize from this after peeking a '"' byte! Otherwise it may
+/// Only deserialize from this after peeking a '"' byte! Otherwise, it may
 /// deserialize invalid JSON successfully.
 struct MapKey<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
@@ -2317,8 +2368,28 @@ where
         self.de.deserialize_bytes(visitor)
     }
 
+    #[inline]
+    #[cfg(feature = "spanned")]
+    fn deserialize_struct<V>(
+        self,
+        name: &'static str,
+        fields: &'static [&'static str],
+        visitor: V,
+    ) -> result::Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        if crate::spanned::is_spanned(name, fields) {
+            return visitor.visit_map(crate::spanned::SpannedDeserializer::new(self.de));
+        }
+        self.deserialize_any(visitor)
+    }
+
+    #[cfg(not(feature = "spanned"))]
+    forward_to_deserialize_any! { struct }
+
     forward_to_deserialize_any! {
-        char str string unit unit_struct seq tuple tuple_struct map struct
+        char str string unit unit_struct seq tuple tuple_struct map
         identifier ignored_any
     }
 }
@@ -2362,7 +2433,7 @@ where
     /// Create a JSON stream deserializer from one of the possible serde_json
     /// input sources.
     ///
-    /// Typically it is more convenient to use one of these methods instead:
+    /// Typically, it is more convenient to use one of these methods instead:
     ///
     ///   - Deserializer::from_str(...).into_iter()
     ///   - Deserializer::from_slice(...).into_iter()
@@ -2376,6 +2447,22 @@ where
             output: PhantomData,
             lifetime: PhantomData,
         }
+    }
+
+    /// Create a JSON span tracking stream deserializer from one of the possible serde_json
+    /// input sources.
+    ///
+    /// Typically, it is more convenient to use one of these methods instead:
+    ///
+    ///   - Deserializer::from_str_spanned(...).into_iter()
+    ///   - Deserializer::from_slice_spanned(...).into_iter()
+    ///   - Deserializer::from_reader_spanned(...).into_iter()
+    #[cfg(feature = "spanned")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "spanned")))]
+    pub fn new_spanned(read: R) -> Self {
+        let mut de = Self::new(read);
+        de.de.spanned_enabled = true;
+        de
     }
 
     /// Returns the number of bytes so far deserialized into a successful `T`.
