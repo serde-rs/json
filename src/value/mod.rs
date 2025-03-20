@@ -112,7 +112,75 @@ pub use crate::raw::{to_raw_value, RawValue};
 /// Represents any valid JSON value.
 ///
 /// See the [`serde_json::value` module documentation](self) for usage examples.
+#[cfg(not(feature = "sort_arrays"))]
 #[derive(Clone, Eq, PartialEq, Hash)]
+pub enum Value {
+    /// Represents a JSON null value.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!(null);
+    /// ```
+    Null,
+
+    /// Represents a JSON boolean.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!(true);
+    /// ```
+    Bool(bool),
+
+    /// Represents a JSON number, whether integer or floating point.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!(12.5);
+    /// ```
+    Number(Number),
+
+    /// Represents a JSON string.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!("a string");
+    /// ```
+    String(String),
+
+    /// Represents a JSON array.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!(["an", "array"]);
+    /// ```
+    Array(Vec<Value>),
+
+    /// Represents a JSON object.
+    ///
+    /// By default the map is backed by a BTreeMap. Enable the `preserve_order`
+    /// feature of serde_json to use IndexMap instead, which preserves
+    /// entries in the order they are inserted into the map. In particular, this
+    /// allows JSON data to be deserialized into a Value and serialized to a
+    /// string while retaining the order of map keys in the input.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// let v = json!({ "an": "object" });
+    /// ```
+    Object(Map<String, Value>),
+}
+
+/// Represents any valid JSON value.
+///
+/// See the [`serde_json::value` module documentation](self) for usage examples.
+#[cfg(feature = "sort_arrays")]
+#[derive(Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum Value {
     /// Represents a JSON null value.
     ///
@@ -882,6 +950,31 @@ impl Value {
                 }
                 Value::Array(list) => {
                     list.iter_mut().for_each(Value::sort_all_objects);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Reorders the entries of all `Value::Object` and Value::Array nested within this JSON
+    /// value according to `str`'s usual ordering.
+    ///
+    /// If serde_json's "sort_arrays" feature is not enabled, this method
+    /// does no work because all JSON maps are always kept in a sorted state,
+    /// but arrays in a unsorted state.
+    pub fn sort_all_objects_and_all_arrays(&mut self) {
+        #[cfg(feature = "sort_arrays")]
+        {
+            match self {
+                Value::Object(map) => {
+                    map.sort_keys();
+                    map.values_mut()
+                        .for_each(Value::sort_all_objects_and_all_arrays);
+                }
+                Value::Array(list) => {
+                    list.iter_mut()
+                        .for_each(Value::sort_all_objects_and_all_arrays);
+                    list.sort();
                 }
                 _ => {}
             }

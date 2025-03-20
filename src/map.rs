@@ -26,6 +26,7 @@ use alloc::collections::{btree_map, BTreeMap};
 use indexmap::IndexMap;
 
 /// Represents a JSON key/value type.
+#[cfg(not(feature = "sort_arrays"))]
 pub struct Map<K, V> {
     map: MapImpl<K, V>,
 }
@@ -34,6 +35,26 @@ pub struct Map<K, V> {
 type MapImpl<K, V> = BTreeMap<K, V>;
 #[cfg(feature = "preserve_order")]
 type MapImpl<K, V> = IndexMap<K, V>;
+
+/// Represents a JSON key/value type.
+#[cfg(feature = "sort_arrays")]
+pub struct Map<K: PartialOrd + Ord + Eq, V> {
+    map: MapImpl<K, V>,
+}
+#[cfg(feature = "sort_arrays")]
+impl PartialOrd for Map<String, Value> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        self.map.partial_cmp(&other.map)
+    }
+}
+#[cfg(feature = "sort_arrays")]
+impl Ord for Map<String, Value> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.map.cmp(&other.map)
+    }
+}
 
 impl Map<String, Value> {
     /// Makes a new empty Map.

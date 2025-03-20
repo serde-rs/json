@@ -18,7 +18,15 @@ use serde::{forward_to_deserialize_any, Deserialize, Deserializer, Serialize, Se
 pub(crate) const TOKEN: &str = "$serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
+#[cfg(not(feature = "sort_arrays"))]
 #[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Number {
+    n: N,
+}
+
+/// Represents a JSON number, whether integer or floating point.
+#[cfg(feature = "sort_arrays")]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Number {
     n: N,
 }
