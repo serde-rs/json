@@ -111,6 +111,7 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 /// struct SomeStruct {
 ///     raw_value: Box<RawValue>,
 /// }
+/// ```
 ///
 /// # Serde feature compatibility
 ///
@@ -122,7 +123,6 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 /// Flattened structs and internally tagged enums use intermediate data
 /// structures during deserialization which lose the magic token required for
 /// `RawValue` to work.
-/// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "raw_value")))]
 #[repr(transparent)]
 pub struct RawValue {
