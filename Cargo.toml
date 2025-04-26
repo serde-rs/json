@@ -1,7 +1,10 @@
 [package]
 name = "serde_json"
 version = "1.0.140"
-authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
+authors = [
+    "Erick Tryzelaar <erick.tryzelaar@gmail.com>",
+    "David Tolnay <dtolnay@gmail.com>",
+]
 categories = ["encoding", "parser-implementations", "no-std"]
 description = "A JSON serialization file format"
 documentation = "https://docs.rs/serde_json"
@@ -17,6 +20,7 @@ itoa = "1.0"
 memchr = { version = "2", default-features = false }
 ryu = "1.0"
 serde = { version = "1.0.194", default-features = false }
+valuable = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
 automod = "1.0.11"
@@ -89,3 +93,6 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# Implement the valuable trait for serde_json::Value
+valuable = ["dep:valuable"]
