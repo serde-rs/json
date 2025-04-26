@@ -11,9 +11,16 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 serde_json = { path = ".." }
+serde = { version = "1.0.194", features = ["derive"] }
 
 [[bin]]
 name = "from_slice"
 path = "fuzz_targets/from_slice.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "strongly_typed"
+path = "fuzz_targets/strongly_typed.rs"
 test = false
 doc = false
