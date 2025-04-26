@@ -435,3 +435,6 @@ mod read;
 
 #[cfg(feature = "raw_value")]
 mod raw;
+
+#[cfg(feature = "valuable")]
+mod valuable;
