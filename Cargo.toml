@@ -95,4 +95,4 @@ raw_value = []
 unbounded_depth = []
 
 # Implement the valuable trait for serde_json::Value
-valuable = ["dep:valuable"]
+valuable = ["valuable"]
