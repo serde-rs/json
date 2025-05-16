@@ -17,6 +17,7 @@ itoa = "1.0"
 memchr = { version = "2", default-features = false }
 ryu = "1.0"
 serde = { version = "1.0.194", default-features = false }
+serde_spanned = { version = "0.6.8", features = ["serde"], optional = true }
 
 [dev-dependencies]
 automod = "1.0.11"
@@ -89,3 +90,7 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# Provide deserialization of serde_spanned::Spanned<T>, which tracks the position
+# of the value in the original JSON document
+spanned = ["serde_spanned"]
