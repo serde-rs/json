@@ -1,7 +1,8 @@
 use crate::error::{Error, ErrorCode};
-use crate::map::Map;
+use crate::map::SpannedMap;
 use crate::number::Number;
-use crate::value::Value;
+use crate::spanned::spanned::Spanned;
+use crate::spanned::value::SpannedValue;
 use alloc::borrow::{Cow, ToOwned};
 use alloc::string::String;
 #[cfg(feature = "raw_value")]
@@ -19,60 +20,60 @@ use serde::forward_to_deserialize_any;
 #[cfg(feature = "arbitrary_precision")]
 use crate::number::NumberFromString;
 
-impl<'de> Deserialize<'de> for Value {
+impl<'de> Deserialize<'de> for SpannedValue {
     #[inline]
-    fn deserialize<D>(deserializer: D) -> Result<Value, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<SpannedValue, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        struct ValueVisitor;
+        struct SpannedValueVisitor;
 
-        impl<'de> Visitor<'de> for ValueVisitor {
-            type Value = Value;
+        impl<'de> Visitor<'de> for SpannedValueVisitor {
+            type Value = SpannedValue;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("any valid JSON value")
             }
 
             #[inline]
-            fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
-                Ok(Value::Bool(value))
+            fn visit_bool<E>(self, value: bool) -> Result<SpannedValue, E> {
+                Ok(SpannedValue::Bool(value))
             }
 
             #[inline]
-            fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
-                Ok(Value::Number(value.into()))
+            fn visit_i64<E>(self, value: i64) -> Result<SpannedValue, E> {
+                Ok(SpannedValue::Number(value.into()))
             }
 
-            fn visit_i128<E>(self, value: i128) -> Result<Value, E>
+            fn visit_i128<E>(self, value: i128) -> Result<SpannedValue, E>
             where
                 E: serde::de::Error,
             {
                 let de = serde::de::value::I128Deserializer::new(value);
-                Number::deserialize(de).map(Value::Number)
+                Number::deserialize(de).map(SpannedValue::Number)
             }
 
             #[inline]
-            fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
-                Ok(Value::Number(value.into()))
+            fn visit_u64<E>(self, value: u64) -> Result<SpannedValue, E> {
+                Ok(SpannedValue::Number(value.into()))
             }
 
-            fn visit_u128<E>(self, value: u128) -> Result<Value, E>
+            fn visit_u128<E>(self, value: u128) -> Result<SpannedValue, E>
             where
                 E: serde::de::Error,
             {
                 let de = serde::de::value::U128Deserializer::new(value);
-                Number::deserialize(de).map(Value::Number)
+                Number::deserialize(de).map(SpannedValue::Number)
             }
 
             #[inline]
-            fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
-                Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
+            fn visit_f64<E>(self, value: f64) -> Result<SpannedValue, E> {
+                Ok(Number::from_f64(value).map_or(SpannedValue::Null, SpannedValue::Number))
             }
 
             #[cfg(any(feature = "std", feature = "alloc"))]
             #[inline]
-            fn visit_str<E>(self, value: &str) -> Result<Value, E>
+            fn visit_str<E>(self, value: &str) -> Result<SpannedValue, E>
             where
                 E: serde::de::Error,
             {
@@ -81,17 +82,17 @@ impl<'de> Deserialize<'de> for Value {
 
             #[cfg(any(feature = "std", feature = "alloc"))]
             #[inline]
-            fn visit_string<E>(self, value: String) -> Result<Value, E> {
-                Ok(Value::String(value))
+            fn visit_string<E>(self, value: String) -> Result<SpannedValue, E> {
+                Ok(SpannedValue::String(value))
             }
 
             #[inline]
-            fn visit_none<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
+            fn visit_none<E>(self) -> Result<SpannedValue, E> {
+                Ok(SpannedValue::Null)
             }
 
             #[inline]
-            fn visit_some<D>(self, deserializer: D) -> Result<Value, D::Error>
+            fn visit_some<D>(self, deserializer: D) -> Result<SpannedValue, D::Error>
             where
                 D: serde::Deserializer<'de>,
             {
@@ -99,12 +100,12 @@ impl<'de> Deserialize<'de> for Value {
             }
 
             #[inline]
-            fn visit_unit<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
+            fn visit_unit<E>(self) -> Result<SpannedValue, E> {
+                Ok(SpannedValue::Null)
             }
 
             #[inline]
-            fn visit_seq<V>(self, mut visitor: V) -> Result<Value, V::Error>
+            fn visit_seq<V>(self, mut visitor: V) -> Result<SpannedValue, V::Error>
             where
                 V: SeqAccess<'de>,
             {
@@ -114,48 +115,59 @@ impl<'de> Deserialize<'de> for Value {
                     vec.push(elem);
                 }
 
-                Ok(Value::Array(vec))
+                Ok(SpannedValue::Array(vec))
             }
 
             #[cfg(any(feature = "std", feature = "alloc"))]
-            fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
+            fn visit_map<V>(self, mut visitor: V) -> Result<SpannedValue, V::Error>
             where
                 V: MapAccess<'de>,
             {
-                match tri!(visitor.next_key_seed(KeyClassifier)) {
+                match tri!(visitor.next_key_seed(Spanned::new(Default::default(), KeyClassifier))) {
                     #[cfg(feature = "arbitrary_precision")]
-                    Some(KeyClass::Number) => {
+                    Some(Spanned {
+                        value: KeyClass::Number,
+                        span: _,
+                    }) => {
                         let number: NumberFromString = tri!(visitor.next_value());
-                        Ok(Value::Number(number.value))
+                        Ok(SpannedValue::Number(number.value))
                     }
                     #[cfg(feature = "raw_value")]
-                    Some(KeyClass::RawValue) => {
+                    Some(Spanned {
+                        value: KeyClass::RawValue,
+                        span: _,
+                    }) => {
                         let value = tri!(visitor.next_value_seed(crate::raw::BoxedFromString));
-                        crate::from_str(value.get()).map_err(de::Error::custom)
+                        // FIXME: this resets the span to line 1, col 1, byte 0
+                        crate::from_str_spanned(value.get()).map_err(de::Error::custom)
                     }
-                    Some(KeyClass::Map(first_key)) => {
-                        let mut values = Map::new();
+                    Some(Spanned {
+                        value: KeyClass::Map(first_key),
+                        span,
+                    }) => {
+                        let mut values = SpannedMap::new();
+                        let first_key = Spanned::new(span, first_key.into());
 
                         values.insert(first_key, tri!(visitor.next_value()));
                         while let Some((key, value)) = tri!(visitor.next_entry()) {
                             values.insert(key, value);
                         }
 
-                        Ok(Value::Object(values))
+                        Ok(SpannedValue::Object(values))
                     }
-                    None => Ok(Value::Object(Map::new())),
+                    None => Ok(SpannedValue::Object(SpannedMap::new())),
                 }
             }
         }
 
-        deserializer.deserialize_any(ValueVisitor)
+        deserializer.deserialize_any(SpannedValueVisitor)
     }
 }
 
-impl FromStr for Value {
+impl FromStr for SpannedValue {
     type Err = Error;
-    fn from_str(s: &str) -> Result<Value, Error> {
-        super::super::de::from_str(s)
+    fn from_str(s: &str) -> Result<SpannedValue, Error> {
+        super::super::de::from_str_spanned(s)
     }
 }
 
@@ -167,7 +179,7 @@ macro_rules! deserialize_number {
             V: Visitor<'de>,
         {
             match self {
-                Value::Number(n) => n.deserialize_any(visitor),
+                SpannedValue::Number(n) => n.deserialize_any(visitor),
                 _ => Err(self.invalid_type(&visitor)),
             }
         }
@@ -178,14 +190,14 @@ macro_rules! deserialize_number {
             V: Visitor<'de>,
         {
             match self {
-                Value::Number(n) => n.$method(visitor),
+                SpannedValue::Number(n) => n.$method(visitor),
                 _ => self.deserialize_any(visitor),
             }
         }
     };
 }
 
-fn visit_array<'de, V>(array: Vec<Value>, visitor: V) -> Result<V::Value, Error>
+fn visit_array<'de, V>(array: Vec<Spanned<SpannedValue>>, visitor: V) -> Result<V::Value, Error>
 where
     V: Visitor<'de>,
 {
@@ -203,7 +215,7 @@ where
     }
 }
 
-impl<'de> serde::Deserializer<'de> for Map {
+impl<'de> serde::Deserializer<'de> for SpannedMap {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -252,8 +264,8 @@ impl<'de> serde::Deserializer<'de> for Map {
         }
 
         visitor.visit_enum(EnumDeserializer {
-            variant,
-            value: Some(value),
+            variant: variant.into_inner(),
+            value: Some(value.into_inner()),
         })
     }
 
@@ -272,7 +284,7 @@ impl<'de> serde::Deserializer<'de> for Map {
     }
 }
 
-impl<'de> serde::Deserializer<'de> for Value {
+impl<'de> serde::Deserializer<'de> for SpannedValue {
     type Error = Error;
 
     #[inline]
@@ -281,15 +293,15 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Null => visitor.visit_unit(),
-            Value::Bool(v) => visitor.visit_bool(v),
-            Value::Number(n) => n.deserialize_any(visitor),
+            SpannedValue::Null => visitor.visit_unit(),
+            SpannedValue::Bool(v) => visitor.visit_bool(v),
+            SpannedValue::Number(n) => n.deserialize_any(visitor),
             #[cfg(any(feature = "std", feature = "alloc"))]
-            Value::String(v) => visitor.visit_string(v),
+            SpannedValue::String(v) => visitor.visit_string(v),
             #[cfg(not(any(feature = "std", feature = "alloc")))]
-            Value::String(_) => unreachable!(),
-            Value::Array(v) => visit_array(v, visitor),
-            Value::Object(v) => v.deserialize_any(visitor),
+            SpannedValue::String(_) => unreachable!(),
+            SpannedValue::Array(v) => visit_array(v, visitor),
+            SpannedValue::Object(v) => v.deserialize_any(visitor),
         }
     }
 
@@ -312,7 +324,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Null => visitor.visit_none(),
+            SpannedValue::Null => visitor.visit_none(),
             _ => visitor.visit_some(self),
         }
     }
@@ -328,8 +340,8 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Object(value) => value.deserialize_enum(name, variants, visitor),
-            Value::String(variant) => visitor.visit_enum(EnumDeserializer {
+            SpannedValue::Object(value) => value.deserialize_enum(name, variants, visitor),
+            SpannedValue::String(variant) => visitor.visit_enum(EnumDeserializer {
                 variant,
                 value: None,
             }),
@@ -367,7 +379,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Bool(v) => visitor.visit_bool(v),
+            SpannedValue::Bool(v) => visitor.visit_bool(v),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -392,7 +404,7 @@ impl<'de> serde::Deserializer<'de> for Value {
     {
         match self {
             #[cfg(any(feature = "std", feature = "alloc"))]
-            Value::String(v) => visitor.visit_string(v),
+            SpannedValue::String(v) => visitor.visit_string(v),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -410,8 +422,8 @@ impl<'de> serde::Deserializer<'de> for Value {
     {
         match self {
             #[cfg(any(feature = "std", feature = "alloc"))]
-            Value::String(v) => visitor.visit_string(v),
-            Value::Array(v) => visit_array(v, visitor),
+            SpannedValue::String(v) => visitor.visit_string(v),
+            SpannedValue::Array(v) => visit_array(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -421,7 +433,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Null => visitor.visit_unit(),
+            SpannedValue::Null => visitor.visit_unit(),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -438,7 +450,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Array(v) => visit_array(v, visitor),
+            SpannedValue::Array(v) => visit_array(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -467,7 +479,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Object(v) => v.deserialize_any(visitor),
+            SpannedValue::Object(v) => v.deserialize_any(visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -482,8 +494,8 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Array(v) => visit_array(v, visitor),
-            Value::Object(v) => v.deserialize_any(visitor),
+            SpannedValue::Array(v) => visit_array(v, visitor),
+            SpannedValue::Object(v) => v.deserialize_any(visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -506,7 +518,7 @@ impl<'de> serde::Deserializer<'de> for Value {
 
 struct EnumDeserializer {
     variant: String,
-    value: Option<Value>,
+    value: Option<SpannedValue>,
 }
 
 impl<'de> EnumAccess<'de> for EnumDeserializer {
@@ -523,7 +535,7 @@ impl<'de> EnumAccess<'de> for EnumDeserializer {
     }
 }
 
-impl<'de> IntoDeserializer<'de, Error> for Value {
+impl<'de> IntoDeserializer<'de, Error> for SpannedValue {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {
@@ -531,7 +543,7 @@ impl<'de> IntoDeserializer<'de, Error> for Value {
     }
 }
 
-impl<'de> IntoDeserializer<'de, Error> for &'de Value {
+impl<'de> IntoDeserializer<'de, Error> for &'de SpannedValue {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {
@@ -540,7 +552,7 @@ impl<'de> IntoDeserializer<'de, Error> for &'de Value {
 }
 
 struct VariantDeserializer {
-    value: Option<Value>,
+    value: Option<SpannedValue>,
 }
 
 impl<'de> VariantAccess<'de> for VariantDeserializer {
@@ -571,7 +583,7 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
         V: Visitor<'de>,
     {
         match self.value {
-            Some(Value::Array(v)) => {
+            Some(SpannedValue::Array(v)) => {
                 if v.is_empty() {
                     visitor.visit_unit()
                 } else {
@@ -598,7 +610,7 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
         V: Visitor<'de>,
     {
         match self.value {
-            Some(Value::Object(v)) => v.deserialize_any(visitor),
+            Some(SpannedValue::Object(v)) => v.deserialize_any(visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
                 &"struct variant",
@@ -612,11 +624,11 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
 }
 
 struct SeqDeserializer {
-    iter: vec::IntoIter<Value>,
+    iter: vec::IntoIter<Spanned<SpannedValue>>,
 }
 
 impl SeqDeserializer {
-    fn new(vec: Vec<Value>) -> Self {
+    fn new(vec: Vec<Spanned<SpannedValue>>) -> Self {
         SeqDeserializer {
             iter: vec.into_iter(),
         }
@@ -645,12 +657,12 @@ impl<'de> SeqAccess<'de> for SeqDeserializer {
 }
 
 struct MapDeserializer {
-    iter: <Map as IntoIterator>::IntoIter,
-    value: Option<Value>,
+    iter: <SpannedMap as IntoIterator>::IntoIter,
+    value: Option<Spanned<SpannedValue>>,
 }
 
 impl MapDeserializer {
-    fn new(map: Map) -> Self {
+    fn new(map: SpannedMap) -> Self {
         MapDeserializer {
             iter: map.into_iter(),
             value: None,
@@ -669,7 +681,7 @@ impl<'de> MapAccess<'de> for MapDeserializer {
             Some((key, value)) => {
                 self.value = Some(value);
                 let key_de = MapKeyDeserializer {
-                    key: Cow::Owned(key),
+                    key: Cow::Owned(key.into_inner()),
                 };
                 seed.deserialize(key_de).map(Some)
             }
@@ -703,7 +715,7 @@ macro_rules! deserialize_value_ref_number {
             V: Visitor<'de>,
         {
             match self {
-                Value::Number(n) => n.deserialize_any(visitor),
+                SpannedValue::Number(n) => n.deserialize_any(visitor),
                 _ => Err(self.invalid_type(&visitor)),
             }
         }
@@ -714,14 +726,17 @@ macro_rules! deserialize_value_ref_number {
             V: Visitor<'de>,
         {
             match self {
-                Value::Number(n) => n.$method(visitor),
+                SpannedValue::Number(n) => n.$method(visitor),
                 _ => self.deserialize_any(visitor),
             }
         }
     };
 }
 
-fn visit_array_ref<'de, V>(array: &'de [Value], visitor: V) -> Result<V::Value, Error>
+fn visit_array_ref<'de, V>(
+    array: &'de [Spanned<SpannedValue>],
+    visitor: V,
+) -> Result<V::Value, Error>
 where
     V: Visitor<'de>,
 {
@@ -739,7 +754,7 @@ where
     }
 }
 
-impl<'de> serde::Deserializer<'de> for &'de Map {
+impl<'de> serde::Deserializer<'de> for &'de SpannedMap {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -788,7 +803,7 @@ impl<'de> serde::Deserializer<'de> for &'de Map {
         }
 
         visitor.visit_enum(EnumRefDeserializer {
-            variant,
+            variant: variant.as_ref(),
             value: Some(value),
         })
     }
@@ -807,7 +822,7 @@ impl<'de> serde::Deserializer<'de> for &'de Map {
     }
 }
 
-impl<'de> serde::Deserializer<'de> for &'de Value {
+impl<'de> serde::Deserializer<'de> for &'de SpannedValue {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
@@ -815,12 +830,12 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Null => visitor.visit_unit(),
-            Value::Bool(v) => visitor.visit_bool(*v),
-            Value::Number(n) => n.deserialize_any(visitor),
-            Value::String(v) => visitor.visit_borrowed_str(v),
-            Value::Array(v) => visit_array_ref(v, visitor),
-            Value::Object(v) => v.deserialize_any(visitor),
+            SpannedValue::Null => visitor.visit_unit(),
+            SpannedValue::Bool(v) => visitor.visit_bool(*v),
+            SpannedValue::Number(n) => n.deserialize_any(visitor),
+            SpannedValue::String(v) => visitor.visit_borrowed_str(v),
+            SpannedValue::Array(v) => visit_array_ref(v, visitor),
+            SpannedValue::Object(v) => v.deserialize_any(visitor),
         }
     }
 
@@ -842,7 +857,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match *self {
-            Value::Null => visitor.visit_none(),
+            SpannedValue::Null => visitor.visit_none(),
             _ => visitor.visit_some(self),
         }
     }
@@ -857,8 +872,8 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Object(value) => value.deserialize_enum(name, variants, visitor),
-            Value::String(variant) => visitor.visit_enum(EnumRefDeserializer {
+            SpannedValue::Object(value) => value.deserialize_enum(name, variants, visitor),
+            SpannedValue::String(variant) => visitor.visit_enum(EnumRefDeserializer {
                 variant,
                 value: None,
             }),
@@ -896,7 +911,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match *self {
-            Value::Bool(v) => visitor.visit_bool(v),
+            SpannedValue::Bool(v) => visitor.visit_bool(v),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -913,7 +928,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::String(v) => visitor.visit_borrowed_str(v),
+            SpannedValue::String(v) => visitor.visit_borrowed_str(v),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -930,8 +945,8 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::String(v) => visitor.visit_borrowed_str(v),
-            Value::Array(v) => visit_array_ref(v, visitor),
+            SpannedValue::String(v) => visitor.visit_borrowed_str(v),
+            SpannedValue::Array(v) => visit_array_ref(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -948,7 +963,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match *self {
-            Value::Null => visitor.visit_unit(),
+            SpannedValue::Null => visitor.visit_unit(),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -965,7 +980,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Array(v) => visit_array_ref(v, visitor),
+            SpannedValue::Array(v) => visit_array_ref(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -994,7 +1009,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Object(v) => v.deserialize_any(visitor),
+            SpannedValue::Object(v) => v.deserialize_any(visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -1009,8 +1024,8 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Array(v) => visit_array_ref(v, visitor),
-            Value::Object(v) => v.deserialize_any(visitor),
+            SpannedValue::Array(v) => visit_array_ref(v, visitor),
+            SpannedValue::Object(v) => v.deserialize_any(visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -1032,7 +1047,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
 
 struct EnumRefDeserializer<'de> {
     variant: &'de str,
-    value: Option<&'de Value>,
+    value: Option<&'de Spanned<SpannedValue>>,
 }
 
 impl<'de> EnumAccess<'de> for EnumRefDeserializer<'de> {
@@ -1050,7 +1065,7 @@ impl<'de> EnumAccess<'de> for EnumRefDeserializer<'de> {
 }
 
 struct VariantRefDeserializer<'de> {
-    value: Option<&'de Value>,
+    value: Option<&'de Spanned<SpannedValue>>,
 }
 
 impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
@@ -1080,8 +1095,8 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match self.value {
-            Some(Value::Array(v)) => {
+        match self.value.map(Spanned::as_ref) {
+            Some(SpannedValue::Array(v)) => {
                 if v.is_empty() {
                     visitor.visit_unit()
                 } else {
@@ -1107,8 +1122,8 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match self.value {
-            Some(Value::Object(v)) => v.deserialize_any(visitor),
+        match self.value.map(Spanned::as_ref) {
+            Some(SpannedValue::Object(v)) => v.deserialize_any(visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
                 &"struct variant",
@@ -1122,11 +1137,11 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
 }
 
 struct SeqRefDeserializer<'de> {
-    iter: slice::Iter<'de, Value>,
+    iter: slice::Iter<'de, Spanned<SpannedValue>>,
 }
 
 impl<'de> SeqRefDeserializer<'de> {
-    fn new(slice: &'de [Value]) -> Self {
+    fn new(slice: &'de [Spanned<SpannedValue>]) -> Self {
         SeqRefDeserializer { iter: slice.iter() }
     }
 }
@@ -1153,12 +1168,12 @@ impl<'de> SeqAccess<'de> for SeqRefDeserializer<'de> {
 }
 
 struct MapRefDeserializer<'de> {
-    iter: <&'de Map as IntoIterator>::IntoIter,
-    value: Option<&'de Value>,
+    iter: <&'de SpannedMap as IntoIterator>::IntoIter,
+    value: Option<&'de Spanned<SpannedValue>>,
 }
 
 impl<'de> MapRefDeserializer<'de> {
-    fn new(map: &'de Map) -> Self {
+    fn new(map: &'de SpannedMap) -> Self {
         MapRefDeserializer {
             iter: map.into_iter(),
             value: None,
@@ -1177,7 +1192,7 @@ impl<'de> MapAccess<'de> for MapRefDeserializer<'de> {
             Some((key, value)) => {
                 self.value = Some(value);
                 let key_de = MapKeyDeserializer {
-                    key: Cow::Borrowed(&**key),
+                    key: Cow::Borrowed(key.as_ref()),
                 };
                 seed.deserialize(key_de).map(Some)
             }
@@ -1375,7 +1390,7 @@ impl<'de> Visitor<'de> for KeyClassifier {
     }
 }
 
-impl Value {
+impl SpannedValue {
     #[cold]
     fn invalid_type<E>(&self, exp: &dyn Expected) -> E
     where
@@ -1387,12 +1402,12 @@ impl Value {
     #[cold]
     fn unexpected(&self) -> Unexpected {
         match self {
-            Value::Null => Unexpected::Unit,
-            Value::Bool(b) => Unexpected::Bool(*b),
-            Value::Number(n) => n.unexpected(),
-            Value::String(s) => Unexpected::Str(s),
-            Value::Array(_) => Unexpected::Seq,
-            Value::Object(_) => Unexpected::Map,
+            SpannedValue::Null => Unexpected::Unit,
+            SpannedValue::Bool(b) => Unexpected::Bool(*b),
+            SpannedValue::Number(n) => n.unexpected(),
+            SpannedValue::String(s) => Unexpected::Str(s),
+            SpannedValue::Array(_) => Unexpected::Seq,
+            SpannedValue::Object(_) => Unexpected::Map,
         }
     }
 }

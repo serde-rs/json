@@ -30,7 +30,7 @@ serde_stacker = "0.1.8"
 trybuild = { version = "1.0.81", features = ["diff"] }
 
 [package.metadata.docs.rs]
-features = ["preserve_order", "raw_value", "unbounded_depth"]
+features = ["preserve_order", "raw_value", "unbounded_depth", "spanned"]
 targets = ["x86_64-unknown-linux-gnu"]
 rustdoc-args = [
     "--generate-link-to-definition",
@@ -84,8 +84,11 @@ raw_value = []
 # structures without any consideration for overflowing the stack. When using
 # this feature, you will want to provide some other way to protect against stack
 # overflows, such as by wrapping your Deserializer in the dynamically growing
-# stack adapter provided by the serde_stacker crate. Additionally you will need
+# stack adapter provided by the serde_stacker crate. Additionally, you will need
 # to be careful around other recursive operations on the parsed result which may
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# TODO: document
+spanned = []
