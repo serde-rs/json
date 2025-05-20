@@ -1879,7 +1879,14 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
             Some(b'{') => {
                 check_recursion! {
                     self.eat_char();
-                    let ret = visitor.visit_enum(VariantAccess::new(self));
+                    let ret = match tri!(self.parse_whitespace()) {
+                        Some(b'}') => Err(self.fix_position(de::Error::invalid_value(
+                            Unexpected::Other("empty map"),
+                            &"enum variant",
+                        ))),
+                        Some(_) => visitor.visit_enum(VariantAccess::new(self)),
+                        None => Err(self.error(ErrorCode::EofWhileParsingObject)),
+                    };
                 }
                 let value = tri!(ret);
 
@@ -1888,12 +1895,11 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
                         self.eat_char();
                         Ok(value)
                     }
-                    Some(_) => Err(self.error(ErrorCode::ExpectedSomeValue)),
+                    Some(_) => Err(self.error(ErrorCode::ExpectedObjectEnd)),
                     None => Err(self.error(ErrorCode::EofWhileParsingObject)),
                 }
             }
-            Some(b'"') => visitor.visit_enum(UnitVariantAccess::new(self)),
-            Some(_) => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+            Some(_) => visitor.visit_enum(UnitVariantAccess::new(self)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
         }
     }
