@@ -366,6 +366,7 @@
 #![deny(missing_docs)]
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![allow(unknown_lints, mismatched_lifetime_syntaxes)]
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 compile_error! {
