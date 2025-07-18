@@ -272,6 +272,14 @@ impl<'de> serde::Deserializer<'de> for Map<String, Value> {
     }
 }
 
+
+impl FromStr for Map<String, Value> {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Error> {
+        super::super::de::from_str(s)
+    }
+}
+
 impl<'de> serde::Deserializer<'de> for Value {
     type Error = Error;
 
