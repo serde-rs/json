@@ -1534,23 +1534,6 @@ pub enum CharEscape {
     AsciiControl(u8),
 }
 
-impl CharEscape {
-    #[inline]
-    fn from_escape_table(escape: u8, byte: u8) -> CharEscape {
-        match escape {
-            self::BB => CharEscape::Backspace,
-            self::TT => CharEscape::Tab,
-            self::NN => CharEscape::LineFeed,
-            self::FF => CharEscape::FormFeed,
-            self::RR => CharEscape::CarriageReturn,
-            self::QU => CharEscape::Quote,
-            self::BS => CharEscape::ReverseSolidus,
-            self::UU => CharEscape::AsciiControl(byte),
-            _ => unreachable!(),
-        }
-    }
-}
-
 /// This trait abstracts away serializing the JSON control characters, which allows the user to
 /// optionally pretty print the JSON output.
 pub trait Formatter {
@@ -1784,30 +1767,33 @@ pub trait Formatter {
     {
         use self::CharEscape::*;
 
-        let s = match char_escape {
-            Quote => b"\\\"",
-            ReverseSolidus => b"\\\\",
-            Solidus => b"\\/",
-            Backspace => b"\\b",
-            FormFeed => b"\\f",
-            LineFeed => b"\\n",
-            CarriageReturn => b"\\r",
-            Tab => b"\\t",
+        let escape_char = match char_escape {
+            Quote => b'"',
+            ReverseSolidus => b'\\',
+            Solidus => b'/',
+            Backspace => b'b',
+            FormFeed => b'f',
+            LineFeed => b'n',
+            CarriageReturn => b'r',
+            Tab => b't',
+            AsciiControl(_) => b'u',
+        };
+
+        match char_escape {
             AsciiControl(byte) => {
                 static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
                 let bytes = &[
                     b'\\',
-                    b'u',
+                    escape_char,
                     b'0',
                     b'0',
                     HEX_DIGITS[(byte >> 4) as usize],
                     HEX_DIGITS[(byte & 0xF) as usize],
                 ];
-                return writer.write_all(bytes);
+                writer.write_all(bytes)
             }
-        };
-
-        writer.write_all(s)
+            _ => writer.write_all(&[b'\\', escape_char]),
+        }
     }
 
     /// Writes the representation of a byte array. Formatters can choose whether
@@ -2120,7 +2106,18 @@ where
             tri!(formatter.write_string_fragment(writer, string_run));
         }
 
-        let char_escape = CharEscape::from_escape_table(escape, byte);
+        let char_escape = match escape {
+            self::BB => CharEscape::Backspace,
+            self::TT => CharEscape::Tab,
+            self::NN => CharEscape::LineFeed,
+            self::FF => CharEscape::FormFeed,
+            self::RR => CharEscape::CarriageReturn,
+            self::QU => CharEscape::Quote,
+            self::BS => CharEscape::ReverseSolidus,
+            self::UU => CharEscape::AsciiControl(byte),
+            // safety: the escape table does not contain any other type of character.
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        };
         tri!(formatter.write_char_escape(writer, char_escape));
     }
 
