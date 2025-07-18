@@ -2097,31 +2097,40 @@ where
     W: ?Sized + io::Write,
     F: ?Sized + Formatter,
 {
-    let bytes = value.as_bytes();
+    let mut bytes = value.as_bytes();
 
-    let mut start = 0;
+    let mut i = 0;
+    while i < bytes.len() {
+        let (string_run, rest) = bytes.split_at(i);
+        let (&byte, rest) = rest.split_first().unwrap();
 
-    for (i, &byte) in bytes.iter().enumerate() {
         let escape = ESCAPE[byte as usize];
+
+        i += 1;
         if escape == 0 {
             continue;
         }
 
-        if start < i {
-            tri!(formatter.write_string_fragment(writer, &value[start..i]));
+        bytes = rest;
+        i = 0;
+
+        // safety: string_run is a valid utf8 string, since we only split on ascii sequences
+        let string_run = unsafe { core::str::from_utf8_unchecked(string_run) };
+        if !string_run.is_empty() {
+            tri!(formatter.write_string_fragment(writer, string_run));
         }
 
         let char_escape = CharEscape::from_escape_table(escape, byte);
         tri!(formatter.write_char_escape(writer, char_escape));
-
-        start = i + 1;
     }
 
-    if start == bytes.len() {
+    // safety: bytes is a valid utf8 string, since we only split on ascii sequences
+    let string_run = unsafe { core::str::from_utf8_unchecked(bytes) };
+    if string_run.is_empty() {
         return Ok(());
     }
 
-    formatter.write_string_fragment(writer, &value[start..])
+    formatter.write_string_fragment(writer, string_run)
 }
 
 const BB: u8 = b'b'; // \x08
