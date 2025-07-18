@@ -7,7 +7,9 @@ use alloc::string::String;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::fmt::{self, Display};
+use core::hint;
 use core::num::FpCategory;
+use core::str;
 use serde::ser::{self, Impossible, Serialize};
 
 /// A structure for serializing Rust values into JSON.
@@ -2100,8 +2102,8 @@ where
         bytes = rest;
         i = 0;
 
-        // safety: string_run is a valid utf8 string, since we only split on ascii sequences
-        let string_run = unsafe { core::str::from_utf8_unchecked(string_run) };
+        // Safety: string_run is a valid utf8 string, since we only split on ascii sequences
+        let string_run = unsafe { str::from_utf8_unchecked(string_run) };
         if !string_run.is_empty() {
             tri!(formatter.write_string_fragment(writer, string_run));
         }
@@ -2115,14 +2117,14 @@ where
             self::QU => CharEscape::Quote,
             self::BS => CharEscape::ReverseSolidus,
             self::UU => CharEscape::AsciiControl(byte),
-            // safety: the escape table does not contain any other type of character.
-            _ => unsafe { core::hint::unreachable_unchecked() },
+            // Safety: the escape table does not contain any other type of character.
+            _ => unsafe { hint::unreachable_unchecked() },
         };
         tri!(formatter.write_char_escape(writer, char_escape));
     }
 
-    // safety: bytes is a valid utf8 string, since we only split on ascii sequences
-    let string_run = unsafe { core::str::from_utf8_unchecked(bytes) };
+    // Safety: bytes is a valid utf8 string, since we only split on ascii sequences
+    let string_run = unsafe { str::from_utf8_unchecked(bytes) };
     if string_run.is_empty() {
         return Ok(());
     }
