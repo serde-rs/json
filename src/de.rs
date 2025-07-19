@@ -67,6 +67,11 @@ where
             disable_recursion_limit: false,
         }
     }
+
+    #[cfg(feature = "spanned")]
+    pub(crate) fn byte_offset(&self) -> usize {
+        self.read.byte_offset()
+    }
 }
 
 #[cfg(feature = "std")]
@@ -1817,19 +1822,27 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
 
     fn deserialize_struct<V>(
         self,
-        _name: &'static str,
-        _fields: &'static [&'static str],
+        name: &'static str,
+        fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value>
     where
         V: de::Visitor<'de>,
     {
+        let _ = name;
+        let _ = fields;
+
         let peek = match tri!(self.parse_whitespace()) {
             Some(b) => b,
             None => {
                 return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
             }
         };
+
+        #[cfg(feature = "spanned")]
+        if serde_spanned::__unstable::is_spanned(name, fields) {
+            return visitor.visit_map(crate::spanned::SpannedDeserializer::new(self));
+        }
 
         let value = match peek {
             b'[' => {
