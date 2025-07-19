@@ -1,10 +1,7 @@
 [package]
 name = "serde_json"
-version = "1.0.140"
-authors = [
-    "Erick Tryzelaar <erick.tryzelaar@gmail.com>",
-    "David Tolnay <dtolnay@gmail.com>",
-]
+version = "1.0.142"
+authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
 categories = ["encoding", "parser-implementations", "no-std"]
 description = "A JSON serialization file format"
 documentation = "https://docs.rs/serde_json"
