@@ -924,6 +924,13 @@ impl Default for Value {
     }
 }
 
+impl<'a> Default for &'a Value {
+    fn default() -> Self {
+        const DEFAULT: Value = Value::Null;
+        &DEFAULT
+    }
+}
+
 mod de;
 mod from;
 mod index;
