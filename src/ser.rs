@@ -1514,26 +1514,27 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
 }
 
 /// Represents a character escape code in a type-safe manner.
+#[repr(u8)]
 pub enum CharEscape {
     /// An escaped quote `"`
-    Quote,
+    Quote = b'"',
     /// An escaped reverse solidus `\`
-    ReverseSolidus,
+    ReverseSolidus = b'\\',
     /// An escaped solidus `/`
-    Solidus,
+    Solidus = b'/',
     /// An escaped backspace character (usually escaped as `\b`)
-    Backspace,
+    Backspace = b'b',
     /// An escaped form feed character (usually escaped as `\f`)
-    FormFeed,
+    FormFeed = b'f',
     /// An escaped line feed character (usually escaped as `\n`)
-    LineFeed,
+    LineFeed = b'n',
     /// An escaped carriage return character (usually escaped as `\r`)
-    CarriageReturn,
+    CarriageReturn = b'r',
     /// An escaped tab character (usually escaped as `\t`)
-    Tab,
+    Tab = b't',
     /// An escaped ASCII plane control character (usually escaped as
     /// `\u00XX` where `XX` are two hex characters)
-    AsciiControl(u8),
+    AsciiControl(u8) = b'u',
 }
 
 /// This trait abstracts away serializing the JSON control characters, which allows the user to
