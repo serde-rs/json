@@ -2096,7 +2096,9 @@ where
         i += 1;
         // first Some is from the .get(), second is because
         // it is an array of Options
-        let Some(Some(escape)) = escape else {
+        let escape = if let Some(&Some(escape)) = escape {
+            escape
+        } else {
             continue;
         };
 
