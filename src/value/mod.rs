@@ -924,7 +924,7 @@ impl Default for Value {
     }
 }
 
-impl<'a> Default for &'a Value {
+impl Default for &Value {
     fn default() -> Self {
         const DEFAULT: Value = Value::Null;
         &DEFAULT
