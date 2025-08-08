@@ -33,7 +33,7 @@ use serde_json::{
     to_vec, Deserializer, Number, Value,
 };
 use std::collections::BTreeMap;
-#[cfg(feature = "raw_value")]
+#[cfg(any(feature = "raw_value", feature = "spanned"))]
 use std::collections::HashMap;
 use std::fmt::{self, Debug};
 use std::hash::BuildHasher;
@@ -43,6 +43,8 @@ use std::io;
 use std::iter;
 use std::marker::PhantomData;
 use std::mem;
+#[cfg(feature = "spanned")]
+use std::ops::Range;
 use std::str::FromStr;
 use std::{f32, f64};
 
@@ -2557,4 +2559,139 @@ fn test_control_character_search() {
         "\"\t\n\r\"",
         "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 2",
     )]);
+}
+
+#[cfg(feature = "spanned")]
+fn format_span(json: &str, span: Range<usize>) -> String {
+    format!(
+        "{}\n{}{}",
+        json,
+        " ".repeat(span.start),
+        "^".repeat(span.end - span.start)
+    )
+}
+
+#[cfg(feature = "spanned")]
+#[track_caller]
+fn assert_span_eq(json: &str, expected: Range<usize>, actual: Range<usize>) {
+    let expected_str = format_span(json, expected.clone());
+    let actual_str = format_span(json, actual.clone());
+
+    assert_eq!(
+        expected, actual,
+        "Expected span:\n{}\nActual span:\n{}",
+        expected_str, actual_str
+    );
+}
+
+#[cfg(feature = "spanned")]
+#[test]
+fn test_spanned_string() {
+    use serde_spanned::Spanned;
+
+    #[derive(Deserialize)]
+    struct SpannedStruct {
+        field: Spanned<String>,
+    }
+
+    let json = r#"{"field": "value"}"#;
+    let result: SpannedStruct = serde_json::from_str(json).unwrap();
+    assert_eq!(result.field.as_ref(), "value");
+    assert_span_eq(json, result.field.span(), 10..17);
+}
+
+#[cfg(feature = "spanned")]
+#[test]
+fn test_spanned_number() {
+    use serde_spanned::Spanned;
+
+    #[derive(Deserialize)]
+    struct SpannedStruct {
+        field: Spanned<f64>,
+    }
+
+    let json = r#"{"field": -2.718e28}"#;
+    let result: SpannedStruct = serde_json::from_str(json).unwrap();
+    assert_eq!(*result.field.as_ref(), -2.718e28);
+    assert_span_eq(json, result.field.span(), 10..19);
+}
+
+#[cfg(feature = "spanned")]
+#[test]
+fn test_spanned_whole_array() {
+    use serde_spanned::Spanned;
+
+    #[derive(Deserialize)]
+    struct SpannedStruct {
+        field: Spanned<Vec<i32>>,
+    }
+
+    let json = r#"{"field": [1, 2, 3, 4]}"#;
+    let result: SpannedStruct = serde_json::from_str(json).unwrap();
+    assert_eq!(result.field.as_ref(), &[1, 2, 3, 4]);
+    assert_span_eq(json, result.field.span(), 10..22);
+}
+
+#[cfg(feature = "spanned")]
+#[test]
+fn test_spanned_array_items() {
+    use serde_spanned::Spanned;
+
+    #[derive(Deserialize)]
+    struct SpannedStruct {
+        field: Vec<Spanned<i32>>,
+    }
+
+    let json = r#"{"field": [1, 2, 3, 4]}"#;
+    let result: SpannedStruct = serde_json::from_str(json).unwrap();
+    assert_eq!(result.field.len(), 4);
+
+    assert_eq!(*result.field[0].as_ref(), 1);
+    assert_span_eq(json, result.field[0].span(), 11..12);
+
+    assert_eq!(*result.field[1].as_ref(), 2);
+    assert_span_eq(json, result.field[1].span(), 14..15);
+
+    assert_eq!(*result.field[2].as_ref(), 3);
+    assert_span_eq(json, result.field[2].span(), 17..18);
+
+    assert_eq!(*result.field[3].as_ref(), 4);
+    assert_span_eq(json, result.field[3].span(), 20..21);
+}
+
+#[cfg(feature = "spanned")]
+#[test]
+fn test_spanned_whole_map() {
+    use serde_spanned::Spanned;
+
+    #[derive(Deserialize)]
+    struct SpannedStruct {
+        field: Spanned<HashMap<i32, String>>,
+    }
+
+    let json = r#"{"field": {"1": "one", "2": "two"}}"#;
+    let result: SpannedStruct = serde_json::from_str(json).unwrap();
+    assert_span_eq(json, result.field.span(), 10..34);
+    let mut map = result.field.into_inner();
+    let one = map.remove(&1).unwrap();
+    assert_eq!(one, "one");
+    let two = map.remove(&2).unwrap();
+    assert_eq!(two, "two");
+    assert!(map.is_empty());
+}
+
+#[cfg(feature = "spanned")]
+#[test]
+fn test_spanned_whitespace() {
+    use serde_spanned::Spanned;
+
+    #[derive(Deserialize)]
+    struct SpannedStruct {
+        field: Spanned<f64>,
+    }
+
+    let json = r#"{"field":      -2.718e28   }"#;
+    let result: SpannedStruct = serde_json::from_str(json).unwrap();
+    assert_eq!(*result.field.as_ref(), -2.718e28);
+    assert_span_eq(json, result.field.span(), 15..24);
 }
