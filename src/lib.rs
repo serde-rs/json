@@ -50,7 +50,7 @@
 //!     Number(Number),
 //!     String(String),
 //!     Array(Vec<Value>),
-//!     Object(Map<String, Value>),
+//!     Object(Map),
 //! }
 //! ```
 //!
@@ -399,6 +399,14 @@ pub use crate::ser::{to_string, to_string_pretty, to_vec, to_vec_pretty};
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[doc(inline)]
 pub use crate::ser::{to_writer, to_writer_pretty, Serializer};
+#[cfg(all(feature = "std", feature = "spanned"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "std", feature = "spanned"))))]
+#[doc(inline)]
+pub use crate::spanned::from_reader_spanned;
+#[cfg(feature = "spanned")]
+#[cfg_attr(docsrs, doc(cfg(feature = "spanned")))]
+#[doc(inline)]
+pub use crate::spanned::{from_slice_spanned, from_str_spanned};
 #[doc(inline)]
 pub use crate::value::{from_value, to_value, Map, Number, Value};
 
@@ -424,6 +432,9 @@ pub mod map;
 pub mod ser;
 #[cfg(not(feature = "std"))]
 mod ser;
+#[cfg(feature = "spanned")]
+#[cfg_attr(docsrs, doc(cfg(feature = "spanned")))]
+pub mod spanned;
 pub mod value;
 
 mod io;
