@@ -17,6 +17,7 @@ itoa = "1.0"
 memchr = { version = "2", default-features = false }
 ryu = "1.0"
 serde = { version = "1.0.194", default-features = false }
+valuable = { version = "0.1.1", optional = true }
 
 [dev-dependencies]
 automod = "1.0.11"
@@ -89,3 +90,6 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# Implement the valuable trait for serde_json::Value
+valua = ["valuable"]
