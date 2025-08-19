@@ -159,6 +159,13 @@ impl FromStr for Value {
     }
 }
 
+impl FromStr for Map<String, Value> {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Error> {
+        super::super::de::from_str(s)
+    }
+}
+
 macro_rules! deserialize_number {
     ($method:ident) => {
         #[cfg(not(feature = "arbitrary_precision"))]
