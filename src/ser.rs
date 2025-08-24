@@ -1597,10 +1597,12 @@ impl<T: io::Write> Write for T {
 
 /// Wrapper allowing an implementer of `fmt::Write` to implement
 /// `ser::Write` without violating orphan rules
+#[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[repr(transparent)]
 pub struct FmtWrite<W>(pub W);
 
+#[cfg(feature = "std")]
 impl<W: fmt::Write> Write for FmtWrite<W> {
     #[inline]
     fn write_string(&mut self, input: &str) -> io::Result<()> {
@@ -1621,6 +1623,7 @@ impl<W: fmt::Write> Write for FmtWrite<W> {
 }
 
 /// Polyfill for io::Error::other
+#[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 fn error_other(_error: fmt::Error) -> io::Error {
     io::Error::new(io::ErrorKind::Other, "Formatting Error")
