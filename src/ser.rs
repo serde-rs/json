@@ -1602,7 +1602,7 @@ pub struct FmtWrite<W>(pub W);
 impl<W: fmt::Write> Write for FmtWrite<W> {
     #[inline]
     fn write_string(&mut self, input: &str) -> io::Result<()> {
-        self.0.write_str(input).map_err(io::Error::other)
+        self.0.write_str(input).map_err(error_other)
     }
 
     #[inline]
@@ -1611,11 +1611,16 @@ impl<W: fmt::Write> Write for FmtWrite<W> {
 
         match escape {
             CE::AsciiControl(byte) => {
-                write!(&mut self.0, "\\u{:0>4x}", byte).map_err(io::Error::other)
+                write!(&mut self.0, "\\u{:0>4x}", byte).map_err(error_other)
             }
-            _ => self.0.write_str(escape.fixed_prefix()).map_err(io::Error::other),
+            _ => self.0.write_str(escape.fixed_prefix()).map_err(error_other),
         }
     }
+}
+
+/// Polyfill for io::Error::other
+fn error_other(error: fmt::Error) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, error)
 }
 
 /// This trait abstracts away serializing the JSON control characters, which allows the user to
