@@ -1619,8 +1619,8 @@ impl<W: fmt::Write> Write for FmtWrite<W> {
 }
 
 /// Polyfill for io::Error::other
-fn error_other(error: fmt::Error) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, error)
+fn error_other(_error: fmt::Error) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, "Formatting Error")
 }
 
 /// This trait abstracts away serializing the JSON control characters, which allows the user to
