@@ -1557,6 +1557,7 @@ impl CharEscape {
 
 /// This trait allows `Serializer` to write to either an
 /// implementer of `io::Write` or an implementer of `fmt::Write`
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub trait Write {
     /// Write string directly to writer
     fn write_string(&mut self, input: &str) -> io::Result<()>;
@@ -1596,6 +1597,7 @@ impl<T: io::Write> Write for T {
 
 /// Wrapper allowing an implementer of `fmt::Write` to implement
 /// `ser::Write` without violating orphan rules
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[repr(transparent)]
 pub struct FmtWrite<W>(pub W);
 
@@ -1619,6 +1621,7 @@ impl<W: fmt::Write> Write for FmtWrite<W> {
 }
 
 /// Polyfill for io::Error::other
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 fn error_other(_error: fmt::Error) -> io::Error {
     io::Error::new(io::ErrorKind::Other, "Formatting Error")
 }
