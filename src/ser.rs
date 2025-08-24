@@ -1536,6 +1536,88 @@ pub enum CharEscape {
     AsciiControl(u8),
 }
 
+impl CharEscape {
+    /// The fixed prefix of an escape code
+    fn fixed_prefix(self) -> &'static str {
+        use self::CharEscape as CE;
+
+        match self {
+            CE::Quote => "\\\"",
+            CE::ReverseSolidus => "\\\\",
+            CE::Solidus => "\\/",
+            CE::Backspace => "\\b",
+            CE::FormFeed => "\\f",
+            CE::LineFeed => "\\n",
+            CE::CarriageReturn => "\\r",
+            CE::Tab => "\\t",
+            CE::AsciiControl(_) => "\\u00",
+        }
+    }
+}
+
+/// This trait allows `Serializer` to write to either an
+/// implementer of `io::Write` or an implementer of `fmt::Write`
+pub trait Write {
+    /// Write string directly to writer
+    fn write_string(&mut self, input: &str) -> io::Result<()>;
+
+    /// Write a json escaped string in one operation
+    fn write_escape(&mut self, escape: CharEscape) -> io::Result<()>;
+}
+
+
+impl<T: io::Write> Write for T {
+    #[inline]
+    fn write_string(&mut self, input: &str) -> io::Result<()> {
+        self.write_all(input.as_bytes())
+    }
+
+    #[inline]
+    fn write_escape(&mut self, escape: CharEscape) -> io::Result<()> {
+        use self::CharEscape as CE;
+
+        match escape {
+            CE::AsciiControl(byte) => {
+                static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
+                let bytes = &[
+                    b'\\',
+                    b'u',
+                    b'0',
+                    b'0',
+                    HEX_DIGITS[(byte >> 4) as usize],
+                    HEX_DIGITS[(byte & 0xF) as usize],
+                ];
+                self.write_all(bytes)
+            }
+            _ => self.write_all(escape.fixed_prefix().as_bytes()),
+        }
+    }
+}
+
+/// Wrapper allowing an implementer of `fmt::Write` to implement
+/// `ser::Write` without violating orphan rules
+#[repr(transparent)]
+pub struct FmtWrite<W>(pub W);
+
+impl<W: fmt::Write> Write for FmtWrite<W> {
+    #[inline]
+    fn write_string(&mut self, input: &str) -> io::Result<()> {
+        self.0.write_str(input).map_err(io::Error::other)
+    }
+
+    #[inline]
+    fn write_escape(&mut self, escape: CharEscape) -> io::Result<()> {
+        use self::CharEscape as CE;
+
+        match escape {
+            CE::AsciiControl(byte) => {
+                write!(&mut self.0, "\\u{:0>4x}", byte).map_err(io::Error::other)
+            }
+            _ => self.0.write_str(escape.fixed_prefix()).map_err(io::Error::other),
+        }
+    }
+}
+
 /// This trait abstracts away serializing the JSON control characters, which allows the user to
 /// optionally pretty print the JSON output.
 pub trait Formatter {
@@ -1765,37 +1847,9 @@ pub trait Formatter {
     #[inline]
     fn write_char_escape<W>(&mut self, writer: &mut W, char_escape: CharEscape) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        use self::CharEscape::*;
-
-        let escape_char = match char_escape {
-            Quote => b'"',
-            ReverseSolidus => b'\\',
-            Solidus => b'/',
-            Backspace => b'b',
-            FormFeed => b'f',
-            LineFeed => b'n',
-            CarriageReturn => b'r',
-            Tab => b't',
-            AsciiControl(_) => b'u',
-        };
-
-        match char_escape {
-            AsciiControl(byte) => {
-                static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
-                let bytes = &[
-                    b'\\',
-                    escape_char,
-                    b'0',
-                    b'0',
-                    HEX_DIGITS[(byte >> 4) as usize],
-                    HEX_DIGITS[(byte & 0xF) as usize],
-                ];
-                writer.write_all(bytes)
-            }
-            _ => writer.write_all(&[b'\\', escape_char]),
-        }
+        writer.write_escape(char_escape)
     }
 
     /// Writes the representation of a byte array. Formatters can choose whether
@@ -1945,21 +1999,24 @@ impl Formatter for CompactFormatter {}
 pub struct PrettyFormatter<'a> {
     current_indent: usize,
     has_value: bool,
-    indent: &'a [u8],
+    indent: &'a str,
 }
 
 impl<'a> PrettyFormatter<'a> {
     /// Construct a pretty printer formatter that defaults to using two spaces for indentation.
     pub fn new() -> Self {
-        PrettyFormatter::with_indent(b"  ")
+        PrettyFormatter {
+            current_indent: 0,
+            has_value: false,
+            indent: "  ",
+        }
     }
 
     /// Construct a pretty printer formatter that uses the `indent` string for indentation.
     pub fn with_indent(indent: &'a [u8]) -> Self {
         PrettyFormatter {
-            current_indent: 0,
-            has_value: false,
-            indent,
+            indent: str::from_utf8(indent).unwrap_or("  "),
+            .. Self::new()
         }
     }
 }
