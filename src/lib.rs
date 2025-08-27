@@ -436,3 +436,6 @@ mod read;
 
 #[cfg(feature = "raw_value")]
 mod raw;
+
+#[cfg(feature = "spanned")]
+pub(crate) mod spanned;
