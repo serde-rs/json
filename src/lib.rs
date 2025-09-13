@@ -320,6 +320,7 @@
     clippy::transmute_ptr_to_ptr,
     clippy::unbuffered_bytes,
     clippy::unconditional_recursion, // https://github.com/rust-lang/rust-clippy/issues/12133
+    clippy::uninlined_format_args,
     clippy::unnecessary_wraps
 )]
 // Ignored clippy_pedantic lints
