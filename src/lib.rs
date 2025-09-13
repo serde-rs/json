@@ -378,6 +378,8 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+extern crate serde_core as serde;
+
 // Not public API. Used from macro-generated code.
 #[doc(hidden)]
 pub mod __private {
