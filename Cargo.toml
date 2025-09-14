@@ -18,6 +18,9 @@ memchr = { version = "2", default-features = false }
 ryu = "1.0"
 serde_core = { version = "1.0.220", default-features = false }
 
+[target.'cfg(any())'.dependencies]
+serde = { version = "1.0.220", default-features = false }
+
 [dev-dependencies]
 automod = "1.0.11"
 indoc = "2.0.2"
