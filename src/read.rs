@@ -947,7 +947,11 @@ fn is_escape(ch: u8, including_control_characters: bool) -> bool {
     ch == b'"' || ch == b'\\' || (including_control_characters && ch < 0x20)
 }
 
-fn next_or_eof<'de, R>(read: &mut R, quote_on_eof: bool) -> Result<u8>
+fn next_or_eof<'de, R>(
+    read: &mut R,
+    #[cfg(feature = "partial_parsing")] quote_on_eof: bool,
+    #[cfg(not(feature = "partial_parsing"))] _quote_on_eof: bool,
+) -> Result<u8>
 where
     R: ?Sized + Read<'de>,
 {
