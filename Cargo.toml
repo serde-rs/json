@@ -77,7 +77,7 @@ float_roundtrip = []
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
 # written back to a JSON string without loss of precision.
 #
-# Unlike float_roundtrip, this feature makes JSON -> serde_json::Number -> JSON
+# Unlike float_roundtrip, this feature DOES NOT make JSON -> serde_json::Number -> JSON
 # produce output identical to the input.
 arbitrary_precision = []
 
