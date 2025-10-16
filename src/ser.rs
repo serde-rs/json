@@ -1794,6 +1794,7 @@ pub trait Formatter {
                 ];
                 writer.write_all(bytes)
             }
+            Solidus => writer.write_all(&[escape_char]),
             _ => writer.write_all(&[b'\\', escape_char]),
         }
     }
