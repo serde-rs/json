@@ -758,7 +758,8 @@ impl<'a> Read<'a> for StrRead<'a> {
 //////////////////////////////////////////////////////////////////////////////
 
 /// The default capacity of the internal buffer.
-const AVERAGE_BUF_CAPACITY: usize = 128; // 128 bytes
+#[cfg(feature = "std")]
+pub(crate) const AVERAGE_BUF_CAPACITY: usize = 128; // 128 bytes
 
 /// A JSON input source that reads from a std::io stream, using an internal
 /// buffer to allow for `SliceRead`-like string parsing optimizations.
@@ -806,6 +807,7 @@ where
     raw_buffering_start_index: usize,
 }
 
+#[cfg(feature = "std")]
 impl<R, B> BufferedIoRead<R, B>
 where
     R: io::Read,

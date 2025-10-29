@@ -146,7 +146,7 @@ fn test_error_at_boundary() {
     assert_eq!(err.column(), 11); // Error is at the `\xFF`
 }
 
-/// RawValue
+// ---- RawValue ----
 
 #[cfg(feature = "raw_value")]
 #[derive(Deserialize)]

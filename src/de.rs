@@ -19,11 +19,11 @@ use serde::forward_to_deserialize_any;
 #[cfg(feature = "arbitrary_precision")]
 use crate::number::NumberDeserializer;
 
-pub use crate::read::{BufferedIoRead, Read, SliceRead, StrRead};
+pub use crate::read::{Read, SliceRead, StrRead};
 
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub use crate::read::IoRead;
+pub use crate::read::{BufferedIoRead, IoRead};
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -2729,7 +2729,7 @@ where
 /// parsing from a very slow I/O source or need to control the buffer
 /// size (e.g., to use a larger 8KB buffer) or its allocation, you can
 /// construct a [`read::BufferedIoRead`] manually with your own buffer
-/// and pass it to the generic [`from_trait`] function.
+/// and pass it to the Deserializer.
 ///
 /// ### Features
 ///
@@ -2776,6 +2776,7 @@ where
     R: crate::io::Read,
     T: de::DeserializeOwned,
 {
-    let b_rdr: read::BufferedIoRead<R> = read::BufferedIoRead::new(rdr, [0; _]);
+    let b_rdr: read::BufferedIoRead<R> =
+        read::BufferedIoRead::new(rdr, [0; read::AVERAGE_BUF_CAPACITY]);
     from_trait(b_rdr)
 }
