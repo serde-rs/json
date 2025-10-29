@@ -757,6 +757,436 @@ impl<'a> Read<'a> for StrRead<'a> {
 
 //////////////////////////////////////////////////////////////////////////////
 
+/// The default capacity of the internal buffer.
+const AVERAGE_BUF_CAPACITY: usize = 128; // 128 bytes
+
+/// A JSON input source that reads from a std::io stream, using an internal
+/// buffer to allow for `SliceRead`-like string parsing optimizations.
+///
+/// This implementation provides high-performance parsing for I/O sources by
+/// reading data in chunks and applying optimized slice-based operations
+/// on that chunk, avoiding the per-byte overhead of the simpler `IoRead`.
+#[cfg(feature = "std")]
+pub struct BufferedIoRead<R, B = [u8; AVERAGE_BUF_CAPACITY]>
+where
+    R: io::Read,
+    B: AsMut<[u8]> + AsRef<[u8]>,
+{
+    /// The underlying I/O source.
+    source: R,
+    /// The internal byte buffer.
+    buffer: B,
+
+    // ------ Buffer State ------
+    /// The current read position within the valid data of the buffer.
+    ///
+    /// Invariant: self.index <= self.len
+    index: usize,
+    /// The number of valid bytes currently held in the buffer.
+    ///
+    /// Invariant: self.len <= self.buffer.as_ref().len()
+    len: usize,
+
+    // ------ Position Tracking ------
+    /// The total number of bytes processed from the `source` *before*
+    /// the current buffer.
+    total_bytes_processed: usize,
+
+    /// The line number (1-based) and the column (0-based)
+    /// that `self.buffer[0]` corresponds to in the overall input stream.
+    current_buffer_start_position: Position,
+
+    // ------ RawValue Support ------
+    #[cfg(feature = "raw_value")]
+    /// An *owned* buffer that accumulates raw string data across
+    /// buffer refills.
+    raw_buffer: Option<Vec<u8>>,
+    #[cfg(feature = "raw_value")]
+    /// The index in `self.buffer` where raw value buffering started.
+    raw_buffering_start_index: usize,
+}
+
+impl<R, B> BufferedIoRead<R, B>
+where
+    R: io::Read,
+    B: AsMut<[u8]> + AsRef<[u8]>,
+{
+    /// Creates a new `BufferedIoRead` from a given `io::Read` source and a buffer.
+    pub fn new(source: R, buffer: B) -> Self {
+        Self {
+            source,
+            buffer,
+            // Buffer starts empty.
+            index: 0,
+            len: 0,
+            // Position starts at 0 bytes, line 1, col 0.
+            total_bytes_processed: 0,
+            current_buffer_start_position: Position { line: 1, column: 0 },
+            #[cfg(feature = "raw_value")]
+            raw_buffer: None,
+            #[cfg(feature = "raw_value")]
+            raw_buffering_start_index: 0,
+        }
+    }
+
+    /// Creates a `SliceRead` over the *valid* data in the current buffer,
+    /// with its index set to our current `self.index`.
+    fn current_buffer_slice(&self) -> SliceRead<'_> {
+        SliceRead {
+            // CRITICAL: Only slice up to `self.len`, not the buffer's full capacity.
+            slice: &self.buffer.as_ref()[..self.len],
+            index: self.index,
+            #[cfg(feature = "raw_value")]
+            raw_buffering_start_index: self.raw_buffering_start_index,
+        }
+    }
+
+    /// Fills the internal buffer with more data from the source.
+    ///
+    /// This is the most critical method. It updates position, handles
+    /// `raw_value` chunking, and performs the I/O.
+    ///
+    /// Returns `Ok(true)` if data was read.
+    /// Returns `Ok(false)` if EOF is reached.
+    fn refill(&mut self) -> Result<bool> {
+        // This method should only be called when the buffer is fully consumed.
+        debug_assert_eq!(self.index, self.len);
+
+        // --- 1. Update Position Tracking ---
+        // Add the number of bytes we last consumed to the total.
+        self.total_bytes_processed += self.len;
+
+        // Get the line/col *at the end* of the buffer we just finished.
+        let relative_end_pos = self.current_buffer_slice().position();
+
+        // We get the *actual* end position of this buffer.
+        self.current_buffer_start_position = self.combine_position(relative_end_pos);
+
+        // self.current_buffer_start_position = start_position;
+
+        // --- 2. Handle `raw_value` Buffering ---
+        #[cfg(feature = "raw_value")]
+        {
+            if let Some(raw_buf) = self.raw_buffer.as_mut() {
+                // Copy the segment of the buffer that was part of the raw value
+                // into the persistent `raw_buffer`.
+                let raw_slice = &self.buffer.as_ref()[self.raw_buffering_start_index..self.len];
+                raw_buf.extend_from_slice(raw_slice);
+
+                // The *next* buffer's raw value will start at index 0.
+                self.raw_buffering_start_index = 0;
+            }
+        }
+
+        // --- 3. Perform I/O ---
+        // Reset buffer state
+        self.index = 0;
+        self.len = 0;
+
+        match self.source.read(self.buffer.as_mut()) {
+            Ok(0) => {
+                // EOF. `self.len` is already 0.
+                Ok(false)
+            }
+            Ok(n) => {
+                // Successfully read `n` bytes.
+                self.len = n;
+                Ok(true)
+            }
+            Err(e) => {
+                // I/O error. Invalidate buffer and propagate.
+                Err(Error::io(e))
+            }
+        }
+    }
+
+    /// Helper to combine the buffer's base position with a relative position.
+    fn combine_position(&self, rel: Position) -> Position {
+        if rel.line == 1 {
+            // Still on the first line of this buffer.
+            // We must add the column offset.
+            Position {
+                line: self.current_buffer_start_position.line,
+                column: self.current_buffer_start_position.column + rel.column,
+            }
+        } else {
+            // On a subsequent line within this buffer.
+            // The column offset is irrelevant.
+            Position {
+                line: self.current_buffer_start_position.line + rel.line - 1,
+                column: rel.column,
+            }
+        }
+    }
+
+    /// A specialized version of `parse_str` that *always* copies data into
+    /// the scratch buffer.
+    fn parse_str_bytes<'s, T, F>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        validate: bool,
+        result: F,
+    ) -> Result<T>
+    where
+        T: 's,
+        F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
+    {
+        'refill: loop {
+            // Get a SliceRead for the *current valid data*.
+            // Its index is already set to `self.index`.
+            let mut slice_read = self.current_buffer_slice();
+
+            let start_index = slice_read.index;
+
+            // Find the next escape/quote *within this buffer*.
+            slice_read.skip_to_escape(validate);
+
+            // Copy the bytes we just skipped into the scratch buffer.
+            scratch.extend_from_slice(&slice_read.slice[start_index..slice_read.index]);
+
+            // Update our master index.
+            self.index = slice_read.index;
+
+            // Check if we hit the end of *this buffer*.
+            if self.index == self.len {
+                // We did. Try to refill.
+                if !tri!(self.refill()) {
+                    // Real EOF while parsing string.
+                    return error(self, ErrorCode::EofWhileParsingString);
+                }
+                // Refill was successful. Loop again on the new buffer.
+                continue 'refill;
+            }
+
+            // We're still in the buffer, so we must have hit an escape char.
+            match self.buffer.as_ref()[self.index] {
+                b'"' => {
+                    // End of string.
+                    self.index += 1; // Consume the quote.
+                    return result(self, scratch);
+                }
+                b'\\' => {
+                    // Escape sequence.
+                    self.index += 1; // Consume the backslash.
+
+                    // `parse_escape` calls `self.next()`, which will
+                    // handle refills automatically if the escape is
+                    // split across a buffer boundary.
+                    tri!(parse_escape(self, validate, scratch));
+
+                    // Continue parsing from here.
+                    continue 'refill;
+                }
+                _ => {
+                    // Invalid control character.
+                    // We must advance the index to report the correct position.
+                    self.index += 1;
+                    return error(self, ErrorCode::ControlCharacterWhileParsingString);
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<R, B> private::Sealed for BufferedIoRead<R, B>
+where
+    R: io::Read,
+    B: AsMut<[u8]> + AsRef<[u8]>,
+{
+}
+
+#[cfg(feature = "std")]
+impl<'de, R, B> Read<'de> for BufferedIoRead<R, B>
+where
+    R: io::Read,
+    B: AsMut<[u8]> + AsRef<[u8]>,
+{
+    #[inline]
+    fn next(&mut self) -> Result<Option<u8>> {
+        // 1. Check if the buffer has data.
+        if self.index == self.len {
+            // 2. If not, refill.
+            if !tri!(self.refill()) {
+                return Ok(None); // EOF
+            }
+        }
+
+        // 3. Guaranteed to have data now.
+        let ch = self.buffer.as_ref()[self.index];
+        self.index += 1;
+        Ok(Some(ch))
+    }
+
+    // TODO: Call next and backtrack
+    #[inline]
+    fn peek(&mut self) -> Result<Option<u8>> {
+        // 1. Check if the buffer has data.
+        if self.index == self.len {
+            // 2. If not, refill.
+            if !tri!(self.refill()) {
+                return Ok(None); // EOF
+            }
+        }
+
+        // 3. Guaranteed to have data now.
+        let ch = self.buffer.as_ref()[self.index];
+        Ok(Some(ch))
+    }
+
+    #[inline]
+    fn discard(&mut self) {
+        // Per the trait doc, this is only valid after `peek()`.
+        // We just advance the index to "consume" the peeked byte.
+        self.index += 1;
+    }
+
+    fn position(&self) -> Position {
+        // Get the position *relative to the start of this buffer*.
+        // `position_of_index` calculates position for the byte at that index.
+        let rel_pos = self.current_buffer_slice().position();
+
+        // Combine with the buffer's absolute base position.
+        self.combine_position(rel_pos)
+    }
+
+    fn peek_position(&self) -> Position {
+        // The "peek position" is the position of the *next* byte,
+        // which is exactly what `self.index` points to.
+        // This is the same logic as `position()`.
+        self.position()
+    }
+
+    fn byte_offset(&self) -> usize {
+        // Total bytes from previous buffers + bytes consumed in this buffer.
+        self.total_bytes_processed + self.index
+    }
+
+    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
+        self.parse_str_bytes(scratch, true, as_str)
+            .map(Reference::Copied)
+    }
+
+    fn parse_str_raw<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+    ) -> Result<Reference<'de, 's, [u8]>> {
+        self.parse_str_bytes(scratch, false, |_, bytes| Ok(bytes))
+            .map(Reference::Copied)
+    }
+
+    fn ignore_str(&mut self) -> Result<()> {
+        'refill: loop {
+            // This is the same logic as `parse_str_bytes` but without
+            // writing to the scratch buffer.
+            let mut slice_read = self.current_buffer_slice();
+
+            slice_read.skip_to_escape(true);
+
+            // Update our master index.
+            self.index = slice_read.index;
+
+            if self.index == self.len {
+                // Hit end of buffer, refill.
+                if !tri!(self.refill()) {
+                    return error(self, ErrorCode::EofWhileParsingString);
+                }
+                continue 'refill;
+            }
+
+            // Hit an escape char in the buffer.
+            match self.buffer.as_ref()[self.index] {
+                b'"' => {
+                    // End of string.
+                    self.index += 1; // Consume quote.
+                    return Ok(());
+                }
+                b'\\' => {
+                    // Escape sequence.
+                    self.index += 1; // Consume backslash.
+                    tri!(ignore_escape(self)); // Will handle its own refills.
+                    continue 'refill;
+                }
+                _ => {
+                    // Control character.
+                    return error(self, ErrorCode::ControlCharacterWhileParsingString);
+                }
+            }
+        }
+    }
+
+    fn decode_hex_escape(&mut self) -> Result<u16> {
+        // Optimization: Check if we have 4 bytes available in the
+        // current buffer.
+        if self.len - self.index >= 4 {
+            // Yes: Use fast path from SliceRead.
+            let b = self.buffer.as_ref();
+            let i = self.index;
+            // TODO: This might not be on the actual faulty byte.
+            // This is what SliceRead does... so
+            self.index += 4;
+            match decode_four_hex_digits(b[i], b[i + 1], b[i + 2], b[i + 3]) {
+                Some(val) => Ok(val),
+                None => error(self, ErrorCode::InvalidEscape),
+            }
+        } else {
+            // No: Fall back to byte-by-byte `next()`, which
+            // will handle refilling.
+            let a = tri!(next_or_eof(self));
+            let b = tri!(next_or_eof(self));
+            let c = tri!(next_or_eof(self));
+            let d = tri!(next_or_eof(self));
+            match decode_four_hex_digits(a, b, c, d) {
+                Some(val) => Ok(val),
+                None => error(self, ErrorCode::InvalidEscape),
+            }
+        }
+    }
+
+    #[cfg(feature = "raw_value")]
+    fn begin_raw_buffering(&mut self) {
+        self.raw_buffer = Some(Vec::new());
+        self.raw_buffering_start_index = self.index;
+    }
+
+    #[cfg(feature = "raw_value")]
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        // Take the persistent buffer.
+        let mut raw = self.raw_buffer.take().unwrap();
+
+        // Add the remaining chunk from the *current* buffer.
+        raw.extend_from_slice(&self.buffer.as_ref()[self.raw_buffering_start_index..self.index]);
+
+        // This is the same logic as `IoRead`.
+        let raw = match String::from_utf8(raw) {
+            Ok(raw) => raw,
+            Err(_) => return error(self, ErrorCode::InvalidUnicodeCodePoint),
+        };
+        visitor.visit_map(OwnedRawDeserializer {
+            raw_value: Some(raw),
+        })
+    }
+
+    const should_early_return_if_failed: bool = true;
+
+    #[inline]
+    #[cold]
+    fn set_failed(&mut self, failed: &mut bool) {
+        // Mark failure.
+        *failed = true;
+
+        // We also invalidate the buffer to stop any further processing.
+        // This is safer than truncating a slice.
+        self.index = 0;
+        self.len = 0;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
 impl<'de, R> private::Sealed for &mut R where R: Read<'de> {}
 
 impl<'de, R> Read<'de> for &mut R
