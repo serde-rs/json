@@ -1,4 +1,4 @@
-// The code in this module is derived from the `lexical` crate by @Alexhuszagh
+// The code in this module is derived from the `lexical` crate by @Alexhuszagh,
 // which the author condensed into this minimal subset for use in serde_json.
 // For the serde_json use case we care more about reliably round tripping all
 // possible floating point values than about parsing any arbitrarily long string
