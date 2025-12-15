@@ -422,14 +422,13 @@ mod macros;
 pub mod de;
 pub mod error;
 pub mod map;
-#[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod ser;
-#[cfg(not(feature = "std"))]
-mod ser;
 pub mod value;
-
+#[cfg(feature = "std")]
 mod io;
+#[cfg(not(feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(not(feature = "std"))))]
+pub mod io;
 #[cfg(feature = "std")]
 mod iter;
 #[cfg(feature = "float_roundtrip")]
