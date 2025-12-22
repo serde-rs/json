@@ -72,6 +72,12 @@ enum Animal {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+enum BoardGame {
+    Chess,
+    Checkers,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 struct Inner {
     a: (),
     b: usize,
@@ -1305,12 +1311,15 @@ fn test_parse_option() {
 fn test_parse_enum_errors() {
     test_parse_err::<Animal>(
         &[
-            ("{}", "expected value at line 1 column 2"),
-            ("[]", "expected value at line 1 column 1"),
+            ("{}", "invalid value: empty map, expected enum variant at line 1 column 1"),
+            ("[]", "invalid type: sequence, expected variant identifier at line 1 column 0"),
+            ("true", "invalid type: boolean `true`, expected variant identifier at line 1 column 4"),
             ("\"unknown\"",
              "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 9"),
             ("{\"unknown\":null}",
              "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 10"),
+            ("{\"AntHive\": []", "EOF while parsing an object at line 1 column 14"),
+            ("{\"AntHive\": [],", "expected `}` at line 1 column 14"),
             ("{\"Dog\":", "EOF while parsing a value at line 1 column 7"),
             ("{\"Dog\":}", "expected value at line 1 column 8"),
             ("{\"Dog\":{}}", "invalid type: map, expected unit at line 1 column 7"),
@@ -1330,6 +1339,40 @@ fn test_parse_enum_errors() {
              "trailing comma at line 1 column 34"),
         ],
     );
+}
+
+#[test]
+fn test_parse_value_less_enum_errors() {
+    test_parse_err::<BoardGame>(&[
+        (
+            "1",
+            "invalid type: integer `1`, expected variant identifier at line 1 column 1",
+        ),
+        (
+            "null",
+            "invalid type: null, expected variant identifier at line 1 column 4",
+        ),
+        (
+            "true",
+            "invalid type: boolean `true`, expected variant identifier at line 1 column 4",
+        ),
+        (
+            "[]",
+            "invalid type: sequence, expected variant identifier at line 1 column 0",
+        ),
+        (
+            "{}",
+            "invalid value: empty map, expected enum variant at line 1 column 1",
+        ),
+        (
+            "{\"unknown\": \"unknown\"}",
+            "unknown variant `unknown`, expected `Chess` or `Checkers` at line 1 column 10",
+        ),
+        (
+            "{\"Chess\": \"unknown\"}",
+            "invalid type: string \"unknown\", expected unit at line 1 column 19",
+        ),
+    ]);
 }
 
 #[test]
