@@ -15,8 +15,8 @@ rust-version = "1.68"
 indexmap = { version = "2.2.3", optional = true }
 itoa = "1.0"
 memchr = { version = "2", default-features = false }
-ryu = "1.0"
 serde_core = { version = "1.0.220", default-features = false }
+zmij = "0.1.7"
 
 [target.'cfg(any())'.dependencies]
 serde = { version = "1.0.220", default-features = false }
