@@ -1399,6 +1399,8 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
             }
         };
 
+        let pos = self.read.peek_position();
+
         let value = match peek {
             b'n' => {
                 self.eat_char();
@@ -1456,11 +1458,9 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
         match value {
             Ok(value) => Ok(value),
             // The de::Error impl creates errors with unknown line and column.
-            // Fill in the position here by looking at the current index in the
-            // input. There is no way to tell whether this should call `error`
-            // or `peek_error` so pick the one that seems correct more often.
-            // Worst case, the position is off by one character.
-            Err(err) => Err(self.fix_position(err)),
+            // Fill in the position here by looking at the saved position from
+            // before the value was consumed.
+            Err(err) => Err(err.fix_position(|code| Error::syntax(code, pos.line, pos.column))),
         }
     }
 
@@ -1530,6 +1530,8 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
             }
         };
 
+        let pos = self.read.peek_position();
+
         let value = match peek {
             b'"' => {
                 self.eat_char();
@@ -1544,7 +1546,7 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
 
         match value {
             Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
+            Err(err) => Err(err.fix_position(|code| Error::syntax(code, pos.line, pos.column))),
         }
     }
 
@@ -1639,6 +1641,8 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
             }
         };
 
+        let pos = self.read.peek_position();
+
         let value = match peek {
             b'"' => {
                 self.eat_char();
@@ -1654,7 +1658,7 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
 
         match value {
             Ok(value) => Ok(value),
-            Err(err) => Err(self.fix_position(err)),
+            Err(err) => Err(err.fix_position(|code| Error::syntax(code, pos.line, pos.column))),
         }
     }
 

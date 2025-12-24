@@ -727,7 +727,7 @@ fn test_parse_char() {
     test_parse_err::<char>(&[
         (
             "\"ab\"",
-            "invalid value: string \"ab\", expected a character at line 1 column 4",
+            "invalid value: string \"ab\", expected a character at line 1 column 1",
         ),
         (
             "10",
@@ -1308,9 +1308,9 @@ fn test_parse_enum_errors() {
             ("{}", "expected value at line 1 column 2"),
             ("[]", "expected value at line 1 column 1"),
             ("\"unknown\"",
-             "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 9"),
+             "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 1"),
             ("{\"unknown\":null}",
-             "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 10"),
+             "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 2"),
             ("{\"Dog\":", "EOF while parsing a value at line 1 column 7"),
             ("{\"Dog\":}", "expected value at line 1 column 8"),
             ("{\"Dog\":{}}", "invalid type: map, expected unit at line 1 column 7"),
