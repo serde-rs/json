@@ -1794,6 +1794,7 @@ pub trait Formatter {
                 ];
                 writer.write_all(bytes)
             }
+            Solidus => writer.write_all(&[escape_char]),
             _ => writer.write_all(&[b'\\', escape_char]),
         }
     }
@@ -2115,6 +2116,7 @@ where
             self::FF => CharEscape::FormFeed,
             self::RR => CharEscape::CarriageReturn,
             self::QU => CharEscape::Quote,
+            self::FS => CharEscape::Solidus,
             self::BS => CharEscape::ReverseSolidus,
             self::UU => CharEscape::AsciiControl(byte),
             // Safety: the escape table does not contain any other type of character.
@@ -2138,6 +2140,7 @@ const NN: u8 = b'n'; // \x0A
 const FF: u8 = b'f'; // \x0C
 const RR: u8 = b'r'; // \x0D
 const QU: u8 = b'"'; // \x22
+const FS: u8 = b'/'; // \x2F
 const BS: u8 = b'\\'; // \x5C
 const UU: u8 = b'u'; // \x00...\x1F except the ones above
 const __: u8 = 0;
@@ -2148,7 +2151,7 @@ static ESCAPE: [u8; 256] = [
     //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
     UU, UU, UU, UU, UU, UU, UU, UU, BB, TT, NN, UU, FF, RR, UU, UU, // 0
     UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, // 1
-    __, __, QU, __, __, __, __, __, __, __, __, __, __, __, __, __, // 2
+    __, __, QU, __, __, __, __, __, __, __, __, __, __, __, __, FS, // 2
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 3
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 4
     __, __, __, __, __, __, __, __, __, __, __, __, BS, __, __, __, // 5
