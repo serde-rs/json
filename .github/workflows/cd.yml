@@ -1,0 +1,44 @@
+name: CD
+
+on:
+  push:
+    tags:        
+      - 'v*'
+  workflow_call:
+    secrets:
+      CRATES_IO_TOKEN:
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: "publish"
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # for OIDC token exchange required for Trusted Publishing
+    environment: crates.io
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build
+        run: cargo build --release
+      - name: Package
+        run: cargo package
+      - name: Login to crates.io
+        run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
+      - name: "Publish (dry run)"
+        run: cargo publish --dry-run
+      # - name: "Publish"
+      #   run: cargo publish
+
+      # - uses: rust-lang/crates-io-auth-action@v1
+      #   id: auth
+      # - name: "Publish"
+      #   run: cargo publish
+      #   env:
+      #     CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
