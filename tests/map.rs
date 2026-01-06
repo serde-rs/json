@@ -1,4 +1,4 @@
-use serde_json::{from_str, Map, Value};
+use sciformats_serde_json::{from_str, Map, Value};
 
 #[test]
 fn test_preserve_order() {

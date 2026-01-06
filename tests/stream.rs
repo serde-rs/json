@@ -1,6 +1,6 @@
 #![allow(clippy::assertions_on_result_states)]
 
-use serde_json::{json, Deserializer, Value};
+use sciformats_serde_json::{json, Deserializer, Value};
 
 // Rustfmt issue https://github.com/rust-lang-nursery/rustfmt/issues/2740
 #[rustfmt::skip]

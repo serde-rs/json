@@ -1,7 +1,11 @@
 [package]
-name = "serde_json"
-version = "1.0.148"
-authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
+name = "sciformats_serde_json"
+version = "0.0.148"
+authors = [
+    "Erick Tryzelaar <erick.tryzelaar@gmail.com>",
+    "David Tolnay <dtolnay@gmail.com>",
+    "Robert Schiwon <devrosch@gmx.net>",
+]
 categories = ["encoding", "parser-implementations", "no-std"]
 description = "A JSON serialization file format"
 documentation = "https://docs.rs/serde_json"
@@ -59,7 +63,7 @@ std = ["memchr/std", "serde_core/std"]
 # NOTE: Disabling both `std` *and* `alloc` features is not supported yet.
 alloc = ["serde_core/alloc"]
 
-# Make serde_json::Map use a representation which maintains insertion order.
+# Make sciformats_serde_json::Map use a representation which maintains insertion order.
 # This allows data to be read into a Value and written back to a JSON string
 # while preserving the order of map keys in the input.
 preserve_order = ["indexmap", "std"]
@@ -73,11 +77,11 @@ preserve_order = ["indexmap", "std"]
 # output identical to the input.
 float_roundtrip = []
 
-# Use an arbitrary precision number representation for serde_json::Number. This
+# Use an arbitrary precision number representation for sciformats_serde_json::Number. This
 # allows JSON numbers of arbitrary size/precision to be read into a Number and
 # written back to a JSON string without loss of precision.
 #
-# Unlike float_roundtrip, this feature makes JSON -> serde_json::Number -> JSON
+# Unlike float_roundtrip, this feature makes JSON -> sciformats_serde_json::Number -> JSON
 # produce output identical to the input.
 arbitrary_precision = []
 

@@ -23,16 +23,16 @@ mod macros;
 
 #[cfg(feature = "raw_value")]
 use ref_cast::RefCast;
+#[cfg(feature = "raw_value")]
+use sciformats_serde_json::value::RawValue;
+use sciformats_serde_json::{
+    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
+    to_vec, Deserializer, Number, Value,
+};
 use serde::de::{self, IgnoredAny, IntoDeserializer};
 use serde::ser::{self, SerializeMap, SerializeSeq, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_bytes::{ByteBuf, Bytes};
-#[cfg(feature = "raw_value")]
-use serde_json::value::RawValue;
-use serde_json::{
-    from_reader, from_slice, from_str, from_value, json, to_string, to_string_pretty, to_value,
-    to_vec, Deserializer, Number, Value,
-};
 use std::collections::BTreeMap;
 #[cfg(feature = "raw_value")]
 use std::collections::HashMap;
@@ -945,7 +945,7 @@ fn test_parse_f64() {
 
 #[test]
 fn test_value_as_f64() {
-    let v = serde_json::from_str::<Value>("1e1000");
+    let v = sciformats_serde_json::from_str::<Value>("1e1000");
 
     #[cfg(not(feature = "arbitrary_precision"))]
     assert!(v.is_err());
@@ -974,8 +974,8 @@ fn test_roundtrip_f64() {
         -1.6727517818542075e58,
         3.9287532173373315e299,
     ] {
-        let json = serde_json::to_string(&float).unwrap();
-        let output: f64 = serde_json::from_str(&json).unwrap();
+        let json = sciformats_serde_json::to_string(&float).unwrap();
+        let output: f64 = sciformats_serde_json::from_str(&json).unwrap();
         assert_eq!(float, output);
     }
 }
@@ -985,8 +985,8 @@ fn test_roundtrip_f32() {
     // This number has 1 ULP error if parsed via f64 and converted to f32.
     // https://github.com/serde-rs/json/pull/671#issuecomment-628534468
     let float = 7.038531e-26;
-    let json = serde_json::to_string(&float).unwrap();
-    let output: f32 = serde_json::from_str(&json).unwrap();
+    let json = sciformats_serde_json::to_string(&float).unwrap();
+    let output: f32 = sciformats_serde_json::from_str(&json).unwrap();
     assert_eq!(float, output);
 }
 
@@ -1006,13 +1006,13 @@ fn test_serialize_char() {
 #[test]
 fn test_malicious_number() {
     #[derive(Serialize)]
-    #[serde(rename = "$serde_json::private::Number")]
+    #[serde(rename = "$sciformats_serde_json::private::Number")]
     struct S {
-        #[serde(rename = "$serde_json::private::Number")]
+        #[serde(rename = "$sciformats_serde_json::private::Number")]
         f: &'static str,
     }
 
-    let actual = serde_json::to_value(&S { f: "not a number" })
+    let actual = sciformats_serde_json::to_value(&S { f: "not a number" })
         .unwrap_err()
         .to_string();
     assert_eq!(actual, "invalid number at line 1 column 1");
@@ -1626,7 +1626,7 @@ fn test_serialize_map_with_no_len() {
 #[cfg(not(miri))]
 #[test]
 fn test_deserialize_from_stream() {
-    use serde_json::to_writer;
+    use sciformats_serde_json::to_writer;
     use std::net::{TcpListener, TcpStream};
     use std::thread;
 
@@ -1769,7 +1769,7 @@ fn test_byte_buf_de_surrogate_pair() {
 #[cfg(feature = "raw_value")]
 #[test]
 fn test_raw_de_invalid_surrogates() {
-    use serde_json::value::RawValue;
+    use sciformats_serde_json::value::RawValue;
 
     assert!(from_str::<Box<RawValue>>(r#""\ud83c""#).is_ok());
     assert!(from_str::<Box<RawValue>>(r#""\ud83c\n""#).is_ok());
@@ -1786,7 +1786,7 @@ fn test_raw_de_invalid_surrogates() {
 #[cfg(feature = "raw_value")]
 #[test]
 fn test_raw_de_surrogate_pair() {
-    use serde_json::value::RawValue;
+    use sciformats_serde_json::value::RawValue;
 
     assert!(from_str::<Box<RawValue>>(r#""\ud83c\udc00""#).is_ok());
 }
@@ -2018,16 +2018,16 @@ fn test_deny_non_finite_f32_key() {
     }
 
     let map = treemap!(F32Bits(f32::INFINITY.to_bits()) => "x".to_owned());
-    assert!(serde_json::to_string(&map).is_err());
-    assert!(serde_json::to_value(map).is_err());
+    assert!(sciformats_serde_json::to_string(&map).is_err());
+    assert!(sciformats_serde_json::to_value(map).is_err());
 
     let map = treemap!(F32Bits(f32::NEG_INFINITY.to_bits()) => "x".to_owned());
-    assert!(serde_json::to_string(&map).is_err());
-    assert!(serde_json::to_value(map).is_err());
+    assert!(sciformats_serde_json::to_string(&map).is_err());
+    assert!(sciformats_serde_json::to_value(map).is_err());
 
     let map = treemap!(F32Bits(f32::NAN.to_bits()) => "x".to_owned());
-    assert!(serde_json::to_string(&map).is_err());
-    assert!(serde_json::to_value(map).is_err());
+    assert!(sciformats_serde_json::to_string(&map).is_err());
+    assert!(sciformats_serde_json::to_value(map).is_err());
 }
 
 #[test]
@@ -2047,16 +2047,16 @@ fn test_deny_non_finite_f64_key() {
     }
 
     let map = treemap!(F64Bits(f64::INFINITY.to_bits()) => "x".to_owned());
-    assert!(serde_json::to_string(&map).is_err());
-    assert!(serde_json::to_value(map).is_err());
+    assert!(sciformats_serde_json::to_string(&map).is_err());
+    assert!(sciformats_serde_json::to_value(map).is_err());
 
     let map = treemap!(F64Bits(f64::NEG_INFINITY.to_bits()) => "x".to_owned());
-    assert!(serde_json::to_string(&map).is_err());
-    assert!(serde_json::to_value(map).is_err());
+    assert!(sciformats_serde_json::to_string(&map).is_err());
+    assert!(sciformats_serde_json::to_value(map).is_err());
 
     let map = treemap!(F64Bits(f64::NAN.to_bits()) => "x".to_owned());
-    assert!(serde_json::to_string(&map).is_err());
-    assert!(serde_json::to_value(map).is_err());
+    assert!(sciformats_serde_json::to_string(&map).is_err());
+    assert!(sciformats_serde_json::to_value(map).is_err());
 }
 
 #[test]
@@ -2266,7 +2266,7 @@ fn test_borrow() {
 
 #[test]
 fn null_invalid_type() {
-    let err = serde_json::from_str::<String>("null").unwrap_err();
+    let err = sciformats_serde_json::from_str::<String>("null").unwrap_err();
     assert_eq!(
         format!("{}", err),
         String::from("invalid type: null, expected a string at line 1 column 4")
@@ -2343,23 +2343,23 @@ fn test_borrowed_raw_value() {
     }
 
     let wrapper_from_str: Wrapper =
-        serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
+        sciformats_serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.get());
 
-    let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
+    let wrapper_to_string = sciformats_serde_json::to_string(&wrapper_from_str).unwrap();
     assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_string);
 
-    let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
+    let wrapper_to_value = sciformats_serde_json::to_value(&wrapper_from_str).unwrap();
     assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
 
     let array_from_str: Vec<&RawValue> =
-        serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+        sciformats_serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
     assert_eq!(r#""a""#, array_from_str[0].get());
     assert_eq!("42", array_from_str[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
     assert_eq!("null", array_from_str[3].get());
 
-    let array_to_string = serde_json::to_string(&array_from_str).unwrap();
+    let array_to_string = sciformats_serde_json::to_string(&array_from_str).unwrap();
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
 }
 
@@ -2397,7 +2397,7 @@ fn test_raw_value_in_map_key() {
     }
 
     let map_from_str: HashMap<&RawMapKey, &RawValue> =
-        serde_json::from_str(r#" {"\\k":"\\v"} "#).unwrap();
+        sciformats_serde_json::from_str(r#" {"\\k":"\\v"} "#).unwrap();
     let (map_k, map_v) = map_from_str.into_iter().next().unwrap();
     assert_eq!("\"\\\\k\"", map_k.0.get());
     assert_eq!("\"\\\\v\"", map_v.get());
@@ -2414,38 +2414,40 @@ fn test_boxed_raw_value() {
     }
 
     let wrapper_from_str: Wrapper =
-        serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
+        sciformats_serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.get());
 
     let wrapper_from_reader: Wrapper =
-        serde_json::from_reader(br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref()).unwrap();
+        sciformats_serde_json::from_reader(br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref())
+            .unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.get());
 
     let wrapper_from_value: Wrapper =
-        serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3})).unwrap();
+        sciformats_serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3})).unwrap();
     assert_eq!(r#"{"foo":2}"#, wrapper_from_value.b.get());
 
-    let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
+    let wrapper_to_string = sciformats_serde_json::to_string(&wrapper_from_str).unwrap();
     assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_string);
 
-    let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
+    let wrapper_to_value = sciformats_serde_json::to_value(&wrapper_from_str).unwrap();
     assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
 
     let array_from_str: Vec<Box<RawValue>> =
-        serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+        sciformats_serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
     assert_eq!(r#""a""#, array_from_str[0].get());
     assert_eq!("42", array_from_str[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
     assert_eq!("null", array_from_str[3].get());
 
     let array_from_reader: Vec<Box<RawValue>> =
-        serde_json::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
+        sciformats_serde_json::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref())
+            .unwrap();
     assert_eq!(r#""a""#, array_from_reader[0].get());
     assert_eq!("42", array_from_reader[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());
     assert_eq!("null", array_from_reader[3].get());
 
-    let array_to_string = serde_json::to_string(&array_from_str).unwrap();
+    let array_to_string = sciformats_serde_json::to_string(&array_from_str).unwrap();
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
 }
 
@@ -2453,8 +2455,8 @@ fn test_boxed_raw_value() {
 #[test]
 fn test_raw_invalid_utf8() {
     let j = &[b'"', b'\xCE', b'\xF8', b'"'];
-    let value_err = serde_json::from_slice::<Value>(j).unwrap_err();
-    let raw_value_err = serde_json::from_slice::<Box<RawValue>>(j).unwrap_err();
+    let value_err = sciformats_serde_json::from_slice::<Value>(j).unwrap_err();
+    let raw_value_err = sciformats_serde_json::from_slice::<Box<RawValue>>(j).unwrap_err();
 
     assert_eq!(
         value_err.to_string(),
@@ -2470,7 +2472,9 @@ fn test_raw_invalid_utf8() {
 #[test]
 fn test_serialize_unsized_value_to_raw_value() {
     assert_eq!(
-        serde_json::value::to_raw_value("foobar").unwrap().get(),
+        sciformats_serde_json::value::to_raw_value("foobar")
+            .unwrap()
+            .get(),
         r#""foobar""#,
     );
 }
@@ -2530,8 +2534,8 @@ fn test_value_into_deserializer() {
 fn hash_positive_and_negative_zero() {
     let rand = std::hash::RandomState::new();
 
-    let k1 = serde_json::from_str::<Number>("0.0").unwrap();
-    let k2 = serde_json::from_str::<Number>("-0.0").unwrap();
+    let k1 = sciformats_serde_json::from_str::<Number>("0.0").unwrap();
+    let k2 = sciformats_serde_json::from_str::<Number>("-0.0").unwrap();
     if cfg!(feature = "arbitrary_precision") {
         assert_ne!(k1, k2);
         assert_ne!(rand.hash_one(k1), rand.hash_one(k2));

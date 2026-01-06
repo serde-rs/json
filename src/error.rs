@@ -21,7 +21,7 @@ pub struct Error {
     err: Box<ErrorImpl>,
 }
 
-/// Alias for a `Result` with the error type `serde_json::Error`.
+/// Alias for a `Result` with the error type `sciformats_serde_json::Error`.
 pub type Result<T> = result::Result<T, Error>;
 
 impl Error {
@@ -29,7 +29,7 @@ impl Error {
     ///
     /// Characters in the first line of the input (before the first newline
     /// character) are in line 1.
-    pub fn line(&self) -> usize {
+    pub fn line(&self) -> u64 {
         self.err.line
     }
 
@@ -41,7 +41,7 @@ impl Error {
     /// Note that errors may occur in column 0, for example if a read from an
     /// I/O stream fails immediately following a previously read newline
     /// character.
-    pub fn column(&self) -> usize {
+    pub fn column(&self) -> u64 {
         self.err.column
     }
 
@@ -117,7 +117,7 @@ impl Error {
     /// # Example
     ///
     /// ```
-    /// use serde_json::Value;
+    /// use sciformats_serde_json::Value;
     /// use std::io::{self, ErrorKind, Read};
     /// use std::process;
     ///
@@ -136,7 +136,7 @@ impl Error {
     /// fn main() {
     ///     let reader = ReaderThatWillTimeOut(br#" {"k": "#);
     ///
-    ///     let _: Value = match serde_json::from_reader(reader) {
+    ///     let _: Value = match sciformats_serde_json::from_reader(reader) {
     ///         Ok(value) => value,
     ///         Err(error) => {
     ///             if error.io_error_kind() == Some(ErrorKind::TimedOut) {
@@ -161,7 +161,7 @@ impl Error {
     }
 }
 
-/// Categorizes the cause of a `serde_json::Error`.
+/// Categorizes the cause of a `sciformats_serde_json::Error`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Category {
     /// The error was caused by a failure to read or write bytes on an I/O
@@ -187,7 +187,7 @@ pub enum Category {
 #[cfg(feature = "std")]
 #[allow(clippy::fallible_impl_from)]
 impl From<Error> for io::Error {
-    /// Convert a `serde_json::Error` into an `io::Error`.
+    /// Convert a `sciformats_serde_json::Error` into an `io::Error`.
     ///
     /// JSON syntax and data errors are turned into `InvalidData` I/O errors.
     /// EOF errors are turned into `UnexpectedEof` I/O errors.
@@ -197,12 +197,12 @@ impl From<Error> for io::Error {
     ///
     /// enum MyError {
     ///     Io(io::Error),
-    ///     Json(serde_json::Error),
+    ///     Json(sciformats_serde_json::Error),
     /// }
     ///
-    /// impl From<serde_json::Error> for MyError {
-    ///     fn from(err: serde_json::Error) -> MyError {
-    ///         use serde_json::error::Category;
+    /// impl From<sciformats_serde_json::Error> for MyError {
+    ///     fn from(err: sciformats_serde_json::Error) -> MyError {
+    ///         use sciformats_serde_json::error::Category;
     ///         match err.classify() {
     ///             Category::Io => {
     ///                 MyError::Io(err.into())
@@ -229,8 +229,8 @@ impl From<Error> for io::Error {
 
 struct ErrorImpl {
     code: ErrorCode,
-    line: usize,
-    column: usize,
+    line: u64,
+    column: u64,
 }
 
 pub(crate) enum ErrorCode {
@@ -312,7 +312,7 @@ pub(crate) enum ErrorCode {
 
 impl Error {
     #[cold]
-    pub(crate) fn syntax(code: ErrorCode, line: usize, column: usize) -> Self {
+    pub(crate) fn syntax(code: ErrorCode, line: u64, column: u64) -> Self {
         Error {
             err: Box::new(ErrorImpl { code, line, column }),
         }
@@ -485,8 +485,8 @@ fn make_error(mut msg: String) -> Error {
     Error {
         err: Box::new(ErrorImpl {
             code: ErrorCode::Message(msg.into_boxed_str()),
-            line,
-            column,
+            line: line as u64,
+            column: column as u64,
         }),
     }
 }

@@ -1,7 +1,99 @@
+# sciformats_serde_json
+
+This is a fork of [Serde JSON](https://github.com/serde-rs/json).
+
+It provides these additional features:
+
+- Deserialize elements of a JSON documents to a Span, i.e., only deserialize the byte range. This allows lazy loading parts of a JSON document, e.g., when reading from a file.
+- Provide byte offsets as u64. This allows tracking of positions beyond 4 GiB even on 32 bit architectures, e.g., WASM32.
+
+Limitations:
+
+- `std` is required.
+
+This fork has been inspired by draft PR [#1266](https://github.com/serde-rs/json/pull/1266) to the Serde JSON repository.
+
+## Usage
+
+```toml
+[dependencies]
+sciformats_serde_json = "1.0"
+```
+
+## Example
+
+```rust
+#[derive(Debug, Deserialize, PartialEq)]
+struct NestedStructParent {
+    foo: i32,
+    nested: Span,
+    bar: String,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+struct NestedStruct {
+    foo: i32,
+    bar: String,
+}
+
+// Make JSON data available a type that implements the Seek and Read traits.
+// In this example a Cursor is used, but in more realistic scenarios
+// this could be a std::io::BufReader that reads from a file.
+let json = br#"{"foo": 42, "nested": {"foo": 42, "bar": "baz"}, "bar": "baz"}"#;
+let json_len = json.len() as u64;
+let reader = Cursor::new(json);
+let rc_reader = Rc::new(RefCell::new(reader));
+let mut borrow = rc_reader.borrow_mut();
+
+// Deserialize JSON data.
+let mut de = sciformats_serde_json::Deserializer::from_reader(&mut *borrow);
+let value = NestedStructParent::deserialize(&mut de).unwrap();
+
+// For the NestedStruct only the range in the JSON data has been captured.
+assert_eq!(
+    NestedStructParent {
+        foo: 42,
+        nested: Span { span: 22..47 },
+        bar: "baz".to_string(),
+    },
+    value
+);
+assert_eq!(json_len, de.byte_offset());
+
+// Simulate that the scopes for the deserializer and borrow of the reader end.
+drop(de);
+drop(borrow);
+
+// Acquire a new borrow for the reader and deserialize the NestedStruct.
+let mut borrow = rc_reader.borrow_mut();
+borrow
+    .seek(std::io::SeekFrom::Start(value.nested.span.start))
+    .unwrap();
+let nested_span = (&mut *borrow).take(value.nested.span.end - value.nested.span.start);
+let mut nested_de = sciformats_serde_json::Deserializer::from_reader(nested_span);
+let nested = NestedStruct::deserialize(&mut nested_de).unwrap();
+
+assert_eq!(
+    NestedStruct {
+        foo: 42,
+        bar: "baz".to_string(),
+    },
+    nested
+);
+```
+
+See `tests/span.rs` for more examples.
+
+## License
+
+The [Serde JSON](https://github.com/serde-rs/json) license terms also apply to this fork.
+
+## Original content from Serde JSON follows below
+
 # Serde JSON &emsp; [![Build Status]][actions] [![Latest Version]][crates.io]
 
-[Build Status]: https://img.shields.io/github/actions/workflow/status/serde-rs/json/ci.yml?branch=master
-[actions]: https://github.com/serde-rs/json/actions?query=branch%3Amaster
+[Build Status]: https://img.shields.io/github/actions/workflow/status/devrosch/sciformats_serde_json/ci.yml?branch=master
+[actions]: https://github.com/devrosch/sciformats_serde_json/actions?query=branch%3Amaster
 [Latest Version]: https://img.shields.io/crates/v/serde_json.svg
 [crates.io]: https://crates.io/crates/serde\_json
 
@@ -59,7 +151,7 @@ each of these representations.
 ## Operating on untyped JSON values
 
 Any valid JSON data can be manipulated in the following recursive enum
-representation. This data structure is [`serde_json::Value`][value].
+representation. This data structure is [`sciformats_serde_json::Value`][value].
 
 ```rust
 enum Value {
@@ -72,8 +164,8 @@ enum Value {
 }
 ```
 
-A string of JSON data can be parsed into a `serde_json::Value` by the
-[`serde_json::from_str`][from_str] function. There is also
+A string of JSON data can be parsed into a `sciformats_serde_json::Value` by the
+[`sciformats_serde_json::from_str`][from_str] function. There is also
 [`from_slice`][from_slice] for parsing from a byte slice `&[u8]` and
 [`from_reader`][from_reader] for parsing from any `io::Read` like a File or a
 TCP stream.
@@ -85,7 +177,7 @@ TCP stream.
 </div>
 
 ```rust
-use serde_json::{Result, Value};
+use sciformats_serde_json::{Result, Value};
 
 fn untyped_example() -> Result<()> {
     // Some JSON input data as a &str. Maybe this comes from the user.
@@ -99,8 +191,8 @@ fn untyped_example() -> Result<()> {
             ]
         }"#;
 
-    // Parse the string of data into serde_json::Value.
-    let v: Value = serde_json::from_str(data)?;
+    // Parse the string of data into sciformats_serde_json::Value.
+    let v: Value = sciformats_serde_json::from_str(data)?;
 
     // Access parts of the data by indexing with square brackets.
     println!("Please call {} at the number {}", v["name"], v["phones"][0]);
@@ -146,7 +238,7 @@ largely automatically.
 
 ```rust
 use serde::{Deserialize, Serialize};
-use serde_json::Result;
+use sciformats_serde_json::Result;
 
 #[derive(Serialize, Deserialize)]
 struct Person {
@@ -168,9 +260,9 @@ fn typed_example() -> Result<()> {
         }"#;
 
     // Parse the string of data into a Person object. This is exactly the
-    // same function as the one that produced serde_json::Value above, but
+    // same function as the one that produced sciformats_serde_json::Value above, but
     // now we are asking it for a Person as output.
-    let p: Person = serde_json::from_str(data)?;
+    let p: Person = sciformats_serde_json::from_str(data)?;
 
     // Do things just like with any other Rust data structure.
     println!("Please call {} at the number {}", p.name, p.phones[0]);
@@ -179,7 +271,7 @@ fn typed_example() -> Result<()> {
 }
 ```
 
-This is the same `serde_json::from_str` function as before, but this time we
+This is the same `sciformats_serde_json::from_str` function as before, but this time we
 assign the return value to a variable of type `Person` so Serde will
 automatically interpret the input data as a `Person` and produce informative
 error messages if the layout does not conform to what a `Person` is expected to
@@ -192,7 +284,7 @@ way. This includes built-in Rust standard library types like `Vec<T>` and
 
 Once we have `p` of type `Person`, our IDE and the Rust compiler can help us use
 it correctly like they do for any other Rust code. The IDE can autocomplete
-field names to prevent typos, which was impossible in the `serde_json::Value`
+field names to prevent typos, which was impossible in the `sciformats_serde_json::Value`
 representation. And the Rust compiler can check that when we write
 `p.phones[0]`, then `p.phones` is guaranteed to be a `Vec<String>` so indexing
 into it makes sense and produces a `String`.
@@ -204,7 +296,7 @@ derive]* page of the Serde site.
 
 ## Constructing JSON values
 
-Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
+Serde JSON provides a [`json!` macro][macro] to build `sciformats_serde_json::Value`
 objects with very natural JSON syntax.
 
 <div align="right">
@@ -214,10 +306,10 @@ objects with very natural JSON syntax.
 </div>
 
 ```rust
-use serde_json::json;
+use sciformats_serde_json::json;
 
 fn main() {
-    // The type of `john` is `serde_json::Value`
+    // The type of `john` is `sciformats_serde_json::Value`
     let john = json!({
         "name": "John Doe",
         "age": 43,
@@ -234,7 +326,7 @@ fn main() {
 }
 ```
 
-The `Value::to_string()` function converts a `serde_json::Value` into a `String`
+The `Value::to_string()` function converts a `sciformats_serde_json::Value` into a `String`
 of JSON text.
 
 One neat thing about the `json!` macro is that variables and expressions can be
@@ -252,7 +344,7 @@ represented as JSON.
 let full_name = "John Doe";
 let age_last_year = 42;
 
-// The type of `john` is `serde_json::Value`
+// The type of `john` is `sciformats_serde_json::Value`
 let john = json!({
     "name": full_name,
     "age": age_last_year + 1,
@@ -270,9 +362,9 @@ text.
 ## Creating JSON by serializing data structures
 
 A data structure can be converted to a JSON string by
-[`serde_json::to_string`][to_string]. There is also
-[`serde_json::to_vec`][to_vec] which serializes to a `Vec<u8>` and
-[`serde_json::to_writer`][to_writer] which serializes to any `io::Write`
+[`sciformats_serde_json::to_string`][to_string]. There is also
+[`sciformats_serde_json::to_vec`][to_vec] which serializes to a `Vec<u8>` and
+[`sciformats_serde_json::to_writer`][to_writer] which serializes to any `io::Write`
 such as a File or a TCP stream.
 
 <div align="right">
@@ -283,7 +375,7 @@ such as a File or a TCP stream.
 
 ```rust
 use serde::{Deserialize, Serialize};
-use serde_json::Result;
+use sciformats_serde_json::Result;
 
 #[derive(Serialize, Deserialize)]
 struct Address {
@@ -299,7 +391,7 @@ fn print_an_address() -> Result<()> {
     };
 
     // Serialize it to a JSON string.
-    let j = serde_json::to_string(&address)?;
+    let j = sciformats_serde_json::to_string(&address)?;
 
     // Print, write to a file, or send to an HTTP server.
     println!("{}", j);

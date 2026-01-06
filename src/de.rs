@@ -67,6 +67,11 @@ where
             disable_recursion_limit: false,
         }
     }
+
+    /// Returns the current byte offset of the underlying reader.
+    pub fn byte_offset(&self) -> u64 {
+        self.read.byte_offset()
+    }
 }
 
 #[cfg(feature = "std")]
@@ -185,7 +190,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     ///
     /// ```
     /// use serde::Deserialize;
-    /// use serde_json::Value;
+    /// use sciformats_serde_json::Value;
     ///
     /// fn main() {
     ///     let mut json = String::new();
@@ -193,7 +198,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     ///         json = format!("[{}]", json);
     ///     }
     ///
-    ///     let mut deserializer = serde_json::Deserializer::from_str(&json);
+    ///     let mut deserializer = sciformats_serde_json::Deserializer::from_str(&json);
     ///     deserializer.disable_recursion_limit();
     ///     let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
     ///     let value = Value::deserialize(deserializer).unwrap();
@@ -1597,9 +1602,9 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
     /// ```
     /// use serde_bytes::ByteBuf;
     ///
-    /// fn look_at_bytes() -> Result<(), serde_json::Error> {
+    /// fn look_at_bytes() -> Result<(), sciformats_serde_json::Error> {
     ///     let json_data = b"\"some bytes: \xe5\x00\xe5\"";
-    ///     let bytes: ByteBuf = serde_json::from_slice(json_data)?;
+    ///     let bytes: ByteBuf = sciformats_serde_json::from_slice(json_data)?;
     ///
     ///     assert_eq!(b'\xe5', bytes[12]);
     ///     assert_eq!(b'\0', bytes[13]);
@@ -1618,9 +1623,9 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
     /// ```
     /// use serde_bytes::ByteBuf;
     ///
-    /// fn look_at_bytes() -> Result<(), serde_json::Error> {
+    /// fn look_at_bytes() -> Result<(), sciformats_serde_json::Error> {
     ///     let json_data = b"\"lone surrogate: \\uD801\"";
-    ///     let bytes: ByteBuf = serde_json::from_slice(json_data)?;
+    ///     let bytes: ByteBuf = sciformats_serde_json::from_slice(json_data)?;
     ///     let expected = b"lone surrogate: \xED\xA0\x81";
     ///     assert_eq!(expected, bytes.as_slice());
     ///     Ok(())
@@ -1817,8 +1822,8 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
 
     fn deserialize_struct<V>(
         self,
-        _name: &'static str,
-        _fields: &'static [&'static str],
+        name: &'static str,
+        fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value>
     where
@@ -1830,6 +1835,10 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
                 return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
             }
         };
+
+        if crate::span::is_span(name, fields) {
+            return visitor.visit_map(crate::span::SpanDeserializer::new(self));
+        }
 
         let value = match peek {
             b'[' => {
@@ -2334,7 +2343,7 @@ where
 /// arrays, objects, or strings, or be followed by whitespace or a self-delineating value.
 ///
 /// ```
-/// use serde_json::{Deserializer, Value};
+/// use sciformats_serde_json::{Deserializer, Value};
 ///
 /// fn main() {
 ///     let data = "{\"k\": 3}1\"cool\"\"stuff\" 3{}  [0, 1, 2]";
@@ -2348,7 +2357,7 @@ where
 /// ```
 pub struct StreamDeserializer<'de, R, T> {
     de: Deserializer<R>,
-    offset: usize,
+    offset: u64,
     failed: bool,
     output: PhantomData<T>,
     lifetime: PhantomData<&'de ()>,
@@ -2386,7 +2395,7 @@ where
     /// ```
     /// let data = b"[0] [1] [";
     ///
-    /// let de = serde_json::Deserializer::from_slice(data);
+    /// let de = sciformats_serde_json::Deserializer::from_slice(data);
     /// let mut stream = de.into_iter::<Vec<i32>>();
     /// assert_eq!(0, stream.byte_offset());
     ///
@@ -2400,7 +2409,7 @@ where
     /// assert_eq!(8, stream.byte_offset());
     ///
     /// // If err.is_eof(), can join the remaining data to new data and continue.
-    /// let remaining = &data[stream.byte_offset()..];
+    /// let remaining = &data[stream.byte_offset() as usize..];
     /// ```
     ///
     /// *Note:* In the future this method may be changed to return the number of
@@ -2409,7 +2418,7 @@ where
     /// example illustrating this.
     ///
     /// [serde-rs/json#70]: https://github.com/serde-rs/json/issues/70
-    pub fn byte_offset(&self) -> usize {
+    pub fn byte_offset(&self) -> u64 {
         self.offset
     }
 
@@ -2550,7 +2559,7 @@ where
 ///     let reader = BufReader::new(file);
 ///
 ///     // Read the JSON contents of the file as an instance of `User`.
-///     let u = serde_json::from_reader(reader)?;
+///     let u = sciformats_serde_json::from_reader(reader)?;
 ///
 ///     // Return the `User`.
 ///     Ok(u)
@@ -2580,7 +2589,7 @@ where
 /// }
 ///
 /// fn read_user_from_stream(stream: &mut BufReader<TcpStream>) -> Result<User, Box<dyn Error>> {
-///     let mut de = serde_json::Deserializer::from_reader(stream);
+///     let mut de = sciformats_serde_json::Deserializer::from_reader(stream);
 ///     let u = User::deserialize(&mut de)?;
 ///
 ///     Ok(u)
@@ -2638,7 +2647,7 @@ where
 ///             \"location\": \"Menlo Park, CA\"
 ///         }";
 ///
-///     let u: User = serde_json::from_slice(j).unwrap();
+///     let u: User = sciformats_serde_json::from_slice(j).unwrap();
 ///     println!("{:#?}", u);
 /// }
 /// ```
@@ -2680,7 +2689,7 @@ where
 ///             \"location\": \"Menlo Park, CA\"
 ///         }";
 ///
-///     let u: User = serde_json::from_str(j).unwrap();
+///     let u: User = sciformats_serde_json::from_str(j).unwrap();
 ///     println!("{:#?}", u);
 /// }
 /// ```

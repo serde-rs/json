@@ -1,9 +1,9 @@
 #![allow(clippy::assertions_on_result_states)]
 
+use sciformats_serde_json::json;
 use serde::de::{
     Deserialize, Deserializer, EnumAccess, IgnoredAny, MapAccess, VariantAccess, Visitor,
 };
-use serde_json::json;
 use std::fmt;
 
 #[derive(Debug)]
@@ -55,8 +55,8 @@ impl<'de> Deserialize<'de> for Enum {
 #[test]
 fn test() {
     let s = r#" {"Variant":{"x":0,"y":0}} "#;
-    assert!(serde_json::from_str::<Enum>(s).is_err());
+    assert!(sciformats_serde_json::from_str::<Enum>(s).is_err());
 
     let j = json!({"Variant":{"x":0,"y":0}});
-    assert!(serde_json::from_value::<Enum>(j).is_err());
+    assert!(sciformats_serde_json::from_value::<Enum>(j).is_err());
 }

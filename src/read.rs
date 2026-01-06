@@ -58,7 +58,7 @@ pub trait Read<'de>: private::Sealed {
     /// Offset from the beginning of the input to the next byte that would be
     /// returned by next() or peek().
     #[doc(hidden)]
-    fn byte_offset(&self) -> usize;
+    fn byte_offset(&self) -> u64;
 
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark using the given scratch space if
@@ -117,8 +117,8 @@ pub trait Read<'de>: private::Sealed {
 }
 
 pub struct Position {
-    pub line: usize,
-    pub column: usize,
+    pub line: u64,
+    pub column: u64,
 }
 
 pub enum Reference<'b, 'c, T>
@@ -325,7 +325,7 @@ where
         self.position()
     }
 
-    fn byte_offset(&self) -> usize {
+    fn byte_offset(&self) -> u64 {
         match self.ch {
             Some(_) => self.iter.byte_offset() - 1,
             None => self.iter.byte_offset(),
@@ -424,8 +424,8 @@ impl<'a> SliceRead<'a> {
             None => 0,
         };
         Position {
-            line: 1 + memchr::memchr_iter(b'\n', &self.slice[..start_of_line]).count(),
-            column: i - start_of_line,
+            line: 1 + memchr::memchr_iter(b'\n', &self.slice[..start_of_line]).count() as u64,
+            column: i as u64 - start_of_line as u64,
         }
     }
 
@@ -580,8 +580,8 @@ impl<'a> Read<'a> for SliceRead<'a> {
         self.position_of_index(cmp::min(self.slice.len(), self.index + 1))
     }
 
-    fn byte_offset(&self) -> usize {
-        self.index
+    fn byte_offset(&self) -> u64 {
+        self.index as u64
     }
 
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
@@ -702,7 +702,7 @@ impl<'a> Read<'a> for StrRead<'a> {
         self.delegate.peek_position()
     }
 
-    fn byte_offset(&self) -> usize {
+    fn byte_offset(&self) -> u64 {
         self.delegate.byte_offset()
     }
 
@@ -783,7 +783,7 @@ where
         R::peek_position(self)
     }
 
-    fn byte_offset(&self) -> usize {
+    fn byte_offset(&self) -> u64 {
         R::byte_offset(self)
     }
 

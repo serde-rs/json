@@ -1,5 +1,5 @@
 [package]
-name = "serde_json-fuzz"
+name = "sciformats_serde_json-fuzz"
 version = "0.0.0"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 edition = "2021"
@@ -10,7 +10,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-serde_json = { path = ".." }
+sciformats_serde_json = { path = ".." }
 
 [[bin]]
 name = "from_slice"

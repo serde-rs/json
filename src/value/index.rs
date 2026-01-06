@@ -5,7 +5,7 @@ use alloc::string::String;
 use core::fmt::{self, Display};
 use core::ops;
 
-/// A type that can be used to index into a `serde_json::Value`.
+/// A type that can be used to index into a `sciformats_serde_json::Value`.
 ///
 /// The [`get`] and [`get_mut`] methods of `Value` accept any type that
 /// implements `Index`, as does the [square-bracket indexing operator]. This
@@ -22,7 +22,7 @@ use core::ops;
 /// # Examples
 ///
 /// ```
-/// # use serde_json::json;
+/// # use sciformats_serde_json::json;
 /// #
 /// let data = json!({ "inner": [1, 2, 3] });
 ///
@@ -181,7 +181,7 @@ where
 {
     type Output = Value;
 
-    /// Index into a `serde_json::Value` using the syntax `value[0]` or
+    /// Index into a `sciformats_serde_json::Value` using the syntax `value[0]` or
     /// `value["k"]`.
     ///
     /// Returns `Value::Null` if the type of `self` does not match the type of
@@ -195,7 +195,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use serde_json::json;
+    /// # use sciformats_serde_json::json;
     /// #
     /// let data = json!({
     ///     "x": {
@@ -219,7 +219,7 @@ impl<I> ops::IndexMut<I> for Value
 where
     I: Index,
 {
-    /// Write into a `serde_json::Value` using the syntax `value[0] = ...` or
+    /// Write into a `sciformats_serde_json::Value` using the syntax `value[0] = ...` or
     /// `value["k"] = ...`.
     ///
     /// If the index is a number, the value must be an array of length bigger
@@ -234,7 +234,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use serde_json::json;
+    /// # use sciformats_serde_json::json;
     /// #
     /// let mut data = json!({ "x": 0 });
     ///

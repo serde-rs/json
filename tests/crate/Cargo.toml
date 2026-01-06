@@ -1,5 +1,5 @@
 [package]
-name = "serde_json_test"
+name = "sciformats_serde_json_test"
 version = "0.0.0"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
 edition = "2021"
@@ -9,14 +9,14 @@ publish = false
 path = "test.rs"
 
 [dependencies]
-serde_json = { path = "../..", default-features = false }
+sciformats_serde_json = { path = "../..", default-features = false }
 
 [features]
 default = ["std"]
-std = ["serde_json/std"]
-alloc = ["serde_json/alloc"]
-#preserve_order = ["serde_json/preserve_order"]
-float_roundtrip = ["serde_json/float_roundtrip"]
-arbitrary_precision = ["serde_json/arbitrary_precision"]
-raw_value = ["serde_json/raw_value"]
-unbounded_depth = ["serde_json/unbounded_depth"]
+std = ["sciformats_serde_json/std"]
+alloc = ["sciformats_serde_json/alloc"]
+#preserve_order = ["sciformats_serde_json/preserve_order"]
+float_roundtrip = ["sciformats_serde_json/float_roundtrip"]
+arbitrary_precision = ["sciformats_serde_json/arbitrary_precision"]
+raw_value = ["sciformats_serde_json/raw_value"]
+unbounded_depth = ["sciformats_serde_json/unbounded_depth"]

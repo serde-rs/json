@@ -15,7 +15,7 @@ use serde::de::{IntoDeserializer, MapAccess};
 use serde::{forward_to_deserialize_any, Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "arbitrary_precision")]
-pub(crate) const TOKEN: &str = "$serde_json::private::Number";
+pub(crate) const TOKEN: &str = "$sciformats_serde_json::private::Number";
 
 /// Represents a JSON number, whether integer or floating point.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -174,7 +174,7 @@ impl Number {
     /// numbers.
     ///
     /// ```
-    /// # use serde_json::Number;
+    /// # use sciformats_serde_json::Number;
     /// #
     /// assert!(Number::from_f64(256.0).is_some());
     ///
@@ -228,7 +228,7 @@ impl Number {
     /// "arbitrary_precision" feature is enabled.
     ///
     /// ```
-    /// # use serde_json::Number;
+    /// # use sciformats_serde_json::Number;
     /// #
     /// assert!(Number::from_i128(256).is_some());
     /// ```
@@ -257,7 +257,7 @@ impl Number {
     /// is enabled.
     ///
     /// ```
-    /// # use serde_json::Number;
+    /// # use sciformats_serde_json::Number;
     /// #
     /// assert!(Number::from_u128(256).is_some());
     /// ```
@@ -287,7 +287,7 @@ impl Number {
     /// number.
     ///
     /// ```
-    /// # use serde_json::Number;
+    /// # use sciformats_serde_json::Number;
     /// for value in [
     ///     "7",
     ///     "12.34",
@@ -296,7 +296,7 @@ impl Number {
     ///     "343412345678910111213141516171819202122232425262728293034",
     ///     "-343412345678910111213141516171819202122232425262728293031",
     /// ] {
-    ///     let number: Number = serde_json::from_str(value).unwrap();
+    ///     let number: Number = sciformats_serde_json::from_str(value).unwrap();
     ///     assert_eq!(number.as_str(), value);
     /// }
     /// ```
