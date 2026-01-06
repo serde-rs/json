@@ -1028,22 +1028,18 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.eat_char();
         buf.push('e');
 
-        let has_sign = match tri!(self.peek_or_null()) {
+        match tri!(self.peek_or_null()) {
             b'+' => {
                 self.eat_char();
                 buf.push('+');
-                true
             }
             b'-' => {
                 self.eat_char();
                 buf.push('-');
-                true
             }
-            _ => false,
-        };
-
-        if !has_sign {
-            buf.push('+');
+            _ => {
+                buf.push('+');
+            }
         }
 
         // Make sure a digit follows the exponent place.
