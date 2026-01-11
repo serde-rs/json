@@ -5,6 +5,8 @@ use crate::error::{Error, ErrorCode, Result};
 use crate::lexical;
 use crate::number::Number;
 use crate::read::{self, Fused, Reference};
+#[cfg(feature = "raw_value")]
+use crate::Position;
 use alloc::string::String;
 use alloc::vec::Vec;
 #[cfg(feature = "float_roundtrip")]
@@ -1773,6 +1775,7 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
         self.deserialize_seq(visitor)
     }
 
+    #[cfg(not(feature = "raw_value"))]
     fn deserialize_tuple_struct<V>(
         self,
         _name: &'static str,
@@ -1782,6 +1785,58 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
     where
         V: de::Visitor<'de>,
     {
+        self.deserialize_seq(visitor)
+    }
+
+    #[cfg(feature = "raw_value")]
+    fn deserialize_tuple_struct<V>(
+        self,
+        name: &'static str,
+        len: usize,
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        if name == crate::read::TOKEN && len == 2 {
+            struct PosAccess(u8, Position);
+            impl<'de> serde::de::SeqAccess<'de> for PosAccess {
+                type Error = Error;
+                fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
+                where
+                    T: de::DeserializeSeed<'de>,
+                {
+                    let res = match self.0 {
+                        0 => {
+                            seed.deserialize(serde::de::value::UsizeDeserializer::new(self.1.line))?
+                        }
+                        1 => seed
+                            .deserialize(serde::de::value::UsizeDeserializer::new(self.1.column))?,
+                        _ => return Ok(None),
+                    };
+                    self.0 += 1;
+                    Ok(Some(res))
+                }
+            }
+            return visitor.visit_seq(PosAccess(0, self.read.position()));
+        } else if name == crate::positioned::TOKEN && len == 2 {
+            struct PosAccess<'a, R: 'a>(u8, &'a mut Deserializer<R>);
+            impl<'de, 'a, R: Read<'de> + 'a> serde::de::SeqAccess<'de> for PosAccess<'a, R> {
+                type Error = Error;
+                fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
+                where
+                    T: de::DeserializeSeed<'de>,
+                {
+                    let res = match self.0 {
+                        0 | 1 => seed.deserialize(&mut *self.1)?,
+                        _ => return Ok(None),
+                    };
+                    self.0 += 1;
+                    Ok(Some(res))
+                }
+            }
+            return visitor.visit_seq(PosAccess(0, self));
+        }
         self.deserialize_seq(visitor)
     }
 
