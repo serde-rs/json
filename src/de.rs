@@ -167,6 +167,16 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    /// Parse the JSON array as a stream of values. Expects the top-level element to be an array.
+    pub fn into_array(self) -> ArrayDeserializer<'de, 'de, R> {
+        self.into()
+    }
+
+    /// Parse the JSON object as a stream of values. Expects the top-level element to be an object.
+    pub fn into_object(self) -> ObjectDeserializer<'de, 'de, R> {
+        self.into()
+    }
+
     /// Parse arbitrarily deep JSON structures without any consideration for
     /// overflowing the stack.
     ///
@@ -2490,6 +2500,756 @@ where
     R: Read<'de> + Fused,
     T: de::Deserialize<'de>,
 {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+#[derive(Clone, Copy)]
+enum ContainerKind {
+    Array,
+    Object,
+}
+
+impl ContainerKind {
+    #[inline]
+    const fn end_char(self) -> u8 {
+        match self {
+            ContainerKind::Array => b']',
+            ContainerKind::Object => b'}',
+        }
+    }
+}
+
+enum NestingAction {
+    // The nesting happens after a comma if we're inside an array, or after a colon if we're inside an object.
+    Enter { needs_comma: bool },
+    Leave,
+}
+
+struct NestingCommand {
+    kind: ContainerKind,
+    action: NestingAction,
+}
+
+/// The underlying deserializer for arrays and objects. [`ObjectDeserializer`] and [`ArrayDeserializer`] act as
+/// handles to control this one.
+struct IterativeBaseDeserializer<'de, R> {
+    de: Deserializer<R>,
+    lifetime: PhantomData<&'de ()>,
+
+    // Queue of all nesting-adjustment-commands that will be applied on the call to `next` before reading
+    // the actual value.
+    nesting_change: Vec<NestingCommand>,
+
+    // The nesting depth we are currently at, before applying the queue of commands.
+    cur_depth: usize,
+
+    // The nesting depth we will be at after applying the queue of commands.
+    future_depth: usize,
+}
+
+impl<'de, R> IterativeBaseDeserializer<'de, R>
+where
+    R: read::Read<'de>,
+{
+    pub fn new(de: Deserializer<R>, initial_kind: ContainerKind) -> Self {
+        let mut nesting_change = Vec::new();
+        nesting_change.push(NestingCommand {
+            kind: initial_kind,
+            action: NestingAction::Enter { needs_comma: false },
+        });
+
+        IterativeBaseDeserializer {
+            de,
+            lifetime: PhantomData,
+            // First action will be to enter the top-level container
+            nesting_change,
+            cur_depth: 0,
+            future_depth: 1,
+        }
+    }
+
+    // This is an associated function instead of a method due to the mutable borrow on the caller.
+    fn nest_enter(
+        de: &mut Deserializer<R>,
+        cur_nesting: &mut usize,
+        kind: ContainerKind,
+        needs_comma: bool,
+        last_entered: bool,
+    ) -> Result<()> {
+        // We don't want a preceding comma if we just entered a container.
+        let needs_comma = needs_comma && !last_entered;
+        if needs_comma {
+            tri!(match de.parse_whitespace() {
+                Ok(Some(b',')) => {
+                    de.eat_char();
+                    Ok(())
+                }
+                Ok(Some(_)) => {
+                    Err(de.peek_error(ErrorCode::ExpectedComma))
+                }
+                Ok(None) => Err(de.peek_error(ErrorCode::EofWhileParsingValue)),
+                Err(e) => Err(e),
+            });
+        }
+
+        // ensure we find the correct opening token ('[' or '{')
+        tri!(match de.parse_whitespace() {
+            Err(e) => Err(e),
+            Ok(None) => Err(de.peek_error(ErrorCode::EofWhileParsingValue)),
+            Ok(Some(token)) => match (token, kind) {
+                (b'[', ContainerKind::Array) | (b'{', ContainerKind::Object) => {
+                    de.eat_char();
+                    Ok(())
+                }
+                _ => Err(de.peek_error(match kind {
+                    ContainerKind::Array => ErrorCode::ExpectedListStart,
+                    ContainerKind::Object => ErrorCode::ExpectedObjectStart,
+                })),
+            },
+        });
+
+        *cur_nesting += 1;
+
+        Ok(())
+    }
+
+    // This is an associated function instead of a method due to the mutable borrow on the caller.
+    fn nest_leave(
+        de: &mut Deserializer<R>,
+        cur_nesting: &mut usize,
+        kind: ContainerKind,
+    ) -> Result<()> {
+        // ensure we find the appropriate closing token (']' or '}')
+        tri!(match de.parse_whitespace() {
+            Err(e) => Err(e),
+            Ok(None) => Err(de.peek_error(ErrorCode::EofWhileParsingValue)),
+            Ok(Some(token)) => match (token, kind) {
+                (b']', ContainerKind::Array) | (b'}', ContainerKind::Object) => {
+                    de.eat_char();
+                    Ok(())
+                }
+                _ => Err(de.peek_error(match kind {
+                    ContainerKind::Array => ErrorCode::ExpectedListEnd,
+                    ContainerKind::Object => ErrorCode::ExpectedObjectEnd,
+                })),
+            },
+        });
+
+        *cur_nesting -= 1;
+
+        if *cur_nesting == 0 {
+            // Anything that comes after we left the top-level container is an error.
+            return de.end();
+        }
+
+        Ok(())
+    }
+
+    // Applies all the queued up nesting commands. Afterwards, current_depth should equal future_depth.
+    fn resolve_nesting(&mut self) -> Result<bool> {
+        // When we just entered a container, the next character must not be a comma. (i.e. we don't allow `[, 1]`)
+        // Otherwise (on leave but also just on any actual value), it must be a comma.
+        let mut last_entered = false;
+        for cmd in self.nesting_change.drain(..) {
+            last_entered = match cmd.action {
+                NestingAction::Enter { needs_comma } => {
+                    tri!(Self::nest_enter(
+                        &mut self.de,
+                        &mut self.cur_depth,
+                        cmd.kind,
+                        needs_comma,
+                        last_entered
+                    ));
+                    true
+                }
+                NestingAction::Leave => {
+                    tri!(Self::nest_leave(
+                        &mut self.de,
+                        &mut self.cur_depth,
+                        cmd.kind
+                    ));
+                    false
+                }
+            };
+        }
+
+        Ok(last_entered)
+    }
+
+    // Lifetimes ensure that we are always passing the right ContainerKind.
+    fn advance(&mut self, expected_depth: usize, kind: ContainerKind) -> Option<Result<()>> {
+        // First, we need to resolve all the nesting that was queued up before.
+        let needs_comma = match self.resolve_nesting() {
+            Ok(entered) => !entered,
+            Err(e) => return Some(Err(e)),
+        };
+
+        // if expected_depth differs from our current one at this point, it means we have already nested out of the
+        // container, so there's no more values to get.
+        if self.cur_depth == 0 || self.cur_depth != expected_depth {
+            // We already ran `end()` at this point during `nest_leave`
+            return None;
+        }
+
+        match self.de.parse_whitespace() {
+            Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
+            Ok(Some(b',')) if needs_comma => {
+                self.de.eat_char();
+
+                match self.de.parse_whitespace() {
+                    Ok(None) => Some(Err(self.de.peek_error(ErrorCode::EofWhileParsingValue))),
+                    Ok(Some(b']')) => Some(Err(self.de.peek_error(ErrorCode::TrailingComma))),
+                    Ok(Some(_)) => Some(Ok(())),
+                    Err(e) => Some(Err(e)),
+                }
+            }
+            Ok(Some(token)) => {
+                // If we're past the end of the container, we need to leave it here immediately so that we can report
+                // an error in case the container doesn't close properly (or has trailing characters).
+                if token == kind.end_char() {
+                    self.de.eat_char();
+                    self.cur_depth -= 1;
+                    self.future_depth -= 1;
+                    if self.cur_depth == 0 {
+                        return match self.de.end() {
+                            Ok(()) => None,
+                            Err(e) => Some(Err(e)),
+                        };
+                    }
+                    None
+                } else if needs_comma {
+                    Some(Err(self.de.peek_error(ErrorCode::ExpectedComma)))
+                } else {
+                    Some(Ok(()))
+                }
+            }
+            Err(e) => Some(Err(e)),
+        }
+    }
+
+    /// Nest one level into an array
+    fn sub_array<'new_parent>(
+        &'new_parent mut self,
+        needs_comma: bool,
+    ) -> ArrayDeserializer<'de, 'new_parent, R>
+    where
+        'de: 'new_parent,
+    {
+        self.nesting_change.push(NestingCommand {
+            kind: ContainerKind::Array,
+            action: NestingAction::Enter { needs_comma },
+        });
+
+        self.future_depth += 1;
+
+        ArrayDeserializer {
+            inner: IterativeDeserializerInner::Borrowed {
+                expected_depth: self.future_depth,
+                base: self,
+            },
+        }
+    }
+
+    /// Nest one level into an object
+    fn sub_object<'new_parent>(
+        &'new_parent mut self,
+        needs_comma: bool,
+    ) -> ObjectDeserializer<'de, 'new_parent, R>
+    where
+        'de: 'new_parent,
+    {
+        self.nesting_change.push(NestingCommand {
+            kind: ContainerKind::Object,
+            action: NestingAction::Enter { needs_comma },
+        });
+
+        self.future_depth += 1;
+
+        ObjectDeserializer {
+            inner: IterativeDeserializerInner::Borrowed {
+                expected_depth: self.future_depth,
+                base: self,
+            },
+        }
+    }
+
+    /// Helper function for getting the next key when we're inside an object
+    fn object_key(&mut self, expected_depth: usize) -> Option<Result<String>> {
+        match self.advance(expected_depth, ContainerKind::Object) {
+            Some(Ok(())) => {}
+            Some(Err(e)) => return Some(Err(e)),
+            None => return None,
+        };
+
+        let key: String = match de::Deserialize::deserialize(&mut self.de) {
+            Ok(key) => key,
+            Err(e) => return Some(Err(e)),
+        };
+
+        if let Err(e) = self.de.parse_object_colon() {
+            return Some(Err(e));
+        };
+
+        Some(Ok(key))
+    }
+
+    /// Get the next value inside an array.
+    fn next_arr_val<T: de::Deserialize<'de>>(
+        &mut self,
+        expected_depth: usize,
+    ) -> Option<Result<T>> {
+        match self.advance(expected_depth, ContainerKind::Array) {
+            Some(Ok(())) => {}
+            Some(Err(e)) => return Some(Err(e)),
+            None => return None,
+        };
+
+        // Gets the actual JSON value that was requested
+        Some(de::Deserialize::deserialize(&mut self.de))
+    }
+
+    /// Get the next value inside an object.
+    fn next_obj_val<ValueType: de::Deserialize<'de>>(
+        &mut self,
+        expected_depth: usize,
+    ) -> Option<Result<(String, ValueType)>> {
+        self.object_key(expected_depth).map(|r| {
+            r.and_then(|k| {
+                Ok((
+                    k,
+                    match de::Deserialize::deserialize(&mut self.de) {
+                        Ok(value) => value,
+                        Err(e) => return Err(e),
+                    },
+                ))
+            })
+        })
+    }
+
+    /// Nest one level deeper from within an object to a new array.
+    fn object_sub_array<'new_parent>(
+        &'new_parent mut self,
+        expected_depth: usize,
+    ) -> Option<Result<(String, ArrayDeserializer<'de, 'new_parent, R>)>>
+    where
+        'de: 'new_parent,
+    {
+        self.object_key(expected_depth)
+            .map(|r| r.map(|k| (k, self.sub_array(false))))
+    }
+
+    /// Nest one level deeper from within an object to a new object.
+    fn object_sub_object<'new_parent>(
+        &'new_parent mut self,
+        expected_depth: usize,
+    ) -> Option<Result<(String, ObjectDeserializer<'de, 'new_parent, R>)>>
+    where
+        'de: 'new_parent,
+    {
+        self.object_key(expected_depth)
+            .map(|r| r.map(|k| (k, self.sub_object(false))))
+    }
+
+    fn queue_leave(&mut self, expected_depth: usize, kind: ContainerKind) {
+        if self.future_depth == expected_depth {
+            self.future_depth -= 1;
+            self.nesting_change.push(NestingCommand {
+                kind,
+                action: NestingAction::Leave,
+            });
+        }
+    }
+}
+
+/// [`ArrayDeserializer`] and [`ObjectDeserializer`] can operate on sub-containers of the JSON data in which case they
+/// borrow the underlying [`IterativeBaseDeserializer`], but for convenience, the root-level deserializers own their
+/// [`IterativeBaseDeserializer`]. This enables `Deserializer::from_str(...).into_array();` without needing a
+/// separate variable.
+enum IterativeDeserializerInner<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    Owned(IterativeBaseDeserializer<'de, R>),
+    Borrowed {
+        base: &'parent mut IterativeBaseDeserializer<'de, R>,
+        // The nesting depth of this container. It functions like an ID in order to check whether we are still inside the
+        // container. This is necessary because there are two ways of leaving a container: Either by calling `next` past
+        // the end (and getting None), or by dropping this struct (for example at the end of the scope). We must make
+        // sure we don't queue up a leave command after we already left due to iterating past the end of the container.
+        expected_depth: usize,
+    },
+}
+
+/// A streaming JSON array deserializer.
+///
+/// An array deserializer can be created from any JSON deserializer using the
+/// [`Deserializer::into_array`] method.
+///
+/// This can be used to deserialize a JSON array one element at a time without needing to
+/// keep the entire array in memory. See also [`ObjectDeserializer`] for the same functionality
+/// on JSON objects.
+///
+/// Use [`next`](ArrayDeserializer::next) to get the next element from the array. Nested sub-arrays and sub-objects
+/// can be iterated using [`sub_array`](ArrayDeserializer::sub_array) and [`sub_object`](ArrayDeserializer::sub_object).
+///
+/// ```
+/// use serde_json::{Deserializer, Value};
+///
+/// fn main() {
+///     let data = r#"[{"k": 3}, 1, "cool", "stuff", [0, 1, 2]]"#;
+///
+///     let mut iter = Deserializer::from_str(data).into_array();
+///
+///     while let Some(value) = iter.next::<Value>() {
+///         println!("{}", value.unwrap());
+///     }
+/// }
+/// ```
+pub struct ArrayDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    inner: IterativeDeserializerInner<'de, 'parent, R>,
+}
+
+impl<'de, 'parent, R> ArrayDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    /// Create a JSON array deserializer from a serde_json input source.
+    ///
+    /// Typically, it is more convenient to use one of these methods instead:
+    ///
+    ///   - `Deserializer::from_str(...).`[`into_array()`](Deserializer::into_array)
+    ///   - `Deserializer::from_bytes(...).`[`into_array()`](Deserializer::into_array)
+    ///   - `Deserializer::from_reader(...).`[`into_array()`](Deserializer::into_array)
+    pub fn new(read: R) -> Self {
+        Self {
+            inner: IterativeDeserializerInner::Owned(IterativeBaseDeserializer::new(
+                Deserializer::new(read),
+                ContainerKind::Array,
+            )),
+        }
+    }
+
+    /// Return the next element from the array. Returns `None` if there are no more elements.
+    pub fn next<T: de::Deserialize<'de>>(&mut self) -> Option<Result<T>> {
+        match &mut self.inner {
+            IterativeDeserializerInner::Owned(base) => base.next_arr_val(1),
+            IterativeDeserializerInner::Borrowed {
+                base,
+                expected_depth,
+            } => base.next_arr_val(*expected_depth),
+        }
+    }
+
+    /// Enter a nested array.
+    ///
+    /// Returns the an [`ArrayDeserializer`] for the nested array.
+    ///
+    /// Note: This does not verify whether the value is actually an array until you call
+    /// [`next`](ArrayDeserializer::next) on the returned [`ArrayDeserializer`].
+    ///
+    /// The [`ArrayDeserializer`] is mutably borrowed and thus cannot be used until the returned
+    /// [`ArrayDeserializer`] is dropped.
+    ///
+    /// See also [`ArrayDeserializer::sub_object`].
+    /// ```
+    /// use serde_json::Deserializer;
+    ///
+    /// fn main() {
+    ///     let data = r#"[[1, 2, 3], 4]"#;
+    ///
+    ///     let mut iter = Deserializer::from_str(data).into_array();
+    ///     
+    ///     {
+    ///         let mut sub = iter.sub_array();
+    ///
+    ///         while let Some(v) = sub.next::<u32>() {
+    ///             let value = v.unwrap();
+    ///             println!("{}", value);
+    ///         }
+    ///         // `sub` is dropped here
+    ///     }
+    ///
+    ///     // can use iter again
+    ///     let value = iter.next::<u32>().unwrap().unwrap();
+    ///     // ...
+    /// }
+    /// ```
+    pub fn sub_array<'new_parent>(&'new_parent mut self) -> ArrayDeserializer<'de, 'new_parent, R>
+    where
+        'de: 'new_parent,
+    {
+        match &mut self.inner {
+            IterativeDeserializerInner::Owned(base) => base.sub_array(true),
+            IterativeDeserializerInner::Borrowed { base, .. } => base.sub_array(true),
+        }
+    }
+
+    /// Enter a nested object.
+    ///
+    /// Returns the key and an [`ObjectDeserializer`] that must be used to iterate over the nested object.
+    ///
+    /// Note: This does not verify whether the value is actually an object until you call
+    /// [`next`](ObjectDeserializer::next) on the returned [`ObjectDeserializer`].
+    ///
+    /// The [`ArrayDeserializer`] is mutably borrowed and thus cannot be used until the returned
+    /// [`ObjectDeserializer`] is dropped.
+    ///
+    /// See also [`ArrayDeserializer::sub_array`].
+    /// ```
+    /// use serde_json::Deserializer;
+    ///
+    /// fn main() {
+    ///     let data = r#"[{"k1": 1, "k2": 2}, 3]"#;
+    ///
+    ///     let mut iter = Deserializer::from_str(data).into_array();
+    ///     
+    ///     {
+    ///         let mut sub = iter.sub_object();
+    ///
+    ///         while let Some(v) = sub.next::<u32>() {
+    ///             let (key, value) = v.unwrap();
+    ///             println!("{}: {}", key, value);
+    ///         }
+    ///         // `sub` is dropped here
+    ///     }
+    ///
+    ///     // can use iter again
+    ///     let value = iter.next::<u32>().unwrap().unwrap();
+    ///     // ...
+    /// }
+    /// ```
+    pub fn sub_object<'new_parent>(&'new_parent mut self) -> ObjectDeserializer<'de, 'new_parent, R>
+    where
+        'de: 'new_parent,
+    {
+        match &mut self.inner {
+            IterativeDeserializerInner::Owned(base) => base.sub_object(true),
+            IterativeDeserializerInner::Borrowed { base, .. } => base.sub_object(true),
+        }
+    }
+}
+
+impl<'de, 'parent, R> From<Deserializer<R>> for ArrayDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    fn from(de: Deserializer<R>) -> Self {
+        Self {
+            inner: IterativeDeserializerInner::Owned(IterativeBaseDeserializer::new(
+                de,
+                ContainerKind::Array,
+            )),
+        }
+    }
+}
+
+impl<'de, 'parent, R> Drop for ArrayDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    fn drop(&mut self) {
+        if let IterativeDeserializerInner::Borrowed {
+            base,
+            expected_depth,
+        } = &mut self.inner
+        {
+            base.queue_leave(*expected_depth, ContainerKind::Array);
+        }
+    }
+}
+
+/// A streaming JSON object deserializer.
+///
+/// An object deserializer can be created from any JSON deserializer using the
+/// [`Deserializer::into_object`] method.
+///
+/// This deserializer is similar to [`ArrayDeserializer`], but for JSON objects. See its
+/// documentation for more details.
+///
+/// ```
+/// use serde_json::{Deserializer, Value};
+///
+/// fn main() {
+///     let data = r#"{"first-key":"some-string", "second-key": [1, 2, 3]}"#;
+///
+///     let mut iter = Deserializer::from_str(data).into_object();
+///
+///     while let Some(v) = iter.next::<Value>() {
+///         let (key, value) = v.unwrap();
+///         println!("{}: {}", key, value);
+///     }
+/// }
+/// ```
+pub struct ObjectDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    inner: IterativeDeserializerInner<'de, 'parent, R>,
+}
+
+impl<'de, 'parent, R> ObjectDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    /// Create a JSON object deserializer from a `serde_json` input source.
+    ///
+    /// Typically, it is more convenient to use one of these methods instead:
+    ///
+    ///   - `Deserializer::from_str(...).`[`into_object()`](Deserializer::into_object)
+    ///   - `Deserializer::from_bytes(...).`[`into_object()`](Deserializer::into_object)
+    ///   - `Deserializer::from_reader(...).`[`into_object()`](Deserializer::into_object)
+    pub fn new(read: R) -> Self {
+        Self {
+            inner: IterativeDeserializerInner::Owned(IterativeBaseDeserializer::new(
+                Deserializer::new(read),
+                ContainerKind::Object,
+            )),
+        }
+    }
+
+    /// Return the next record (key-value pair) from the object. Returns `None` if there are no more records.
+    pub fn next<T: de::Deserialize<'de>>(&mut self) -> Option<Result<(String, T)>> {
+        match &mut self.inner {
+            IterativeDeserializerInner::Owned(base) => base.next_obj_val(1),
+            IterativeDeserializerInner::Borrowed {
+                base,
+                expected_depth,
+            } => base.next_obj_val(*expected_depth),
+        }
+    }
+
+    /// Enter a nested array.
+    ///
+    /// Returns the key and an [`ArrayDeserializer`] for the nested array.
+    ///
+    /// Note: This does not verify whether the value is actually an array until you call
+    /// [`next`](ArrayDeserializer::next) on the returned [`ArrayDeserializer`].
+    ///
+    /// The [`ObjectDeserializer`] is mutably borrowed and thus cannot be used until the returned
+    /// [`ArrayDeserializer`] is dropped.
+    ///
+    /// See also [`ObjectDeserializer::sub_object`].
+    /// ```
+    /// use serde_json::Deserializer;
+    ///
+    /// fn main() {
+    ///     let data = r#"{"some-array": [1, 2, 3], "more": 1}"#;
+    ///
+    ///     let mut iter = Deserializer::from_str(data).into_object();
+    ///     
+    ///     {
+    ///         let (key, mut sub) = iter.sub_array().unwrap().unwrap();
+    ///         println!("Entering {}", key);
+    ///
+    ///         while let Some(v) = sub.next::<u32>() {
+    ///             let value = v.unwrap();
+    ///             println!("{}", value);
+    ///         }
+    ///         // `sub` is dropped here
+    ///     }
+    ///
+    ///     // can use iter again
+    ///     let (key, value) = iter.next::<u32>().unwrap().unwrap();
+    ///     // ...
+    /// }
+    /// ```
+    pub fn sub_array<'new_parent>(
+        &'new_parent mut self,
+    ) -> Option<Result<(String, ArrayDeserializer<'de, 'new_parent, R>)>>
+    where
+        'de: 'new_parent,
+    {
+        match &mut self.inner {
+            IterativeDeserializerInner::Owned(base) => base.object_sub_array(1),
+            IterativeDeserializerInner::Borrowed {
+                base,
+                expected_depth,
+            } => base.object_sub_array(*expected_depth),
+        }
+    }
+
+    /// Enter a nested object.
+    ///
+    /// Returns the key and an [`ObjectDeserializer`] that must be used to iterate over the nested object.
+    ///
+    /// Note: This does not verify whether the value is actually an object until you call
+    /// [`next`](ObjectDeserializer::next) on the returned [`ObjectDeserializer`].
+    ///
+    /// The [`ObjectDeserializer`] is mutably borrowed and thus cannot be used until the returned
+    /// [`ObjectDeserializer`] is dropped.
+    ///
+    /// See also [`ObjectDeserializer::sub_array`].
+    /// ```
+    /// use serde_json::Deserializer;
+    ///
+    /// fn main() {
+    ///     let data = r#"{"some-obj": {"k1": 1, "k2": 2}, "some-num": 3}"#;
+    ///
+    ///     let mut iter = Deserializer::from_str(data).into_object();
+    ///     
+    ///     {
+    ///         let (key, mut sub) = iter.sub_object().unwrap().unwrap();
+    ///         println!("Entering {}", key);
+    ///
+    ///         while let Some(v) = sub.next::<u32>() {
+    ///             let (key, value) = v.unwrap();
+    ///             println!("{}: {}", key, value);
+    ///         }
+    ///         // `sub` is dropped here
+    ///     }
+    ///
+    ///     // can use iter again
+    ///     let (key, value) = iter.next::<u32>().unwrap().unwrap();
+    ///     // ...
+    /// }
+    /// ```
+    pub fn sub_object<'new_parent>(
+        &'new_parent mut self,
+    ) -> Option<Result<(String, ObjectDeserializer<'de, 'new_parent, R>)>>
+    where
+        'de: 'new_parent,
+    {
+        match &mut self.inner {
+            IterativeDeserializerInner::Owned(base) => base.object_sub_object(1),
+            IterativeDeserializerInner::Borrowed {
+                base,
+                expected_depth,
+            } => base.object_sub_object(*expected_depth),
+        }
+    }
+}
+
+impl<'de, 'parent, R> From<Deserializer<R>> for ObjectDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    fn from(de: Deserializer<R>) -> Self {
+        Self {
+            inner: IterativeDeserializerInner::Owned(IterativeBaseDeserializer::new(
+                de,
+                ContainerKind::Object,
+            )),
+        }
+    }
+}
+
+impl<'de, 'parent, R> Drop for ObjectDeserializer<'de, 'parent, R>
+where
+    R: read::Read<'de>,
+{
+    fn drop(&mut self) {
+        if let IterativeDeserializerInner::Borrowed {
+            base,
+            expected_depth,
+        } = &mut self.inner
+        {
+            base.queue_leave(*expected_depth, ContainerKind::Object);
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
