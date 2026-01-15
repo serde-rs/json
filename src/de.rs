@@ -2359,7 +2359,6 @@ pub struct StreamDeserializer<'de, R, T> {
 impl<'de, R, T> StreamDeserializer<'de, R, T>
 where
     R: read::Read<'de>,
-    T: de::Deserialize<'de>,
 {
     /// Create a JSON stream deserializer from one of the possible serde_json
     /// input sources.
@@ -2429,16 +2428,48 @@ where
             }
         }
     }
-}
 
-impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
-where
-    R: Read<'de>,
-    T: de::Deserialize<'de>,
-{
-    type Item = Result<T>;
-
-    fn next(&mut self) -> Option<Result<T>> {
+    /// Deserialize the next JSON value using the provided seed.
+    ///
+    /// ```
+    /// use serde_json::{Deserializer, Value};
+    ///
+    /// /// A simple `DeserializeSeed` impl that deserializes into a vec,
+    /// /// rather than returning the deserialized value.
+    /// struct Collect<'a, T: 'a>(&'a mut Vec<T>);
+    ///
+    /// impl<'de, 'a, T> serde::de::DeserializeSeed<'de> for Collect<'a, T>
+    /// where
+    ///     T: serde::de::Deserialize<'de>,
+    /// {
+    ///     type Value = ();
+    ///
+    ///     fn deserialize<D>(self, deserializer: D) -> Result<(), D::Error>
+    ///     where
+    ///         D: serde::de::Deserializer<'de>,
+    ///     {
+    ///         self.0.push(T::deserialize(deserializer)?);
+    ///         Ok(())
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let data = "{\"k\": 3}1\"cool\"\"stuff\" 3{}  [0, 1, 2]";
+    ///
+    ///     let mut stream = Deserializer::from_str(data).into_iter();
+    ///
+    ///     let mut values: Vec<Value> = vec![];
+    ///     while let Some(res) = stream.next_seed(Collect(&mut values)) {
+    ///         res.unwrap();
+    ///     }
+    ///
+    ///     println!("{values:?}")
+    /// }
+    /// ```
+    pub fn next_seed<S>(&mut self, seed: S) -> Option<Result<T>>
+    where
+        S: de::DeserializeSeed<'de, Value = T>,
+    {
         if R::should_early_return_if_failed && self.failed {
             return None;
         }
@@ -2460,7 +2491,7 @@ where
                     _ => false,
                 };
                 self.offset = self.de.read.byte_offset();
-                let result = de::Deserialize::deserialize(&mut self.de);
+                let result = seed.deserialize(&mut self.de);
 
                 Some(match result {
                     Ok(value) => {
@@ -2482,6 +2513,18 @@ where
                 Some(Err(e))
             }
         }
+    }
+}
+
+impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
+where
+    R: Read<'de>,
+    T: de::Deserialize<'de>,
+{
+    type Item = Result<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_seed(self.output)
     }
 }
 
