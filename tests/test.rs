@@ -1162,6 +1162,10 @@ fn test_parse_list() {
 
     test_parse_ok(vec![("[[3], [1, 2]]", vec![vec![3u64], vec![1, 2]])]);
 
+    test_parse_unusual_ok(vec![("[]", ())]);
+
+    test_parse_unusual_ok(vec![("[ ]", ())]);
+
     test_parse_ok(vec![("[1]", (1u64,))]);
 
     test_parse_ok(vec![("[1, 2]", (1u64, 2u64))]);
