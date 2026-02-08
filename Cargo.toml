@@ -9,7 +9,7 @@ edition = "2021"
 keywords = ["json", "serde", "serialization"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/serde-rs/json"
-rust-version = "1.70"
+rust-version = "1.71"
 
 [dependencies]
 indexmap = { version = "2.2.3", optional = true }
