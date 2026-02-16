@@ -2565,3 +2565,23 @@ fn test_control_character_search() {
         "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 2",
     )]);
 }
+
+#[cfg(feature = "std")]
+#[test]
+fn test_serialize_control_character_to_string() {
+    // Test that control characters are the same for
+    // the io::Write and fmt::Write implementations
+    use serde_json::ser::{FmtWrite, Serializer};
+
+    let test_string: &str = "\x01\r\n\t";
+
+    let mut string_writer = String::new();
+    let mut serializer = Serializer::new(FmtWrite(&mut string_writer));
+    let _ = serializer.serialize_str(test_string);
+
+    let mut io_writer = Vec::<u8>::new();
+    let mut serializer = Serializer::new(&mut io_writer);
+    let _ = serializer.serialize_str(test_string);
+
+    assert_eq!(string_writer.as_bytes(), &*io_writer);
+}
