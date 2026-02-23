@@ -36,6 +36,12 @@ pub struct Deserializer<R> {
     single_precision: bool,
     #[cfg(feature = "unbounded_depth")]
     disable_recursion_limit: bool,
+    #[cfg(feature = "partial_parsing")]
+    allow_partial_list: bool,
+    #[cfg(feature = "partial_parsing")]
+    allow_partial_object: bool,
+    #[cfg(feature = "partial_parsing")]
+    allow_partial_string: bool,
 }
 
 impl<'de, R> Deserializer<R>
@@ -65,6 +71,12 @@ where
             single_precision: false,
             #[cfg(feature = "unbounded_depth")]
             disable_recursion_limit: false,
+            #[cfg(feature = "partial_parsing")]
+            allow_partial_list: false,
+            #[cfg(feature = "partial_parsing")]
+            allow_partial_object: false,
+            #[cfg(feature = "partial_parsing")]
+            allow_partial_string: false,
         }
     }
 }
@@ -216,6 +228,77 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.disable_recursion_limit = true;
     }
 
+    /// Allows lists to be partial without resulting in an EOF error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use serde::Deserialize;
+    /// use serde_json::{Value, json};
+    ///
+    /// fn main() {
+    ///     let json = r#"["test", "list""#;
+    ///
+    ///     let mut deserializer = serde_json::Deserializer::from_str(&json);
+    ///     deserializer.allow_partial_list();
+    ///     let value = Value::deserialize(&mut deserializer).unwrap();
+    ///     assert_eq!(value, json!(["test", "list"]));
+    /// }
+    /// ```
+    #[cfg(feature = "partial_parsing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "partial_parsing")))]
+    pub fn allow_partial_list(&mut self) {
+        self.allow_partial_list = true;
+    }
+
+    /// Allows objects to be partial without resulting in an EOF error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use serde::Deserialize;
+    /// use serde_json::{Value, json};
+    ///
+    /// fn main() {
+    ///     let json = r#"{"test": "value""#;
+    ///
+    ///     let mut deserializer = serde_json::Deserializer::from_str(&json);
+    ///     deserializer.allow_partial_object();
+    ///     let value = Value::deserialize(&mut deserializer).unwrap();
+    ///     assert_eq!(value, json!({"test": "value"}));
+    /// }
+    /// ```
+    #[cfg(feature = "partial_parsing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "partial_parsing")))]
+    pub fn allow_partial_object(&mut self) {
+        self.allow_partial_object = true;
+    }
+
+    /// Allows strings to be partial without resulting in an EOF error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use serde::Deserialize;
+    /// use serde_json::{Value, json};
+    ///
+    /// fn main() {
+    ///     // Note that the quote is part of Rust's syntax not of our JSON data.
+    ///     let json = r#"{"test": "value"#;
+    ///
+    ///     let mut deserializer = serde_json::Deserializer::from_str(&json);
+    ///     deserializer.allow_partial_object();
+    ///     deserializer.allow_partial_string();
+    ///     let value = Value::deserialize(&mut deserializer).unwrap();
+    ///     assert_eq!(value, json!({"test": "value"}));
+    /// }
+    /// ```
+    #[cfg(feature = "partial_parsing")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "partial_parsing")))]
+    pub fn allow_partial_string(&mut self) {
+        self.allow_partial_string = true;
+    }
+
     pub(crate) fn peek(&mut self) -> Result<Option<u8>> {
         self.read.peek()
     }
@@ -303,7 +386,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
-                match self.read.parse_str(&mut self.scratch) {
+                match self.read.parse_str(
+                    &mut self.scratch,
+                    #[cfg(feature = "partial_parsing")]
+                    self.allow_partial_string,
+                ) {
                     Ok(s) => de::Error::invalid_type(Unexpected::Str(&s), exp),
                     Err(err) => return err,
                 }
@@ -1083,6 +1170,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
             }
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+            #[cfg(feature = "partial_parsing")]
+            None if self.allow_partial_list => Ok(()),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingList)),
         }
     }
@@ -1095,6 +1184,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             Some(b',') => Err(self.peek_error(ErrorCode::TrailingComma)),
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+            #[cfg(feature = "partial_parsing")]
+            None if self.allow_partial_object => Ok(()),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
         }
     }
@@ -1138,7 +1229,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 }
                 b'"' => {
                     self.eat_char();
-                    tri!(self.read.ignore_str());
+                    tri!(self.read.ignore_str(
+                        #[cfg(feature = "partial_parsing")]
+                        self.allow_partial_string
+                    ));
                     None
                 }
                 frame @ (b'[' | b'{') => {
@@ -1202,7 +1296,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     Some(_) => return Err(self.peek_error(ErrorCode::KeyMustBeAString)),
                     None => return Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
                 }
-                tri!(self.read.ignore_str());
+                tri!(self.read.ignore_str(
+                    #[cfg(feature = "partial_parsing")]
+                    self.allow_partial_string
+                ));
                 match tri!(self.parse_whitespace()) {
                     Some(b':') => self.eat_char(),
                     Some(_) => return Err(self.peek_error(ErrorCode::ExpectedColon)),
@@ -1425,7 +1522,11 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
-                match tri!(self.read.parse_str(&mut self.scratch)) {
+                match tri!(self.read.parse_str(
+                    &mut self.scratch,
+                    #[cfg(feature = "partial_parsing")]
+                    self.allow_partial_string
+                )) {
                     Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
                     Reference::Copied(s) => visitor.visit_str(s),
                 }
@@ -1536,7 +1637,11 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
-                match tri!(self.read.parse_str(&mut self.scratch)) {
+                match tri!(self.read.parse_str(
+                    &mut self.scratch,
+                    #[cfg(feature = "partial_parsing")]
+                    self.allow_partial_string
+                )) {
                     Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
                     Reference::Copied(s) => visitor.visit_str(s),
                 }
@@ -1645,7 +1750,11 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
-                match tri!(self.read.parse_str_raw(&mut self.scratch)) {
+                match tri!(self.read.parse_str_raw(
+                    &mut self.scratch,
+                    #[cfg(feature = "partial_parsing")]
+                    self.allow_partial_string
+                )) {
                     Reference::Borrowed(b) => visitor.visit_borrowed_bytes(b),
                     Reference::Copied(b) => visitor.visit_bytes(b),
                 }
@@ -1939,6 +2048,8 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
         ) -> Result<bool> {
             let peek = match tri!(seq.de.parse_whitespace()) {
                 Some(b) => b,
+                #[cfg(feature = "partial_parsing")]
+                None if seq.de.allow_partial_list => return Ok(false),
                 None => {
                     return Err(seq.de.peek_error(ErrorCode::EofWhileParsingList));
                 }
@@ -1990,6 +2101,8 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
         fn has_next_key<'de, 'a, R: Read<'de> + 'a>(map: &mut MapAccess<'a, R>) -> Result<bool> {
             let peek = match tri!(map.de.parse_whitespace()) {
                 Some(b) => b,
+                #[cfg(feature = "partial_parsing")]
+                None if map.de.allow_partial_object => return Ok(false),
                 None => {
                     return Err(map.de.peek_error(ErrorCode::EofWhileParsingObject));
                 }
@@ -2208,7 +2321,11 @@ where
     {
         self.de.eat_char();
         self.de.scratch.clear();
-        match tri!(self.de.read.parse_str(&mut self.de.scratch)) {
+        match tri!(self.de.read.parse_str(
+            &mut self.de.scratch,
+            #[cfg(feature = "partial_parsing")]
+            self.de.allow_partial_string
+        )) {
             Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
             Reference::Copied(s) => visitor.visit_str(s),
         }
@@ -2254,7 +2371,11 @@ where
             }
             _ => {
                 self.de.scratch.clear();
-                let s = tri!(self.de.read.parse_str(&mut self.de.scratch));
+                let s = tri!(self.de.read.parse_str(
+                    &mut self.de.scratch,
+                    #[cfg(feature = "partial_parsing")]
+                    self.de.allow_partial_string
+                ));
                 Err(de::Error::invalid_type(Unexpected::Str(&s), &visitor))
             }
         };

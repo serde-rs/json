@@ -64,7 +64,11 @@ pub trait Read<'de>: private::Sealed {
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
     #[doc(hidden)]
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>>;
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
+    ) -> Result<Reference<'de, 's, str>>;
 
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark using the given scratch space if
@@ -76,12 +80,14 @@ pub trait Read<'de>: private::Sealed {
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
     ) -> Result<Reference<'de, 's, [u8]>>;
 
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark but discards the data.
     #[doc(hidden)]
-    fn ignore_str(&mut self) -> Result<()>;
+    fn ignore_str(&mut self, #[cfg(feature = "partial_parsing")] allow_partial: bool)
+        -> Result<()>;
 
     /// Assumes the previous byte was a hex escape sequence ('\u') in a string.
     /// Parses next hexadecimal sequence.
@@ -220,13 +226,20 @@ where
         scratch: &'s mut Vec<u8>,
         validate: bool,
         result: F,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
     ) -> Result<T>
     where
         T: 's,
         F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
     {
         loop {
-            let ch = tri!(next_or_eof(self));
+            let ch = tri!(next_or_eof(
+                self,
+                #[cfg(feature = "partial_parsing")]
+                allow_partial,
+                #[cfg(not(feature = "partial_parsing"))]
+                false
+            ));
             if !is_escape(ch, true) {
                 scratch.push(ch);
                 continue;
@@ -332,22 +345,49 @@ where
         }
     }
 
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
-        self.parse_str_bytes(scratch, true, as_str)
-            .map(Reference::Copied)
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
+    ) -> Result<Reference<'de, 's, str>> {
+        self.parse_str_bytes(
+            scratch,
+            true,
+            as_str,
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
+        .map(Reference::Copied)
     }
 
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
     ) -> Result<Reference<'de, 's, [u8]>> {
-        self.parse_str_bytes(scratch, false, |_, bytes| Ok(bytes))
-            .map(Reference::Copied)
+        self.parse_str_bytes(
+            scratch,
+            false,
+            |_, bytes| Ok(bytes),
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
+        .map(Reference::Copied)
     }
 
-    fn ignore_str(&mut self) -> Result<()> {
+    fn ignore_str(
+        &mut self,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
+    ) -> Result<()> {
         loop {
-            let ch = tri!(next_or_eof(self));
+            let ch = tri!(next_or_eof(
+                self,
+                #[cfg(feature = "partial_parsing")]
+                allow_partial,
+                #[cfg(not(feature = "partial_parsing"))]
+                false,
+            ));
+
             if !is_escape(ch, true) {
                 continue;
             }
@@ -366,10 +406,10 @@ where
     }
 
     fn decode_hex_escape(&mut self) -> Result<u16> {
-        let a = tri!(next_or_eof(self));
-        let b = tri!(next_or_eof(self));
-        let c = tri!(next_or_eof(self));
-        let d = tri!(next_or_eof(self));
+        let a = tri!(next_or_eof(self, false));
+        let b = tri!(next_or_eof(self, false));
+        let c = tri!(next_or_eof(self, false));
+        let d = tri!(next_or_eof(self, false));
         match decode_four_hex_digits(a, b, c, d) {
             Some(val) => Ok(val),
             None => error(self, ErrorCode::InvalidEscape),
@@ -496,6 +536,7 @@ impl<'a> SliceRead<'a> {
         scratch: &'s mut Vec<u8>,
         validate: bool,
         result: F,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
     ) -> Result<Reference<'a, 's, T>>
     where
         T: ?Sized + 's,
@@ -506,10 +547,13 @@ impl<'a> SliceRead<'a> {
 
         loop {
             self.skip_to_escape(validate);
-            if self.index == self.slice.len() {
-                return error(self, ErrorCode::EofWhileParsingString);
-            }
-            match self.slice[self.index] {
+            let ch = match self.slice.get(self.index) {
+                Some(&ch) => ch,
+                #[cfg(feature = "partial_parsing")]
+                None if allow_partial => b'"',
+                None => return error(self, ErrorCode::EofWhileParsingString),
+            };
+            match ch {
                 b'"' => {
                     if scratch.is_empty() {
                         // Fast path: return a slice of the raw JSON without any
@@ -584,24 +628,47 @@ impl<'a> Read<'a> for SliceRead<'a> {
         self.index
     }
 
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
-        self.parse_str_bytes(scratch, true, as_str)
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
+    ) -> Result<Reference<'a, 's, str>> {
+        self.parse_str_bytes(
+            scratch,
+            true,
+            as_str,
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
     }
 
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
     ) -> Result<Reference<'a, 's, [u8]>> {
-        self.parse_str_bytes(scratch, false, |_, bytes| Ok(bytes))
+        self.parse_str_bytes(
+            scratch,
+            false,
+            |_, bytes| Ok(bytes),
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
     }
 
-    fn ignore_str(&mut self) -> Result<()> {
+    fn ignore_str(
+        &mut self,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
+    ) -> Result<()> {
         loop {
             self.skip_to_escape(true);
-            if self.index == self.slice.len() {
-                return error(self, ErrorCode::EofWhileParsingString);
-            }
-            match self.slice[self.index] {
+            let ch = match self.slice.get(self.index) {
+                Some(ch) => ch,
+                #[cfg(feature = "partial_parsing")]
+                None if allow_partial => return Ok(()),
+                None => return error(self, ErrorCode::EofWhileParsingString),
+            };
+            match ch {
                 b'"' => {
                     self.index += 1;
                     return Ok(());
@@ -706,24 +773,45 @@ impl<'a> Read<'a> for StrRead<'a> {
         self.delegate.byte_offset()
     }
 
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
-        self.delegate.parse_str_bytes(scratch, true, |_, bytes| {
-            // The deserialization input came in as &str with a UTF-8 guarantee,
-            // and the \u-escapes are checked along the way, so don't need to
-            // check here.
-            Ok(unsafe { str::from_utf8_unchecked(bytes) })
-        })
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
+    ) -> Result<Reference<'a, 's, str>> {
+        self.delegate.parse_str_bytes(
+            scratch,
+            true,
+            |_, bytes| {
+                // The deserialization input came in as &str with a UTF-8 guarantee,
+                // and the \u-escapes are checked along the way, so don't need to
+                // check here.
+                Ok(unsafe { str::from_utf8_unchecked(bytes) })
+            },
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
     }
 
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
     ) -> Result<Reference<'a, 's, [u8]>> {
-        self.delegate.parse_str_raw(scratch)
+        self.delegate.parse_str_raw(
+            scratch,
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
     }
 
-    fn ignore_str(&mut self) -> Result<()> {
-        self.delegate.ignore_str()
+    fn ignore_str(
+        &mut self,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
+    ) -> Result<()> {
+        self.delegate.ignore_str(
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
     }
 
     fn decode_hex_escape(&mut self) -> Result<u16> {
@@ -787,19 +875,41 @@ where
         R::byte_offset(self)
     }
 
-    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
-        R::parse_str(self, scratch)
+    fn parse_str<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
+    ) -> Result<Reference<'de, 's, str>> {
+        R::parse_str(
+            self,
+            scratch,
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
     }
 
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
     ) -> Result<Reference<'de, 's, [u8]>> {
-        R::parse_str_raw(self, scratch)
+        R::parse_str_raw(
+            self,
+            scratch,
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
     }
 
-    fn ignore_str(&mut self) -> Result<()> {
-        R::ignore_str(self)
+    fn ignore_str(
+        &mut self,
+        #[cfg(feature = "partial_parsing")] allow_partial: bool,
+    ) -> Result<()> {
+        R::ignore_str(
+            self,
+            #[cfg(feature = "partial_parsing")]
+            allow_partial,
+        )
     }
 
     fn decode_hex_escape(&mut self) -> Result<u16> {
@@ -837,12 +947,18 @@ fn is_escape(ch: u8, including_control_characters: bool) -> bool {
     ch == b'"' || ch == b'\\' || (including_control_characters && ch < 0x20)
 }
 
-fn next_or_eof<'de, R>(read: &mut R) -> Result<u8>
+fn next_or_eof<'de, R>(
+    read: &mut R,
+    #[cfg(feature = "partial_parsing")] quote_on_eof: bool,
+    #[cfg(not(feature = "partial_parsing"))] _quote_on_eof: bool,
+) -> Result<u8>
 where
     R: ?Sized + Read<'de>,
 {
     match tri!(read.next()) {
         Some(b) => Ok(b),
+        #[cfg(feature = "partial_parsing")]
+        None if quote_on_eof => Ok(b'"'),
         None => error(read, ErrorCode::EofWhileParsingString),
     }
 }
@@ -876,7 +992,7 @@ fn parse_escape<'de, R: Read<'de>>(
     validate: bool,
     scratch: &mut Vec<u8>,
 ) -> Result<()> {
-    let ch = tri!(next_or_eof(read));
+    let ch = tri!(next_or_eof(read, false));
 
     match ch {
         b'"' => scratch.push(b'"'),
@@ -1026,7 +1142,7 @@ fn ignore_escape<'de, R>(read: &mut R) -> Result<()>
 where
     R: ?Sized + Read<'de>,
 {
-    let ch = tri!(next_or_eof(read));
+    let ch = tri!(next_or_eof(read, false));
 
     match ch {
         b'"' | b'\\' | b'/' | b'b' | b'f' | b'n' | b'r' | b't' => {}
