@@ -322,6 +322,19 @@ Benchmarks live in the [serde-rs/json-benchmark] repo.
 
 [serde-rs/json-benchmark]: https://github.com/serde-rs/json-benchmark
 
+## Available Features
+
+When adding crate you may consider which features you like to enable:
+
+* **alloc**: This feature enables the use of the `alloc` crate, which allows for dynamic memory allocation.
+* **arbitrary_precision**: This feature allows for arbitrary-precision numbers, enabling the serialization and deserialization of numbers beyond the limits of standard floating-point types.
+* **float_roundtrip**: This feature ensures the precise round-trip conversion of floating-point numbers during serialization and deserialization.
+* **indexmap**: This feature uses the `indexmap` crate to maintain the order of map entries as they are inserted.
+* **preserve_order**: When enabled, this feature preserves the insertion order of map entries during serialization, using `indexmap`.
+* **raw_value**: This feature allows handling raw JSON values as strings without parsing them into Rust data structures, useful for deferred parsing or validation.
+* **std**: This feature enables the use of the standard library, allowing for more comprehensive functionality and support.
+* **unbounded_depth**: When this feature is disabled, it prevents stack overflows by limiting the depth of nested JSON structures during deserialization.
+
 ## Getting help
 
 Serde is one of the most widely used Rust libraries, so any place that
