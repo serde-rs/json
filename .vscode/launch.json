@@ -22,7 +22,7 @@
             "name": "Attach by Process ID",
             "processId": "${command:PickProcess}",
             "request": "attach",
-            "skipFiles": [
+            "skipFiles": [por 
                 "<node_internals>/**"
             ],
             "type": "node"
