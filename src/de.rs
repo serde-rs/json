@@ -250,19 +250,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Error::syntax(reason, position.line, position.column)
     }
 
-    /// Returns the first non-whitespace byte without consuming it, or `None` if
-    /// EOF is encountered.
     fn parse_whitespace(&mut self) -> Result<Option<u8>> {
-        loop {
-            match tri!(self.peek()) {
-                Some(b' ' | b'\n' | b'\t' | b'\r') => {
-                    self.eat_char();
-                }
-                other => {
-                    return Ok(other);
-                }
-            }
-        }
+        self.read.parse_whitespace()
     }
 
     #[cold]

@@ -60,6 +60,11 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn byte_offset(&self) -> usize;
 
+    /// Returns the first non-whitespace byte without consuming it, or `None` if
+    /// EOF is encountered.
+    #[doc(hidden)]
+    fn parse_whitespace(&mut self) -> Result<Option<u8>>;
+
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
@@ -332,6 +337,15 @@ where
         }
     }
 
+    fn parse_whitespace(&mut self) -> Result<Option<u8>> {
+        loop {
+            match tri!(self.peek()) {
+                Some(b' ' | b'\n' | b'\t' | b'\r') => self.discard(),
+                other => return Ok(other),
+            }
+        }
+    }
+
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
         self.parse_str_bytes(scratch, true, as_str)
             .map(Reference::Copied)
@@ -584,6 +598,67 @@ impl<'a> Read<'a> for SliceRead<'a> {
         self.index
     }
 
+    fn parse_whitespace(&mut self) -> Result<Option<u8>> {
+        #[cfg(fast_arithmetic = "64")]
+        type Chunk = u64;
+        #[cfg(fast_arithmetic = "32")]
+        type Chunk = u32;
+
+        const SIZE: usize = mem::size_of::<Chunk>();
+        const ONES: Chunk = Chunk::MAX / 0xFF;
+        const HIGH: Chunk = ONES * 0x80;
+        const LOW: Chunk = ONES * 0x7F;
+
+        let mut fast = false;
+        let res = loop {
+            if self.index >= self.slice.len() {
+                break None;
+            }
+
+            let tmp = self.slice[self.index];
+            if !matches!(tmp, b' ' | b'\t' | b'\n' | b'\r') {
+                break Some(tmp);
+            }
+
+            self.index += 1;
+            if fast && self.index + SIZE <= self.slice.len() {
+                let chunk = unsafe {
+                    self.slice
+                        .as_ptr()
+                        .add(self.index)
+                        .cast::<Chunk>()
+                        .read_unaligned()
+                        .to_le()
+                };
+
+                let a = chunk ^ (Chunk::from(b' ') * ONES);
+                let b = chunk ^ (Chunk::from(b'\n') * ONES);
+                let c = chunk ^ (Chunk::from(b'\t') * ONES);
+                let d = chunk ^ (Chunk::from(b'\r') * ONES);
+
+                let a = !(a & LOW).wrapping_add(LOW) & !(a & HIGH);
+                let b = !(b & LOW).wrapping_add(LOW) & !(b & HIGH);
+                let c = !(c & LOW).wrapping_add(LOW) & !(c & HIGH);
+                let d = !(d & LOW).wrapping_add(LOW) & !(d & HIGH);
+
+                let mask = !(a | b | c | d) & HIGH;
+
+                if mask != 0 {
+                    self.index += mask.trailing_zeros() as usize >> 3;
+                    // SAFETY: Using `get_unchecked` because the compiler is
+                    //         unable to know that the index is within bounds.
+                    break unsafe { Some(*self.slice.get_unchecked(self.index)) };
+                }
+
+                self.index += SIZE
+            }
+
+            fast = true
+        };
+
+        Ok(res)
+    }
+
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
         self.parse_str_bytes(scratch, true, as_str)
     }
@@ -706,6 +781,11 @@ impl<'a> Read<'a> for StrRead<'a> {
         self.delegate.byte_offset()
     }
 
+    #[inline]
+    fn parse_whitespace(&mut self) -> Result<Option<u8>> {
+        self.delegate.parse_whitespace()
+    }
+
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
         self.delegate.parse_str_bytes(scratch, true, |_, bytes| {
             // The deserialization input came in as &str with a UTF-8 guarantee,
@@ -785,6 +865,10 @@ where
 
     fn byte_offset(&self) -> usize {
         R::byte_offset(self)
+    }
+
+    fn parse_whitespace(&mut self) -> Result<Option<u8>> {
+        R::parse_whitespace(self)
     }
 
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
