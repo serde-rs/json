@@ -65,6 +65,11 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn parse_whitespace(&mut self) -> Result<Option<u8>>;
 
+    #[doc(hidden)]
+    fn parse_whitespace_slow(&mut self) -> Result<Option<u8>> {
+        self.parse_whitespace()
+    }
+
     /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
@@ -659,6 +664,23 @@ impl<'a> Read<'a> for SliceRead<'a> {
         Ok(res)
     }
 
+    fn parse_whitespace_slow(&mut self) -> Result<Option<u8>> {
+        let res = loop {
+            if self.index >= self.slice.len() {
+                break None;
+            }
+
+            let tmp = self.slice[self.index];
+            if !matches!(tmp, b' ' | b'\t' | b'\n' | b'\r') {
+                break Some(tmp);
+            }
+
+            self.index += 1;
+        };
+
+        Ok(res)
+    }
+
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
         self.parse_str_bytes(scratch, true, as_str)
     }
@@ -784,6 +806,11 @@ impl<'a> Read<'a> for StrRead<'a> {
     #[inline]
     fn parse_whitespace(&mut self) -> Result<Option<u8>> {
         self.delegate.parse_whitespace()
+    }
+
+    #[inline]
+    fn parse_whitespace_slow(&mut self) -> Result<Option<u8>> {
+        self.delegate.parse_whitespace_slow()
     }
 
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {

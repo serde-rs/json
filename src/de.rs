@@ -1059,25 +1059,37 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn end_seq(&mut self) -> Result<()> {
-        match tri!(self.parse_whitespace()) {
-            Some(b']') => {
-                self.eat_char();
-                Ok(())
-            }
-            Some(b',') => {
-                self.eat_char();
-                match self.parse_whitespace() {
-                    Ok(Some(b']')) => Err(self.peek_error(ErrorCode::TrailingComma)),
-                    _ => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+        let mut first = true;
+        loop {
+            let err = match tri!(self.read.parse_whitespace_slow()) {
+                Some(v) if first => {
+                    first = false;
+                    let one = v == b']';
+                    let two = v == b',';
+
+                    if one | two {
+                        self.eat_char();
+                    }
+
+                    match (one, two) {
+                        (true, _) => return Ok(()),
+                        (_, true) => continue,
+                        _ => ErrorCode::TrailingCharacters,
+                    }
                 }
-            }
-            Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
-            None => Err(self.peek_error(ErrorCode::EofWhileParsingList)),
+                Some(v) => match v {
+                    b']' => ErrorCode::TrailingComma,
+                    _ => ErrorCode::TrailingCharacters,
+                },
+                _ => ErrorCode::EofWhileParsingList,
+            };
+
+            return Err(self.peek_error(err));
         }
     }
 
     fn end_map(&mut self) -> Result<()> {
-        match tri!(self.parse_whitespace()) {
+        match tri!(self.read.parse_whitespace_slow()) {
             Some(b'}') => {
                 self.eat_char();
                 Ok(())
