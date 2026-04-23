@@ -216,6 +216,97 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.disable_recursion_limit = true;
     }
 
+    /// Set the maximum recursion depth for parsing nested JSON structures.
+    ///
+    /// The default recursion limit is 128. This method allows you to increase
+    /// or decrease that limit. Setting a higher limit allows parsing deeper
+    /// JSON structures but increases the risk of stack overflow. Setting a
+    /// lower limit can help prevent denial-of-service attacks from malicious
+    /// input.
+    ///
+    /// The recursion limit is checked before entering each nested array or
+    /// object. The maximum nesting depth that can be successfully parsed is
+    /// `limit - 1`. For example, with a limit of 128 (the default), you can
+    /// parse JSON nested up to 127 levels deep.
+    ///
+    /// # Panics
+    ///
+    /// Setting the limit to 0 will cause a panic when attempting to parse any
+    /// nested structure (arrays or objects). The minimum safe limit is 1,
+    /// which allows parsing of non-nested JSON values only.
+    ///
+    /// # Performance
+    ///
+    /// This method has zero runtime cost beyond setting a single u8 field.
+    /// The recursion checking itself is also zero-cost: it's a simple integer
+    /// decrement and comparison that happens inline during parsing.
+    ///
+    /// # Builder Pattern
+    ///
+    /// This method returns `&mut Self` to allow method chaining.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use serde::Deserialize;
+    /// use serde_json::Value;
+    ///
+    /// fn main() -> serde_json::Result<()> {
+    ///     // Parse deeply nested JSON (depth 200)
+    ///     let mut json = String::from("null");
+    ///     for _ in 0..200 {
+    ///         json = format!("[{}]", json);
+    ///     }
+    ///
+    ///     // Increase limit to 255 (max for u8)
+    ///     let mut deserializer = serde_json::Deserializer::from_str(&json);
+    ///     deserializer.set_recursion_limit(255);
+    ///     let value = Value::deserialize(&mut deserializer)?;
+    ///     deserializer.end()?;
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// Preventing deep nesting attacks:
+    ///
+    /// ```
+    /// use serde::Deserialize;
+    /// use serde_json::Value;
+    ///
+    /// fn parse_untrusted_json(json: &str) -> serde_json::Result<Value> {
+    ///     // Limit untrusted input to 32 levels of nesting
+    ///     let mut deserializer = serde_json::Deserializer::from_str(json);
+    ///     deserializer.set_recursion_limit(32);
+    ///     let value = Value::deserialize(&mut deserializer)?;
+    ///     deserializer.end()?;
+    ///     Ok(value)
+    /// }
+    /// # fn main() {}
+    /// ```
+    ///
+    /// Builder pattern chaining:
+    ///
+    /// ```
+    /// use serde::Deserialize;
+    /// use serde_json::Value;
+    ///
+    /// # fn main() -> serde_json::Result<()> {
+    /// let json = r#"{"a":{"b":{"c":null}}}"#;
+    /// let mut deserializer = serde_json::Deserializer::from_str(json);
+    ///
+    /// // Method chaining
+    /// deserializer.set_recursion_limit(100);
+    ///
+    /// let value = Value::deserialize(&mut deserializer)?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn set_recursion_limit(&mut self, limit: u8) -> &mut Self {
+        self.remaining_depth = limit;
+        self
+    }
+
     pub(crate) fn peek(&mut self) -> Result<Option<u8>> {
         self.read.peek()
     }
