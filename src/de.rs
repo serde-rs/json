@@ -2052,9 +2052,15 @@ impl<'de, 'a, R: Read<'de> + 'a> de::EnumAccess<'de> for VariantAccess<'a, R> {
     where
         V: de::DeserializeSeed<'de>,
     {
-        let val = tri!(seed.deserialize(&mut *self.de));
-        tri!(self.de.parse_object_colon());
-        Ok((val, self))
+        match tri!(self.de.parse_whitespace()) {
+            Some(b'"') => {
+                let val = tri!(seed.deserialize(&mut *self.de));
+                tri!(self.de.parse_object_colon());
+                Ok((val, self))
+            }
+            Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
+            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
+        }
     }
 }
 

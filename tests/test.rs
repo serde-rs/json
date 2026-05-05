@@ -1311,7 +1311,7 @@ fn test_parse_option() {
 fn test_parse_enum_errors() {
     test_parse_err::<Animal>(
         &[
-            ("{}", "expected value at line 1 column 2"),
+            ("{}", "key must be a string at line 1 column 2"),
             ("[]", "expected value at line 1 column 1"),
             ("\"unknown\"",
              "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 9"),
