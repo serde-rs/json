@@ -936,6 +936,7 @@ mod from;
 mod index;
 mod partial_eq;
 mod ser;
+mod try_into;
 
 /// Convert a `T` into `serde_json::Value` which is an enum that can represent
 /// any valid JSON data.
