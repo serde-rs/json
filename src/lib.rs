@@ -439,3 +439,10 @@ mod read;
 
 #[cfg(feature = "raw_value")]
 mod raw;
+
+#[cfg(feature = "async")]
+pub mod async_io;
+#[cfg(feature = "async")]
+pub use async_io::{
+    from_async_reader, to_async_writer, AsyncDeserializer, AsyncRead, AsyncSerializer, AsyncWrite,
+};
