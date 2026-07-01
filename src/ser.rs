@@ -448,7 +448,14 @@ where
         match write!(adapter, "{}", value) {
             Ok(()) => debug_assert!(adapter.error.is_none()),
             Err(fmt::Error) => {
-                return Err(Error::io(adapter.error.expect("there should be an error")));
+                return Err(adapter.error.map_or_else(
+                    || {
+                        <Error as ser::Error>::custom(
+                            "Display implementation returned an error unexpectedly",
+                        )
+                    },
+                    Error::io,
+                ));
             }
         }
         self.formatter
