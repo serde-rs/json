@@ -62,6 +62,7 @@ impl Error {
             ErrorCode::ExpectedColon
             | ErrorCode::ExpectedListCommaOrEnd
             | ErrorCode::ExpectedObjectCommaOrEnd
+            | ErrorCode::ExpectedObjectEnd
             | ErrorCode::ExpectedSomeIdent
             | ErrorCode::ExpectedSomeValue
             | ErrorCode::ExpectedDoubleQuote
@@ -261,6 +262,9 @@ pub(crate) enum ErrorCode {
     /// Expected this character to be either a `','` or a `'}'`.
     ExpectedObjectCommaOrEnd,
 
+    /// Expected this character to be `'}'`.
+    ExpectedObjectEnd,
+
     /// Expected to parse either a `true`, `false`, or a `null`.
     ExpectedSomeIdent,
 
@@ -358,6 +362,7 @@ impl Display for ErrorCode {
             ErrorCode::ExpectedColon => f.write_str("expected `:`"),
             ErrorCode::ExpectedListCommaOrEnd => f.write_str("expected `,` or `]`"),
             ErrorCode::ExpectedObjectCommaOrEnd => f.write_str("expected `,` or `}`"),
+            ErrorCode::ExpectedObjectEnd => f.write_str("expected `}`"),
             ErrorCode::ExpectedSomeIdent => f.write_str("expected ident"),
             ErrorCode::ExpectedSomeValue => f.write_str("expected value"),
             ErrorCode::ExpectedDoubleQuote => f.write_str("expected `\"`"),
