@@ -2615,3 +2615,50 @@ fn test_control_character_search() {
         "control character (\\u0000-\\u001F) found while parsing a string at line 1 column 2",
     )]);
 }
+
+/// Malformed UTF-8 inside JSON string contents must fail cleanly for both
+/// `Value` and `String` (issue #1185). Covers truncated multi-byte sequences,
+/// invalid continuation bytes, overlong encodings, and out-of-range lead bytes
+/// as raw octets (not only via `\u` escapes).
+#[test]
+fn test_invalid_utf8_sequences_in_strings() {
+    let cases: &[(&[u8], &str)] = &[
+        // truncated 2-byte sequence
+        (b"\"\xCE\"", "invalid unicode code point at line 1 column 3"),
+        // invalid continuation after lead C2
+        (b"\"\xC2\x00\"", "invalid unicode code point at line 1 column 3"),
+        // overlong encoding of ASCII slash
+        (b"\"\xC0\xAF\"", "invalid unicode code point at line 1 column 2"),
+        // lone continuation byte
+        (b"\"\x80\"", "invalid unicode code point at line 1 column 2"),
+        // truncated 3-byte sequence
+        (b"\"\xE2\x82\"", "invalid unicode code point at line 1 column 4"),
+        // truncated 4-byte sequence
+        (b"\"\xF0\x9F\x92\"", "invalid unicode code point at line 1 column 5"),
+        // invalid 4-byte lead (F5)
+        (b"\"\xF5\x80\x80\x80\"", "invalid unicode code point at line 1 column 2"),
+        // unexpected continuation after ASCII
+        (b"\"a\x80\"", "invalid unicode code point at line 1 column 3"),
+        // invalid second byte in 2-byte sequence
+        (b"\"\xCE\xF8\"", "invalid unicode code point at line 1 column 4"),
+    ];
+
+    for &(bytes, expected) in cases {
+        let value_err = from_slice::<Value>(bytes).unwrap_err().to_string();
+        let string_err = from_slice::<String>(bytes).unwrap_err().to_string();
+        assert_eq!(value_err, expected, "Value err for {bytes:?}");
+        assert_eq!(string_err, expected, "String err for {bytes:?}");
+    }
+}
+
+/// Object keys with invalid UTF-8 must be rejected.
+#[test]
+fn test_invalid_utf8_in_object_keys() {
+    let j = b"{\"\xCE\":1}";
+    let err = from_slice::<Value>(j).unwrap_err().to_string();
+    assert!(
+        err.contains("invalid unicode code point"),
+        "unexpected error for bad object key: {err}"
+    );
+}
+
