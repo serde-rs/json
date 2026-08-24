@@ -2625,8 +2625,9 @@ fn test_invalid_utf8_sequences_in_strings() {
     let cases: &[(&[u8], &str)] = &[
         // truncated 2-byte sequence
         (b"\"\xCE\"", "invalid unicode code point at line 1 column 3"),
-        // invalid continuation after lead C2
-        (b"\"\xC2\x00\"", "invalid unicode code point at line 1 column 3"),
+        // invalid continuation after lead C2 (avoid 0x00-0x1F: those are
+        // reported as control characters before UTF-8 validation)
+        (b"\"\xC2\x7F\"", "invalid unicode code point at line 1 column 3"),
         // overlong encoding of ASCII slash
         (b"\"\xC0\xAF\"", "invalid unicode code point at line 1 column 2"),
         // lone continuation byte
