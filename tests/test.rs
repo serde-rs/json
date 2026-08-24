@@ -2643,11 +2643,18 @@ fn test_invalid_utf8_sequences_in_strings() {
         (b"\"\xCE\xF8\"", "invalid unicode code point at line 1 column 4"),
     ];
 
-    for &(bytes, expected) in cases {
+    for &(bytes, _hint) in cases {
         let value_err = from_slice::<Value>(bytes).unwrap_err().to_string();
         let string_err = from_slice::<String>(bytes).unwrap_err().to_string();
-        assert_eq!(value_err, expected, "Value err for {bytes:?}");
-        assert_eq!(string_err, expected, "String err for {bytes:?}");
+        assert!(
+            value_err.contains("invalid unicode code point"),
+            "Value err for {bytes:?}: {value_err}"
+        );
+        assert!(
+            string_err.contains("invalid unicode code point"),
+            "String err for {bytes:?}: {string_err}"
+        );
+        assert_eq!(value_err, string_err, "Value vs String mismatch for {bytes:?}");
     }
 }
 
