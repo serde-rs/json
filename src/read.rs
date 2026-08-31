@@ -4,6 +4,14 @@ use core::cmp;
 use core::mem;
 use core::ops::Deref;
 use core::str;
+#[cfg(feature = "raw_value")]
+use serde::de::SeqAccess;
+#[cfg(feature = "raw_value")]
+use serde::ser::SerializeStruct;
+#[cfg(feature = "raw_value")]
+use serde::Deserialize;
+#[cfg(feature = "raw_value")]
+use serde::Serialize;
 
 #[cfg(feature = "std")]
 use crate::io;
@@ -116,8 +124,12 @@ pub trait Read<'de>: private::Sealed {
     fn set_failed(&mut self, failed: &mut bool);
 }
 
+/// The position in the input stream.
+#[derive(Clone)]
 pub struct Position {
+    /// The current line number.
     pub line: usize,
+    /// The current column number.
     pub column: usize,
 }
 
@@ -1085,5 +1097,147 @@ fn decode_four_hex_digits(a: u8, b: u8, c: u8, d: u8) -> Option<u16> {
         Some(codepoint as u16)
     } else {
         None
+    }
+}
+
+#[cfg(feature = "raw_value")]
+pub(crate) const TOKEN: &str = "$serde_json::private::Position";
+
+#[cfg(feature = "raw_value")]
+impl<'de> Deserialize<'de> for Position {
+    fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct PosVisitor;
+
+        impl<'de> Visitor<'de> for PosVisitor {
+            type Value = Position;
+
+            fn expecting(&self, f: &mut alloc::fmt::Formatter) -> alloc::fmt::Result {
+                write!(f, "position indicator")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> core::result::Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                Ok(Position {
+                    line: seq.next_element()?.unwrap(),
+                    column: seq.next_element()?.unwrap(),
+                })
+            }
+        }
+
+        deserializer.deserialize_tuple_struct(TOKEN, 2, PosVisitor)
+    }
+}
+
+#[cfg(feature = "raw_value")]
+impl Serialize for Position {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut s = serializer.serialize_struct("position", 2)?;
+        s.serialize_field("line", &self.line)?;
+        s.serialize_field("column", &self.column)?;
+        s.end()
+    }
+}
+
+#[cfg(feature = "raw_value")]
+pub struct PositionedRead<R> {
+    start: Position,
+    read: R,
+}
+
+#[cfg(feature = "raw_value")]
+impl<'de, R: Read<'de>> private::Sealed for PositionedRead<R> {}
+
+#[cfg(feature = "raw_value")]
+impl<'de, R: Read<'de>> PositionedRead<R> {
+    pub fn new(start: Position, read: R) -> Self {
+        Self { start, read }
+    }
+
+    fn adjust_pos(&self, pos: Position) -> Position {
+        match pos.line == 1 {
+            true => Position {
+                line: self.start.line,
+                column: self.start.column + pos.column + 1,
+            },
+            false => Position {
+                line: self.start.line + pos.line - 1,
+                column: pos.column,
+            },
+        }
+    }
+}
+
+#[cfg(feature = "raw_value")]
+impl<'de, R: Read<'de>> Read<'de> for PositionedRead<R> {
+    fn next(&mut self) -> Result<Option<u8>> {
+        self.read.next()
+    }
+
+    fn peek(&mut self) -> Result<Option<u8>> {
+        self.read.peek()
+    }
+
+    fn discard(&mut self) {
+        self.read.discard()
+    }
+
+    fn position(&self) -> Position {
+        self.adjust_pos(self.read.position())
+    }
+
+    fn peek_position(&self) -> Position {
+        self.adjust_pos(self.read.peek_position())
+    }
+
+    fn byte_offset(&self) -> usize {
+        self.read.byte_offset()
+    }
+
+    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
+        self.read.parse_str(scratch)
+    }
+
+    fn parse_str_raw<'s>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+    ) -> Result<Reference<'de, 's, [u8]>> {
+        self.read.parse_str_raw(scratch)
+    }
+
+    fn ignore_str(&mut self) -> Result<()> {
+        self.read.ignore_str()
+    }
+
+    fn decode_hex_escape(&mut self) -> Result<u16> {
+        self.read.decode_hex_escape()
+    }
+
+    #[cfg(feature = "raw_value")]
+    #[doc(hidden)]
+    fn begin_raw_buffering(&mut self) {
+        self.read.begin_raw_buffering()
+    }
+
+    #[cfg(feature = "raw_value")]
+    #[doc(hidden)]
+    fn end_raw_buffering<V>(&mut self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.read.end_raw_buffering(visitor)
+    }
+
+    const should_early_return_if_failed: bool = R::should_early_return_if_failed;
+
+    fn set_failed(&mut self, failed: &mut bool) {
+        self.read.set_failed(failed)
     }
 }
