@@ -162,6 +162,10 @@
 //! error messages if the layout does not conform to what a `Person` is expected
 //! to look like.
 //!
+//! You can also use [`from_slice`][from_slice] and [`from_reader`][from_reader]
+//! in this case as well, with the addition of [`from_value`][from_value] to
+//! convert from an existing `serde_json::Value`.
+//!
 //! Any type that implements Serde's `Deserialize` trait can be deserialized
 //! this way. This includes built-in Rust standard library types like `Vec<T>`
 //! and `HashMap<K, V>`, as well as any structs or enums annotated with
