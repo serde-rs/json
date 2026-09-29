@@ -389,7 +389,17 @@ where
         let raw = self.raw_buffer.take().unwrap();
         let raw = match String::from_utf8(raw) {
             Ok(raw) => raw,
-            Err(_) => return error(self, ErrorCode::InvalidUnicodeCodePoint),
+            Err(err) => {
+                let utf8 = err.utf8_error();
+                let bytes = err.as_bytes();
+                let position = self.position();
+                let back = bytes.len() - utf8.valid_up_to();
+                return Err(Error::syntax(
+                    ErrorCode::InvalidUnicodeCodePoint,
+                    position.line,
+                    position.column.saturating_sub(back.saturating_sub(1)),
+                ));
+            }
         };
         visitor.visit_map(OwnedRawDeserializer {
             raw_value: Some(raw),
@@ -647,7 +657,20 @@ impl<'a> Read<'a> for SliceRead<'a> {
         let raw = &self.slice[self.raw_buffering_start_index..self.index];
         let raw = match str::from_utf8(raw) {
             Ok(raw) => raw,
-            Err(_) => return error(self, ErrorCode::InvalidUnicodeCodePoint),
+            Err(err) => {
+                let at = cmp::min(
+                    self.raw_buffering_start_index
+                        .saturating_add(err.valid_up_to())
+                        .saturating_add(1),
+                    self.slice.len(),
+                );
+                let position = self.position_of_index(at);
+                return Err(Error::syntax(
+                    ErrorCode::InvalidUnicodeCodePoint,
+                    position.line,
+                    position.column,
+                ));
+            }
         };
         visitor.visit_map(BorrowedRawDeserializer {
             raw_value: Some(raw),
@@ -866,7 +889,26 @@ where
 }
 
 fn as_str<'de, 's, R: Read<'de>>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
-    str::from_utf8(slice).or_else(|_| error(read, ErrorCode::InvalidUnicodeCodePoint))
+    match str::from_utf8(slice) {
+        Ok(s) => Ok(s),
+        Err(err) => error_invalid_unicode(read, slice, err),
+    }
+}
+
+/// Point at the first invalid UTF-8 byte instead of the end of the current
+/// string / value. `read` is positioned just past the last consumed byte of
+/// `slice` (for example the closing quote of a string).
+fn error_invalid_unicode<'de, R, T>(read: &R, slice: &[u8], err: str::Utf8Error) -> Result<T>
+where
+    R: ?Sized + Read<'de>,
+{
+    let position = read.position();
+    let back = slice.len() - err.valid_up_to();
+    Err(Error::syntax(
+        ErrorCode::InvalidUnicodeCodePoint,
+        position.line,
+        position.column.saturating_sub(back),
+    ))
 }
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
