@@ -851,6 +851,28 @@ fn test_parse_negative_zero() {
 }
 
 #[test]
+fn test_negative_zero_value() {
+    // `-0` read into a Value keeps its sign, with and without arbitrary_precision. With
+    // arbitrary_precision it was stored as the integer 0, so the Value wrote `0` and gave 0.0.
+    for text in ["-0", "-0.0", "-0e2"] {
+        let value: Value = from_str(text).unwrap();
+        assert!(
+            value.as_f64().unwrap().is_sign_negative(),
+            "{text}: {value}"
+        );
+        assert!(
+            from_value::<f64>(value.clone()).unwrap().is_sign_negative(),
+            "{text}: {value}"
+        );
+        let written = to_string(&value).unwrap();
+        assert!(written.starts_with('-'), "{text} written as {written}");
+    }
+    let value: Value = from_str("[-0, 0]").unwrap();
+    assert!(value[0].as_f64().unwrap().is_sign_negative());
+    assert!(value[1].as_f64().unwrap().is_sign_positive());
+}
+
+#[test]
 fn test_parse_f64() {
     test_parse_ok(vec![
         ("0.0", 0.0f64),

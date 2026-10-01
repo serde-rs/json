@@ -945,7 +945,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             if let Ok(unsigned) = buf.parse() {
                 return Ok(ParserNumber::U64(unsigned));
             }
-        } else {
+        } else if buf != "-0" {
+            // `-0` stays text: as an i64 it would lose its sign (without arbitrary_precision it
+            // is the float -0.0)
             if let Ok(signed) = buf.parse() {
                 return Ok(ParserNumber::I64(signed));
             }
