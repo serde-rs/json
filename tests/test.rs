@@ -1339,6 +1339,32 @@ fn test_parse_enum_errors() {
 }
 
 #[test]
+fn test_struct_variant_from_value_sequence() {
+    // A struct variant written as a sequence deserializes from text; it must do the same from a
+    // `Value` and a `&Value` (issue #1049).
+    let expected = Animal::Cat {
+        age: 5,
+        name: "Kate".to_owned(),
+    };
+    let text = r#"{"Cat":[5,"Kate"]}"#;
+    assert_eq!(from_str::<Animal>(text).unwrap(), expected);
+
+    let value: Value = from_str(text).unwrap();
+    assert_eq!(from_value::<Animal>(value.clone()).unwrap(), expected);
+    assert_eq!(Animal::deserialize(&value).unwrap(), expected);
+
+    // wrong lengths are errors, as from text
+    for bad in [
+        json!({"Cat": [5]}),
+        json!({"Cat": [5, "Kate", 1]}),
+        json!({"Cat": []}),
+    ] {
+        assert!(from_value::<Animal>(bad.clone()).is_err(), "{bad}");
+        assert!(Animal::deserialize(&bad).is_err(), "{bad}");
+    }
+}
+
+#[test]
 fn test_parse_enum() {
     test_parse_ok(vec![
         ("\"Dog\"", Animal::Dog),
