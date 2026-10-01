@@ -311,13 +311,15 @@ impl Number {
 
     pub(crate) fn as_f32(&self) -> Option<f32> {
         #[cfg(not(feature = "arbitrary_precision"))]
-        match self.n {
-            N::PosInt(n) => Some(n as f32),
-            N::NegInt(n) => Some(n as f32),
-            N::Float(n) => Some(n as f32),
-        }
+        let float = match self.n {
+            N::PosInt(n) => n as f32,
+            N::NegInt(n) => n as f32,
+            N::Float(n) => n as f32,
+        };
         #[cfg(feature = "arbitrary_precision")]
-        self.n.parse::<f32>().ok().filter(|float| float.is_finite())
+        let float = self.n.parse::<f32>().ok()?;
+        // A finite number outside the range of f32 rounds to infinity; it is not equal to any f32.
+        Some(float).filter(|float| float.is_finite())
     }
 
     pub(crate) fn from_f32(f: f32) -> Option<Number> {
