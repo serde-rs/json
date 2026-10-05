@@ -1902,6 +1902,67 @@ fn test_json_pointer_mut() {
 }
 
 #[test]
+fn test_json_pointer_invalid_escapes() {
+    for (key, pointer) in [
+        ("~", "/~"),
+        ("~2", "/~2"),
+        ("~~", "/~~"),
+        ("~1~", "/~01~"),
+        ("~雪", "/~雪"),
+        ("a/b~2", "/a~1b~2"),
+    ] {
+        let mut data = json!({});
+        data[key] = json!(42);
+        assert!(data.pointer(pointer).is_none(), "{}", pointer);
+
+        let nested = json!({"outer": [data]});
+        let pointer = format!("/outer/0{}", pointer);
+        assert!(nested.pointer(&pointer).is_none(), "{}", pointer);
+    }
+}
+
+#[test]
+fn test_json_pointer_mut_invalid_escapes() {
+    for (key, pointer) in [
+        ("~", "/~"),
+        ("~2", "/~2"),
+        ("~~", "/~~"),
+        ("~1~", "/~01~"),
+        ("~雪", "/~雪"),
+        ("a/b~2", "/a~1b~2"),
+    ] {
+        let mut data = json!({});
+        data[key] = json!(42);
+        assert!(data.pointer_mut(pointer).is_none(), "{}", pointer);
+        assert_eq!(data[key], 42);
+
+        let mut nested = json!({"outer": [data]});
+        let pointer = format!("/outer/0{}", pointer);
+        assert!(nested.pointer_mut(&pointer).is_none(), "{}", pointer);
+        assert_eq!(nested["outer"][0][key], 42);
+    }
+}
+
+#[test]
+fn test_json_pointer_escaped_tokens() {
+    for (key, pointer) in [
+        ("~", "/~0"),
+        ("~2", "/~02"),
+        ("~~", "/~0~0"),
+        ("~1~", "/~01~0"),
+        ("~雪", "/~0雪"),
+        ("a/b~2", "/a~1b~02"),
+        ("雪/~", "/雪~1~0"),
+    ] {
+        let mut data = json!({});
+        data[key] = json!(42);
+        assert_eq!(data.pointer(pointer), Some(&json!(42)), "{}", pointer);
+        *data.pointer_mut(pointer).unwrap() = json!(43);
+        assert_eq!(data[key], 43);
+    }
+}
+
+#[test]
 fn test_stack_overflow() {
     let brackets: String = iter::repeat('[')
         .take(127)
