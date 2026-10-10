@@ -2197,9 +2197,7 @@ fn test_partialeq_number() {
 
 #[test]
 fn test_partialeq_f32_out_of_range() {
-    // A number outside the range of f32 is not equal to an infinite f32 (JSON has no infinity,
-    // and the comparison with f64::INFINITY is already false). Without arbitrary_precision the
-    // value was cast with `as f32`, which rounds it to infinity.
+    // A number outside the range of f32 is not equal to an infinite f32.
     for (text, inf) in [("1e300", f32::INFINITY), ("-1e39", f32::NEG_INFINITY)] {
         let value: Value = from_str(text).unwrap();
         assert_ne!(value, inf);
