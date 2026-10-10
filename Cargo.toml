@@ -1,6 +1,6 @@
 [package]
 name = "serde_json"
-version = "1.0.151"
+version = "1.0.152"
 categories = ["encoding", "parser-implementations", "no-std"]
 description = "A JSON serialization file format"
 documentation = "https://docs.rs/serde_json"
