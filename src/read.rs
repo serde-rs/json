@@ -400,7 +400,7 @@ where
         let raw = match String::from_utf8(raw) {
             Ok(raw) => raw,
             Err(err) => {
-                let prefix = &err.as_bytes()[..err.utf8_error().valid_up_to() + 1];
+                let prefix = &err.as_bytes()[..=err.utf8_error().valid_up_to()];
                 let line = self.raw_buffering_start_position.line
                     + memchr::memchr_iter(b'\n', prefix).count();
                 let column = match memchr::memrchr(b'\n', prefix) {
