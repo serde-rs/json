@@ -120,7 +120,17 @@ pub struct RawValue {
 
 impl RawValue {
     const fn from_borrowed(json: &str) -> &Self {
-        unsafe { mem::transmute::<&str, &RawValue>(json) }
+        unsafe { Self::from_borrowed_unchecked(json) }
+    }
+
+    /// Create a `RawValue` from a borrowed string.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the string is valid JSON.
+    /// This function does not perform any validation.
+    pub const unsafe fn from_borrowed_unchecked(json: &str) -> &Self {
+        mem::transmute::<&str, &RawValue>(json)
     }
 
     fn from_owned(json: Box<str>) -> Box<Self> {
