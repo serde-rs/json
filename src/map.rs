@@ -4,13 +4,12 @@
 //! feature of serde_json to use [`IndexMap`] instead.
 //!
 //! In builds without the `std` feature, `preserve_order` hashes keys with
-//! foldhash's [`RandomState`]. Foldhash provides minimal HashDoS resistance,
-//! but does not protect against interactive attackers. Builds with `std` use
-//! the standard library's [`RandomState`].
+//! [`foldhash::fast::RandomState`]. Foldhash provides minimal HashDoS
+//! resistance, but does not protect against interactive attackers. Builds with
+//! `std` use the standard library's [`std::hash::RandomState`].
 //!
 //! [`BTreeMap`]: std::collections::BTreeMap
 //! [`IndexMap`]: indexmap::IndexMap
-//! [`RandomState`]: std::collections::hash_map::RandomState
 
 use crate::error::Error;
 use crate::value::Value;
