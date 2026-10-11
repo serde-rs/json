@@ -85,6 +85,17 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(Value::String(value))
             }
 
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[inline]
+            fn visit_bytes<E>(self, value: &[u8]) -> Result<Value, E> {
+                Ok(Value::Array(
+                    value
+                        .iter()
+                        .map(|v| Value::Number(Number::from(*v)))
+                        .collect(),
+                ))
+            }
+
             #[inline]
             fn visit_none<E>(self) -> Result<Value, E> {
                 Ok(Value::Null)
