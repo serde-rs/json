@@ -383,7 +383,6 @@ where
     #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
         let position = self.position();
-        // A peeked byte has advanced the iterator but is not buffered yet.
         self.raw_buffering_start_position = Position {
             line: position.line,
             column: position.column - usize::from(self.ch.is_some()),
@@ -401,12 +400,17 @@ where
             Ok(raw) => raw,
             Err(err) => {
                 let prefix = &err.as_bytes()[..=err.utf8_error().valid_up_to()];
-                let line = self.raw_buffering_start_position.line
-                    + memchr::memchr_iter(b'\n', prefix).count();
-                let column = match memchr::memrchr(b'\n', prefix) {
-                    Some(index) => prefix.len() - index - 1,
-                    None => self.raw_buffering_start_position.column + prefix.len(),
-                };
+                let line;
+                let column;
+                if let Some(last_newline) = memchr::memrchr(b'\n', prefix) {
+                    line = self.raw_buffering_start_position.line
+                        + memchr::memchr_iter(b'\n', &prefix[..last_newline]).count()
+                        + 1;
+                    column = prefix.len() - last_newline - 1;
+                } else {
+                    line = self.raw_buffering_start_position.line;
+                    column = self.raw_buffering_start_position.column + prefix.len();
+                }
                 return Err(Error::syntax(
                     ErrorCode::InvalidUnicodeCodePoint,
                     line,
@@ -899,24 +903,21 @@ where
 fn as_str<'de, 's, R: Read<'de>>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
     match str::from_utf8(slice) {
         Ok(s) => Ok(s),
-        Err(err) => error_invalid_unicode(read, slice, err),
+        Err(err) => {
+            // Point at the first invalid UTF-8 byte. `read` is positioned at
+            // the closing quote of the string whose content is `slice`. If the
+            // JSON string contained escape sequences, the column position is
+            // approximate.
+            let position = read.position();
+            Err(Error::syntax(
+                ErrorCode::InvalidUnicodeCodePoint,
+                position.line,
+                position
+                    .column
+                    .saturating_sub(slice.len() - err.valid_up_to()),
+            ))
+        }
     }
-}
-
-/// Point at the first invalid UTF-8 byte instead of the end of the current
-/// string / value. `read` is positioned just past the last consumed byte of
-/// `slice` (for example the closing quote of a string).
-fn error_invalid_unicode<'de, R, T>(read: &R, slice: &[u8], err: str::Utf8Error) -> Result<T>
-where
-    R: ?Sized + Read<'de>,
-{
-    let position = read.position();
-    let back = slice.len() - err.valid_up_to();
-    Err(Error::syntax(
-        ErrorCode::InvalidUnicodeCodePoint,
-        position.line,
-        position.column.saturating_sub(back),
-    ))
 }
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
