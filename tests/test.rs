@@ -1107,11 +1107,11 @@ fn test_parse_string() {
     test_parse_slice_err::<String>(&[
         (
             &[b'"', 159, 146, 150, b'"'],
-            "invalid unicode code point at line 1 column 5",
+            "invalid unicode code point at line 1 column 2",
         ),
         (
             &[b'"', b'\\', b'n', 159, 146, 150, b'"'],
-            "invalid unicode code point at line 1 column 7",
+            "invalid unicode code point at line 1 column 4",
         ),
         (
             &[b'"', b'\\', b'u', 48, 48, 51],
@@ -2548,11 +2548,11 @@ fn test_raw_invalid_utf8() {
 
     assert_eq!(
         value_err.to_string(),
-        "invalid unicode code point at line 1 column 4",
+        "invalid unicode code point at line 1 column 2",
     );
     assert_eq!(
         raw_value_err.to_string(),
-        "invalid unicode code point at line 1 column 4",
+        "invalid unicode code point at line 1 column 2",
     );
 }
 

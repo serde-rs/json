@@ -155,6 +155,8 @@ where
     ch: Option<u8>,
     #[cfg(feature = "raw_value")]
     raw_buffer: Option<Vec<u8>>,
+    #[cfg(feature = "raw_value")]
+    raw_buffering_start_position: Position,
 }
 
 /// JSON input source that reads from a slice of bytes.
@@ -203,6 +205,8 @@ where
             ch: None,
             #[cfg(feature = "raw_value")]
             raw_buffer: None,
+            #[cfg(feature = "raw_value")]
+            raw_buffering_start_position: Position { line: 1, column: 0 },
         }
     }
 }
@@ -378,6 +382,12 @@ where
 
     #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
+        let position = self.position();
+        // A peeked byte has advanced the iterator but is not buffered yet.
+        self.raw_buffering_start_position = Position {
+            line: position.line,
+            column: position.column - usize::from(self.ch.is_some()),
+        };
         self.raw_buffer = Some(Vec::new());
     }
 
@@ -389,7 +399,20 @@ where
         let raw = self.raw_buffer.take().unwrap();
         let raw = match String::from_utf8(raw) {
             Ok(raw) => raw,
-            Err(_) => return error(self, ErrorCode::InvalidUnicodeCodePoint),
+            Err(err) => {
+                let prefix = &err.as_bytes()[..err.utf8_error().valid_up_to() + 1];
+                let line = self.raw_buffering_start_position.line
+                    + memchr::memchr_iter(b'\n', prefix).count();
+                let column = match memchr::memrchr(b'\n', prefix) {
+                    Some(index) => prefix.len() - index - 1,
+                    None => self.raw_buffering_start_position.column + prefix.len(),
+                };
+                return Err(Error::syntax(
+                    ErrorCode::InvalidUnicodeCodePoint,
+                    line,
+                    column,
+                ));
+            }
         };
         visitor.visit_map(OwnedRawDeserializer {
             raw_value: Some(raw),
@@ -647,7 +670,15 @@ impl<'a> Read<'a> for SliceRead<'a> {
         let raw = &self.slice[self.raw_buffering_start_index..self.index];
         let raw = match str::from_utf8(raw) {
             Ok(raw) => raw,
-            Err(_) => return error(self, ErrorCode::InvalidUnicodeCodePoint),
+            Err(err) => {
+                let at = self.raw_buffering_start_index + err.valid_up_to() + 1;
+                let position = self.position_of_index(at);
+                return Err(Error::syntax(
+                    ErrorCode::InvalidUnicodeCodePoint,
+                    position.line,
+                    position.column,
+                ));
+            }
         };
         visitor.visit_map(BorrowedRawDeserializer {
             raw_value: Some(raw),
@@ -866,7 +897,26 @@ where
 }
 
 fn as_str<'de, 's, R: Read<'de>>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
-    str::from_utf8(slice).or_else(|_| error(read, ErrorCode::InvalidUnicodeCodePoint))
+    match str::from_utf8(slice) {
+        Ok(s) => Ok(s),
+        Err(err) => error_invalid_unicode(read, slice, err),
+    }
+}
+
+/// Point at the first invalid UTF-8 byte instead of the end of the current
+/// string / value. `read` is positioned just past the last consumed byte of
+/// `slice` (for example the closing quote of a string).
+fn error_invalid_unicode<'de, R, T>(read: &R, slice: &[u8], err: str::Utf8Error) -> Result<T>
+where
+    R: ?Sized + Read<'de>,
+{
+    let position = read.position();
+    let back = slice.len() - err.valid_up_to();
+    Err(Error::syntax(
+        ErrorCode::InvalidUnicodeCodePoint,
+        position.line,
+        position.column.saturating_sub(back),
+    ))
 }
 
 /// Parses a JSON escape sequence and appends it into the scratch space. Assumes
