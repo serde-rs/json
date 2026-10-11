@@ -155,6 +155,8 @@ where
     ch: Option<u8>,
     #[cfg(feature = "raw_value")]
     raw_buffer: Option<Vec<u8>>,
+    #[cfg(feature = "raw_value")]
+    raw_buffering_start_position: Position,
 }
 
 /// JSON input source that reads from a slice of bytes.
@@ -203,6 +205,8 @@ where
             ch: None,
             #[cfg(feature = "raw_value")]
             raw_buffer: None,
+            #[cfg(feature = "raw_value")]
+            raw_buffering_start_position: Position { line: 1, column: 0 },
         }
     }
 }
@@ -378,6 +382,12 @@ where
 
     #[cfg(feature = "raw_value")]
     fn begin_raw_buffering(&mut self) {
+        let position = self.position();
+        // A peeked byte has advanced the iterator but is not buffered yet.
+        self.raw_buffering_start_position = Position {
+            line: position.line,
+            column: position.column - usize::from(self.ch.is_some()),
+        };
         self.raw_buffer = Some(Vec::new());
     }
 
@@ -390,14 +400,17 @@ where
         let raw = match String::from_utf8(raw) {
             Ok(raw) => raw,
             Err(err) => {
-                let utf8 = err.utf8_error();
-                let bytes = err.as_bytes();
-                let position = self.position();
-                let back = bytes.len() - utf8.valid_up_to();
+                let prefix = &err.as_bytes()[..err.utf8_error().valid_up_to() + 1];
+                let line = self.raw_buffering_start_position.line
+                    + memchr::memchr_iter(b'\n', prefix).count();
+                let column = match memchr::memrchr(b'\n', prefix) {
+                    Some(index) => prefix.len() - index - 1,
+                    None => self.raw_buffering_start_position.column + prefix.len(),
+                };
                 return Err(Error::syntax(
                     ErrorCode::InvalidUnicodeCodePoint,
-                    position.line,
-                    position.column.saturating_sub(back.saturating_sub(1)),
+                    line,
+                    column,
                 ));
             }
         };
@@ -658,12 +671,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
         let raw = match str::from_utf8(raw) {
             Ok(raw) => raw,
             Err(err) => {
-                let at = cmp::min(
-                    self.raw_buffering_start_index
-                        .saturating_add(err.valid_up_to())
-                        .saturating_add(1),
-                    self.slice.len(),
-                );
+                let at = self.raw_buffering_start_index + err.valid_up_to() + 1;
                 let position = self.position_of_index(at);
                 return Err(Error::syntax(
                     ErrorCode::InvalidUnicodeCodePoint,

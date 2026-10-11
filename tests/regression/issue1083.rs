@@ -57,3 +57,25 @@ fn invalid_utf8_raw_value_matches_value() {
         assert_eq!(value_err.to_string(), raw_reader_err.to_string());
     }
 }
+
+#[cfg(feature = "raw_value")]
+#[test]
+fn invalid_utf8_in_multiline_raw_value() {
+    for (input, line, column) in [
+        (b"[\n \"\xff\",\n 0\n]".as_slice(), 2, 3),
+        (b" \n  [\"\xff\",\n 0\n]".as_slice(), 2, 5),
+    ] {
+        let err = serde_json::from_slice::<Box<serde_json::value::RawValue>>(input)
+            .unwrap_err();
+        assert_eq!((err.line(), err.column()), (line, column));
+
+        #[cfg(feature = "std")]
+        {
+            let err = serde_json::from_reader::<_, Box<serde_json::value::RawValue>>(
+                std::io::Cursor::new(input),
+            )
+            .unwrap_err();
+            assert_eq!((err.line(), err.column()), (line, column));
+        }
+    }
+}
