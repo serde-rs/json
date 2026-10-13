@@ -263,6 +263,23 @@ fn parse_index(s: &str) -> Option<usize> {
     s.parse().ok()
 }
 
+fn parse_pointer_token(token: &str) -> Option<String> {
+    let mut parts = token.split('~');
+    let mut decoded = String::from(parts.next()?);
+    for part in parts {
+        if let Some(rest) = part.strip_prefix('0') {
+            decoded.push('~');
+            decoded.push_str(rest);
+        } else if let Some(rest) = part.strip_prefix('1') {
+            decoded.push('/');
+            decoded.push_str(rest);
+        } else {
+            return None;
+        }
+    }
+    Some(decoded)
+}
+
 impl Value {
     /// Index into a JSON array or map. A string index can be used to access a
     /// value in a map, and a usize index can be used to access an element of an
@@ -783,15 +800,14 @@ impl Value {
         if !pointer.starts_with('/') {
             return None;
         }
-        pointer
-            .split('/')
-            .skip(1)
-            .map(|x| x.replace("~1", "/").replace("~0", "~"))
-            .try_fold(self, |target, token| match target {
+        pointer.split('/').skip(1).try_fold(self, |target, token| {
+            let token = parse_pointer_token(token)?;
+            match target {
                 Value::Object(map) => map.get(&token),
                 Value::Array(list) => parse_index(&token).and_then(|x| list.get(x)),
                 _ => None,
-            })
+            }
+        })
     }
 
     /// Looks up a value by a JSON Pointer and returns a mutable reference to
@@ -838,15 +854,14 @@ impl Value {
         if !pointer.starts_with('/') {
             return None;
         }
-        pointer
-            .split('/')
-            .skip(1)
-            .map(|x| x.replace("~1", "/").replace("~0", "~"))
-            .try_fold(self, |target, token| match target {
+        pointer.split('/').skip(1).try_fold(self, |target, token| {
+            let token = parse_pointer_token(token)?;
+            match target {
                 Value::Object(map) => map.get_mut(&token),
                 Value::Array(list) => parse_index(&token).and_then(move |x| list.get_mut(x)),
                 _ => None,
-            })
+            }
+        })
     }
 
     /// Takes the value out of the `Value`, leaving a `Null` in its place.
