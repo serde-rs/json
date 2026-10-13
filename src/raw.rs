@@ -120,14 +120,27 @@ pub struct RawValue {
 
 impl RawValue {
     const fn from_borrowed(json: &str) -> &Self {
+        // SAFETY: RawValue is #[repr(transparent)] around a single `str`
+        // field, so `&str` and `&RawValue` have identical size, alignment,
+        // and representation. Transmuting a reference between two types
+        // that share layout like this is sound; it only relabels the type
+        // of an existing valid reference.
         unsafe { mem::transmute::<&str, &RawValue>(json) }
     }
 
     fn from_owned(json: Box<str>) -> Box<Self> {
+        // SAFETY: same layout argument as `from_borrowed`, extended to
+        // `Box`. Because RawValue is #[repr(transparent)] over `str`,
+        // `Box<str>` and `Box<RawValue>` point to identically laid out heap
+        // allocations. RawValue has no `Drop` impl of its own, so the box's
+        // drop glue (dropping the pointee, then deallocating) is unchanged
+        // by the transmute.
         unsafe { mem::transmute::<Box<str>, Box<RawValue>>(json) }
     }
 
     fn into_owned(raw_value: Box<Self>) -> Box<str> {
+        // SAFETY: the inverse of `from_owned`; the same layout and
+        // drop-glue argument applies in this direction too.
         unsafe { mem::transmute::<Box<RawValue>, Box<str>>(raw_value) }
     }
 }
