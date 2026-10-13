@@ -83,6 +83,22 @@ struct Outer {
     inner: Vec<Inner>,
 }
 
+#[test]
+fn deserializer_returns_the_provided_scratch_allocation() {
+    let mut scratch = Vec::with_capacity(128);
+    scratch.extend_from_slice(b"stale contents");
+    let pointer = scratch.as_ptr();
+
+    let mut deserializer = Deserializer::from_slice_with_scratch(br#""line\nvalue""#, scratch);
+    let value = String::deserialize(&mut deserializer).unwrap();
+    deserializer.end().unwrap();
+    let scratch = deserializer.into_scratch();
+
+    assert_eq!(value, "line\nvalue");
+    assert_eq!(scratch.as_ptr(), pointer);
+    assert!(scratch.capacity() >= 128);
+}
+
 fn test_encode_ok<T>(errors: &[(T, &str)])
 where
     T: PartialEq + Debug + ser::Serialize,
