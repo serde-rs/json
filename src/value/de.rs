@@ -578,13 +578,7 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
         V: Visitor<'de>,
     {
         match self.value {
-            Some(Value::Array(v)) => {
-                if v.is_empty() {
-                    visitor.visit_unit()
-                } else {
-                    visit_array(v, visitor)
-                }
-            }
+            Some(Value::Array(v)) => visit_array(v, visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
                 &"tuple variant",
@@ -1088,13 +1082,7 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.value {
-            Some(Value::Array(v)) => {
-                if v.is_empty() {
-                    visitor.visit_unit()
-                } else {
-                    visit_array_ref(v, visitor)
-                }
-            }
+            Some(Value::Array(v)) => visit_array_ref(v, visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
                 &"tuple variant",

@@ -72,6 +72,13 @@ enum Animal {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+enum EmptyTupleVariant {
+    Unit,
+    Empty(),
+    Pair(u8, u8),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 struct Inner {
     a: (),
     b: usize,
@@ -1409,6 +1416,72 @@ fn test_parse_enum() {
             "b".to_owned() => Animal::Frog("Henry".to_owned(), vec![]),
         ),
     )]);
+}
+
+#[test]
+fn test_empty_tuple_variant_owned() {
+    let value = to_value(EmptyTupleVariant::Empty()).unwrap();
+    assert_eq!(value, json!({"Empty": []}));
+
+    let actual: EmptyTupleVariant = from_value(value).unwrap();
+    assert_eq!(actual, EmptyTupleVariant::Empty());
+}
+
+#[test]
+fn test_empty_tuple_variant_borrowed() {
+    let value = to_value(EmptyTupleVariant::Empty()).unwrap();
+    assert_eq!(value, json!({"Empty": []}));
+
+    let actual: EmptyTupleVariant = Deserialize::deserialize(&value).unwrap();
+    assert_eq!(actual, EmptyTupleVariant::Empty());
+}
+
+#[test]
+fn test_empty_tuple_variant_stream() {
+    let json = br#"{"Empty":[]}"#;
+    assert_eq!(
+        from_str::<EmptyTupleVariant>(r#"{"Empty":[]}"#).unwrap(),
+        EmptyTupleVariant::Empty()
+    );
+    assert_eq!(
+        from_slice::<EmptyTupleVariant>(json).unwrap(),
+        EmptyTupleVariant::Empty()
+    );
+}
+
+#[test]
+fn test_empty_tuple_variant_controls() {
+    assert_eq!(to_string(&EmptyTupleVariant::Unit).unwrap(), r#""Unit""#);
+    assert_eq!(
+        from_value::<EmptyTupleVariant>(json!({"Unit": null})).unwrap(),
+        EmptyTupleVariant::Unit
+    );
+    assert_eq!(
+        from_value::<EmptyTupleVariant>(json!({"Pair": [1, 2]})).unwrap(),
+        EmptyTupleVariant::Pair(1, 2)
+    );
+    assert_eq!(
+        EmptyTupleVariant::deserialize(&json!({"Unit": null})).unwrap(),
+        EmptyTupleVariant::Unit
+    );
+    assert_eq!(
+        EmptyTupleVariant::deserialize(&json!({"Pair": [1, 2]})).unwrap(),
+        EmptyTupleVariant::Pair(1, 2)
+    );
+
+    assert!(from_str::<EmptyTupleVariant>(r#""Empty""#).is_err());
+
+    for value in [
+        json!({"Empty": [1]}),
+        json!({"Pair": []}),
+        json!({"Empty": null}),
+        json!({"Empty": {}}),
+        json!({}),
+        json!({"Pair": [1, 2, 3]}),
+    ] {
+        assert!(from_value::<EmptyTupleVariant>(value.clone()).is_err());
+        assert!(EmptyTupleVariant::deserialize(&value).is_err());
+    }
 }
 
 #[test]
