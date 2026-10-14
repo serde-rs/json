@@ -373,6 +373,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         tri!(self.scan_integer128(&mut buf));
 
         let value = match buf.parse() {
+            // `-0` is the float -0.0, as in `deserialize_i64`
+            Ok(_) if buf == "-0" => visitor.visit_f64(-0.0),
             Ok(int) => visitor.visit_i128(int),
             Err(_) => {
                 return Err(self.error(ErrorCode::NumberOutOfRange));
