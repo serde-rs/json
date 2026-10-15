@@ -1934,6 +1934,26 @@ fn test_stack_overflow() {
     test_parse_err::<Value>(&[(&brackets, "recursion limit exceeded at line 1 column 128")]);
 }
 
+#[cfg(feature = "raw_value")]
+#[test]
+fn test_stack_overflow_raw_value() {
+    // 120 arrays around an object holding a string of JSON, which is 120 arrays
+    // around an object holding a string of JSON, and so on.
+    //
+    // With 1 array instead of 120, and 2 levels instead of 16:
+    // [{"$serde_json::private::RawValue":"[{\"$serde_json::private::RawValue\":\"0\"}]"}]
+    let mut value = json!(0);
+    for _ in 0..16 {
+        value = json!({ "$serde_json::private::RawValue": value.to_string() });
+        for _ in 0..120 {
+            value = json!([value]);
+        }
+    }
+
+    // TODO: ideally this should reject the input rather than crashing.
+    let _ = from_str::<Value>(&value.to_string());
+}
+
 #[test]
 #[cfg(feature = "unbounded_depth")]
 fn test_disable_recursion_limit() {
