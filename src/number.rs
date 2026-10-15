@@ -559,7 +559,7 @@ macro_rules! deserialize_any {
             } else if let Some(i) = self.as_i128() {
                 return visitor.visit_i128(i);
             } else if let Some(f) = self.as_f64() {
-                if zmij::Buffer::new().format_finite(f) == self.n || f.to_string() == self.n {
+                if zmij::Buffer::new().format_finite(f) == self.n {
                     return visitor.visit_f64(f);
                 }
             }
