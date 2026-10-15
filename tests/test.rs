@@ -1935,6 +1935,7 @@ fn test_stack_overflow() {
 }
 
 #[cfg(feature = "raw_value")]
+#[cfg_attr(miri, ignore = "too slow")]
 #[test]
 fn test_stack_overflow_raw_value() {
     // 120 arrays around an object holding a string of JSON, which is 120 arrays
