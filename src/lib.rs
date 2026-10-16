@@ -388,6 +388,13 @@ pub mod __private {
     pub use alloc::vec;
 }
 
+mod private {
+    #[cfg(feature = "arbitrary_precision")]
+    pub use crate::number::NumberTestingExt;
+}
+
+include!(concat!(env!("OUT_DIR"), "/private.rs"));
+
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[doc(inline)]

@@ -19,9 +19,13 @@
     clippy::zero_sized_map_values
 )]
 
+include!(concat!(env!("OUT_DIR"), "/private_test.rs"));
+
 #[macro_use]
 mod macros;
 
+#[cfg(feature = "arbitrary_precision")]
+use crate::private_test::NumberTestingExt as _;
 #[cfg(feature = "raw_value")]
 use ref_cast::RefCast;
 use serde::de::{self, IgnoredAny, IntoDeserializer};

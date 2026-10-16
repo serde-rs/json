@@ -337,12 +337,18 @@ impl Number {
             None
         }
     }
+}
 
-    #[cfg(feature = "arbitrary_precision")]
-    /// Not public API. Only tests use this.
-    #[doc(hidden)]
-    #[inline]
-    pub fn from_string_unchecked(n: String) -> Self {
+/// Not public API. Only tests use this.
+#[cfg(feature = "arbitrary_precision")]
+#[doc(hidden)]
+pub trait NumberTestingExt {
+    fn from_string_unchecked(n: String) -> Self;
+}
+
+#[cfg(feature = "arbitrary_precision")]
+impl NumberTestingExt for Number {
+    fn from_string_unchecked(n: String) -> Self {
         Number { n }
     }
 }

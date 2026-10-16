@@ -1,9 +1,32 @@
 use std::env;
+use std::fs;
+use std::path::PathBuf;
+
+const PRIVATE: &str = "\
+#[doc(hidden)]
+pub mod __private$$ {
+    #[allow(unused_imports)]
+    #[doc(hidden)]
+    pub use crate::private::*;
+}
+";
+
+const PRIVATE_TEST: &str = "\
+#[allow(unused_imports)]
+use serde_json::__private$$ as private_test;
+";
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     println!("cargo:rustc-check-cfg=cfg(fast_arithmetic, values(\"32\", \"64\"))");
+
+    let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    let patch_version = env::var("CARGO_PKG_VERSION_PATCH").unwrap();
+    let module = PRIVATE.replace("$$", &patch_version);
+    fs::write(out_dir.join("private.rs"), module).unwrap();
+    let module_test = PRIVATE_TEST.replace("$$", &patch_version);
+    fs::write(out_dir.join("private_test.rs"), module_test).unwrap();
 
     // Decide ideal limb width for arithmetic in the float parser and string
     // parser.
