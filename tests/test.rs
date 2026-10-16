@@ -1084,6 +1084,13 @@ fn test_parse_number() {
     ]);
 }
 
+#[cfg(feature = "arbitrary_precision")]
+#[test]
+fn test_number_from_value_precision() {
+    let s = "562949953421312.3";
+    test_parse_ok(vec![(s, Number::from_string_unchecked(s.to_owned()))]);
+}
+
 #[test]
 fn test_parse_string() {
     test_parse_err::<String>(&[
