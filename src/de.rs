@@ -367,6 +367,14 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         };
 
         let magnitude = tri!(self.scan_integer128());
+        // Match the -0 behavior of other signed integer deserializers.
+        if negative && magnitude == Some(0) {
+            let value = visitor.visit_f64(-0.0);
+            return match value {
+                Ok(value) => Ok(value),
+                Err(err) => Err(self.fix_position(err)),
+            };
+        }
         let limit = (i128::MAX as u128) + u128::from(negative);
         let int = match magnitude {
             Some(n) if n <= limit => {
