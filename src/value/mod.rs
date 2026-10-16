@@ -714,8 +714,8 @@ impl Value {
 
     /// Returns true if the `Value` is a Null. Returns false otherwise.
     ///
-    /// For any Value on which `is_null` returns true, `as_null` is guaranteed
-    /// to return `Some(())`.
+    /// For any Value on which `is_null` returns true, `as_null` is guaranteed to
+    /// return `Some(())`.
     ///
     /// ```
     /// # use serde_json::json;
@@ -728,7 +728,35 @@ impl Value {
     /// assert!(!v["b"].is_null());
     /// ```
     pub fn is_null(&self) -> bool {
-        self.as_null().is_some()
+        matches!(self, Value::Null)
+    }
+
+    /// Returns true if the `Value` is considered empty. A `Value` is considered
+    /// empty if it is `Null`, an empty string, an empty array, or an empty
+    /// object.
+    ///
+    /// ```
+    /// # use serde_json::json;
+    /// #
+    /// assert!(json!(null).is_empty());
+    /// assert!(json!("").is_empty());
+    /// assert!(json!([]).is_empty());
+    /// assert!(json!({}).is_empty());
+    ///
+    /// assert!(!json!("hello").is_empty());
+    /// assert!(!json!([1, 2, 3]).is_empty());
+    /// assert!(!json!({ "key": "value" }).is_empty());
+    /// assert!(!json!(true).is_empty());
+    /// assert!(!json!(42).is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Value::Null => true,
+            Value::String(s) => s.is_empty(),
+            Value::Array(a) => a.is_empty(),
+            Value::Object(o) => o.is_empty(),
+            _ => false,
+        }
     }
 
     /// If the `Value` is a Null, returns (). Returns None otherwise.
