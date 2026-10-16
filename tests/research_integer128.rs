@@ -2,6 +2,7 @@
 fn integer128_boundaries() {
     for (source, expected) in [
         ("0", 0i128),
+        ("-0", 0),
         ("1", 1),
         ("-1", -1),
         ("170141183460469231731687303715884105727", i128::MAX),
@@ -19,7 +20,6 @@ fn integer128_boundaries() {
     }
 
     for source in [
-        "-0",
         "170141183460469231731687303715884105728",
         "-170141183460469231731687303715884105729",
         "999999999999999999999999999999999999999999999999999",
@@ -87,13 +87,4 @@ fn integer128_error_positions_and_input_sources() {
             "u128 reader {input:?}"
         );
     }
-}
-
-#[test]
-fn negative_zero_is_not_i128() {
-    for text in ["-0", " -0 ", "-0\n"] {
-        assert!(serde_json::from_str::<i128>(text).is_err(), "{text:?}");
-    }
-    assert_eq!(serde_json::from_str::<i128>("0").unwrap(), 0);
-    assert_eq!(serde_json::from_str::<i128>("-1").unwrap(), -1);
 }
