@@ -5,7 +5,6 @@ use crate::error::{Error, ErrorCode, Result};
 use crate::lexical;
 use crate::number::Number;
 use crate::read::{self, Fused, Reference};
-use alloc::string::String;
 use alloc::vec::Vec;
 #[cfg(feature = "float_roundtrip")]
 use core::iter;
