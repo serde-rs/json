@@ -118,6 +118,10 @@ impl Number {
         }
         #[cfg(feature = "arbitrary_precision")]
         {
+            // `-0` is the float -0.0, as without arbitrary_precision
+            if self.n == "-0" {
+                return true;
+            }
             for c in self.n.chars() {
                 if c == '.' || c == 'e' || c == 'E' {
                     return self.n.parse::<f64>().is_ok_and(f64::is_finite);
@@ -143,7 +147,11 @@ impl Number {
             N::Float(_) => None,
         }
         #[cfg(feature = "arbitrary_precision")]
-        self.n.parse().ok()
+        if self.n == "-0" {
+            None
+        } else {
+            self.n.parse().ok()
+        }
     }
 
     /// If the `Number` is an integer, represent it as u64 if possible. Returns
@@ -208,7 +216,11 @@ impl Number {
             N::Float(_) => None,
         }
         #[cfg(feature = "arbitrary_precision")]
-        self.n.parse().ok()
+        if self.n == "-0" {
+            None
+        } else {
+            self.n.parse().ok()
+        }
     }
 
     /// If the `Number` is an integer, represent it as u128 if possible. Returns
@@ -600,6 +612,10 @@ macro_rules! deserialize_number {
         where
             V: de::Visitor<'de>,
         {
+            // `-0` is the float -0.0, as without arbitrary_precision
+            if self.n == "-0" {
+                return visitor.visit_f64(-0.0);
+            }
             visitor.$visit(tri!(self.n.parse().map_err(|_| invalid_number())))
         }
     };
