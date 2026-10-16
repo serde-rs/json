@@ -931,7 +931,7 @@ impl Default for &Value {
     }
 }
 
-mod de;
+pub(crate) mod de;
 mod from;
 mod index;
 mod partial_eq;
