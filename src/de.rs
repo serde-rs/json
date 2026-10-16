@@ -357,28 +357,29 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     where
         V: de::Visitor<'any>,
     {
-        let mut buf = String::new();
-
-        match tri!(self.parse_whitespace()) {
+        let negative = match tri!(self.parse_whitespace()) {
             Some(b'-') => {
                 self.eat_char();
-                buf.push('-');
+                true
             }
-            Some(_) => {}
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        }
-
-        tri!(self.scan_integer128(&mut buf));
-
-        let value = match buf.parse() {
-            Ok(int) => visitor.visit_i128(int),
-            Err(_) => {
-                return Err(self.error(ErrorCode::NumberOutOfRange));
-            }
+            Some(_) => false,
+            None => return Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
         };
 
+        let magnitude = tri!(self.scan_integer128());
+        let limit = (i128::MAX as u128) + u128::from(negative);
+        let int = match magnitude {
+            Some(n) if n <= limit => {
+                if negative {
+                    (n as i128).wrapping_neg()
+                } else {
+                    n as i128
+                }
+            }
+            _ => return Err(self.error(ErrorCode::NumberOutOfRange)),
+        };
+
+        let value = visitor.visit_i128(int);
         match value {
             Ok(value) => Ok(value),
             Err(err) => Err(self.fix_position(err)),
@@ -390,24 +391,16 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         V: de::Visitor<'any>,
     {
         match tri!(self.parse_whitespace()) {
-            Some(b'-') => {
-                return Err(self.peek_error(ErrorCode::NumberOutOfRange));
-            }
+            Some(b'-') => return Err(self.peek_error(ErrorCode::NumberOutOfRange)),
             Some(_) => {}
-            None => {
-                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
-            }
+            None => return Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
         }
 
-        let mut buf = String::new();
-        tri!(self.scan_integer128(&mut buf));
-
-        let value = match buf.parse() {
-            Ok(int) => visitor.visit_u128(int),
-            Err(_) => {
-                return Err(self.error(ErrorCode::NumberOutOfRange));
-            }
+        let int = match tri!(self.scan_integer128()) {
+            Some(n) => n,
+            None => return Err(self.error(ErrorCode::NumberOutOfRange)),
         };
+        let value = visitor.visit_u128(int);
 
         match value {
             Ok(value) => Ok(value),
@@ -415,23 +408,24 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    fn scan_integer128(&mut self, buf: &mut String) -> Result<()> {
+    fn scan_integer128(&mut self) -> Result<Option<u128>> {
         match tri!(self.next_char_or_null()) {
             b'0' => {
-                buf.push('0');
                 // There can be only one leading '0'.
                 match tri!(self.peek_or_null()) {
                     b'0'..=b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
-                    _ => Ok(()),
+                    _ => Ok(Some(0)),
                 }
             }
             c @ b'1'..=b'9' => {
-                buf.push(c as char);
+                let mut value = Some((c - b'0') as u128);
                 while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
                     self.eat_char();
-                    buf.push(c as char);
+                    value = value
+                        .and_then(|n| n.checked_mul(10))
+                        .and_then(|n| n.checked_add((c - b'0') as u128));
                 }
-                Ok(())
+                Ok(value)
             }
             _ => Err(self.error(ErrorCode::InvalidNumber)),
         }
