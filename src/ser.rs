@@ -7,7 +7,6 @@ use alloc::string::String;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::fmt::{self, Display};
-use core::hint;
 use core::num::FpCategory;
 use core::str;
 use serde::ser::{self, Impossible, Serialize};
@@ -2092,12 +2091,16 @@ where
         let (string_run, rest) = bytes.split_at(i);
         let (&byte, rest) = rest.split_first().unwrap();
 
-        let escape = ESCAPE[byte as usize];
+        let escape = ESCAPE.get(byte as usize);
 
         i += 1;
-        if escape == 0 {
+        // first Some is from the .get(), second is because
+        // it is an array of Options
+        let escape = if let Some(&Some(escape)) = escape {
+            escape
+        } else {
             continue;
-        }
+        };
 
         bytes = rest;
         i = 0;
@@ -2108,18 +2111,7 @@ where
             tri!(formatter.write_string_fragment(writer, string_run));
         }
 
-        let char_escape = match escape {
-            self::BB => CharEscape::Backspace,
-            self::TT => CharEscape::Tab,
-            self::NN => CharEscape::LineFeed,
-            self::FF => CharEscape::FormFeed,
-            self::RR => CharEscape::CarriageReturn,
-            self::QU => CharEscape::Quote,
-            self::BS => CharEscape::ReverseSolidus,
-            self::UU => CharEscape::AsciiControl(byte),
-            // Safety: the escape table does not contain any other type of character.
-            _ => unsafe { hint::unreachable_unchecked() },
-        };
+        let char_escape = escape.char_escape(byte);
         tri!(formatter.write_char_escape(writer, char_escape));
     }
 
@@ -2132,36 +2124,57 @@ where
     formatter.write_string_fragment(writer, string_run)
 }
 
-const BB: u8 = b'b'; // \x08
-const TT: u8 = b't'; // \x09
-const NN: u8 = b'n'; // \x0A
-const FF: u8 = b'f'; // \x0C
-const RR: u8 = b'r'; // \x0D
-const QU: u8 = b'"'; // \x22
-const BS: u8 = b'\\'; // \x5C
-const UU: u8 = b'u'; // \x00...\x1F except the ones above
-const __: u8 = 0;
+/// Represents the first character of an escape sequence
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum EscapeStart {
+    B,
+    T,
+    N,
+    F,
+    R,
+    Quote,
+    Backslash,
+    U,
+}
 
-// Lookup table of escape sequences. A value of b'x' at index i means that byte
-// i is escaped as "\x" in JSON. A value of 0 means that byte i is not escaped.
-static ESCAPE: [u8; 256] = [
+impl EscapeStart {
+    /// Get the full escape sequence. The `byte` is only used for
+    /// `\u` escape sequences
+    fn char_escape(self, byte: u8) -> CharEscape {
+        match self {
+            Self::B => CharEscape::Backspace,
+            Self::T => CharEscape::Tab,
+            Self::N => CharEscape::LineFeed,
+            Self::F => CharEscape::FormFeed,
+            Self::R => CharEscape::CarriageReturn,
+            Self::Quote => CharEscape::Quote,
+            Self::Backslash => CharEscape::ReverseSolidus,
+            Self::U => CharEscape::AsciiControl(byte),
+        }
+    }
+}
+const BB: Option<EscapeStart> = Some(EscapeStart::B); // \x08
+const TT: Option<EscapeStart> = Some(EscapeStart::T); // \x09
+const NN: Option<EscapeStart> = Some(EscapeStart::N); // \x0A
+const FF: Option<EscapeStart> = Some(EscapeStart::F); // \x0C
+const RR: Option<EscapeStart> = Some(EscapeStart::R); // \x0D
+const QU: Option<EscapeStart> = Some(EscapeStart::Quote); // \x22
+const BS: Option<EscapeStart> = Some(EscapeStart::Backslash); // \x5C
+const UU: Option<EscapeStart> = Some(EscapeStart::U); // \x00...\x1F except the ones above
+const __: Option<EscapeStart> = None;
+
+// Lookup table of escape sequences. A value of Some(EscapeStart::B) at index i means that byte
+// i is escaped as "\b" in JSON. A value of None means that byte i is not escaped.
+static ESCAPE: [Option<EscapeStart>; 96] = [
     //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
     UU, UU, UU, UU, UU, UU, UU, UU, BB, TT, NN, UU, FF, RR, UU, UU, // 0
     UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, UU, // 1
     __, __, QU, __, __, __, __, __, __, __, __, __, __, __, __, __, // 2
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 3
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 4
-    __, __, __, __, __, __, __, __, __, __, __, __, BS, __, __, __, // 5
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 6
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 7
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 8
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 9
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // A
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // B
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // C
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // D
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // E
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
+    __, __, __, __, __, __, __, __, __, __, __, __, BS, __, __,
+    __, // 5
+        // Rest are all __
 ];
 
 /// Serialize the given data structure as JSON into the I/O stream.
