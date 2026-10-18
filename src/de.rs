@@ -2245,28 +2245,13 @@ where
         V: de::Visitor<'de>,
     {
         self.de.eat_char();
+        self.de.scratch.clear();
+        let key = tri!(self.de.read.parse_str(&mut self.de.scratch));
 
-        let peek = match tri!(self.de.next_char()) {
-            Some(b) => b,
-            None => {
-                return Err(self.de.peek_error(ErrorCode::EofWhileParsingValue));
-            }
-        };
-
-        let value = match peek {
-            b't' => {
-                tri!(self.de.parse_ident(b"rue\""));
-                visitor.visit_bool(true)
-            }
-            b'f' => {
-                tri!(self.de.parse_ident(b"alse\""));
-                visitor.visit_bool(false)
-            }
-            _ => {
-                self.de.scratch.clear();
-                let s = tri!(self.de.read.parse_str(&mut self.de.scratch));
-                Err(de::Error::invalid_type(Unexpected::Str(&s), &visitor))
-            }
+        let value = match &*key {
+            "true" => visitor.visit_bool(true),
+            "false" => visitor.visit_bool(false),
+            _ => Err(de::Error::invalid_type(Unexpected::Str(&key), &visitor)),
         };
 
         match value {

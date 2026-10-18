@@ -2106,6 +2106,33 @@ fn test_boolean_key() {
 }
 
 #[test]
+fn test_escaped_boolean_key() {
+    for json in [
+        r#"{"\u0066alse":0,"\u0074rue":1}"#,
+        r#"{"f\u0061lse":0,"t\u0072ue":1}"#,
+        r#"{"\u0066\u0061\u006c\u0073\u0065":0,"\u0074\u0072\u0075\u0065":1}"#,
+    ] {
+        test_parse_ok(vec![(json, treemap!(false => 0, true => 1))]);
+        #[cfg(feature = "std")]
+        assert_eq!(
+            serde_json::from_reader::<_, BTreeMap<bool, i32>>(json.as_bytes()).unwrap(),
+            treemap!(false => 0, true => 1),
+        );
+    }
+
+    for json in [
+        r#"{"":0}"#,
+        r#"{"truex":0}"#,
+        r#"{"False":0}"#,
+        r#"{"tr\u0075ex":0}"#,
+        r#"{"true\n":0}"#,
+        r#"{"\u0074ru":0}"#,
+    ] {
+        assert!(from_str::<BTreeMap<bool, i32>>(json).unwrap_err().is_data());
+    }
+}
+
+#[test]
 fn test_borrowed_key() {
     let map: BTreeMap<&str, ()> = from_str("{\"borrowed\":null}").unwrap();
     let expected = treemap! { "borrowed" => () };
