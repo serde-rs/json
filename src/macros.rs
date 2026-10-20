@@ -21,7 +21,7 @@
 /// `Serialize` trait, while any type interpolated into an object key must
 /// implement `Into<String>`. If the `Serialize` implementation of the
 /// interpolated type decides to fail, or if the interpolated type contains a
-/// map with non-string keys, the `json!` macro will panic.
+/// map with keys that cannot be converted to strings (integer, boolean, and floating-point keys are stringified), the `json!` macro will panic.
 ///
 /// ```
 /// # use serde_json::json;
