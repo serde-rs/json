@@ -23,6 +23,7 @@ serde = { version = "1.0.220", default-features = false }
 
 [dev-dependencies]
 automod = "1.0.11"
+futures = { version = "0.3", default-features = false, features = ["executor", "std"] }
 indoc = "2.0.2"
 ref-cast = "1.0.18"
 rustversion = "1.0.13"
@@ -93,3 +94,7 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# Async JSON (de)serialization via buffering. Requires Rust 1.75.
+# Zero new production dependencies — builds on `std` I/O primitives only.
+async = ["std"]
