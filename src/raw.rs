@@ -112,6 +112,17 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 ///     raw_value: Box<RawValue>,
 /// }
 /// ```
+///
+/// # Serde feature compatibility
+///
+/// You cannot use `RawValue` on any field of a struct that gets
+/// `#[serde(flatten)]`ed into an outer struct.
+///
+/// You also cannot use `RawValue` in any variant of an internally-tagged enum.
+///
+/// Flattened structs and internally tagged enums use intermediate data
+/// structures during deserialization which lose the magic token required for
+/// `RawValue` to work.
 #[cfg_attr(docsrs, doc(cfg(feature = "raw_value")))]
 #[repr(transparent)]
 pub struct RawValue {
