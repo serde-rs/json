@@ -93,3 +93,8 @@ raw_value = []
 # overflow the stack after deserialization has completed, including, but not
 # limited to, Display and Debug and Drop impls.
 unbounded_depth = []
+
+# When deserializing Map<String, Value>, return an error if a key is found that
+# is already in the Map.
+no_duplicate_keys = []
+
