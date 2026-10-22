@@ -1934,6 +1934,17 @@ fn test_json_pointer_mut() {
 }
 
 #[test]
+fn test_json_pointer_escape_order() {
+    // RFC 6901 requires ~1 to be decoded before ~0, so ~01 names the key ~1.
+    let mut data = json!({"~1": "tilde-one", "/": "slash"});
+    assert_eq!(data.pointer("/~01"), Some(&json!("tilde-one")));
+
+    *data.pointer_mut("/~01").unwrap() = json!("updated");
+    assert_eq!(data["~1"], "updated");
+    assert_eq!(data["/"], "slash");
+}
+
+#[test]
 fn test_stack_overflow() {
     let brackets: String = iter::repeat('[')
         .take(127)
