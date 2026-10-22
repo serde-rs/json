@@ -151,6 +151,59 @@ fn test_json_stream_primitive() {
 }
 
 #[test]
+fn test_json_stream_seed() {
+    struct Seed;
+    impl<'de> serde::de::DeserializeSeed<'de> for Seed {
+        type Value = Value;
+        fn deserialize<D>(self, deserializer: D) -> Result<Value, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            let value: Value = serde::Deserialize::deserialize(deserializer)?;
+
+            // apply some modifications to test that the seed is working
+            Ok(match value {
+                Value::Bool(b) => Value::Bool(!b),
+                Value::Number(n) => Value::String(n.to_string()),
+                Value::String(s) => Value::String(s.to_uppercase()),
+                v => v,
+            })
+        }
+    }
+
+    let data = "{} true{}1[]\nfalse\"hey\"2 ";
+
+    test_stream!(data, Value, |stream| {
+        assert_eq!(stream.next_seed(Seed).unwrap().unwrap(), json!({}));
+        assert_eq!(stream.byte_offset(), 2);
+
+        assert_eq!(stream.next_seed(Seed).unwrap().unwrap(), false);
+        assert_eq!(stream.byte_offset(), 7);
+
+        assert_eq!(stream.next_seed(Seed).unwrap().unwrap(), json!({}));
+        assert_eq!(stream.byte_offset(), 9);
+
+        assert_eq!(stream.next_seed(Seed).unwrap().unwrap(), "1");
+        assert_eq!(stream.byte_offset(), 10);
+
+        assert_eq!(stream.next_seed(Seed).unwrap().unwrap(), json!([]));
+        assert_eq!(stream.byte_offset(), 12);
+
+        assert_eq!(stream.next_seed(Seed).unwrap().unwrap(), true);
+        assert_eq!(stream.byte_offset(), 18);
+
+        assert_eq!(stream.next_seed(Seed).unwrap().unwrap(), "HEY");
+        assert_eq!(stream.byte_offset(), 23);
+
+        assert_eq!(stream.next_seed(Seed).unwrap().unwrap(), "2");
+        assert_eq!(stream.byte_offset(), 24);
+
+        assert!(stream.next_seed(Seed).is_none());
+        assert_eq!(stream.byte_offset(), 25);
+    });
+}
+
+#[test]
 fn test_json_stream_invalid_literal() {
     let data = "truefalse";
 
