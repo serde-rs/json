@@ -26,6 +26,7 @@ mod macros;
 
 #[cfg(feature = "arbitrary_precision")]
 use crate::private_test::NumberTestingExt as _;
+use indoc::indoc;
 #[cfg(feature = "raw_value")]
 use ref_cast::RefCast;
 use serde::de::{self, IgnoredAny, IntoDeserializer};
@@ -480,6 +481,40 @@ fn test_write_object() {
             ]
         }),
     )]);
+}
+
+#[test]
+fn test_write_custom_indent() {
+    let value = json!([[[[1]]], { "a": [2, []] }, [[3]]]);
+
+    let mut writer = Vec::new();
+    let formatter = serde_json::ser::PrettyFormatter::with_indent(b"-->");
+    let mut ser = serde_json::Serializer::with_formatter(&mut writer, formatter);
+    value.serialize(&mut ser).unwrap();
+
+    let expected = indoc! {r#"
+        [
+        -->[
+        -->-->[
+        -->-->-->[
+        -->-->-->-->1
+        -->-->-->]
+        -->-->]
+        -->],
+        -->{
+        -->-->"a": [
+        -->-->-->2,
+        -->-->-->[]
+        -->-->]
+        -->},
+        -->[
+        -->-->[
+        -->-->-->3
+        -->-->]
+        -->]
+        ]"#
+    };
+    assert_eq!(String::from_utf8(writer).unwrap(), expected);
 }
 
 #[test]
