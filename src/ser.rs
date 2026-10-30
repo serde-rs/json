@@ -8,6 +8,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::fmt::{self, Display};
 use core::hint;
+use core::mem;
 use core::num::FpCategory;
 use core::str;
 use serde::ser::{self, Impossible, Serialize};
@@ -2087,20 +2088,8 @@ where
 {
     let mut bytes = value.as_bytes();
 
-    let mut i = 0;
-    while i < bytes.len() {
-        let (string_run, rest) = bytes.split_at(i);
-        let (&byte, rest) = rest.split_first().unwrap();
-
-        let escape = ESCAPE[byte as usize];
-
-        i += 1;
-        if escape == 0 {
-            continue;
-        }
-
-        bytes = rest;
-        i = 0;
+    loop {
+        let (string_run, rest) = bytes.split_at(find_escape(bytes));
 
         // Safety: string_run is a valid utf8 string, since we only split on ascii sequences
         let string_run = unsafe { str::from_utf8_unchecked(string_run) };
@@ -2108,7 +2097,13 @@ where
             tri!(formatter.write_string_fragment(writer, string_run));
         }
 
-        let char_escape = match escape {
+        let (&byte, rest) = match rest.split_first() {
+            Some(split) => split,
+            None => return Ok(()),
+        };
+        bytes = rest;
+
+        let char_escape = match ESCAPE[byte as usize] {
             self::BB => CharEscape::Backspace,
             self::TT => CharEscape::Tab,
             self::NN => CharEscape::LineFeed,
@@ -2117,19 +2112,70 @@ where
             self::QU => CharEscape::Quote,
             self::BS => CharEscape::ReverseSolidus,
             self::UU => CharEscape::AsciiControl(byte),
-            // Safety: the escape table does not contain any other type of character.
+            // Safety: find_escape only stops at bytes that have an entry in the escape table.
             _ => unsafe { hint::unreachable_unchecked() },
         };
         tri!(formatter.write_char_escape(writer, char_escape));
     }
+}
 
-    // Safety: bytes is a valid utf8 string, since we only split on ascii sequences
-    let string_run = unsafe { str::from_utf8_unchecked(bytes) };
-    if string_run.is_empty() {
-        return Ok(());
+// Returns the index of the first byte that needs escaping, or bytes.len().
+// Checks a whole chunk at a time like SliceRead::skip_to_escape; strings
+// shorter than a chunk are checked one byte at a time.
+#[inline]
+fn find_escape(bytes: &[u8]) -> usize {
+    #[cfg(fast_arithmetic = "64")]
+    type Chunk = u64;
+    #[cfg(fast_arithmetic = "32")]
+    type Chunk = u32;
+
+    const STEP: usize = mem::size_of::<Chunk>();
+    const ONE_BYTES: Chunk = Chunk::MAX / 255; // 0x0101...01
+
+    // Sets the high bit of the first byte that needs escaping, and no bit below it.
+    #[inline]
+    fn escape_mask(chunk: &[u8]) -> Chunk {
+        let chars = Chunk::from_le_bytes(chunk.try_into().unwrap());
+        let contains_ctrl = chars.wrapping_sub(ONE_BYTES * 0x20) & !chars;
+        let chars_quote = chars ^ (ONE_BYTES * Chunk::from(b'"'));
+        let contains_quote = chars_quote.wrapping_sub(ONE_BYTES) & !chars_quote;
+        let chars_backslash = chars ^ (ONE_BYTES * Chunk::from(b'\\'));
+        let contains_backslash = chars_backslash.wrapping_sub(ONE_BYTES) & !chars_backslash;
+        (contains_ctrl | contains_quote | contains_backslash) & (ONE_BYTES << 7)
     }
 
-    formatter.write_string_fragment(writer, string_run)
+    if bytes.len() < STEP {
+        return match bytes.iter().position(|&byte| ESCAPE[byte as usize] != 0) {
+            Some(i) => i,
+            None => bytes.len(),
+        };
+    }
+
+    // Escapes often come in runs, such as "\r\n", which would otherwise cost a
+    // whole chunk each.
+    if ESCAPE[bytes[0] as usize] != 0 {
+        return 0;
+    }
+
+    let mut chunks = bytes.chunks_exact(STEP);
+    for (n, chunk) in (&mut chunks).enumerate() {
+        let masked = escape_mask(chunk);
+        if masked != 0 {
+            return n * STEP + masked.trailing_zeros() as usize / 8;
+        }
+    }
+    if chunks.remainder().is_empty() {
+        return bytes.len();
+    }
+
+    // The last chunk overlaps bytes already checked. They hold no escape, so
+    // its first hit, if any, is past them.
+    let last = bytes.len() - STEP;
+    let masked = escape_mask(&bytes[last..]);
+    if masked != 0 {
+        return last + masked.trailing_zeros() as usize / 8;
+    }
+    bytes.len()
 }
 
 const BB: u8 = b'b'; // \x08
