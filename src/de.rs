@@ -5,8 +5,7 @@ use crate::error::{Error, ErrorCode, Result};
 use crate::lexical;
 use crate::number::Number;
 use crate::read::{self, Fused, Reference};
-use alloc::string::String;
-use alloc::vec::Vec;
+use crate::scratch::{self, Buffer, Text};
 #[cfg(feature = "float_roundtrip")]
 use core::iter;
 use core::iter::FusedIterator;
@@ -30,7 +29,7 @@ pub use crate::read::IoRead;
 /// A structure that deserializes JSON into Rust values.
 pub struct Deserializer<R> {
     read: R,
-    scratch: Vec<u8>,
+    scratch: Buffer,
     remaining_depth: u8,
     #[cfg(feature = "float_roundtrip")]
     single_precision: bool,
@@ -59,7 +58,7 @@ where
     pub fn new(read: R) -> Self {
         Deserializer {
             read,
-            scratch: Vec::new(),
+            scratch: scratch::buffer(),
             remaining_depth: 128,
             #[cfg(feature = "float_roundtrip")]
             single_precision: false,
@@ -111,7 +110,7 @@ pub(crate) enum ParserNumber {
     U64(u64),
     I64(i64),
     #[cfg(feature = "arbitrary_precision")]
-    String(String),
+    String(Text),
 }
 
 impl ParserNumber {
@@ -302,7 +301,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             },
             b'"' => {
                 self.eat_char();
-                self.scratch.clear();
+                crate::scratch::clear(&mut self.scratch);
                 match self.read.parse_str(&mut self.scratch) {
                     Ok(s) => de::Error::invalid_type(Unexpected::Str(&s), exp),
                     Err(err) => return err,
@@ -357,7 +356,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     where
         V: de::Visitor<'any>,
     {
-        let mut buf = String::new();
+        let mut buf = Text::new();
 
         match tri!(self.parse_whitespace()) {
             Some(b'-') => {
@@ -399,7 +398,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
         }
 
-        let mut buf = String::new();
+        let mut buf = Text::new();
         tri!(self.scan_integer128(&mut buf));
 
         let value = match buf.parse() {
@@ -415,7 +414,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    fn scan_integer128(&mut self, buf: &mut String) -> Result<()> {
+    fn scan_integer128(&mut self, buf: &mut Text) -> Result<()> {
         match tri!(self.next_char_or_null()) {
             b'0' => {
                 buf.push('0');
@@ -687,14 +686,16 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         // first requirement is already handled by the integer parsing logic.
         // The second requirement will be enforced just before passing the
         // slices to lexical in f64_long_from_parts.
-        self.scratch.clear();
-        self.scratch
-            .extend_from_slice(itoa::Buffer::new().format(partial_significand).as_bytes());
+        crate::scratch::clear(&mut self.scratch);
+        crate::scratch::extend_from_slice(
+            &mut self.scratch,
+            itoa::Buffer::new().format(partial_significand).as_bytes(),
+        );
 
         loop {
             match tri!(self.peek_or_null()) {
                 c @ b'0'..=b'9' => {
-                    self.scratch.push(c);
+                    crate::scratch::push(&mut self.scratch, c);
                     self.eat_char();
                 }
                 b'.' => {
@@ -742,7 +743,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn parse_long_decimal(&mut self, positive: bool, integer_end: usize) -> Result<f64> {
         let mut at_least_one_digit = integer_end < self.scratch.len();
         while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
-            self.scratch.push(c);
+            crate::scratch::push(&mut self.scratch, c);
             self.eat_char();
             at_least_one_digit = true;
         }
@@ -822,11 +823,11 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let mut buffer = itoa::Buffer::new();
         let significand = buffer.format(significand);
         let fraction_digits = -exponent as usize;
-        self.scratch.clear();
+        crate::scratch::clear(&mut self.scratch);
         if let Some(zeros) = fraction_digits.checked_sub(significand.len() + 1) {
-            self.scratch.extend(iter::repeat(b'0').take(zeros + 1));
+            crate::scratch::extend(&mut self.scratch, iter::repeat(b'0').take(zeros + 1));
         }
-        self.scratch.extend_from_slice(significand.as_bytes());
+        crate::scratch::extend_from_slice(&mut self.scratch, significand.as_bytes());
         let integer_end = self.scratch.len() - fraction_digits;
         self.parse_long_decimal(positive, integer_end)
     }
@@ -936,7 +937,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
     #[cfg(feature = "arbitrary_precision")]
     fn parse_any_number(&mut self, positive: bool) -> Result<ParserNumber> {
-        let mut buf = String::with_capacity(16);
+        let mut buf = Text::with_capacity(16);
         if !positive {
             buf.push('-');
         }
@@ -945,7 +946,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             if let Ok(unsigned) = buf.parse() {
                 return Ok(ParserNumber::U64(unsigned));
             }
-        } else if buf != "-0" {
+        } else if &*buf != "-0" {
             if let Ok(signed) = buf.parse() {
                 return Ok(ParserNumber::I64(signed));
             }
@@ -954,7 +955,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    fn scan_or_eof(&mut self, buf: &mut String) -> Result<u8> {
+    fn scan_or_eof(&mut self, buf: &mut Text) -> Result<u8> {
         match tri!(self.next_char()) {
             Some(b) => {
                 buf.push(b as char);
@@ -965,7 +966,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    fn scan_integer(&mut self, buf: &mut String) -> Result<()> {
+    fn scan_integer(&mut self, buf: &mut Text) -> Result<()> {
         match tri!(self.scan_or_eof(buf)) {
             b'0' => {
                 // There can be only one leading '0'.
@@ -990,7 +991,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    fn scan_number(&mut self, buf: &mut String) -> Result<()> {
+    fn scan_number(&mut self, buf: &mut Text) -> Result<()> {
         match tri!(self.peek_or_null()) {
             b'.' => self.scan_decimal(buf),
             b'e' | b'E' => self.scan_exponent(buf),
@@ -999,7 +1000,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    fn scan_decimal(&mut self, buf: &mut String) -> Result<()> {
+    fn scan_decimal(&mut self, buf: &mut Text) -> Result<()> {
         self.eat_char();
         buf.push('.');
 
@@ -1024,7 +1025,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    fn scan_exponent(&mut self, buf: &mut String) -> Result<()> {
+    fn scan_exponent(&mut self, buf: &mut Text) -> Result<()> {
         self.eat_char();
         buf.push('e');
 
@@ -1100,7 +1101,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn ignore_value(&mut self) -> Result<()> {
-        self.scratch.clear();
+        crate::scratch::clear(&mut self.scratch);
         let mut enclosing = None;
 
         loop {
@@ -1142,7 +1143,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     None
                 }
                 frame @ (b'[' | b'{') => {
-                    self.scratch.extend(enclosing.take());
+                    crate::scratch::extend(&mut self.scratch, enclosing.take());
                     self.eat_char();
                     Some(frame)
                 }
@@ -1424,7 +1425,7 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
             b'0'..=b'9' => tri!(self.parse_any_number(true)).visit(visitor),
             b'"' => {
                 self.eat_char();
-                self.scratch.clear();
+                crate::scratch::clear(&mut self.scratch);
                 match tri!(self.read.parse_str(&mut self.scratch)) {
                     Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
                     Reference::Copied(s) => visitor.visit_str(s),
@@ -1535,7 +1536,7 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
         let value = match peek {
             b'"' => {
                 self.eat_char();
-                self.scratch.clear();
+                crate::scratch::clear(&mut self.scratch);
                 match tri!(self.read.parse_str(&mut self.scratch)) {
                     Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
                     Reference::Copied(s) => visitor.visit_str(s),
@@ -1644,7 +1645,7 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
         let value = match peek {
             b'"' => {
                 self.eat_char();
-                self.scratch.clear();
+                crate::scratch::clear(&mut self.scratch);
                 match tri!(self.read.parse_str_raw(&mut self.scratch)) {
                     Reference::Borrowed(b) => visitor.visit_borrowed_bytes(b),
                     Reference::Copied(b) => visitor.visit_bytes(b),
@@ -2217,7 +2218,7 @@ where
         V: de::Visitor<'de>,
     {
         self.de.eat_char();
-        self.de.scratch.clear();
+        crate::scratch::clear(&mut self.de.scratch);
         match tri!(self.de.read.parse_str(&mut self.de.scratch)) {
             Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
             Reference::Copied(s) => visitor.visit_str(s),
@@ -2263,7 +2264,7 @@ where
                 visitor.visit_bool(false)
             }
             _ => {
-                self.de.scratch.clear();
+                crate::scratch::clear(&mut self.de.scratch);
                 let s = tri!(self.de.read.parse_str(&mut self.de.scratch));
                 Err(de::Error::invalid_type(Unexpected::Str(&s), &visitor))
             }
@@ -2711,4 +2712,71 @@ where
     T: de::Deserialize<'a>,
 {
     from_trait(read::StrRead::new(s))
+}
+
+#[cfg(all(test, feature = "zeroize"))]
+mod custody_tests {
+    use super::Deserializer;
+    use crate::custody_tests::{watch, wiped};
+    use crate::scratch::Text;
+    use alloc::string::String;
+    use serde::Deserialize;
+
+    #[test]
+    fn a_malformed_first_string_keeps_partial_scratch_under_the_parser_owner() {
+        let mut parser = Deserializer::from_slice(br#""private\u0021\uXX"#);
+        assert!(String::deserialize(&mut parser).is_err());
+        assert_eq!(&**parser.scratch, b"private!");
+        watch(&parser.scratch);
+        drop(parser);
+        assert_eq!(wiped(), Some(true));
+    }
+
+    #[test]
+    fn numeric_scanning_growth_and_overflow_keep_wiping_ownership() {
+        let mut text = Text::new();
+        let mut first = Deserializer::from_str("123456789");
+        first.scan_integer128(&mut text).unwrap();
+        watch(text.as_bytes());
+        let long = "123456789".repeat(text.len() * 4);
+        let mut more = Deserializer::from_str(&long);
+        more.scan_integer128(&mut text).unwrap();
+        assert_eq!(wiped(), Some(true));
+        watch(text.as_bytes());
+        assert!(text.parse::<u128>().is_err());
+        drop(text);
+        assert_eq!(wiped(), Some(true));
+        assert!(crate::from_str::<u128>(&long).is_err());
+        assert_eq!(
+            crate::from_str::<i128>("-170141183460469231731687303715884105728").unwrap(),
+            i128::MIN
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "arbitrary_precision")]
+    fn malformed_arbitrary_precision_number_releases_its_partial_text() {
+        let mut text = Text::new();
+        let mut first = Deserializer::from_str("123456789012345678901234567890");
+        first.scan_integer(&mut text).unwrap();
+        watch(text.as_bytes());
+        let mut exponent = Deserializer::from_str("e+");
+        assert!(exponent.scan_number(&mut text).is_err());
+        drop(text);
+        assert_eq!(wiped(), Some(true));
+        assert!(crate::from_str::<crate::Number>("123456789012345678901234567890e+").is_err());
+    }
+
+    #[test]
+    #[cfg(feature = "float_roundtrip")]
+    fn float_roundtrip_scratch_is_wiped_on_parser_drop() {
+        let mut parser = Deserializer::from_str(
+            "1234567890123456789012345678901234567890.012345678901234567890123456789",
+        );
+        assert!(f64::deserialize(&mut parser).unwrap().is_finite());
+        assert!(!parser.scratch.is_empty());
+        watch(&parser.scratch);
+        drop(parser);
+        assert_eq!(wiped(), Some(true));
+    }
 }

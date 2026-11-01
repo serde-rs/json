@@ -31,6 +31,13 @@ jobs:
       - run: cargo test --features float_roundtrip,arbitrary_precision --tests -- --skip ui --exact
       - run: cargo test --features raw_value --tests -- --skip ui --exact
       - run: cargo test --features unbounded_depth --tests -- --skip ui --exact
+      - run: cargo test --features zeroize --tests --lib -- --skip ui --exact
+      - run: cargo test --features zeroize,float_roundtrip,preserve_order --tests --lib -- --skip ui --exact
+      - run: cargo test --features zeroize,arbitrary_precision --tests --lib -- --skip ui --exact
+      - run: cargo test --features zeroize,raw_value --tests --lib -- --skip ui --exact
+      - run: cargo test --all-features --tests --lib -- --skip ui --exact
+      - run: cargo test --no-default-features --features alloc,zeroize --lib
+      - run: cargo test --no-default-features --features alloc,zeroize,float_roundtrip,arbitrary_precision,raw_value --lib
       - uses: actions/upload-artifact@v7
         if: matrix.os == 'ubuntu' && always()
         with:
@@ -67,6 +74,10 @@ jobs:
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,arbitrary_precision
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,raw_value
+      - run: cargo check --manifest-path tests/crate/Cargo.toml --features zeroize
+        if: matrix.rust != '1.71.0'
+      - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features alloc,zeroize,arbitrary_precision,raw_value,float_roundtrip
+        if: matrix.rust != '1.71.0'
       - run: cargo check --manifest-path tests/crate/Cargo.toml --features serde_json/preserve_order
         if: matrix.rust != '1.71.0'
       - run: cargo check --manifest-path tests/crate/Cargo.toml --no-default-features --features serde_json/preserve_order
@@ -78,6 +89,10 @@ jobs:
       - name: Build without std with preserve_order
         run: cargo check --manifest-path tests/crate/Cargo.toml --target
           ${{matrix.target}} --no-default-features --features alloc,serde_json/preserve_order
+        if: matrix.target
+      - name: Build without std with zeroize
+        run: cargo check --manifest-path tests/crate/Cargo.toml --target
+          ${{matrix.target}} --no-default-features --features alloc,zeroize,arbitrary_precision,raw_value,float_roundtrip
         if: matrix.target
 
   minimal:
@@ -114,6 +129,7 @@ jobs:
       - run: cargo miri setup
       - run: cargo miri test --target ${{matrix.target}}
       - run: cargo miri test --target ${{matrix.target}} --features preserve_order,float_roundtrip,arbitrary_precision,raw_value
+      - run: cargo miri test --target ${{matrix.target}} --lib --features zeroize,float_roundtrip,arbitrary_precision,raw_value
 
   clippy:
     name: Clippy

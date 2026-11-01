@@ -6,11 +6,14 @@
 //! buffers, so for a `vec![0, 1, 2, 3]`, `3` is the most significant limb,
 //! and `0` is the least significant limb.
 
+use super::buffer;
 use super::large_powers;
 use super::num::*;
 use super::small_powers::*;
 use alloc::vec::Vec;
-use core::{cmp, iter, mem};
+#[cfg(not(feature = "zeroize"))]
+use core::iter;
+use core::{cmp, mem};
 
 // ALIASES
 // -------
@@ -281,7 +284,7 @@ mod small {
     #[inline]
     pub fn iadd_impl(x: &mut Vec<Limb>, y: Limb, xstart: usize) {
         if x.len() <= xstart {
-            x.push(y);
+            buffer::push(x, y);
         } else {
             // Initial add
             let mut carry = scalar::iadd(&mut x[xstart], y);
@@ -296,7 +299,7 @@ mod small {
             // If we overflowed the buffer entirely, need to add 1 to the end
             // of the buffer.
             if carry {
-                x.push(1);
+                buffer::push(x, 1);
             }
         }
     }
@@ -340,17 +343,17 @@ mod small {
 
         // Overflow of value, add to end.
         if carry != 0 {
-            x.push(carry);
+            buffer::push(x, carry);
         }
     }
 
     /// Mul small integer to bigint.
     #[inline]
     pub fn mul(x: &[Limb], y: Limb) -> Vec<Limb> {
-        let mut z = Vec::<Limb>::default();
-        z.extend_from_slice(x);
+        let mut z = buffer::new();
+        buffer::extend_from_slice(&mut z, x);
         imul(&mut z, y);
-        z
+        buffer::into_vec(z)
     }
 
     /// MulAssign by a power.
@@ -489,7 +492,7 @@ mod small {
         // Always push the carry, even if it creates a non-normal result.
         let carry = prev >> rshift;
         if carry != 0 {
-            x.push(carry);
+            buffer::push(x, carry);
         }
     }
 
@@ -500,8 +503,18 @@ mod small {
     pub fn ishl_limbs(x: &mut Vec<Limb>, n: usize) {
         debug_assert!(n != 0);
         if !x.is_empty() {
-            x.reserve(n);
-            x.splice(..0, iter::repeat(0).take(n));
+            #[cfg(not(feature = "zeroize"))]
+            {
+                x.reserve(n);
+                x.splice(..0, iter::repeat(0).take(n));
+            }
+            #[cfg(feature = "zeroize")]
+            {
+                let len = x.len();
+                buffer::resize(x, len.checked_add(n).expect("capacity overflow"));
+                x.copy_within(..len, n);
+                x[..n].fill(0);
+            }
         }
     }
 
@@ -586,7 +599,7 @@ mod large {
         // that as the current range. If the effective y buffer is longer, need
         // to resize to that, + the start index.
         if y.len() > x.len() - xstart {
-            x.resize(y.len() + xstart, 0);
+            buffer::resize(x, y.len() + xstart);
         }
 
         // Iteratively add elements from y to x.
@@ -617,10 +630,10 @@ mod large {
     /// Add bigint to bigint.
     #[inline]
     pub fn add(x: &[Limb], y: &[Limb]) -> Vec<Limb> {
-        let mut z = Vec::<Limb>::default();
-        z.extend_from_slice(x);
+        let mut z = buffer::new();
+        buffer::extend_from_slice(&mut z, x);
         iadd(&mut z, y);
-        z
+        buffer::into_vec(z)
     }
 
     // SUBTRACTION
@@ -671,18 +684,18 @@ mod large {
         // the algorithm defined above. Use a single buffer to avoid
         // frequent reallocations. Handle the first case to avoid a redundant
         // addition, since we know y.len() >= 1.
-        let mut z: Vec<Limb> = small::mul(x, y[0]);
-        z.resize(x.len() + y.len(), 0);
+        let mut z = buffer::wrap(small::mul(x, y[0]));
+        buffer::resize(&mut z, x.len() + y.len());
 
         // Handle the iterative cases.
         for (i, &yi) in y[1..].iter().enumerate() {
-            let zi: Vec<Limb> = small::mul(x, yi);
+            let zi = buffer::wrap(small::mul(x, yi));
             iadd_impl(&mut z, &zi, i + 1);
         }
 
         small::normalize(&mut z);
 
-        z
+        buffer::into_vec(z)
     }
 
     /// Split two buffers into halfway, into (lo, hi).
@@ -705,11 +718,11 @@ mod large {
             let m = y.len() / 2;
             let (xl, xh) = karatsuba_split(x, m);
             let (yl, yh) = karatsuba_split(y, m);
-            let sumx = add(xl, xh);
-            let sumy = add(yl, yh);
-            let z0 = karatsuba_mul(xl, yl);
-            let mut z1 = karatsuba_mul(&sumx, &sumy);
-            let z2 = karatsuba_mul(xh, yh);
+            let sumx = buffer::wrap(add(xl, xh));
+            let sumy = buffer::wrap(add(yl, yh));
+            let z0 = buffer::wrap(karatsuba_mul(xl, yl));
+            let mut z1 = buffer::wrap(karatsuba_mul(&sumx, &sumy));
+            let z2 = buffer::wrap(karatsuba_mul(xh, yh));
             // Properly scale z1, which is `z1 - z2 - zo`.
             isub(&mut z1, &z2);
             isub(&mut z1, &z0);
@@ -720,11 +733,12 @@ mod large {
             //  z2 must be shifted 2*m digits (2^(64m)) over.
             let len = z0.len().max(m + z1.len()).max(2 * m + z2.len());
             let mut result = z0;
-            result.reserve_exact(len - result.len());
+            let additional = len - result.len();
+            buffer::reserve_exact(&mut result, additional);
             iadd_impl(&mut result, &z1, m);
             iadd_impl(&mut result, &z2, 2 * m);
 
-            result
+            buffer::into_vec(result)
         }
     }
 
@@ -732,8 +746,8 @@ mod large {
     ///
     /// Assumes `y.len() >= x.len()`.
     fn karatsuba_uneven_mul(x: &[Limb], mut y: &[Limb]) -> Vec<Limb> {
-        let mut result = Vec::<Limb>::default();
-        result.resize(x.len() + y.len(), 0);
+        let mut result = buffer::new();
+        buffer::resize(&mut result, x.len() + y.len());
 
         // This effectively is like grade-school multiplication between
         // two numbers, except we're using splits on `y`, and the intermediate
@@ -742,14 +756,14 @@ mod large {
         while !y.is_empty() {
             let m = x.len().min(y.len());
             let (yl, yh) = karatsuba_split(y, m);
-            let prod = karatsuba_mul(x, yl);
+            let prod = buffer::wrap(karatsuba_mul(x, yl));
             iadd_impl(&mut result, &prod, start);
             y = yh;
             start += m;
         }
         small::normalize(&mut result);
 
-        result
+        buffer::into_vec(result)
     }
 
     /// Forwarder to the proper Karatsuba algorithm.
@@ -772,7 +786,8 @@ mod large {
             // multiplication makes sense, so we're just going to use long
             // division. ~20% speedup compared to:
             //      *x = karatsuba_mul_fwd(x, y);
-            *x = karatsuba_mul_fwd(x, y);
+            let replacement = karatsuba_mul_fwd(x, y);
+            buffer::replace(x, replacement);
         }
     }
 } // large
@@ -825,7 +840,7 @@ pub(crate) trait Math: Clone + Sized + Default {
     fn from_u64(x: u64) -> Self {
         let mut v = Self::default();
         let slc = split_u64(x);
-        v.data_mut().extend_from_slice(&slc);
+        buffer::extend_from_slice(v.data_mut(), &slc);
         v.normalize();
         v
     }

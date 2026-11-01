@@ -9,9 +9,9 @@ use alloc::string::{String, ToString};
 use core::fmt::{self, Debug, Display};
 #[cfg(not(feature = "arbitrary_precision"))]
 use core::hash::{Hash, Hasher};
-use serde::de::{self, Unexpected, Visitor};
 #[cfg(feature = "arbitrary_precision")]
-use serde::de::{IntoDeserializer, MapAccess};
+use serde::de::MapAccess;
+use serde::de::{self, Unexpected, Visitor};
 use serde::{forward_to_deserialize_any, Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "arbitrary_precision")]
@@ -527,6 +527,15 @@ impl<'de> de::Deserialize<'de> for NumberFromString {
                 let n = tri!(s.parse().map_err(de::Error::custom));
                 Ok(NumberFromString { value: n })
             }
+
+            #[cfg(feature = "zeroize")]
+            fn visit_string<E>(self, s: String) -> Result<NumberFromString, E>
+            where
+                E: de::Error,
+            {
+                let text: crate::scratch::Text = s.into();
+                self.visit_str(&text)
+            }
         }
 
         deserializer.deserialize_str(Visitor)
@@ -571,7 +580,7 @@ macro_rules! deserialize_any {
             }
 
             visitor.visit_map(NumberDeserializer {
-                number: Some(self.$($num_string)*),
+                number: Some(self.$($num_string)*.into()),
             })
         }
     };
@@ -657,7 +666,7 @@ impl<'de> Deserializer<'de> for &Number {
 
 #[cfg(feature = "arbitrary_precision")]
 pub(crate) struct NumberDeserializer {
-    pub number: Option<String>,
+    pub number: Option<crate::scratch::Text>,
 }
 
 #[cfg(feature = "arbitrary_precision")]
@@ -678,7 +687,7 @@ impl<'de> MapAccess<'de> for NumberDeserializer {
     where
         V: de::DeserializeSeed<'de>,
     {
-        seed.deserialize(self.number.take().unwrap().into_deserializer())
+        crate::scratch::deserialize_text(seed, self.number.take().unwrap())
     }
 }
 
@@ -737,9 +746,35 @@ impl From<ParserNumber> for Number {
                 }
             }
             #[cfg(feature = "arbitrary_precision")]
-            ParserNumber::String(s) => s,
+            ParserNumber::String(s) => crate::scratch::into_string(s),
         };
         Number { n }
+    }
+}
+
+#[cfg(all(test, feature = "zeroize", feature = "arbitrary_precision"))]
+mod custody_tests {
+    use super::{Number, NumberDeserializer};
+    use crate::custody_tests::{watch, wiped};
+    use crate::scratch::Text;
+    use serde::de::value::MapAccessDeserializer;
+    use serde::Deserialize;
+
+    #[test]
+    fn number_conversion_wipes_the_temporary_and_preserves_the_returned_owner() {
+        let text =
+            Text::from_display("123456789012345678901234567890.123456789012345678901234567890");
+        watch(text.as_bytes());
+        let adapter = NumberDeserializer { number: Some(text) };
+        let number = Number::deserialize(MapAccessDeserializer::new(adapter)).unwrap();
+        assert_eq!(wiped(), Some(true));
+        assert_eq!(
+            number.n,
+            "123456789012345678901234567890.123456789012345678901234567890"
+        );
+        watch(number.n.as_bytes());
+        drop(number);
+        assert_eq!(wiped(), Some(false));
     }
 }
 
