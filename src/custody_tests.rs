@@ -174,17 +174,18 @@ fn float_arithmetic_preserves_results_and_wipes_growth_and_unwinding() {
     drop(small);
     assert_eq!(wiped(), Some(true));
 
-    let mut large = Arithmetic::from_u64(0x12345678);
-    let shift = 64 * Limb::BITS;
-    large.imul_pow2(shift);
+    let mut large = Arithmetic::default();
+    let limb = Limb::MAX / 3;
+    buffer::extend_from_slice(large.data_mut(), &[limb; 65]);
     watch_limbs(large.data());
     // This runs the same multiplication and temporary-owner paths used by the
     // float parser, including Karatsuba multiplication and replacement of the
     // original allocation. Both operands exceed the cutoff on 32/64-bit limbs.
     large.imul_pow5(1024);
     assert_eq!(wiped(), Some(true));
-    assert!(large.bit_length() > shift as usize + 2300);
-    assert!(large.data()[..64].iter().all(|limb| *limb == 0));
+    assert!(large.bit_length() > 64 * Limb::BITS as usize + 2300);
+    let expected_low = (0..1024).fold(limb, |value, _| value.wrapping_mul(5));
+    assert_eq!(large.data()[0], expected_low);
     watch_limbs(large.data());
     drop(large);
     assert_eq!(wiped(), Some(true));
