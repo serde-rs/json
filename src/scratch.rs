@@ -6,6 +6,7 @@ pub(crate) type Buffer = Vec<u8>;
 #[cfg(feature = "zeroize")]
 pub(crate) type Buffer = zeroize::Zeroizing<Vec<u8>>;
 
+#[inline]
 pub(crate) fn buffer() -> Buffer {
     #[cfg(not(feature = "zeroize"))]
     {
@@ -18,6 +19,7 @@ pub(crate) fn buffer() -> Buffer {
 }
 
 #[cfg(all(feature = "std", feature = "raw_value"))]
+#[inline]
 pub(crate) fn into_vec(bytes: Buffer) -> Vec<u8> {
     #[cfg(not(feature = "zeroize"))]
     {
@@ -49,6 +51,7 @@ pub(crate) fn display_text(value: impl core::fmt::Display) -> Text {
 }
 
 #[cfg(any(feature = "arbitrary_precision", feature = "raw_value"))]
+#[inline]
 pub(crate) fn into_string(text: Text) -> String {
     #[cfg(not(feature = "zeroize"))]
     {
@@ -62,6 +65,7 @@ pub(crate) fn into_string(text: Text) -> String {
 }
 
 #[cfg(feature = "raw_value")]
+#[inline]
 pub(crate) fn boxed_str(text: String) -> alloc::boxed::Box<str> {
     #[cfg(feature = "zeroize")]
     if text.capacity() != text.len() {
@@ -101,6 +105,7 @@ pub(crate) type Output = Vec<u8>;
 #[cfg(feature = "zeroize")]
 pub(crate) struct Output(Buffer);
 
+#[inline]
 pub(crate) fn output() -> Output {
     #[cfg(not(feature = "zeroize"))]
     {
@@ -112,6 +117,7 @@ pub(crate) fn output() -> Output {
     }
 }
 
+#[inline]
 pub(crate) fn finish_output(output: Output) -> Vec<u8> {
     #[cfg(not(feature = "zeroize"))]
     {
@@ -337,10 +343,14 @@ mod tests {
     fn output_growth_wipes_the_old_allocation_and_drop_wipes_partial_output() {
         use crate::io::Write;
         let mut output = super::output();
-        output.write_all(PRIVATE_FRAGMENT.as_bytes()).unwrap();
+        output
+            .write_all(PRIVATE_FRAGMENT.as_bytes())
+            .unwrap_or_else(|error| panic!("output writer failed: {error}"));
         watch(&output.0);
         let suffix = PRIVATE_FRAGMENT.repeat(output.0.capacity() + 1);
-        output.write_all(suffix.as_bytes()).unwrap();
+        output
+            .write_all(suffix.as_bytes())
+            .unwrap_or_else(|error| panic!("output writer failed: {error}"));
         assert_eq!(wiped(), Some(true));
         assert!(output.0.starts_with(PRIVATE_FRAGMENT.as_bytes()));
         watch(&output.0);

@@ -887,7 +887,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         {
             if name == crate::raw::TOKEN {
                 return visitor.visit_map(crate::raw::OwnedRawDeserializer {
-                    raw_value: Some(crate::scratch::display_text(&self)),
+                    raw_value: Some(crate::scratch::display_text(self)),
                 });
             }
         }

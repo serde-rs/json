@@ -752,6 +752,32 @@ impl From<ParserNumber> for Number {
     }
 }
 
+#[cfg(all(test, feature = "zeroize", feature = "arbitrary_precision"))]
+mod custody_tests {
+    use super::{Number, NumberDeserializer};
+    use crate::custody_tests::{watch, wiped};
+    use crate::scratch::Text;
+    use serde::de::value::MapAccessDeserializer;
+    use serde::Deserialize;
+
+    #[test]
+    fn number_conversion_wipes_the_temporary_and_preserves_the_returned_owner() {
+        let text =
+            Text::from_display("123456789012345678901234567890.123456789012345678901234567890");
+        watch(text.as_bytes());
+        let adapter = NumberDeserializer { number: Some(text) };
+        let number = Number::deserialize(MapAccessDeserializer::new(adapter)).unwrap();
+        assert_eq!(wiped(), Some(true));
+        assert_eq!(
+            number.n,
+            "123456789012345678901234567890.123456789012345678901234567890"
+        );
+        watch(number.n.as_bytes());
+        drop(number);
+        assert_eq!(wiped(), Some(false));
+    }
+}
+
 macro_rules! impl_from_unsigned {
     (
         $($ty:ty),*

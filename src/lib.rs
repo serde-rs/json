@@ -316,8 +316,8 @@
 //! and output produced by formatting an error are outside the wiping boundary.
 //!
 //! Wiping occurs when a buffer is cleared, grows, or is dropped; a live reusable
-//! parser or error can still hold its most recent text. This is not protection
-//! against reading live memory, process aborts, forgotten objects, allocator or
+//! parser, reader, or error can still hold its most recent text. This is not
+//! protection against reading live memory, process aborts, forgotten objects, allocator or
 //! OS copies, or copies left by moves, stack storage, registers, or the compiler.
 //! Applications must protect their own inputs, results, and I/O buffers.
 //!
