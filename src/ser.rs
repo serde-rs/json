@@ -3,7 +3,7 @@
 use crate::error::{Error, ErrorCode, Result};
 use crate::io;
 use alloc::string::String;
-#[cfg(feature = "raw_value")]
+#[cfg(all(feature = "raw_value", not(feature = "zeroize")))]
 use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::fmt::{self, Display};
@@ -1509,7 +1509,11 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, 
     where
         T: ?Sized + Display,
     {
-        self.serialize_str(&value.to_string())
+        #[cfg(feature = "zeroize")]
+        let text = crate::scratch::MessageText::from_display(value);
+        #[cfg(not(feature = "zeroize"))]
+        let text = value.to_string();
+        self.serialize_str(&text)
     }
 }
 
@@ -2214,9 +2218,9 @@ pub fn to_vec<T>(value: &T) -> Result<Vec<u8>>
 where
     T: ?Sized + Serialize,
 {
-    let mut writer = Vec::with_capacity(128);
+    let mut writer = crate::scratch::output();
     tri!(to_writer(&mut writer, value));
-    Ok(writer)
+    Ok(crate::scratch::finish_output(writer))
 }
 
 /// Serialize the given data structure as a pretty-printed JSON byte vector.
@@ -2230,9 +2234,9 @@ pub fn to_vec_pretty<T>(value: &T) -> Result<Vec<u8>>
 where
     T: ?Sized + Serialize,
 {
-    let mut writer = Vec::with_capacity(128);
+    let mut writer = crate::scratch::output();
     tri!(to_writer_pretty(&mut writer, value));
-    Ok(writer)
+    Ok(crate::scratch::finish_output(writer))
 }
 
 /// Serialize the given data structure as a String of JSON.

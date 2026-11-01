@@ -4,8 +4,6 @@ use crate::number::Number;
 use crate::value::Value;
 use alloc::borrow::{Cow, ToOwned};
 use alloc::string::String;
-#[cfg(feature = "raw_value")]
-use alloc::string::ToString;
 use alloc::vec::{self, Vec};
 use core::fmt;
 use core::slice;
@@ -360,7 +358,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         {
             if name == crate::raw::TOKEN {
                 return visitor.visit_map(crate::raw::OwnedRawDeserializer {
-                    raw_value: Some(self.to_string()),
+                    raw_value: Some(crate::scratch::display_text(&self)),
                 });
             }
         }
@@ -889,7 +887,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         {
             if name == crate::raw::TOKEN {
                 return visitor.visit_map(crate::raw::OwnedRawDeserializer {
-                    raw_value: Some(self.to_string()),
+                    raw_value: Some(crate::scratch::display_text(&self)),
                 });
             }
         }

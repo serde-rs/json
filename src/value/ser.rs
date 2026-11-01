@@ -1058,6 +1058,10 @@ impl serde::ser::Serializer for RawValueEmitter {
     where
         T: ?Sized + Display,
     {
-        self.serialize_str(&value.to_string())
+        #[cfg(feature = "zeroize")]
+        let text = crate::scratch::MessageText::from_display(value);
+        #[cfg(not(feature = "zeroize"))]
+        let text = value.to_string();
+        self.serialize_str(&text)
     }
 }

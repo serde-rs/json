@@ -184,11 +184,14 @@ impl RawValue {
     /// - the input has no leading or trailing whitespace, and
     /// - the input has capacity equal to its length.
     pub fn from_string(json: String) -> Result<Box<Self>, Error> {
+        let json: crate::scratch::Text = json.into();
         let borrowed = tri!(crate::from_str::<&Self>(&json));
         if borrowed.json.len() < json.len() {
             return Ok(borrowed.to_owned());
         }
-        Ok(Self::from_owned(json.into_boxed_str()))
+        Ok(Self::from_owned(crate::scratch::boxed_str(
+            crate::scratch::into_string(json),
+        )))
     }
 
     /// Convert an owned `String` of JSON data to an owned `RawValue` without
@@ -197,7 +200,8 @@ impl RawValue {
     /// This is the unchecked counterpart of [`RawValue::from_string`], for
     /// strings that are already known to be valid JSON, such as the output of
     /// another JSON serializer. Unlike `from_string`, it does not re-parse the
-    /// string; the only cost is `String::into_boxed_str`.
+    /// string. With `zeroize` enabled, excess capacity is removed by copying
+    /// into the final allocation and wiping the original string.
     ///
     /// # Safety
     ///
@@ -226,12 +230,13 @@ impl RawValue {
     /// # Ok::<(), serde_json::Error>(())
     /// ```
     pub unsafe fn from_string_unchecked(json: String) -> Box<Self> {
+        let json: crate::scratch::Text = json.into();
         debug_assert!(
             crate::from_str::<&Self>(&json).is_ok_and(|v| v.json.len() == json.len()),
             "from_string_unchecked: input is not a single well-formed JSON value \
              with no leading or trailing whitespace",
         );
-        Self::from_owned(json.into_boxed_str())
+        Self::from_owned(crate::scratch::boxed_str(crate::scratch::into_string(json)))
     }
 
     /// Access the JSON text underlying a raw value.
@@ -336,7 +341,7 @@ where
     T: ?Sized + Serialize,
 {
     let json_string = tri!(crate::to_string(value));
-    Ok(RawValue::from_owned(json_string.into_boxed_str()))
+    Ok(RawValue::from_owned(crate::scratch::boxed_str(json_string)))
 }
 
 pub const TOKEN: &str = "$serde_json::private::RawValue";
@@ -505,7 +510,7 @@ impl<'de> Visitor<'de> for BoxedFromString {
     where
         E: de::Error,
     {
-        Ok(RawValue::from_owned(s.into_boxed_str()))
+        Ok(RawValue::from_owned(crate::scratch::boxed_str(s)))
     }
 }
 
@@ -529,7 +534,7 @@ impl<'de> Deserializer<'de> for RawKeyDeserializer {
 }
 
 pub struct OwnedRawDeserializer {
-    pub raw_value: Option<String>,
+    pub raw_value: Option<crate::scratch::Text>,
 }
 
 impl<'de> MapAccess<'de> for OwnedRawDeserializer {
@@ -549,7 +554,7 @@ impl<'de> MapAccess<'de> for OwnedRawDeserializer {
     where
         V: de::DeserializeSeed<'de>,
     {
-        seed.deserialize(self.raw_value.take().unwrap().into_deserializer())
+        crate::scratch::deserialize_text(seed, self.raw_value.take().unwrap())
     }
 }
 

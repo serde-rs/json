@@ -289,6 +289,38 @@
 //! For JSON support in Serde without a memory allocator, please see the
 //! [`serde-json-core`] crate.
 //!
+//! # Wiping temporary buffers
+//!
+//! The optional `zeroize` feature wipes serde_json-owned temporary heap buffers
+//! before they are reused or released. This reduces residual plaintext in freed
+//! heap memory after processing sensitive JSON. It uses the `zeroize` crate and
+//! supports both `std` and `alloc`; enabling it requires Rust 1.85. The default
+//! features and their Rust 1.71 requirement are unchanged.
+//!
+//! This covers parser scratch (including reader and stream deserializers),
+//! numeric scanning strings, raw-value reader buffers, custom error messages
+//! and their Debug formatting temporaries, and buffers used by `to_vec`,
+//! `to_vec_pretty`, `to_string`, and `to_string_pretty` until returned. Growth
+//! copies into a new allocation and wipes the old allocation before releasing
+//! it. The buffers are also wiped on errors and unwinding, and hidden raw-value
+//! and arbitrary-precision adapters retain wiping ownership until handing an
+//! owned string to a visitor.
+//!
+//! This feature does not make JSON values secret containers. Input, buffers
+//! supplied to `Read` or `Write`, and objects supplied through `Serialize`,
+//! `Deserialize`, or `Display` remain their owners' responsibility. Ownership
+//! of returned output, and of an owned string passed to a visitor, transfers
+//! to the recipient. `Value`, `String`, `Number`, and `RawValue` have their
+//! usual ownership and drop behavior, including partially constructed output
+//! values discarded by visitors after an error. External I/O error payloads
+//! and output produced by formatting an error are outside the wiping boundary.
+//!
+//! Wiping occurs when a buffer is cleared, grows, or is dropped; a live reusable
+//! parser or error can still hold its most recent text. This is not protection
+//! against reading live memory, process aborts, forgotten objects, allocator or
+//! OS copies, or copies left by moves, stack storage, registers, or the compiler.
+//! Applications must protect their own inputs, results, and I/O buffers.
+//!
 //! [value]: crate::value::Value
 //! [from_str]: crate::de::from_str
 //! [from_slice]: crate::de::from_slice
@@ -376,7 +408,7 @@ compile_error! {
 
 extern crate alloc;
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", test))]
 extern crate std;
 
 extern crate serde_core as serde;
@@ -443,6 +475,13 @@ mod iter;
 mod lexical;
 mod number;
 mod read;
+mod scratch;
 
 #[cfg(feature = "raw_value")]
 mod raw;
+
+#[cfg(all(test, feature = "zeroize"))]
+mod custody_tests;
+
+#[cfg(test)]
+mod custody_compat_tests;
