@@ -299,7 +299,8 @@
 //!
 //! This covers parser scratch (including reader and stream deserializers),
 //! numeric scanning strings, raw-value reader buffers, custom error messages
-//! and their Debug formatting temporaries, and buffers used by `to_vec`,
+//! and their Debug formatting temporaries, binary heap arithmetic intermediates
+//! used by `float_roundtrip`, and buffers used by `to_vec`,
 //! `to_vec_pretty`, `to_string`, and `to_string_pretty` until returned. Growth
 //! copies into a new allocation and wipes the old allocation before releasing
 //! it. The buffers are also wiped on errors and unwinding, and hidden raw-value

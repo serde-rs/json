@@ -364,8 +364,9 @@ For JSON support in Serde without a memory allocator, please see the
 ## Wiping temporary buffers
 
 The optional `zeroize` feature wipes serde_json-owned temporary heap buffers
-before reuse or release, including parser scratch, custom error text, and
-serialization output buffers before they are returned. It works with `std` or
+before reuse or release, including parser scratch, float-roundtrip heap
+arithmetic, custom error text, and serialization output buffers before they are
+returned. It works with `std` or
 `alloc` and requires Rust 1.85. It does not change the drop behavior of returned
 `Value`, `String`, `Number`, or `RawValue` objects. Applications still need to
 protect input, output, I/O buffers, and objects passed to visitors. See the

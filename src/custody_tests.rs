@@ -80,6 +80,123 @@ pub(crate) fn wiped() -> Option<bool> {
     WIPED.with(Cell::get)
 }
 
+#[cfg(feature = "float_roundtrip")]
+fn watch_limbs(limbs: &[crate::lexical::math::Limb]) {
+    // SAFETY: Limb is u32 or u64, with no padding or uninitialized bytes.
+    // The slice covers only initialized elements starting at the owning Vec's
+    // allocation base. The observer still reads through the actual deallocation
+    // pointer, never this saved pointer or spare capacity.
+    let bytes = unsafe {
+        core::slice::from_raw_parts(limbs.as_ptr().cast::<u8>(), core::mem::size_of_val(limbs))
+    };
+    watch(bytes);
+}
+
+#[test]
+#[cfg(feature = "float_roundtrip")]
+fn binary_limb_controls_distinguish_plain_storage_from_guarded_storage() {
+    use crate::lexical::buffer;
+    use alloc::vec;
+    let plain = vec![0x1234, 0x5678];
+    watch_limbs(&plain);
+    drop(plain);
+    assert_eq!(wiped(), Some(false));
+
+    let guarded = buffer::wrap(vec![0x1234, 0x5678]);
+    let copy = guarded.clone();
+    watch_limbs(&copy);
+    drop(copy);
+    assert_eq!(wiped(), Some(true));
+    watch_limbs(&guarded);
+    drop(guarded);
+    assert_eq!(wiped(), Some(true));
+}
+
+#[test]
+#[cfg(feature = "float_roundtrip")]
+fn binary_limb_growth_resize_replacement_and_drop_wipe_the_old_owners() {
+    use crate::lexical::buffer;
+    use alloc::vec;
+    let mut limbs = buffer::wrap(vec![0x1234, 0x5678]);
+    watch_limbs(&limbs);
+    let additional = limbs.capacity() + 1;
+    buffer::reserve_exact(&mut limbs, additional);
+    assert_eq!(wiped(), Some(true));
+    assert_eq!(limbs.as_slice(), &[0x1234, 0x5678]);
+
+    watch_limbs(&limbs);
+    let len = limbs.capacity() + 1;
+    buffer::resize(&mut limbs, len);
+    assert_eq!(wiped(), Some(true));
+    assert_eq!(&limbs[..2], &[0x1234, 0x5678]);
+    assert!(limbs[2..].iter().all(|limb| *limb == 0));
+
+    watch_limbs(&limbs);
+    buffer::replace(&mut limbs, vec![0x9ABC]);
+    assert_eq!(wiped(), Some(true));
+    assert_eq!(limbs.as_slice(), &[0x9ABC]);
+    watch_limbs(&limbs);
+    drop(limbs);
+    assert_eq!(wiped(), Some(true));
+}
+
+#[test]
+#[cfg(feature = "float_roundtrip")]
+fn float_arithmetic_preserves_results_and_wipes_growth_and_unwinding() {
+    use crate::lexical::buffer::{self, Buffer};
+    use crate::lexical::math::{Limb, Math};
+    use alloc::vec::Vec;
+
+    #[derive(Clone)]
+    struct Arithmetic {
+        data: Buffer,
+    }
+    impl Default for Arithmetic {
+        fn default() -> Self {
+            Self {
+                data: buffer::with_capacity(1),
+            }
+        }
+    }
+    impl Math for Arithmetic {
+        fn data(&self) -> &Vec<Limb> {
+            &self.data
+        }
+        fn data_mut(&mut self) -> &mut Vec<Limb> {
+            &mut self.data
+        }
+    }
+
+    let mut small = Arithmetic::from_u64(3);
+    small.imul_pow5(3);
+    assert_eq!(small.data.as_slice(), &[375]);
+    watch_limbs(small.data());
+    drop(small);
+    assert_eq!(wiped(), Some(true));
+
+    let mut large = Arithmetic::from_u64(0x12345678);
+    watch_limbs(large.data());
+    // This runs the same multiplication and temporary-owner paths used by the
+    // float parser, including replacement of the initial small allocation.
+    large.imul_pow5(1000);
+    assert_eq!(wiped(), Some(true));
+    assert!(large.bit_length() > 2300);
+    watch_limbs(large.data());
+    drop(large);
+    assert_eq!(wiped(), Some(true));
+
+    let mut failed = Arithmetic::from_u64(0x12345678);
+    watch_limbs(failed.data());
+    let result = std::panic::catch_unwind(move || {
+        buffer::reserve(failed.data_mut(), usize::MAX);
+    });
+    assert!(result.is_err());
+    assert_eq!(wiped(), Some(true));
+
+    assert!(crate::from_str::<f64>("123456789012345678901234567890.123456789e+9999").is_err());
+    assert!(crate::from_str::<f64>("123456789012345678901234567890.123456789e+").is_err());
+}
+
 struct ScratchSeed;
 impl<'de> serde::de::DeserializeSeed<'de> for ScratchSeed {
     type Value = ();
