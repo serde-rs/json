@@ -48,7 +48,7 @@ pub(crate) fn watch(bytes: &[u8]) {
     // Every caller registers an initialized prefix beginning at the base of a
     // live Vec/String/Box allocation. No allocation is inferred from capacity,
     // and no registration is allowed to survive its matching deallocation.
-    assert_ne!(bytes, []);
+    assert_ne!(bytes, b"");
     WATCH.with(|watched| {
         assert!(
             watched.get().is_none(),
