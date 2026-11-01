@@ -40,6 +40,11 @@ impl Drop for Buffer {
 }
 
 #[inline]
+pub(crate) fn new() -> Buffer {
+    wrap(Vec::new())
+}
+
+#[inline]
 pub(crate) fn with_capacity(capacity: usize) -> Buffer {
     wrap(Vec::with_capacity(capacity))
 }

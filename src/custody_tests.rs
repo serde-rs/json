@@ -14,7 +14,7 @@ thread_local! {
 
 struct InspectBeforeFree;
 
-// SAFETY: allocations are forwarded unchanged to System. Only the initialized string prefix
+// SAFETY: allocations are forwarded unchanged to System. Only the initialized allocation prefix
 // registered by this thread is observed, while its matching allocation still belongs to it.
 unsafe impl GlobalAlloc for InspectBeforeFree {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -28,7 +28,7 @@ unsafe impl GlobalAlloc for InspectBeforeFree {
                 watch.set(None);
                 let wiped = len <= layout.size()
                     && (0..len).all(|index| {
-                        // SAFETY: these bytes were initialized String contents when registered,
+                        // SAFETY: these bytes were initialized owner contents when registered,
                         // and the matching live allocation has not yet reached System.dealloc.
                         // No spare capacity, allocation padding, or freed memory is read.
                         unsafe { pointer.add(index).read_volatile() == 0 }
@@ -175,12 +175,16 @@ fn float_arithmetic_preserves_results_and_wipes_growth_and_unwinding() {
     assert_eq!(wiped(), Some(true));
 
     let mut large = Arithmetic::from_u64(0x12345678);
+    let shift = 64 * Limb::BITS;
+    large.imul_pow2(shift);
     watch_limbs(large.data());
     // This runs the same multiplication and temporary-owner paths used by the
-    // float parser, including replacement of the initial small allocation.
-    large.imul_pow5(1000);
+    // float parser, including Karatsuba multiplication and replacement of the
+    // original allocation. Both operands exceed the cutoff on 32/64-bit limbs.
+    large.imul_pow5(1024);
     assert_eq!(wiped(), Some(true));
-    assert!(large.bit_length() > 2300);
+    assert!(large.bit_length() > shift as usize + 2300);
+    assert!(large.data()[..64].iter().all(|limb| *limb == 0));
     watch_limbs(large.data());
     drop(large);
     assert_eq!(wiped(), Some(true));

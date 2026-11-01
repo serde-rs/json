@@ -350,7 +350,7 @@ mod small {
     /// Mul small integer to bigint.
     #[inline]
     pub fn mul(x: &[Limb], y: Limb) -> Vec<Limb> {
-        let mut z = buffer::with_capacity(0);
+        let mut z = buffer::new();
         buffer::extend_from_slice(&mut z, x);
         imul(&mut z, y);
         buffer::into_vec(z)
@@ -630,7 +630,7 @@ mod large {
     /// Add bigint to bigint.
     #[inline]
     pub fn add(x: &[Limb], y: &[Limb]) -> Vec<Limb> {
-        let mut z = buffer::with_capacity(0);
+        let mut z = buffer::new();
         buffer::extend_from_slice(&mut z, x);
         iadd(&mut z, y);
         buffer::into_vec(z)
@@ -746,7 +746,7 @@ mod large {
     ///
     /// Assumes `y.len() >= x.len()`.
     fn karatsuba_uneven_mul(x: &[Limb], mut y: &[Limb]) -> Vec<Limb> {
-        let mut result = buffer::with_capacity(0);
+        let mut result = buffer::new();
         buffer::resize(&mut result, x.len() + y.len());
 
         // This effectively is like grade-school multiplication between
