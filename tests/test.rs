@@ -2106,6 +2106,44 @@ fn test_boolean_key() {
 }
 
 #[test]
+fn test_boolean_key_invalid() {
+    test_parse_err::<BTreeMap<bool, i32>>(&[
+        (
+            r#"{"éx": 1}"#,
+            "invalid type: string \"éx\", expected a boolean at line 1 column 6",
+        ),
+        (
+            r#"{"yes": 1}"#,
+            "invalid type: string \"yes\", expected a boolean at line 1 column 6",
+        ),
+        (
+            r#"{"":1,"zz":2}"#,
+            "invalid type: string \"\", expected a boolean at line 1 column 3",
+        ),
+    ]);
+
+    for &(json, expected) in &[
+        (
+            r#"{"éx": 1}"#,
+            "invalid type: string \"éx\", expected a boolean at line 1 column 6",
+        ),
+        (
+            r#"{"yes": 1}"#,
+            "invalid type: string \"yes\", expected a boolean at line 1 column 6",
+        ),
+        (
+            r#"{"":1,"zz":2}"#,
+            "invalid type: string \"\", expected a boolean at line 1 column 3",
+        ),
+    ] {
+        let actual = from_reader::<_, BTreeMap<bool, i32>>(json.as_bytes())
+            .unwrap_err()
+            .to_string();
+        assert_eq!(actual, expected, "unexpected from_reader error");
+    }
+}
+
+#[test]
 fn test_borrowed_key() {
     let map: BTreeMap<&str, ()> = from_str("{\"borrowed\":null}").unwrap();
     let expected = treemap! { "borrowed" => () };
