@@ -459,6 +459,10 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         Ok(())
     }
 
+    /// Largest significand to which eight more decimal digits can be appended
+    /// without overflowing a u64 (significand * 10^8 + 99_999_999 <= u64::MAX).
+    const EIGHT_DIGITS_LIMIT: u64 = (u64::MAX - 99_999_999) / 100_000_000;
+
     fn parse_integer(&mut self, positive: bool) -> Result<ParserNumber> {
         let next = match tri!(self.next_char()) {
             Some(b) => b,
@@ -477,6 +481,18 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             }
             c @ b'1'..=b'9' => {
                 let mut significand = (c - b'0') as u64;
+
+                // Fast path: whole blocks of eight digits while they cannot
+                // overflow. A block is only attempted at the start of the digit
+                // run and right after a successful block; the per-digit loop
+                // below handles the remaining digits and the overflow case
+                // exactly as before.
+                while significand <= Self::EIGHT_DIGITS_LIMIT {
+                    match self.read.parse_eight_digits() {
+                        Some(block) => significand = significand * 100_000_000 + block as u64,
+                        None => break,
+                    }
+                }
 
                 loop {
                     match tri!(self.peek_or_null()) {
@@ -536,6 +552,19 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.eat_char();
 
         let mut exponent_after_decimal_point = 0;
+
+        // Fast path: whole blocks of eight digits while they cannot overflow
+        // (see parse_integer). The digit-at-a-time loop below finishes the run.
+        while significand <= Self::EIGHT_DIGITS_LIMIT {
+            match self.read.parse_eight_digits() {
+                Some(block) => {
+                    significand = significand * 100_000_000 + block as u64;
+                    exponent_after_decimal_point -= 8;
+                }
+                None => break,
+            }
+        }
+
         while let c @ b'0'..=b'9' = tri!(self.peek_or_null()) {
             let digit = (c - b'0') as u64;
 
