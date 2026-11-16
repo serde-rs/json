@@ -606,6 +606,8 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
     {
         match self.value {
             Some(Value::Object(v)) => v.deserialize_any(visitor),
+            // a struct variant may be written as a sequence, as when deserializing from text
+            Some(Value::Array(v)) => visit_array(v, visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
                 &"struct variant",
@@ -1116,6 +1118,8 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
     {
         match self.value {
             Some(Value::Object(v)) => v.deserialize_any(visitor),
+            // a struct variant may be written as a sequence, as when deserializing from text
+            Some(Value::Array(v)) => visit_array_ref(v, visitor),
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
                 &"struct variant",
