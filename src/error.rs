@@ -29,6 +29,14 @@ impl Error {
     ///
     /// Characters in the first line of the input (before the first newline
     /// character) are in line 1.
+    ///
+    /// The line is 0 if the error is not associated with a position in the
+    /// input. This is typically the case for errors from [`from_value`],
+    /// errors from serializing, and errors that a `Deserialize` impl produces
+    /// after the input it needed has already been parsed, such as an untagged
+    /// enum in which no variant matched.
+    ///
+    /// [`from_value`]: crate::from_value
     pub fn line(&self) -> usize {
         self.err.line
     }
@@ -41,6 +49,11 @@ impl Error {
     /// Note that errors may occur in column 0, for example if a read from an
     /// I/O stream fails immediately following a previously read newline
     /// character.
+    ///
+    /// The column is 0 if the error is not associated with a position in the
+    /// input, in which case [`line`] is also 0.
+    ///
+    /// [`line`]: Error::line
     pub fn column(&self) -> usize {
         self.err.column
     }
