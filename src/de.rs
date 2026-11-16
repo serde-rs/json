@@ -1378,6 +1378,17 @@ macro_rules! check_recursion {
             }
         }
 
+        // Tell `Value`'s own recursion guard (`value/de.rs`) that this
+        // call tree is already depth-limited above, by `remaining_depth`,
+        // so it does not count the same recursion a second time. This
+        // runs even when the `remaining_depth` check itself is skipped
+        // above (`unbounded_depth` + `disable_recursion_limit`), so that
+        // opting into unbounded recursion here also keeps `Value`
+        // unbounded, rather than reintroducing a cap this crate's own
+        // Deserializer no longer enforces.
+        #[cfg(feature = "std")]
+        let _json_text_recursion_guard = crate::value::de::JsonTextRecursionGuard::enter();
+
         $this $($body)*
 
         if_checking_recursion_limit! {

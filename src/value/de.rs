@@ -19,12 +19,119 @@ use serde::forward_to_deserialize_any;
 #[cfg(feature = "arbitrary_precision")]
 use crate::number::NumberFromString;
 
+// `crate::de::Deserializer`'s own `check_recursion!` only guards recursion
+// that happens while *it* is parsing JSON text. `Value::deserialize` can
+// just as well be driven by some other, unrelated `serde::Deserializer`
+// (bincode, rmp-serde, ciborium, postcard, a hand-rolled format, ...), and
+// in that case it is this impl's own `ValueVisitor::visit_seq`/`visit_map`
+// that recurses once per nesting level, with no limit of its own. A
+// sufficiently deeply nested input then overflows the stack instead of
+// producing an error, regardless of which `Deserializer` is driving it.
+//
+// This mirrors `check_recursion!`'s 128-deep limit and error behavior using
+// a thread-local counter, since (unlike the JSON-text parser) there is no
+// `&mut Deserializer<R>` instance here to hang a `remaining_depth` field
+// off of. It only runs under `std` because `thread_local!` needs it; the
+// `alloc`-only (`no_std`) configuration is left exactly as it was.
+#[cfg(feature = "std")]
+std::thread_local! {
+    static VALUE_DESERIALIZE_REMAINING_DEPTH: core::cell::Cell<u8> = const { core::cell::Cell::new(128) };
+}
+
+// Set for the duration of any recursion that `crate::de`'s own
+// `check_recursion!` is already depth-limiting (see its definition), so
+// that `RecursionGuard` below can tell its own counting would be
+// redundant there. Without this, deserializing into `Value` through
+// `from_str`/`from_slice`/`from_reader` would have its recursion depth
+// counted twice -- once by `check_recursion!`'s `remaining_depth`, once
+// by `RecursionGuard` -- tripping the limit one level sooner than
+// before this guard existed, and shifting the error's reported line and
+// column.
+#[cfg(feature = "std")]
+std::thread_local! {
+    static JSON_TEXT_RECURSION_ACTIVE: core::cell::Cell<u32> = const { core::cell::Cell::new(0) };
+}
+
+#[cfg(feature = "std")]
+pub(crate) struct JsonTextRecursionGuard;
+
+#[cfg(feature = "std")]
+impl JsonTextRecursionGuard {
+    pub(crate) fn enter() -> Self {
+        JSON_TEXT_RECURSION_ACTIVE.with(|active| active.set(active.get() + 1));
+        JsonTextRecursionGuard
+    }
+}
+
+#[cfg(feature = "std")]
+impl Drop for JsonTextRecursionGuard {
+    fn drop(&mut self) {
+        JSON_TEXT_RECURSION_ACTIVE.with(|active| active.set(active.get() - 1));
+    }
+}
+
+#[cfg(feature = "std")]
+enum RecursionGuard {
+    // Counted against `VALUE_DESERIALIZE_REMAINING_DEPTH` and must give
+    // it back on drop.
+    Armed,
+    // `check_recursion!` is already guarding this call chain; nothing to
+    // give back on drop.
+    Bypassed,
+}
+
+#[cfg(feature = "std")]
+impl RecursionGuard {
+    fn enter<E>() -> Result<Self, E>
+    where
+        E: de::Error,
+    {
+        if JSON_TEXT_RECURSION_ACTIVE.with(|active| active.get() > 0) {
+            return Ok(RecursionGuard::Bypassed);
+        }
+
+        let exhausted = VALUE_DESERIALIZE_REMAINING_DEPTH.with(|remaining_depth| {
+            let depth = remaining_depth.get() - 1;
+            remaining_depth.set(depth);
+            depth == 0
+        });
+
+        if exhausted {
+            // No `RecursionGuard` is returned for this call, so no `Drop`
+            // will ever undo the decrement above. Put the counter back
+            // before erroring out, otherwise the thread-local budget would
+            // be left permanently short by one for every later, unrelated
+            // `Value::deserialize` call made on this thread.
+            VALUE_DESERIALIZE_REMAINING_DEPTH.with(|remaining_depth| {
+                remaining_depth.set(remaining_depth.get() + 1);
+            });
+            return Err(de::Error::custom("recursion limit exceeded"));
+        }
+
+        Ok(RecursionGuard::Armed)
+    }
+}
+
+#[cfg(feature = "std")]
+impl Drop for RecursionGuard {
+    fn drop(&mut self) {
+        if let RecursionGuard::Armed = self {
+            VALUE_DESERIALIZE_REMAINING_DEPTH.with(|remaining_depth| {
+                remaining_depth.set(remaining_depth.get() + 1);
+            });
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Value {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Value, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
+        #[cfg(feature = "std")]
+        let _recursion_guard = tri!(RecursionGuard::enter::<D::Error>());
+
         struct ValueVisitor;
 
         impl<'de> Visitor<'de> for ValueVisitor {
