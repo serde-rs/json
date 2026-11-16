@@ -26,6 +26,21 @@ fn scientific_exponent_test() {
 }
 
 #[test]
+fn scientific_exponent_large_digit_counts() {
+    let max_shift = i32::MAX as usize;
+
+    assert_eq!(scientific_exponent(0, max_shift, 0), i32::MAX - 1);
+    assert_eq!(scientific_exponent(0, max_shift + 1, 0), i32::MAX);
+    assert_eq!(scientific_exponent(i32::MIN, max_shift + 2, 0), -1);
+    assert_eq!(scientific_exponent(i32::MIN, usize::MAX, 0), -1);
+
+    assert_eq!(scientific_exponent(i32::MAX, 0, max_shift - 1), 0);
+    assert_eq!(scientific_exponent(i32::MAX, 0, max_shift), -1);
+    assert_eq!(scientific_exponent(i32::MAX, 0, max_shift + 1), -1);
+    assert_eq!(scientific_exponent(i32::MAX, 0, usize::MAX), -1);
+}
+
+#[test]
 fn mantissa_exponent_test() {
     assert_eq!(mantissa_exponent(10, 5, 0), 5);
     assert_eq!(mantissa_exponent(0, 5, 0), -5);
@@ -33,4 +48,29 @@ fn mantissa_exponent_test() {
     assert_eq!(mantissa_exponent(i32::MAX, 0, 5), i32::MAX);
     assert_eq!(mantissa_exponent(i32::MIN, 5, 0), i32::MIN);
     assert_eq!(mantissa_exponent(i32::MIN, 0, 5), i32::MIN + 5);
+}
+
+#[test]
+fn mantissa_exponent_large_digit_counts() {
+    let max_shift = i32::MAX as usize;
+
+    // The count difference is clamped before it is applied to the exponent.
+    assert_eq!(mantissa_exponent(i32::MIN, 0, max_shift - 1), -2);
+    assert_eq!(mantissa_exponent(i32::MIN, 0, max_shift), -1);
+    assert_eq!(mantissa_exponent(i32::MIN, 0, max_shift + 1), -1);
+    assert_eq!(mantissa_exponent(i32::MIN, 0, usize::MAX), -1);
+
+    assert_eq!(mantissa_exponent(i32::MAX, max_shift - 1, 0), 1);
+    assert_eq!(mantissa_exponent(i32::MAX, max_shift, 0), 0);
+    assert_eq!(mantissa_exponent(i32::MAX, max_shift + 1, 0), 0);
+    assert_eq!(mantissa_exponent(i32::MAX, usize::MAX, 0), 0);
+}
+
+#[test]
+fn mantissa_exponent_nearby_large_digit_counts() {
+    for exponent in [i32::MIN, 0, i32::MAX] {
+        assert_eq!(mantissa_exponent(exponent, usize::MAX, usize::MAX), exponent);
+    }
+    assert_eq!(mantissa_exponent(10, usize::MAX, usize::MAX - 1), 9);
+    assert_eq!(mantissa_exponent(10, usize::MAX - 1, usize::MAX), 11);
 }
