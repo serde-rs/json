@@ -8,6 +8,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::fmt::{self, Display};
 use core::hint;
+use core::mem;
 use core::num::FpCategory;
 use core::str;
 use serde::ser::{self, Impossible, Serialize};
@@ -2096,6 +2097,7 @@ where
 
         i += 1;
         if escape == 0 {
+            i = skip_to_escape(bytes, i);
             continue;
         }
 
@@ -2130,6 +2132,117 @@ where
     }
 
     formatter.write_string_fragment(writer, string_run)
+}
+
+/// The scan below tests a word at a time, u64 where 64-bit arithmetic is fast
+/// and u32 elsewhere, and 16 bytes at a time as a block: plain integer code that
+/// LLVM puts in one SIMD register on targets that have them (SSE2, NEON, WASM
+/// SIMD) and runs as words elsewhere.
+#[cfg(fast_arithmetic = "64")]
+type Word = u64;
+#[cfg(fast_arithmetic = "32")]
+type Word = u32;
+const WORD: usize = mem::size_of::<Word>();
+const BLOCK: usize = 16;
+
+/// Returns the index of the first byte at or after `i` that ESCAPE escapes, or
+/// `bytes.len()` if there is none:
+/// - With a block or more to go, whole blocks, then the last 16 bytes as one
+///   more block, overlapping bytes already tested.
+/// - With a word or more, the same a word at a time.
+/// - Under a word, one byte at a time.
+/// Overlapped bytes hold no escape, so the overlap's first hit is past them.
+#[inline]
+fn skip_to_escape(bytes: &[u8], mut i: usize) -> usize {
+    let len = bytes.len();
+    if len - i >= BLOCK {
+        for block in bytes[i..].chunks_exact(BLOCK) {
+            if let Some(n) = escape_in_block(block) {
+                return i + n;
+            }
+            i += BLOCK;
+        }
+        if i < len {
+            let last = len - BLOCK;
+            if let Some(n) = escape_in_block(&bytes[last..]) {
+                return last + n;
+            }
+        }
+        return len;
+    }
+    if len - i >= WORD {
+        for word in bytes[i..].chunks_exact(WORD) {
+            let bits = escape_bits(word);
+            if bits != 0 {
+                return i + bits.trailing_zeros() as usize / 8;
+            }
+            i += WORD;
+        }
+        if i < len {
+            let last = len - WORD;
+            let bits = escape_bits(&bytes[last..]);
+            if bits != 0 {
+                return last + bits.trailing_zeros() as usize / 8;
+            }
+        }
+        return len;
+    }
+    while i < len && ESCAPE[bytes[i] as usize] == 0 {
+        i += 1;
+    }
+    i
+}
+
+/// The index in `block` of the first byte that ESCAPE escapes, if any. The
+/// block is tested as its words OR-ed together, which LLVM keeps in one SIMD
+/// register. Only a block that hits has its words put together as a u128, the
+/// first word in the low bits, so finding the first flagged byte takes no branch
+/// on which word holds it. (Building the u128 for every block instead stops
+/// LLVM from vectorizing the test.)
+#[inline]
+fn escape_in_block(block: &[u8]) -> Option<usize> {
+    let any = block
+        .chunks_exact(WORD)
+        .fold(0, |any, word| any | escape_bits(word));
+    if any == 0 {
+        return None;
+    }
+    let bits = block.chunks_exact(WORD).rev().fold(0, |bits, word| {
+        bits << (WORD * 8) | u128::from(escape_bits(word))
+    });
+    Some(bits.trailing_zeros() as usize / 8)
+}
+
+/// Sets the high bit of the first byte of `word` that was a byte which must be escaped, and no
+/// bit below it. Bytes after the first to be escaped are irrelevant.
+#[inline]
+fn escape_bits(word: &[u8]) -> Word {
+    let word = Word::from_le_bytes(word.try_into().unwrap());
+    bytes_less_than(word, 0x20) | bytes_equal_to(word, b'"') | bytes_equal_to(word, b'\\')
+}
+
+/// Bit twiddling implementation to find bytes less than `n` assuming n <= 0x80.
+/// It sets the high bit of the first byte of `word` that is less than `n`, and no
+/// bit below it; a borrow out of that byte may flag bytes after it.
+/// See: https://bits.stephan-brumme.com/null.html
+#[inline]
+fn bytes_less_than(word: Word, n: u8) -> Word {
+    word.wrapping_sub(splat(n)) & !word & splat(0x80)
+}
+
+/// Bit twiddling implementation to check for bytes that equal the provided value.
+/// Equality is determined when two XOR to 0.
+/// Comparing to zero is done similar to the above.
+/// See: https://bits.stephan-brumme.com/null.html
+#[inline]
+fn bytes_equal_to(word: Word, byte: u8) -> Word {
+    bytes_less_than(word ^ splat(byte), 1)
+}
+
+/// A u32 with each of its bytes set to `byte`
+#[inline]
+const fn splat(byte: u8) -> Word {
+    Word::from_ne_bytes([byte; WORD])
 }
 
 const BB: u8 = b'b'; // \x08

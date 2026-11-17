@@ -195,6 +195,72 @@ fn test_write_str() {
 }
 
 #[test]
+fn test_write_str_escape_positions() {
+    // After the first byte that needs no escape, the serializer scans the
+    // rest 16 bytes at a time, then the last 16 again, overlapping; with 8-15
+    // left, 8 at a time (4 on 32-bit targets), then the last 8 again; under 8,
+    // one at a time. Put each char at every position of every length from 1
+    // to 40, which covers every path and every overlap. Put pairs at every two
+    // positions, where the scan has to stop at the first, for the lengths at
+    // each path's edges. Miri runs this about 20,000 times slower, so there it
+    // tries only a few chars, only the edge lengths, and pairs close enough to
+    // share a word.
+    let escaped = |c: char| {
+        let quoted = to_string(&c).unwrap();
+        (c, quoted[1..quoted.len() - 1].to_owned())
+    };
+    let check = |at: &[&(char, String)], positions: &[usize], len: usize| {
+        let mut string = String::new();
+        let mut expected = String::from("\"");
+        for pos in 0..len {
+            if let Some(k) = positions.iter().position(|&p| p == pos) {
+                string.push(at[k].0);
+                expected += &at[k].1;
+            } else {
+                string.push('a');
+                expected.push('a');
+            }
+        }
+        expected.push('"');
+        assert_eq!(to_string(&string).unwrap(), expected, "{:?}", string);
+    };
+    let singles: Vec<_> = (0..0x80u8)
+        .map(char::from)
+        .chain(['\u{80}', '\u{FF}', '\u{10FFFF}'])
+        .filter(|&c| !cfg!(miri) || "\x1F \"\\\u{80}".contains(c))
+        .map(escaped)
+        .collect();
+    let pairs: Vec<_> = ['\x1F', '"', '\\']
+        .into_iter()
+        .filter(|&c| !cfg!(miri) || c == '"')
+        .map(escaped)
+        .collect();
+    let edges = [4, 5, 8, 9, 13, 16, 17, 18, 32, 33];
+    for len in 1..=40 {
+        let edge = edges.contains(&len);
+        if cfg!(miri) && !edge {
+            continue;
+        }
+        for pos in 0..len {
+            for c in &singles {
+                check(&[c], &[pos], len);
+            }
+            if !edge {
+                continue;
+            }
+            let end = if cfg!(miri) { len.min(pos + 5) } else { len };
+            for second in pos + 1..end {
+                for c in &pairs {
+                    for d in &pairs {
+                        check(&[c, d], &[pos, second], len);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn test_write_bool() {
     let tests = &[(true, "true"), (false, "false")];
     test_encode_ok(tests);
