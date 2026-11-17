@@ -60,8 +60,13 @@ impl Error {
             | ErrorCode::EofWhileParsingString
             | ErrorCode::EofWhileParsingValue => Category::Eof,
             ErrorCode::ExpectedColon
+            | ErrorCode::ExpectedComma
             | ErrorCode::ExpectedListCommaOrEnd
             | ErrorCode::ExpectedObjectCommaOrEnd
+            | ErrorCode::ExpectedListEnd
+            | ErrorCode::ExpectedObjectEnd
+            | ErrorCode::ExpectedListStart
+            | ErrorCode::ExpectedObjectStart
             | ErrorCode::ExpectedSomeIdent
             | ErrorCode::ExpectedSomeValue
             | ErrorCode::ExpectedDoubleQuote
@@ -255,11 +260,26 @@ pub(crate) enum ErrorCode {
     /// Expected this character to be a `':'`.
     ExpectedColon,
 
+    /// Expected this character to be a `','`.
+    ExpectedComma,
+
     /// Expected this character to be either a `','` or a `']'`.
     ExpectedListCommaOrEnd,
 
     /// Expected this character to be either a `','` or a `'}'`.
     ExpectedObjectCommaOrEnd,
+
+    /// Expected this character to be a `']'`.
+    ExpectedListEnd,
+
+    /// Expected this character to be a `'}'`.
+    ExpectedObjectEnd,
+
+    /// Expected this character to be a `'['`.
+    ExpectedListStart,
+
+    /// Expected this character to be a `'{'`.
+    ExpectedObjectStart,
 
     /// Expected to parse either a `true`, `false`, or a `null`.
     ExpectedSomeIdent,
@@ -356,8 +376,13 @@ impl Display for ErrorCode {
             ErrorCode::EofWhileParsingString => f.write_str("EOF while parsing a string"),
             ErrorCode::EofWhileParsingValue => f.write_str("EOF while parsing a value"),
             ErrorCode::ExpectedColon => f.write_str("expected `:`"),
+            ErrorCode::ExpectedComma => f.write_str("expected `,`"),
             ErrorCode::ExpectedListCommaOrEnd => f.write_str("expected `,` or `]`"),
             ErrorCode::ExpectedObjectCommaOrEnd => f.write_str("expected `,` or `}`"),
+            ErrorCode::ExpectedListEnd => f.write_str("expected `]`"),
+            ErrorCode::ExpectedObjectEnd => f.write_str("expected `}`"),
+            ErrorCode::ExpectedListStart => f.write_str("expected `[`"),
+            ErrorCode::ExpectedObjectStart => f.write_str("expected `{`"),
             ErrorCode::ExpectedSomeIdent => f.write_str("expected ident"),
             ErrorCode::ExpectedSomeValue => f.write_str("expected value"),
             ErrorCode::ExpectedDoubleQuote => f.write_str("expected `\"`"),
