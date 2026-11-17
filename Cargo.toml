@@ -17,6 +17,7 @@ itoa = "1.0"
 memchr = { version = "2", default-features = false }
 serde_core = { version = "1.0.220", default-features = false }
 zmij = "1.0"
+zeroize = { version = "1.9", optional = true, default-features = false, features = ["alloc"] }
 
 [target.'cfg(any())'.dependencies]
 serde = { version = "1.0.220", default-features = false }
@@ -58,6 +59,10 @@ std = ["memchr/std", "serde_core/std"]
 # rest of the Rust standard library.
 # NOTE: Disabling both `std` *and* `alloc` features is not supported yet.
 alloc = ["serde_core/alloc"]
+
+# Wipe serde_json-owned temporary heap buffers before reuse or release.
+# Returned values and caller-owned buffers are not wiped. Requires Rust 1.85.
+zeroize = ["dep:zeroize"]
 
 # Make serde_json::Map use a representation which maintains insertion order.
 # This allows data to be read into a Value and written back to a JSON string

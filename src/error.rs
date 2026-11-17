@@ -1,8 +1,14 @@
 //! When serializing or deserializing JSON goes wrong.
 
 use crate::io;
+#[cfg(feature = "zeroize")]
+use crate::scratch::MessageText;
 use alloc::boxed::Box;
-use alloc::string::{String, ToString};
+use alloc::string::String;
+#[cfg(not(feature = "zeroize"))]
+use alloc::string::ToString;
+#[cfg(not(feature = "zeroize"))]
+type MessageText = Box<str>;
 use core::fmt::{self, Debug, Display};
 use core::result;
 use core::str::FromStr;
@@ -235,7 +241,7 @@ struct ErrorImpl {
 
 pub(crate) enum ErrorCode {
     /// Catchall for syntax error messages
-    Message(Box<str>),
+    Message(MessageText),
 
     /// Some I/O error occurred while serializing or deserializing.
     Io(io::Error),
@@ -420,12 +426,14 @@ impl Display for ErrorImpl {
 // end up seeing this representation because it is what unwrap() shows.
 impl Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        #[cfg(feature = "zeroize")]
+        let message = MessageText::from_display(&self.err.code);
+        #[cfg(not(feature = "zeroize"))]
+        let message = self.err.code.to_string();
         write!(
             f,
             "Error({:?}, line: {}, column: {})",
-            self.err.code.to_string(),
-            self.err.line,
-            self.err.column
+            message, self.err.line, self.err.column
         )
     }
 }
@@ -433,7 +441,14 @@ impl Debug for Error {
 impl de::Error for Error {
     #[cold]
     fn custom<T: Display>(msg: T) -> Error {
-        make_error(msg.to_string())
+        #[cfg(feature = "zeroize")]
+        {
+            make_error(msg)
+        }
+        #[cfg(not(feature = "zeroize"))]
+        {
+            make_error(msg.to_string())
+        }
     }
 
     #[cold]
@@ -458,7 +473,14 @@ impl de::Error for Error {
 impl ser::Error for Error {
     #[cold]
     fn custom<T: Display>(msg: T) -> Error {
-        make_error(msg.to_string())
+        #[cfg(feature = "zeroize")]
+        {
+            make_error(msg)
+        }
+        #[cfg(not(feature = "zeroize"))]
+        {
+            make_error(msg.to_string())
+        }
     }
 }
 
@@ -480,11 +502,25 @@ impl<'a> Display for JsonUnexpected<'a> {
 
 // Parse our own error message that looks like "{} at line {} column {}" to work
 // around erased-serde round-tripping the error through de::Error::custom.
+#[cfg(not(feature = "zeroize"))]
 fn make_error(mut msg: String) -> Error {
     let (line, column) = parse_line_col(&mut msg).unwrap_or((0, 0));
     Error {
         err: Box::new(ErrorImpl {
             code: ErrorCode::Message(msg.into_boxed_str()),
+            line,
+            column,
+        }),
+    }
+}
+
+#[cfg(feature = "zeroize")]
+fn make_error(msg: impl Display) -> Error {
+    let mut msg = MessageText::from_display(msg);
+    let (line, column) = parse_line_col(msg.as_mut_string()).unwrap_or((0, 0));
+    Error {
+        err: Box::new(ErrorImpl {
+            code: ErrorCode::Message(msg),
             line,
             column,
         }),
@@ -537,5 +573,98 @@ fn starts_with_digit(slice: &str) -> bool {
     match slice.as_bytes().first() {
         None => false,
         Some(&byte) => byte >= b'0' && byte <= b'9',
+    }
+}
+
+#[cfg(all(test, feature = "zeroize"))]
+mod custody_tests {
+    use super::{Error, ErrorCode};
+    use crate::custody_tests::{watch, wiped};
+    use alloc::format;
+    use alloc::string::ToString;
+    use serde::de::Error as _;
+
+    const PRIVATE_ERROR: &str = "request-private-error";
+
+    #[test]
+    fn custom_error_keeps_display_and_position_and_wipes_owned_text() {
+        const LINE: usize = 2;
+        const COLUMN: usize = 3;
+        let rendered = format!("{PRIVATE_ERROR} at line {LINE} column {COLUMN}");
+        let error = Error::custom(&rendered);
+        assert_eq!(error.line(), LINE);
+        assert_eq!(error.column(), COLUMN);
+        assert_eq!(error.to_string(), rendered);
+        match &error.err.code {
+            ErrorCode::Message(message) => watch(message.as_bytes()),
+            _ => panic!("custom error must own its message"),
+        }
+        drop(error);
+        assert_eq!(wiped(), Some(true));
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn conversion_to_io_error_keeps_text_custody_until_final_drop() {
+        let error = Error::custom(PRIVATE_ERROR);
+        match &error.err.code {
+            ErrorCode::Message(message) => watch(message.as_bytes()),
+            _ => panic!("custom error must own its message"),
+        }
+        let io_error: std::io::Error = error.into();
+        assert_eq!(io_error.to_string(), PRIVATE_ERROR);
+        assert_eq!(wiped(), None);
+        drop(io_error);
+        assert_eq!(wiped(), Some(true));
+    }
+
+    struct InspectDebug {
+        fail_on_message: bool,
+    }
+
+    impl core::fmt::Write for InspectDebug {
+        fn write_str(&mut self, text: &str) -> core::fmt::Result {
+            if text == PRIVATE_ERROR {
+                // Debug lends the initialized temporary string itself to the output sink.
+                // Observe that live owner rather than guessing allocations from their sizes.
+                watch(text.as_bytes());
+                if self.fail_on_message {
+                    return Err(core::fmt::Error);
+                }
+            }
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn debug_formatting_wipes_its_temporary_on_success_and_output_error() {
+        let error = Error::custom(PRIVATE_ERROR);
+        for fail_on_message in [false, true] {
+            crate::custody_tests::reset_observation();
+            let mut sink = InspectDebug { fail_on_message };
+            let result = core::fmt::write(&mut sink, format_args!("{error:?}"));
+            assert_eq!(result.is_err(), fail_on_message);
+            assert_eq!(wiped(), Some(true));
+            // The original error still owns its independent message after Debug's temporary ends.
+            assert_eq!(error.to_string(), PRIVATE_ERROR);
+        }
+    }
+
+    #[test]
+    fn parsed_position_suffix_stays_under_the_same_wiping_owner() {
+        const LINE: usize = 2;
+        const COLUMN: usize = 3;
+        let rendered = format!("{PRIVATE_ERROR} at line {LINE} column {COLUMN}");
+        let mut message = crate::scratch::MessageText::from_display(&rendered);
+        // Register the full initialized prefix before parse_line_col shortens its visible length.
+        // Its old suffix remains initialized until this same allocation is wiped and retired.
+        watch(message.as_bytes());
+        assert_eq!(
+            super::parse_line_col(message.as_mut_string()),
+            Some((LINE, COLUMN))
+        );
+        assert_eq!(&*message, PRIVATE_ERROR);
+        drop(message);
+        assert_eq!(wiped(), Some(true));
     }
 }

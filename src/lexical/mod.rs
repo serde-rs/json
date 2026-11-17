@@ -14,6 +14,7 @@
 pub(crate) mod algorithm;
 mod bhcomp;
 mod bignum;
+pub(crate) mod buffer;
 mod cached;
 mod cached_float80;
 mod digit;

@@ -154,7 +154,7 @@ where
     /// Temporary storage of peeked byte.
     ch: Option<u8>,
     #[cfg(feature = "raw_value")]
-    raw_buffer: Option<Vec<u8>>,
+    raw_buffer: Option<crate::scratch::Buffer>,
     #[cfg(feature = "raw_value")]
     raw_buffering_start_position: Position,
 }
@@ -232,7 +232,7 @@ where
         loop {
             let ch = tri!(next_or_eof(self));
             if !is_escape(ch, true) {
-                scratch.push(ch);
+                crate::scratch::push(scratch, ch);
                 continue;
             }
             match ch {
@@ -246,7 +246,7 @@ where
                     if validate {
                         return error(self, ErrorCode::ControlCharacterWhileParsingString);
                     }
-                    scratch.push(ch);
+                    crate::scratch::push(scratch, ch);
                 }
             }
         }
@@ -265,7 +265,7 @@ where
                 #[cfg(feature = "raw_value")]
                 {
                     if let Some(buf) = &mut self.raw_buffer {
-                        buf.push(ch);
+                        crate::scratch::push(buf, ch);
                     }
                 }
                 Ok(Some(ch))
@@ -276,7 +276,7 @@ where
                     #[cfg(feature = "raw_value")]
                     {
                         if let Some(buf) = &mut self.raw_buffer {
-                            buf.push(ch);
+                            crate::scratch::push(buf, ch);
                         }
                     }
                     Ok(Some(ch))
@@ -311,7 +311,7 @@ where
     fn discard(&mut self) {
         if let Some(ch) = self.ch.take() {
             if let Some(buf) = &mut self.raw_buffer {
-                buf.push(ch);
+                crate::scratch::push(buf, ch);
             }
         }
     }
@@ -387,7 +387,7 @@ where
             line: position.line,
             column: position.column - usize::from(self.ch.is_some()),
         };
-        self.raw_buffer = Some(Vec::new());
+        self.raw_buffer = Some(crate::scratch::buffer());
     }
 
     #[cfg(feature = "raw_value")]
@@ -396,10 +396,14 @@ where
         V: Visitor<'de>,
     {
         let raw = self.raw_buffer.take().unwrap();
-        let raw = match String::from_utf8(raw) {
+        let raw = match String::from_utf8(crate::scratch::into_vec(raw)) {
             Ok(raw) => raw,
             Err(err) => {
-                let prefix = &err.as_bytes()[..=err.utf8_error().valid_up_to()];
+                let valid_up_to = err.utf8_error().valid_up_to();
+                let bytes = err.into_bytes();
+                #[cfg(feature = "zeroize")]
+                let bytes = zeroize::Zeroizing::new(bytes);
+                let prefix = &bytes[..=valid_up_to];
                 let line;
                 let column;
                 if let Some(last_newline) = memchr::memrchr(b'\n', prefix) {
@@ -419,7 +423,7 @@ where
             }
         };
         visitor.visit_map(OwnedRawDeserializer {
-            raw_value: Some(raw),
+            raw_value: Some(raw.into()),
         })
     }
 
@@ -545,13 +549,13 @@ impl<'a> SliceRead<'a> {
                         self.index += 1;
                         return result(self, borrowed).map(Reference::Borrowed);
                     } else {
-                        scratch.extend_from_slice(&self.slice[start..self.index]);
+                        crate::scratch::extend_from_slice(scratch, &self.slice[start..self.index]);
                         self.index += 1;
                         return result(self, scratch).map(Reference::Copied);
                     }
                 }
                 b'\\' => {
-                    scratch.extend_from_slice(&self.slice[start..self.index]);
+                    crate::scratch::extend_from_slice(scratch, &self.slice[start..self.index]);
                     self.index += 1;
                     tri!(parse_escape(self, validate, scratch));
                     start = self.index;
@@ -930,14 +934,14 @@ fn parse_escape<'de, R: Read<'de>>(
     let ch = tri!(next_or_eof(read));
 
     match ch {
-        b'"' => scratch.push(b'"'),
-        b'\\' => scratch.push(b'\\'),
-        b'/' => scratch.push(b'/'),
-        b'b' => scratch.push(b'\x08'),
-        b'f' => scratch.push(b'\x0c'),
-        b'n' => scratch.push(b'\n'),
-        b'r' => scratch.push(b'\r'),
-        b't' => scratch.push(b'\t'),
+        b'"' => crate::scratch::push(scratch, b'"'),
+        b'\\' => crate::scratch::push(scratch, b'\\'),
+        b'/' => crate::scratch::push(scratch, b'/'),
+        b'b' => crate::scratch::push(scratch, b'\x08'),
+        b'f' => crate::scratch::push(scratch, b'\x0c'),
+        b'n' => crate::scratch::push(scratch, b'\n'),
+        b'r' => crate::scratch::push(scratch, b'\r'),
+        b't' => crate::scratch::push(scratch, b'\t'),
         b'u' => return parse_unicode_escape(read, validate, scratch),
         _ => return error(read, ErrorCode::InvalidEscape),
     }
@@ -1028,11 +1032,11 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
 #[inline]
 fn push_wtf8_codepoint(n: u32, scratch: &mut Vec<u8>) {
     if n < 0x80 {
-        scratch.push(n as u8);
+        crate::scratch::push(scratch, n as u8);
         return;
     }
 
-    scratch.reserve(4);
+    crate::scratch::reserve(scratch, 4);
 
     // SAFETY: After the `reserve` call, `scratch` has at least 4 bytes of
     // allocated but uninitialized memory after its last initialized byte, which
@@ -1136,5 +1140,82 @@ fn decode_four_hex_digits(a: u8, b: u8, c: u8, d: u8) -> Option<u16> {
         Some(codepoint as u16)
     } else {
         None
+    }
+}
+
+#[cfg(all(test, feature = "zeroize", feature = "std", feature = "raw_value"))]
+mod custody_tests {
+    use super::{IoRead, Read};
+    use crate::custody_tests::{watch, wiped};
+    use alloc::boxed::Box;
+    use core::fmt;
+    use serde::de::{self, Visitor};
+    use serde::Deserialize;
+
+    struct RejectRaw;
+    impl<'de> Visitor<'de> for RejectRaw {
+        type Value = ();
+        fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("a raw value")
+        }
+        fn visit_map<A: de::MapAccess<'de>>(self, _: A) -> Result<(), A::Error> {
+            Err(de::Error::custom(
+                "fixture rejected raw map before reading its string",
+            ))
+        }
+    }
+
+    #[test]
+    fn raw_reader_growth_reuse_and_drop_wipe_registered_initialized_prefixes() {
+        let data = b"private-private-private-private-private-private-private-private";
+        let mut read = IoRead::new(data.as_slice());
+        read.begin_raw_buffering();
+        for _ in 0..7 {
+            read.next().unwrap();
+        }
+        watch(read.raw_buffer.as_ref().unwrap());
+        while read.next().unwrap().is_some() {}
+        assert_eq!(wiped(), Some(true));
+        watch(read.raw_buffer.as_ref().unwrap());
+        read.begin_raw_buffering();
+        assert_eq!(wiped(), Some(true));
+        assert!(read.raw_buffer.as_ref().unwrap().is_empty());
+        drop(read);
+    }
+
+    #[test]
+    fn raw_reader_visitor_rejection_and_invalid_utf8_wipe_the_original_buffer() {
+        for data in [
+            b"\"raw-private\"".as_slice(),
+            b"\"raw-private\xFF\"".as_slice(),
+        ] {
+            let mut read = IoRead::new(data);
+            read.begin_raw_buffering();
+            while read.next().unwrap().is_some() {}
+            watch(read.raw_buffer.as_ref().unwrap());
+            assert!(read.end_raw_buffering(RejectRaw).is_err());
+            assert_eq!(wiped(), Some(true));
+        }
+    }
+
+    #[test]
+    fn malformed_raw_parse_leaves_its_partial_buffer_guarded_until_reader_drop() {
+        let mut read = IoRead::new(b"{\"raw-private\": [1,".as_slice());
+        {
+            let mut parser = crate::Deserializer::new(&mut read);
+            assert!(Box::<crate::value::RawValue>::deserialize(&mut parser).is_err());
+        }
+        watch(read.raw_buffer.as_ref().unwrap());
+        drop(read);
+        assert_eq!(wiped(), Some(true));
+    }
+
+    #[test]
+    fn returned_raw_value_retains_normal_drop_behavior() {
+        let raw: Box<crate::value::RawValue> =
+            crate::from_reader(b"{\"raw-private\": true}".as_slice()).unwrap();
+        watch(raw.get().as_bytes());
+        drop(raw);
+        assert_eq!(wiped(), Some(false));
     }
 }

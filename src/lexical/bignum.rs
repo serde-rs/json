@@ -2,6 +2,7 @@
 
 //! Big integer type definition.
 
+use super::buffer::{self, Buffer};
 use super::math::*;
 #[allow(unused_imports)]
 use alloc::vec::Vec;
@@ -10,13 +11,13 @@ use alloc::vec::Vec;
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct Bigint {
     /// Internal storage for the Bigint, in little-endian order.
-    pub(crate) data: Vec<Limb>,
+    pub(crate) data: Buffer,
 }
 
 impl Default for Bigint {
     fn default() -> Self {
         Bigint {
-            data: Vec::with_capacity(20),
+            data: buffer::with_capacity(20),
         }
     }
 }

@@ -361,6 +361,18 @@ For JSON support in Serde without a memory allocator, please see the
 
 [`serde-json-core`]: https://github.com/rust-embedded-community/serde-json-core
 
+## Wiping temporary buffers
+
+The optional `zeroize` feature wipes serde_json-owned temporary heap buffers
+before reuse or release, including parser scratch, float-roundtrip heap
+arithmetic, custom error text, and serialization output buffers before they are
+returned. It works with `std` or
+`alloc` and requires Rust 1.85. It does not change the drop behavior of returned
+`Value`, `String`, `Number`, or `RawValue` objects. Applications still need to
+protect input, output, I/O buffers, and objects passed to visitors. See the
+[wiping boundary and limitations](https://docs.rs/serde_json/latest/serde_json/#wiping-temporary-buffers)
+before using this feature for sensitive data.
+
 [value]: https://docs.rs/serde_json/1/serde_json/value/enum.Value.html
 [from_str]: https://docs.rs/serde_json/1/serde_json/de/fn.from_str.html
 [from_slice]: https://docs.rs/serde_json/1/serde_json/de/fn.from_slice.html
