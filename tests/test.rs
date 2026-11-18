@@ -221,6 +221,43 @@ fn test_write_char() {
 }
 
 #[test]
+fn test_write_str_escape_search() {
+    let escapes = [
+        ("\"", "\\\""),
+        ("\\", "\\\\"),
+        ("\n", "\\n"),
+        ("\x00", "\\u0000"),
+        ("\x1F", "\\u001f"),
+        // Not escaped
+        (" ", " "),
+        ("\x7F", "\x7F"),
+        ("\u{3A3}", "\u{3A3}"),
+    ];
+
+    // Different positions relative to the chunk boundaries
+    for n in 0..20 {
+        for m in 0..20 {
+            for (unescaped, escaped) in escapes {
+                let value = format!("{}{}{}", "a".repeat(n), unescaped, "b".repeat(m));
+                let out = format!("\"{}{}{}\"", "a".repeat(n), escaped, "b".repeat(m));
+                test_encode_ok(&[(value, out.as_str())]);
+
+                // Followed by another escape
+                let value = format!("{}{}\n{}", "a".repeat(n), unescaped, "b".repeat(m));
+                let out = format!("\"{}{}\\n{}\"", "a".repeat(n), escaped, "b".repeat(m));
+                test_encode_ok(&[(value, out.as_str())]);
+            }
+        }
+    }
+
+    // Multiple occurrences
+    test_encode_ok(&[(
+        "\t\n\r\" 0123456789 \\\x01",
+        "\"\\t\\n\\r\\\" 0123456789 \\\\\\u0001\"",
+    )]);
+}
+
+#[test]
 fn test_write_list() {
     test_encode_ok(&[
         (vec![], "[]"),
