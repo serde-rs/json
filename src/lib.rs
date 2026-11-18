@@ -398,7 +398,7 @@ include!(concat!(env!("OUT_DIR"), "/private.rs"));
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[doc(inline)]
-pub use crate::de::from_reader;
+pub use crate::de::{from_reader, from_reader_buffered};
 #[doc(inline)]
 pub use crate::de::{from_slice, from_str, Deserializer, StreamDeserializer};
 #[doc(inline)]
