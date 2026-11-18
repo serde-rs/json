@@ -195,6 +195,62 @@ fn test_write_str() {
 }
 
 #[test]
+fn test_write_str_escape_positions() {
+    // After the first byte that needs no escape, the serializer scans 16 bytes
+    // at a time, then one at a time over the last 0-15: 33 chars are two
+    // blocks, and 32 are one block and 15 single bytes. Put each char at every
+    // position, and pairs at every two positions, where the scan has to stop at
+    // the first. (With shortcuts taken on miri)
+    let escaped = |c: char| {
+        let quoted = to_string(&c).unwrap();
+        (c, quoted[1..quoted.len() - 1].to_owned())
+    };
+    let check = |at: &[&(char, String)], positions: &[usize], len: usize| {
+        let mut string = String::new();
+        let mut expected = String::from("\"");
+        for pos in 0..len {
+            if let Some(k) = positions.iter().position(|&p| p == pos) {
+                string.push(at[k].0);
+                expected += &at[k].1;
+            } else {
+                string.push('a');
+                expected.push('a');
+            }
+        }
+        expected.push('"');
+        assert_eq!(to_string(&string).unwrap(), expected, "{:?}", string);
+    };
+    // Miri runs this about 20,000 times slower, so there it tries
+    // only a few chars, and pairs close enough to share a word.
+    let singles: Vec<_> = (0..0x80u8)
+        .map(char::from)
+        .chain(['\u{80}', '\u{FF}', '\u{10FFFF}'])
+        .filter(|&c| !cfg!(miri) || "\x1F \"\\\u{80}".contains(c))
+        .map(escaped)
+        .collect();
+    let pairs: Vec<_> = ['\x1F', '"', '\\']
+        .into_iter()
+        .filter(|&c| !cfg!(miri) || c == '"')
+        .map(escaped)
+        .collect();
+    for len in [32, 33] {
+        for pos in 0..len {
+            for c in &singles {
+                check(&[c], &[pos], len);
+            }
+            let end = if cfg!(miri) { len.min(pos + 5) } else { len };
+            for second in pos + 1..end {
+                for c in &pairs {
+                    for d in &pairs {
+                        check(&[c, d], &[pos, second], len);
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn test_write_bool() {
     let tests = &[(true, "true"), (false, "false")];
     test_encode_ok(tests);

@@ -2096,6 +2096,7 @@ where
 
         i += 1;
         if escape == 0 {
+            i = skip_to_escape(bytes, i);
             continue;
         }
 
@@ -2130,6 +2131,78 @@ where
     }
 
     formatter.write_string_fragment(writer, string_run)
+}
+
+const U32_LEN: usize = 4;
+const BLOCK_SIZE: usize = 4 * U32_LEN;
+
+/// Returns the index of the first byte at or after `i` that ESCAPE escapes, or
+/// `bytes.len()` if there is none. Whole blocks are tested at once; only the
+/// block that hits is searched a word at a time, and the last 0..BLOCK_SIZE bytes
+/// are left to the table.
+#[inline]
+fn skip_to_escape(bytes: &[u8], mut i: usize) -> usize {
+    for block in bytes[i..].chunks_exact(BLOCK_SIZE) {
+        if need_escaping(block) {
+            for word in block.chunks_exact(U32_LEN) {
+                let bits = escape_bits(word);
+                if bits != 0 {
+                    return i + bits.trailing_zeros() as usize / 8;
+                }
+                i += U32_LEN;
+            }
+        }
+        i += BLOCK_SIZE;
+    }
+
+    while i < bytes.len() && ESCAPE[bytes[i] as usize] == 0 {
+        i += 1;
+    }
+    i
+}
+
+/// Does this block contain characters to escape?
+#[inline]
+fn need_escaping(block: &[u8]) -> bool {
+    let found = block
+        .chunks_exact(U32_LEN)
+        .map(escape_bits)
+        .fold(0, |any, val| any | val);
+    found != 0
+}
+
+/// Sets the high bit of the first byte of `word` that was a byte which must be escaped, and no
+/// bit below it. Bytes after the first to be escaped are irrelevant.
+#[inline]
+fn escape_bits(word: &[u8]) -> u32 {
+    let word = u32::from_le_bytes(word.try_into().unwrap());
+    bytes_less_than(word, 0x20) | bytes_equal_to(word, b'"') | bytes_equal_to(word, b'\\')
+}
+
+/// Bit twiddling implementation to find bytes less than `n` assuming n <= 0x80.
+/// It sets the high bit of the first byte of `word` that is less than `n`, and no
+/// bit below it; a borrow out of that byte may flag bytes after it.
+/// See: https://bits.stephan-brumme.com/null.html
+#[inline]
+fn bytes_less_than(word: u32, n: u8) -> u32 {
+    debug_assert!(n <= 0x80);
+    word.wrapping_sub(splat(n)) & !word & splat(0x80)
+}
+
+/// Bit twiddling implementation to check for bytes that equal the provided value.
+/// Equality is determined when two XOR to 0.
+/// Comparing to zero is done similar to the above.
+/// See: https://bits.stephan-brumme.com/null.html
+#[inline]
+fn bytes_equal_to(word: u32, byte: u8) -> u32 {
+    let word = word ^ splat(byte);
+    word.wrapping_sub(splat(1)) & !word & splat(0x80)
+}
+
+/// A u32 with each of its bytes set to `byte`.
+#[inline]
+const fn splat(byte: u8) -> u32 {
+    u32::from_ne_bytes([byte; U32_LEN])
 }
 
 const BB: u8 = b'b'; // \x08
