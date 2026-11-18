@@ -833,9 +833,23 @@ fn test_parse_u64() {
 
 #[test]
 fn test_parse_negative_zero() {
+    #[derive(Deserialize, Debug, PartialEq)]
+    #[serde(untagged)]
+    enum Untagged {
+        Int(i64),
+        Float(f64),
+    }
+
+    #[derive(Deserialize)]
+    struct Flattened {
+        #[serde(flatten)]
+        rest: BTreeMap<String, Value>,
+    }
+
     for negative_zero in &[
         "-0",
         "-0.0",
+        "-0.00",
         "-0e2",
         "-0.0e2",
         "-1e-400",
@@ -851,7 +865,89 @@ fn test_parse_negative_zero() {
             "should have been negative: {:?}",
             negative_zero,
         );
+
+        let value = from_str::<Value>(negative_zero).unwrap();
+        assert!(
+            value.to_string().starts_with('-'),
+            "should have been negative: {:?}",
+            negative_zero,
+        );
+        assert!(
+            value.as_f64().unwrap().is_sign_negative(),
+            "should have been negative: {:?}",
+            negative_zero,
+        );
+        assert!(
+            !value.is_u64() && value.as_u64().is_none(),
+            "should not have been u64: {:?}",
+            negative_zero,
+        );
+
+        assert!(
+            from_str::<Number>(negative_zero)
+                .unwrap()
+                .to_string()
+                .starts_with('-'),
+            "should have been negative: {:?}",
+            negative_zero,
+        );
+
+        let rendered = value.to_string();
+        assert_eq!(
+            rendered,
+            from_str::<Number>(negative_zero).unwrap().to_string(),
+        );
+
+        let number: Number = from_value(value.clone()).unwrap();
+        assert_eq!(number.to_string(), rendered);
+        assert_eq!(to_value(&number).unwrap().to_string(), rendered);
+        assert_eq!(
+            from_value::<Value>(value.clone()).unwrap().to_string(),
+            rendered,
+        );
+
+        // Err is fine: with arbitrary_precision, untagged matches no float.
+        match from_str::<Untagged>(negative_zero) {
+            Ok(Untagged::Float(f)) => assert!(
+                f.is_sign_negative(),
+                "should have been negative: {:?}",
+                negative_zero,
+            ),
+            Ok(Untagged::Int(i)) => panic!(
+                "matched the integer variant as {}, dropping the sign: {:?}",
+                i, negative_zero,
+            ),
+            Err(_) => {}
+        }
+
+        match from_value::<Untagged>(value) {
+            Ok(Untagged::Float(f)) => assert!(
+                f.is_sign_negative(),
+                "should have been negative: {:?}",
+                negative_zero,
+            ),
+            Ok(Untagged::Int(i)) => panic!(
+                "matched the integer variant as {}, dropping the sign: {:?}",
+                i, negative_zero,
+            ),
+            Err(_) => {}
+        }
+
+        let flattened = from_str::<Flattened>(&format!(r#"{{"k":{}}}"#, negative_zero)).unwrap();
+        assert!(
+            flattened.rest["k"].to_string().starts_with('-'),
+            "should have been negative: {:?}",
+            negative_zero,
+        );
     }
+
+    let negative_zero = from_str::<Value>("-0").unwrap().to_string();
+
+    #[cfg(not(feature = "arbitrary_precision"))]
+    assert_eq!(negative_zero, "-0.0");
+
+    #[cfg(feature = "arbitrary_precision")]
+    assert_eq!(negative_zero, "-0");
 }
 
 #[test]
@@ -873,6 +969,21 @@ fn test_negative_zero_value() {
     let value: Value = from_str("[-0, 0]").unwrap();
     assert!(value[0].as_f64().unwrap().is_sign_negative());
     assert!(value[1].as_f64().unwrap().is_sign_positive());
+}
+
+#[test]
+fn test_negative_zero_is_not_an_integer() {
+    let value: Value = from_str("-0").unwrap();
+    assert!(!value.is_i64());
+    assert!(!value.is_u64());
+    assert!(value.is_f64());
+    assert_eq!(value.as_i64(), None);
+    assert_eq!(value.as_number().unwrap().as_i128(), None);
+    assert_ne!(value, 0i64);
+    from_str::<i64>("-0").unwrap_err();
+    from_str::<i128>("-0").unwrap_err();
+    from_value::<i64>(value.clone()).unwrap_err();
+    from_value::<i128>(value).unwrap_err();
 }
 
 #[test]
