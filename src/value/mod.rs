@@ -1020,6 +1020,10 @@ where
 ///         "location": "Menlo Park, CA"
 ///     });
 ///
+///     // Borrowed `Value` also implements `Deserialize`.
+///     let u = User::deserialize(&j).unwrap();
+///     println!("{:#?}", u);
+///
 ///     let u: User = serde_json::from_value(j).unwrap();
 ///     println!("{:#?}", u);
 /// }
