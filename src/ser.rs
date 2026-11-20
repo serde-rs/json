@@ -21,7 +21,7 @@ pub struct Serializer<W, F = CompactFormatter> {
 
 impl<W> Serializer<W>
 where
-    W: io::Write,
+    W: Write,
 {
     /// Creates a new JSON serializer.
     #[inline]
@@ -32,7 +32,7 @@ where
 
 impl<'a, W> Serializer<W, PrettyFormatter<'a>>
 where
-    W: io::Write,
+    W: Write,
 {
     /// Creates a new JSON pretty print serializer.
     #[inline]
@@ -43,7 +43,7 @@ where
 
 impl<W, F> Serializer<W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     /// Creates a new JSON visitor whose output will be written to the writer
@@ -62,7 +62,7 @@ where
 
 impl<'a, W, F> ser::Serializer for &'a mut Serializer<W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     type Ok = ();
@@ -419,9 +419,9 @@ where
             error: Option<io::Error>,
         }
 
-        impl<'ser, W, F> Write for Adapter<'ser, W, F>
+        impl<'ser, W, F> fmt::Write for Adapter<'ser, W, F>
         where
-            W: io::Write,
+            W: self::Write,
             F: Formatter,
         {
             fn write_str(&mut self, s: &str) -> fmt::Result {
@@ -481,7 +481,7 @@ pub enum Compound<'a, W: 'a, F: 'a> {
 
 impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     type Ok = ();
@@ -528,7 +528,7 @@ where
 
 impl<'a, W, F> ser::SerializeTuple for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     type Ok = ();
@@ -550,7 +550,7 @@ where
 
 impl<'a, W, F> ser::SerializeTupleStruct for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     type Ok = ();
@@ -572,7 +572,7 @@ where
 
 impl<'a, W, F> ser::SerializeTupleVariant for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     type Ok = ();
@@ -610,7 +610,7 @@ where
 
 impl<'a, W, F> ser::SerializeMap for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     type Ok = ();
@@ -682,7 +682,7 @@ where
 
 impl<'a, W, F> ser::SerializeStruct for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     type Ok = ();
@@ -728,7 +728,7 @@ where
 
 impl<'a, W, F> ser::SerializeStructVariant for Compound<'a, W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     type Ok = ();
@@ -794,7 +794,7 @@ fn float_key_must_be_finite() -> Error {
 
 impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
 where
-    W: io::Write,
+    W: Write,
     F: Formatter,
 {
     type Ok = ();
@@ -1153,10 +1153,10 @@ where
 }
 
 #[cfg(feature = "arbitrary_precision")]
-struct NumberStrEmitter<'a, W: 'a + io::Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
+struct NumberStrEmitter<'a, W: 'a + Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
 
 #[cfg(feature = "arbitrary_precision")]
-impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W, F> {
+impl<'a, W: Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W, F> {
     type Ok = ();
     type Error = Error;
 
@@ -1330,10 +1330,10 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
 }
 
 #[cfg(feature = "raw_value")]
-struct RawValueStrEmitter<'a, W: 'a + io::Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
+struct RawValueStrEmitter<'a, W: 'a + Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
 
 #[cfg(feature = "raw_value")]
-impl<'a, W: io::Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, W, F> {
+impl<'a, W: Write, F: Formatter> ser::Serializer for RawValueStrEmitter<'a, W, F> {
     type Ok = ();
     type Error = Error;
 
@@ -1536,6 +1536,99 @@ pub enum CharEscape {
     AsciiControl(u8),
 }
 
+impl CharEscape {
+    /// The fixed prefix of an escape code
+    fn fixed_prefix(self) -> &'static str {
+        use self::CharEscape as CE;
+
+        match self {
+            CE::Quote => "\\\"",
+            CE::ReverseSolidus => "\\\\",
+            CE::Solidus => "\\/",
+            CE::Backspace => "\\b",
+            CE::FormFeed => "\\f",
+            CE::LineFeed => "\\n",
+            CE::CarriageReturn => "\\r",
+            CE::Tab => "\\t",
+            CE::AsciiControl(_) => "\\u00",
+        }
+    }
+}
+
+/// This trait allows `Serializer` to write to either an
+/// implementer of `io::Write` or an implementer of `fmt::Write`
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub trait Write {
+    /// Write string directly to writer
+    fn write_string(&mut self, input: &str) -> io::Result<()>;
+
+    /// Write a json escaped string in one operation
+    fn write_escape(&mut self, escape: CharEscape) -> io::Result<()>;
+}
+
+
+impl<T: io::Write> Write for T {
+    #[inline]
+    fn write_string(&mut self, input: &str) -> io::Result<()> {
+        self.write_all(input.as_bytes())
+    }
+
+    #[inline]
+    fn write_escape(&mut self, escape: CharEscape) -> io::Result<()> {
+        use self::CharEscape as CE;
+
+        match escape {
+            CE::AsciiControl(byte) => {
+                static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
+                let bytes = &[
+                    b'\\',
+                    b'u',
+                    b'0',
+                    b'0',
+                    HEX_DIGITS[(byte >> 4) as usize],
+                    HEX_DIGITS[(byte & 0xF) as usize],
+                ];
+                self.write_all(bytes)
+            }
+            _ => self.write_all(escape.fixed_prefix().as_bytes()),
+        }
+    }
+}
+
+/// Wrapper allowing an implementer of `fmt::Write` to implement
+/// `ser::Write` without violating orphan rules
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+#[repr(transparent)]
+pub struct FmtWrite<W>(pub W);
+
+#[cfg(feature = "std")]
+impl<W: fmt::Write> Write for FmtWrite<W> {
+    #[inline]
+    fn write_string(&mut self, input: &str) -> io::Result<()> {
+        self.0.write_str(input).map_err(error_other)
+    }
+
+    #[inline]
+    fn write_escape(&mut self, escape: CharEscape) -> io::Result<()> {
+        use self::CharEscape as CE;
+
+        match escape {
+            CE::AsciiControl(byte) => {
+                write!(&mut self.0, "\\u{:0>4x}", byte).map_err(error_other)
+            }
+            _ => self.0.write_str(escape.fixed_prefix()).map_err(error_other),
+        }
+    }
+}
+
+/// Polyfill for io::Error::other
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+fn error_other(_error: fmt::Error) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, "Formatting Error")
+}
+
 /// This trait abstracts away serializing the JSON control characters, which allows the user to
 /// optionally pretty print the JSON output.
 pub trait Formatter {
@@ -1543,133 +1636,133 @@ pub trait Formatter {
     #[inline]
     fn write_null<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(b"null")
+        writer.write_string("null")
     }
 
     /// Writes a `true` or `false` value to the specified writer.
     #[inline]
     fn write_bool<W>(&mut self, writer: &mut W, value: bool) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let s = if value {
-            b"true" as &[u8]
+            "true"
         } else {
-            b"false" as &[u8]
+            "false"
         };
-        writer.write_all(s)
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
     fn write_i8<W>(&mut self, writer: &mut W, value: i8) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
     fn write_i16<W>(&mut self, writer: &mut W, value: i16) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
     fn write_i32<W>(&mut self, writer: &mut W, value: i32) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
     fn write_i64<W>(&mut self, writer: &mut W, value: i64) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `-123` to the specified writer.
     #[inline]
     fn write_i128<W>(&mut self, writer: &mut W, value: i128) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
     fn write_u8<W>(&mut self, writer: &mut W, value: u8) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
     fn write_u16<W>(&mut self, writer: &mut W, value: u16) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
     fn write_u32<W>(&mut self, writer: &mut W, value: u32) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
     fn write_u64<W>(&mut self, writer: &mut W, value: u64) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes an integer value like `123` to the specified writer.
     #[inline]
     fn write_u128<W>(&mut self, writer: &mut W, value: u128) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = itoa::Buffer::new();
         let s = buffer.format(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
@@ -1690,11 +1783,11 @@ pub trait Formatter {
     #[inline]
     fn write_f32<W>(&mut self, writer: &mut W, value: f32) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = zmij::Buffer::new();
         let s = buffer.format_finite(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
@@ -1715,20 +1808,20 @@ pub trait Formatter {
     #[inline]
     fn write_f64<W>(&mut self, writer: &mut W, value: f64) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         let mut buffer = zmij::Buffer::new();
         let s = buffer.format_finite(value);
-        writer.write_all(s.as_bytes())
+        writer.write_string(s)
     }
 
     /// Writes a number that has already been rendered to a string.
     #[inline]
     fn write_number_str<W>(&mut self, writer: &mut W, value: &str) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(value.as_bytes())
+        writer.write_string(value)
     }
 
     /// Called before each series of `write_string_fragment` and
@@ -1736,9 +1829,9 @@ pub trait Formatter {
     #[inline]
     fn begin_string<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(b"\"")
+        writer.write_string("\"")
     }
 
     /// Called after each series of `write_string_fragment` and
@@ -1746,9 +1839,9 @@ pub trait Formatter {
     #[inline]
     fn end_string<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(b"\"")
+        writer.write_string("\"")
     }
 
     /// Writes a string fragment that doesn't need any escaping to the
@@ -1756,46 +1849,18 @@ pub trait Formatter {
     #[inline]
     fn write_string_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(fragment.as_bytes())
+        writer.write_string(fragment)
     }
 
     /// Writes a character escape code to the specified writer.
     #[inline]
     fn write_char_escape<W>(&mut self, writer: &mut W, char_escape: CharEscape) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        use self::CharEscape::*;
-
-        let escape_char = match char_escape {
-            Quote => b'"',
-            ReverseSolidus => b'\\',
-            Solidus => b'/',
-            Backspace => b'b',
-            FormFeed => b'f',
-            LineFeed => b'n',
-            CarriageReturn => b'r',
-            Tab => b't',
-            AsciiControl(_) => b'u',
-        };
-
-        match char_escape {
-            AsciiControl(byte) => {
-                static HEX_DIGITS: [u8; 16] = *b"0123456789abcdef";
-                let bytes = &[
-                    b'\\',
-                    escape_char,
-                    b'0',
-                    b'0',
-                    HEX_DIGITS[(byte >> 4) as usize],
-                    HEX_DIGITS[(byte & 0xF) as usize],
-                ];
-                writer.write_all(bytes)
-            }
-            _ => writer.write_all(&[b'\\', escape_char]),
-        }
+        writer.write_escape(char_escape)
     }
 
     /// Writes the representation of a byte array. Formatters can choose whether
@@ -1803,7 +1868,7 @@ pub trait Formatter {
     /// JSON string encoding like hex or base64.
     fn write_byte_array<W>(&mut self, writer: &mut W, value: &[u8]) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         tri!(self.begin_array(writer));
         let mut first = true;
@@ -1821,9 +1886,9 @@ pub trait Formatter {
     #[inline]
     fn begin_array<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(b"[")
+        writer.write_string("[")
     }
 
     /// Called after every array.  Writes a `]` to the specified
@@ -1831,9 +1896,9 @@ pub trait Formatter {
     #[inline]
     fn end_array<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(b"]")
+        writer.write_string("]")
     }
 
     /// Called before every array value.  Writes a `,` if needed to
@@ -1841,12 +1906,12 @@ pub trait Formatter {
     #[inline]
     fn begin_array_value<W>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         if first {
             Ok(())
         } else {
-            writer.write_all(b",")
+            writer.write_string(",")
         }
     }
 
@@ -1854,7 +1919,7 @@ pub trait Formatter {
     #[inline]
     fn end_array_value<W>(&mut self, _writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         Ok(())
     }
@@ -1864,9 +1929,9 @@ pub trait Formatter {
     #[inline]
     fn begin_object<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(b"{")
+        writer.write_string("{")
     }
 
     /// Called after every object.  Writes a `}` to the specified
@@ -1874,21 +1939,21 @@ pub trait Formatter {
     #[inline]
     fn end_object<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(b"}")
+        writer.write_string("}")
     }
 
     /// Called before every object key.
     #[inline]
     fn begin_object_key<W>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         if first {
             Ok(())
         } else {
-            writer.write_all(b",")
+            writer.write_string(",")
         }
     }
 
@@ -1898,7 +1963,7 @@ pub trait Formatter {
     #[inline]
     fn end_object_key<W>(&mut self, _writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         Ok(())
     }
@@ -1909,16 +1974,16 @@ pub trait Formatter {
     #[inline]
     fn begin_object_value<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(b":")
+        writer.write_string(":")
     }
 
     /// Called after every object value.
     #[inline]
     fn end_object_value<W>(&mut self, _writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         Ok(())
     }
@@ -1928,9 +1993,9 @@ pub trait Formatter {
     #[inline]
     fn write_raw_fragment<W>(&mut self, writer: &mut W, fragment: &str) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(fragment.as_bytes())
+        writer.write_string(fragment)
     }
 }
 
@@ -1945,21 +2010,24 @@ impl Formatter for CompactFormatter {}
 pub struct PrettyFormatter<'a> {
     current_indent: usize,
     has_value: bool,
-    indent: &'a [u8],
+    indent: &'a str,
 }
 
 impl<'a> PrettyFormatter<'a> {
     /// Construct a pretty printer formatter that defaults to using two spaces for indentation.
     pub fn new() -> Self {
-        PrettyFormatter::with_indent(b"  ")
+        PrettyFormatter {
+            current_indent: 0,
+            has_value: false,
+            indent: "  ",
+        }
     }
 
     /// Construct a pretty printer formatter that uses the `indent` string for indentation.
     pub fn with_indent(indent: &'a [u8]) -> Self {
         PrettyFormatter {
-            current_indent: 0,
-            has_value: false,
-            indent,
+            indent: str::from_utf8(indent).unwrap_or("  "),
+            .. Self::new()
         }
     }
 }
@@ -1974,41 +2042,41 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     #[inline]
     fn begin_array<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         self.current_indent += 1;
         self.has_value = false;
-        writer.write_all(b"[")
+        writer.write_string("[")
     }
 
     #[inline]
     fn end_array<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         self.current_indent -= 1;
 
         if self.has_value {
-            tri!(writer.write_all(b"\n"));
+            tri!(writer.write_string("\n"));
             tri!(indent(writer, self.current_indent, self.indent));
         }
 
-        writer.write_all(b"]")
+        writer.write_string("]")
     }
 
     #[inline]
     fn begin_array_value<W>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        tri!(writer.write_all(if first { b"\n" } else { b",\n" }));
+        tri!(writer.write_string(if first { "\n" } else { ",\n" }));
         indent(writer, self.current_indent, self.indent)
     }
 
     #[inline]
     fn end_array_value<W>(&mut self, _writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         self.has_value = true;
         Ok(())
@@ -2017,49 +2085,49 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     #[inline]
     fn begin_object<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         self.current_indent += 1;
         self.has_value = false;
-        writer.write_all(b"{")
+        writer.write_string("{")
     }
 
     #[inline]
     fn end_object<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         self.current_indent -= 1;
 
         if self.has_value {
-            tri!(writer.write_all(b"\n"));
+            tri!(writer.write_string("\n"));
             tri!(indent(writer, self.current_indent, self.indent));
         }
 
-        writer.write_all(b"}")
+        writer.write_string("}")
     }
 
     #[inline]
     fn begin_object_key<W>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        tri!(writer.write_all(if first { b"\n" } else { b",\n" }));
+        tri!(writer.write_string(if first { "\n" } else { ",\n" }));
         indent(writer, self.current_indent, self.indent)
     }
 
     #[inline]
     fn begin_object_value<W>(&mut self, writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
-        writer.write_all(b": ")
+        writer.write_string(": ")
     }
 
     #[inline]
     fn end_object_value<W>(&mut self, _writer: &mut W) -> io::Result<()>
     where
-        W: ?Sized + io::Write,
+        W: ?Sized + Write,
     {
         self.has_value = true;
         Ok(())
@@ -2068,7 +2136,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
 
 fn format_escaped_str<W, F>(writer: &mut W, formatter: &mut F, value: &str) -> io::Result<()>
 where
-    W: ?Sized + io::Write,
+    W: ?Sized + Write,
     F: ?Sized + Formatter,
 {
     tri!(formatter.begin_string(writer));
@@ -2082,7 +2150,7 @@ fn format_escaped_str_contents<W, F>(
     value: &str,
 ) -> io::Result<()>
 where
-    W: ?Sized + io::Write,
+    W: ?Sized + Write,
     F: ?Sized + Formatter,
 {
     let mut bytes = value.as_bytes();
@@ -2273,12 +2341,12 @@ where
     Ok(string)
 }
 
-fn indent<W>(wr: &mut W, n: usize, s: &[u8]) -> io::Result<()>
+fn indent<W>(wr: &mut W, n: usize, s: &str) -> io::Result<()>
 where
-    W: ?Sized + io::Write,
+    W: ?Sized + Write,
 {
     for _ in 0..n {
-        tri!(wr.write_all(s));
+        tri!(wr.write_string(s));
     }
 
     Ok(())
