@@ -1946,6 +1946,9 @@ pub struct PrettyFormatter<'a> {
     current_indent: usize,
     has_value: bool,
     indent: &'a [u8],
+    // `indent` repeated for the deepest level seen so far, so the indentation
+    // of a line is one write instead of one per level.
+    indentation: Vec<u8>,
 }
 
 impl<'a> PrettyFormatter<'a> {
@@ -1960,7 +1963,19 @@ impl<'a> PrettyFormatter<'a> {
             current_indent: 0,
             has_value: false,
             indent,
+            indentation: Vec::new(),
         }
+    }
+
+    fn write_indent<W>(&mut self, writer: &mut W) -> io::Result<()>
+    where
+        W: ?Sized + io::Write,
+    {
+        let len = self.current_indent * self.indent.len();
+        while self.indentation.len() < len {
+            self.indentation.extend_from_slice(self.indent);
+        }
+        writer.write_all(&self.indentation[..len])
     }
 }
 
@@ -1990,7 +2005,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
 
         if self.has_value {
             tri!(writer.write_all(b"\n"));
-            tri!(indent(writer, self.current_indent, self.indent));
+            tri!(self.write_indent(writer));
         }
 
         writer.write_all(b"]")
@@ -2002,7 +2017,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
         W: ?Sized + io::Write,
     {
         tri!(writer.write_all(if first { b"\n" } else { b",\n" }));
-        indent(writer, self.current_indent, self.indent)
+        self.write_indent(writer)
     }
 
     #[inline]
@@ -2033,7 +2048,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
 
         if self.has_value {
             tri!(writer.write_all(b"\n"));
-            tri!(indent(writer, self.current_indent, self.indent));
+            tri!(self.write_indent(writer));
         }
 
         writer.write_all(b"}")
@@ -2045,7 +2060,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
         W: ?Sized + io::Write,
     {
         tri!(writer.write_all(if first { b"\n" } else { b",\n" }));
-        indent(writer, self.current_indent, self.indent)
+        self.write_indent(writer)
     }
 
     #[inline]
@@ -2271,15 +2286,4 @@ where
         String::from_utf8_unchecked(vec)
     };
     Ok(string)
-}
-
-fn indent<W>(wr: &mut W, n: usize, s: &[u8]) -> io::Result<()>
-where
-    W: ?Sized + io::Write,
-{
-    for _ in 0..n {
-        tri!(wr.write_all(s));
-    }
-
-    Ok(())
 }
