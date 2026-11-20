@@ -574,6 +574,14 @@ impl Extend<(String, Value)> for Map<String, Value> {
     }
 }
 
+impl<T: Into<Value>, const N: usize> From<[(String, T); N]> for Map<String, Value> {
+    fn from(array: [(String, T); N]) -> Self {
+        Map {
+            map: array.into_iter().map(|(k, v)| (k, v.into())).collect(),
+        }
+    }
+}
+
 macro_rules! delegate_iterator {
     (($name:ident $($generics:tt)*) => $item:ty) => {
         impl $($generics)* Iterator for $name $($generics)* {
