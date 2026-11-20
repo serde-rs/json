@@ -2171,7 +2171,7 @@ static ESCAPE: [u8; 256] = [
 /// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
+/// fail, or if `T` contains a map with keys that cannot be converted to strings (integer, boolean, and floating-point keys are stringified).
 #[inline]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn to_writer<W, T>(writer: W, value: &T) -> Result<()>
@@ -2191,7 +2191,7 @@ where
 /// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
+/// fail, or if `T` contains a map with keys that cannot be converted to strings (integer, boolean, and floating-point keys are stringified).
 #[inline]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub fn to_writer_pretty<W, T>(writer: W, value: &T) -> Result<()>
@@ -2208,7 +2208,7 @@ where
 /// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
+/// fail, or if `T` contains a map with keys that cannot be converted to strings (integer, boolean, and floating-point keys are stringified).
 #[inline]
 pub fn to_vec<T>(value: &T) -> Result<Vec<u8>>
 where
@@ -2224,7 +2224,7 @@ where
 /// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
+/// fail, or if `T` contains a map with keys that cannot be converted to strings (integer, boolean, and floating-point keys are stringified).
 #[inline]
 pub fn to_vec_pretty<T>(value: &T) -> Result<Vec<u8>>
 where
@@ -2240,7 +2240,7 @@ where
 /// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
+/// fail, or if `T` contains a map with keys that cannot be converted to strings (integer, boolean, and floating-point keys are stringified).
 #[inline]
 pub fn to_string<T>(value: &T) -> Result<String>
 where
@@ -2259,7 +2259,7 @@ where
 /// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
+/// fail, or if `T` contains a map with keys that cannot be converted to strings (integer, boolean, and floating-point keys are stringified).
 #[inline]
 pub fn to_string_pretty<T>(value: &T) -> Result<String>
 where

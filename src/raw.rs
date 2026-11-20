@@ -319,7 +319,7 @@ impl From<Box<RawValue>> for Box<str> {
 /// # Errors
 ///
 /// This conversion can fail if `T`'s implementation of `Serialize` decides to
-/// fail, or if `T` contains a map with non-string keys.
+/// fail, or if `T` contains a map with keys that cannot be converted to strings (integer, boolean, and floating-point keys are stringified).
 ///
 /// ```
 /// use std::collections::BTreeMap;
