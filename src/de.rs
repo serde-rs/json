@@ -1820,7 +1820,7 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
     fn deserialize_struct<V>(
         self,
         _name: &'static str,
-        _fields: &'static [&'static str],
+        fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value>
     where
@@ -1834,6 +1834,10 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
         };
 
         let value = match peek {
+            b'[' if fields.is_empty() => {
+                self.eat_char();
+                Err(de::Error::invalid_type(Unexpected::Seq, &visitor))
+            }
             b'[' => {
                 check_recursion! {
                     self.eat_char();

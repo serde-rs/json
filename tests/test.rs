@@ -1319,6 +1319,23 @@ fn test_parse_struct() {
 }
 
 #[test]
+fn test_parse_empty_struct_from_array() {
+    #[derive(Debug, Deserialize, PartialEq)]
+    struct Empty {}
+
+    test_parse_err::<Empty>(&[
+        (
+            "[]",
+            "invalid type: sequence, expected struct Empty at line 1 column 1",
+        ),
+        (
+            "[1]",
+            "invalid type: sequence, expected struct Empty at line 1 column 1",
+        ),
+    ]);
+}
+
+#[test]
 fn test_parse_option() {
     test_parse_ok(vec![
         ("null", None::<String>),
