@@ -17,6 +17,7 @@ use serde::ser::{self, Impossible, Serialize};
 pub struct Serializer<W, F = CompactFormatter> {
     writer: W,
     formatter: F,
+    send_nonfinite_numbers_to_formatter: bool,
 }
 
 impl<W> Serializer<W>
@@ -50,7 +51,14 @@ where
     /// specified.
     #[inline]
     pub fn with_formatter(writer: W, formatter: F) -> Self {
-        Serializer { writer, formatter }
+        Serializer { writer, formatter, send_nonfinite_numbers_to_formatter: false }
+    }
+
+    /// Creates a new JSON visitor whose output will be written to the writer
+    /// specified. Allows the formatted to format non finite floats
+    #[inline]
+    pub fn with_formatter_sending_nonfinite_floats_to_formatter(writer: W, formatter: F) -> Self {
+        Serializer { writer, formatter, send_nonfinite_numbers_to_formatter: true }
     }
 
     /// Unwrap the `Writer` from the `Serializer`.
@@ -154,7 +162,7 @@ where
     #[inline]
     fn serialize_f32(self, value: f32) -> Result<()> {
         match value.classify() {
-            FpCategory::Nan | FpCategory::Infinite => self
+            FpCategory::Nan | FpCategory::Infinite if !self.send_nonfinite_numbers_to_formatter => self
                 .formatter
                 .write_null(&mut self.writer)
                 .map_err(Error::io),
@@ -168,7 +176,7 @@ where
     #[inline]
     fn serialize_f64(self, value: f64) -> Result<()> {
         match value.classify() {
-            FpCategory::Nan | FpCategory::Infinite => self
+            FpCategory::Nan | FpCategory::Infinite if !self.send_nonfinite_numbers_to_formatter => self
                 .formatter
                 .write_null(&mut self.writer)
                 .map_err(Error::io),
