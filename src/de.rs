@@ -1894,7 +1894,10 @@ impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
                     None => Err(self.error(ErrorCode::EofWhileParsingObject)),
                 }
             }
-            Some(b'"') => visitor.visit_enum(UnitVariantAccess::new(self)),
+            Some(b'"') => match visitor.visit_enum(UnitVariantAccess::new(self)) {
+                Ok(value) => Ok(value),
+                Err(err) => Err(self.fix_position(err)),
+            },
             Some(_) => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingValue)),
         }

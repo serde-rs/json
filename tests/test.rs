@@ -1352,8 +1352,8 @@ fn test_parse_enum_errors() {
             ("{\"Dog\":", "EOF while parsing a value at line 1 column 7"),
             ("{\"Dog\":}", "expected value at line 1 column 8"),
             ("{\"Dog\":{}}", "invalid type: map, expected unit at line 1 column 7"),
-            ("\"Frog\"", "invalid type: unit variant, expected tuple variant"),
-            ("\"Frog\" 0 ", "invalid type: unit variant, expected tuple variant"),
+            ("\"Frog\"", "invalid type: unit variant, expected tuple variant at line 1 column 6"),
+            ("\"Frog\" 0 ", "invalid type: unit variant, expected tuple variant at line 1 column 6"),
             ("{\"Frog\":{}}",
              "invalid type: map, expected tuple variant Animal::Frog at line 1 column 8"),
             ("{\"Cat\":[]}", "invalid length 0, expected struct variant Animal::Cat with 2 elements at line 1 column 9"),
@@ -1368,6 +1368,13 @@ fn test_parse_enum_errors() {
              "trailing comma at line 1 column 34"),
         ],
     );
+}
+
+#[test]
+fn test_issue_1375_unit_variant_error_position() {
+    let err = crate::from_str::<Animal>("\"Frog\"").unwrap_err();
+    assert_eq!(err.line(), 1);
+    assert_eq!(err.column(), 6);
 }
 
 #[test]
