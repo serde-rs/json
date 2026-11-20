@@ -220,22 +220,44 @@ impl Display for Value {
     ///     "{\n  \"city\": \"London\",\n  \"street\": \"10 Downing Street\"\n}");
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // The serializer makes many small writes, and every one of them going
+        // through the Formatter on its own is slow, so collect them first.
         struct WriterFormatter<'a, 'b: 'a> {
             inner: &'a mut fmt::Formatter<'b>,
+            buf: [u8; 128],
+            len: usize,
         }
 
         impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
             fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-                // Safety: the serializer below only emits valid utf8 when using
-                // the default formatter.
-                let s = unsafe { str::from_utf8_unchecked(buf) };
-                tri!(self.inner.write_str(s).map_err(io_error));
+                tri!(self.write_all(buf));
                 Ok(buf.len())
             }
 
-            fn flush(&mut self) -> io::Result<()> {
+            #[inline]
+            fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+                if buf.len() > self.buf.len() - self.len {
+                    tri!(self.flush());
+                    if buf.len() > self.buf.len() {
+                        return write_str(self.inner, buf);
+                    }
+                }
+                self.buf[self.len..self.len + buf.len()].copy_from_slice(buf);
+                self.len += buf.len();
                 Ok(())
             }
+
+            fn flush(&mut self) -> io::Result<()> {
+                let len = mem::replace(&mut self.len, 0);
+                write_str(self.inner, &self.buf[..len])
+            }
+        }
+
+        fn write_str(f: &mut fmt::Formatter, buf: &[u8]) -> io::Result<()> {
+            // Safety: the serializer below only emits valid utf8 when using
+            // the default formatter, and only whole writes are buffered.
+            let s = unsafe { str::from_utf8_unchecked(buf) };
+            f.write_str(s).map_err(io_error)
         }
 
         fn io_error(_: fmt::Error) -> io::Error {
@@ -245,14 +267,19 @@ impl Display for Value {
         }
 
         let alternate = f.alternate();
-        let mut wr = WriterFormatter { inner: f };
+        let mut wr = WriterFormatter {
+            inner: f,
+            buf: [0; 128],
+            len: 0,
+        };
         if alternate {
             // {:#}
-            super::ser::to_writer_pretty(&mut wr, self).map_err(|_| fmt::Error)
+            tri!(super::ser::to_writer_pretty(&mut wr, self).map_err(|_| fmt::Error));
         } else {
             // {}
-            super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error)
+            tri!(super::ser::to_writer(&mut wr, self).map_err(|_| fmt::Error));
         }
+        io::Write::flush(&mut wr).map_err(|_| fmt::Error)
     }
 }
 

@@ -2603,6 +2603,29 @@ fn test_borrow_in_map_key() {
 }
 
 #[test]
+fn test_value_display() {
+    // Strings around the size of the buffer used by Display
+    for n in [0, 1, 63, 64, 127, 128, 129, 255, 256, 1000] {
+        let value = json!({ "a": "x".repeat(n), "b": [1, "y".repeat(n), null] });
+        assert_eq!(value.to_string(), to_string(&value).unwrap());
+        assert_eq!(format!("{:#}", value), to_string_pretty(&value).unwrap());
+    }
+
+    struct Fail;
+
+    impl fmt::Write for Fail {
+        fn write_str(&mut self, _: &str) -> fmt::Result {
+            Err(fmt::Error)
+        }
+    }
+
+    for value in [json!(1), json!("x".repeat(1000))] {
+        assert!(fmt::Write::write_fmt(&mut Fail, format_args!("{}", value)).is_err());
+        assert!(fmt::Write::write_fmt(&mut Fail, format_args!("{:#}", value)).is_err());
+    }
+}
+
+#[test]
 fn test_value_into_deserializer() {
     #[derive(Deserialize)]
     struct Outer {
