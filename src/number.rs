@@ -103,13 +103,29 @@ impl Number {
         self.as_u64().is_some()
     }
 
-    /// Returns true if the `Number` can be represented by f64.
+    /// Returns true if the `Number` is represented as a floating-point value.
     ///
-    /// For any Number on which `is_f64` returns true, `as_f64` is guaranteed to
-    /// return the floating point value.
+    /// For any number on which `is_f64` returns true, [`as_f64`](Self::as_f64)
+    /// returns `Some`. The converse does not hold: `as_f64` can also convert
+    /// integers to floating-point values.
     ///
-    /// Currently this function returns true if and only if both `is_i64` and
-    /// `is_u64` return false but this is not a guarantee in the future.
+    /// With the `arbitrary_precision` feature enabled, `is_f64` requires
+    /// a decimal point or exponent in the number's representation, and the
+    /// number must convert to a finite `f64`. An integer outside both the
+    /// `i64` and `u64` ranges can therefore return false for all three checks.
+    ///
+    /// ```
+    /// # #[cfg(feature = "arbitrary_precision")]
+    /// # {
+    /// use serde_json::Number;
+    ///
+    /// let number: Number = "18446744073709551616".parse().unwrap();
+    /// assert!(!number.is_i64());
+    /// assert!(!number.is_u64());
+    /// assert!(!number.is_f64());
+    /// assert!(number.as_f64().is_some());
+    /// # }
+    /// ```
     pub fn is_f64(&self) -> bool {
         #[cfg(not(feature = "arbitrary_precision"))]
         match self.n {
