@@ -589,13 +589,11 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a number that can be represented by f64.
+    /// Returns true if the `Value` is a [`Number`] for which
+    /// [`Number::is_f64`] returns true.
     ///
-    /// For any Value on which `is_f64` returns true, `as_f64` is guaranteed to
-    /// return the floating point value.
-    ///
-    /// Currently this function returns true if and only if both `is_i64` and
-    /// `is_u64` return false but this is not a guarantee in the future.
+    /// For any value on which `is_f64` returns true, [`as_f64`](Self::as_f64)
+    /// returns `Some`. It can also return `Some` for integers.
     ///
     /// ```
     /// # use serde_json::json;
