@@ -2106,6 +2106,68 @@ fn test_boolean_key() {
 }
 
 #[test]
+fn test_boolean_key_invalid() {
+    // Regression test for serde-rs/json#1364: MapKey::deserialize_bool used
+    // to consume the key's first byte with next_char() before falling back to
+    // parse_str, so a multi-byte key was parsed starting at a UTF-8
+    // continuation byte (building an invalid &str in safe code) and an ASCII
+    // key lost its first character in the error message.
+    for (input, expected_key) in [
+        ("{\"éx\": 1}", "éx"),
+        ("{\"yes\": 1}", "yes"),
+        ("{\"\": 1}", ""),
+    ] {
+        let err = serde_json::from_str::<std::collections::BTreeMap<bool, i32>>(input).unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            std::str::from_utf8(msg.as_bytes()).is_ok(),
+            "error message is not valid UTF-8: {msg:?}"
+        );
+        assert!(
+            msg.contains(&format!(
+                "invalid type: string \"{expected_key}\", expected a boolean"
+            )),
+            "unexpected error message: {msg}"
+        );
+
+        let err = serde_json::from_slice::<std::collections::BTreeMap<bool, i32>>(input.as_bytes())
+            .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            std::str::from_utf8(msg.as_bytes()).is_ok(),
+            "error message is not valid UTF-8: {msg:?}"
+        );
+        assert!(
+            msg.contains(&format!(
+                "invalid type: string \"{expected_key}\", expected a boolean"
+            )),
+            "unexpected error message: {msg}"
+        );
+
+        let err =
+            serde_json::from_reader::<_, std::collections::BTreeMap<bool, i32>>(input.as_bytes())
+                .unwrap_err();
+        let msg = format!("{err}");
+        assert!(
+            std::str::from_utf8(msg.as_bytes()).is_ok(),
+            "error message is not valid UTF-8: {msg:?}"
+        );
+        assert!(
+            msg.contains(&format!(
+                "invalid type: string \"{expected_key}\", expected a boolean"
+            )),
+            "unexpected error message: {msg}"
+        );
+    }
+
+    // Valid boolean keys still parse.
+    let map: std::collections::BTreeMap<bool, i32> =
+        serde_json::from_str("{\"true\":1,\"false\":2}").unwrap();
+    assert_eq!(map.get(&true), Some(&1));
+    assert_eq!(map.get(&false), Some(&2));
+}
+
+#[test]
 fn test_borrowed_key() {
     let map: BTreeMap<&str, ()> = from_str("{\"borrowed\":null}").unwrap();
     let expected = treemap! { "borrowed" => () };

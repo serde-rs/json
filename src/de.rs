@@ -2246,7 +2246,7 @@ where
     {
         self.de.eat_char();
 
-        let peek = match tri!(self.de.next_char()) {
+        let peek = match tri!(self.de.peek()) {
             Some(b) => b,
             None => {
                 return Err(self.de.peek_error(ErrorCode::EofWhileParsingValue));
@@ -2255,10 +2255,12 @@ where
 
         let value = match peek {
             b't' => {
+                self.de.eat_char();
                 tri!(self.de.parse_ident(b"rue\""));
                 visitor.visit_bool(true)
             }
             b'f' => {
+                self.de.eat_char();
                 tri!(self.de.parse_ident(b"alse\""));
                 visitor.visit_bool(false)
             }
