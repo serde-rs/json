@@ -35,6 +35,16 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn discard(&mut self);
 
+    /// If the next eight bytes are all ASCII digits, consumes them and returns
+    /// their value (0..=99_999_999). Otherwise consumes nothing and returns
+    /// `None`; readers without lookahead keep this default and the
+    /// deserializer reads one digit at a time.
+    #[doc(hidden)]
+    #[inline]
+    fn parse_eight_digits(&mut self) -> Option<u32> {
+        None
+    }
+
     /// Position of the most recent call to next().
     ///
     /// The most recent call was probably next() and not peek(), but this method
@@ -597,6 +607,20 @@ impl<'a> Read<'a> for SliceRead<'a> {
         self.index += 1;
     }
 
+    #[inline]
+    fn parse_eight_digits(&mut self) -> Option<u32> {
+        let bytes = match self.slice.get(self.index..self.index + 8) {
+            Some(bytes) => bytes,
+            None => return None,
+        };
+        let chunk = u64::from_le_bytes(bytes.try_into().unwrap());
+        if !is_eight_digits(chunk) {
+            return None;
+        }
+        self.index += 8;
+        Some(eight_digits_to_u32(chunk))
+    }
+
     fn position(&self) -> Position {
         self.position_of_index(self.index)
     }
@@ -729,6 +753,11 @@ impl<'a> Read<'a> for StrRead<'a> {
         self.delegate.discard();
     }
 
+    #[inline]
+    fn parse_eight_digits(&mut self) -> Option<u32> {
+        self.delegate.parse_eight_digits()
+    }
+
     fn position(&self) -> Position {
         self.delegate.position()
     }
@@ -810,6 +839,10 @@ where
         R::discard(self);
     }
 
+    fn parse_eight_digits(&mut self) -> Option<u32> {
+        R::parse_eight_digits(self)
+    }
+
     fn position(&self) -> Position {
         R::position(self)
     }
@@ -870,6 +903,73 @@ impl<'a> Fused for StrRead<'a> {}
 
 fn is_escape(ch: u8, including_control_characters: bool) -> bool {
     ch == b'"' || ch == b'\\' || (including_control_characters && ch < 0x20)
+}
+
+const ASCII_ZEROS: u64 = 0x3030_3030_3030_3030;
+
+/// SWAR test that all eight bytes of `chunk` are ASCII digits.
+///
+/// A byte is a digit iff its high nibble is 3 and its low nibble is at most 9.
+/// Adding 6 to a low nibble of 10..=15 carries into the high nibble, which the
+/// second comparison detects; with all high nibbles equal to 3 the additions
+/// cannot carry across byte boundaries.
+#[inline]
+fn is_eight_digits(chunk: u64) -> bool {
+    const HIGH_NIBBLES: u64 = 0xF0F0_F0F0_F0F0_F0F0;
+    (chunk & HIGH_NIBBLES) == ASCII_ZEROS
+        && (chunk.wrapping_add(0x0606_0606_0606_0606) & HIGH_NIBBLES) == ASCII_ZEROS
+}
+
+/// Converts eight ASCII digits, loaded little-endian so the first digit is in
+/// the least significant byte, to their decimal value.
+///
+/// Two multiply-and-shift steps combine the digits pairwise, then the pairs
+/// into the final value (Lemire and Kurz, "Number Parsing at a Gigabyte per
+/// Second", 2021). Every intermediate fits its lane because each digit is at
+/// most 9.
+#[inline]
+fn eight_digits_to_u32(chunk: u64) -> u32 {
+    let digits = chunk.wrapping_sub(ASCII_ZEROS);
+    // Each byte now holds d[i] * 10 + d[i + 1] (the odd bytes hold garbage that
+    // the masks below discard).
+    let pairs = digits.wrapping_mul(10).wrapping_add(digits >> 8);
+    const MASK: u64 = 0x0000_00FF_0000_00FF;
+    let lo = (pairs & MASK).wrapping_mul(100 + (1_000_000u64 << 32));
+    let hi = ((pairs >> 16) & MASK).wrapping_mul(1 + (10_000u64 << 32));
+    (lo.wrapping_add(hi) >> 32) as u32
+}
+
+#[cfg(test)]
+mod swar_tests {
+    use super::{eight_digits_to_u32, is_eight_digits};
+
+    #[test]
+    fn eight_digits() {
+        assert_eq!(eight_digits_to_u32(u64::from_le_bytes(*b"12345678")), 12_345_678);
+        assert_eq!(eight_digits_to_u32(u64::from_le_bytes(*b"00000000")), 0);
+        assert_eq!(eight_digits_to_u32(u64::from_le_bytes(*b"99999999")), 99_999_999);
+        assert_eq!(eight_digits_to_u32(u64::from_le_bytes(*b"00000001")), 1);
+        assert_eq!(eight_digits_to_u32(u64::from_le_bytes(*b"10000000")), 10_000_000);
+    }
+
+    #[test]
+    fn digit_detection() {
+        assert!(is_eight_digits(u64::from_le_bytes(*b"12345678")));
+        assert!(is_eight_digits(u64::from_le_bytes(*b"00000000")));
+        assert!(is_eight_digits(u64::from_le_bytes(*b"99999999")));
+        assert!(!is_eight_digits(u64::from_le_bytes(*b"1234567,")));
+        assert!(!is_eight_digits(u64::from_le_bytes(*b"1234567.")));
+        assert!(!is_eight_digits(u64::from_le_bytes(*b"1234567e")));
+        assert!(!is_eight_digits(u64::from_le_bytes(*b",1234567")));
+        // Every byte value in every position: exactly b'0'..=b'9' count as digits.
+        for pos in 0..8 {
+            for b in 0u8..=255 {
+                let mut bytes = *b"37777777";
+                bytes[pos] = b;
+                assert_eq!(is_eight_digits(u64::from_le_bytes(bytes)), b.is_ascii_digit(), "byte {:#x} at {}", b, pos);
+            }
+        }
+    }
 }
 
 fn next_or_eof<'de, R>(read: &mut R) -> Result<u8>
