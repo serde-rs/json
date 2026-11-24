@@ -1096,6 +1096,112 @@ fn test_number_from_value_precision() {
 }
 
 #[test]
+fn test_parse_number_eight_digit_blocks() {
+    // The eight-digit fast path in parse_integer/parse_decimal runs only for
+    // SliceRead/StrRead (from_slice/from_str). from_reader uses IoRead, which
+    // keeps the per-digit scalar path, so it is the unmodified reference. Parse
+    // each input all three ways and require them to agree, exercising the fast
+    // path against the scalar path at and around the 8-, 9-, and 16-digit block
+    // boundaries, across u64/i64 overflow, and with a non-digit immediately
+    // after a completed block.
+    let inputs = [
+        // integers around the block boundaries
+        "0",
+        "7654321",
+        "12345678",
+        "123456789",
+        "123456789012345",
+        "1234567890123456",
+        "12345678901234567",
+        "9999999999999999",
+        // u64 / i64 overflow boundaries
+        "18446744073709551615", // u64::MAX
+        "18446744073709551616", // u64::MAX + 1 -> f64
+        "-9223372036854775808", // i64::MIN
+        "-9223372036854775809", // i64::MIN - 1 -> f64
+        "99999999999999999999999999",
+        // non-digit immediately after a completed 8-digit block
+        "12345678e3",
+        "12345678E-2",
+        "12345678.5",
+        "1234567890123456.5",
+        "0.12345678",
+        "0.123456789",
+        "1.1234567890123456",
+        // invalid: a non-digit that is not part of a number
+        "12345678x",
+    ];
+
+    for input in inputs {
+        let via_str = from_str::<Value>(input);
+        let via_slice = from_slice::<Value>(input.as_bytes());
+        let via_reader = from_reader::<_, Value>(input.as_bytes());
+
+        match (&via_str, &via_reader) {
+            (Ok(a), Ok(b)) => assert_eq!(a, b, "from_str vs from_reader on {:?}", input),
+            (Err(_), Err(_)) => {}
+            _ => panic!(
+                "from_str and from_reader disagree on validity of {:?}: {:?} vs {:?}",
+                input, via_str, via_reader,
+            ),
+        }
+        match (&via_slice, &via_reader) {
+            (Ok(a), Ok(b)) => assert_eq!(a, b, "from_slice vs from_reader on {:?}", input),
+            (Err(_), Err(_)) => {}
+            _ => panic!(
+                "from_slice and from_reader disagree on validity of {:?}: {:?} vs {:?}",
+                input, via_slice, via_reader,
+            ),
+        }
+    }
+
+    // Pin exact values for inputs that fit u64, to catch a systematic
+    // miscompute that happened to be identical across all three readers.
+    for (input, expected) in [
+        ("12345678", 12345678u64),
+        ("123456789", 123456789),
+        ("1234567890123456", 1234567890123456),
+        ("18446744073709551615", u64::MAX),
+    ] {
+        assert_eq!(from_str::<u64>(input).unwrap(), expected, "from_str {input}");
+        assert_eq!(
+            from_slice::<u64>(input.as_bytes()).unwrap(),
+            expected,
+            "from_slice {input}",
+        );
+        assert_eq!(
+            from_reader::<_, u64>(input.as_bytes()).unwrap(),
+            expected,
+            "from_reader {input}",
+        );
+    }
+
+    // Decimal fast path: the fraction digits consumed by an eight-digit block
+    // must match the scalar path bit-for-bit.
+    for (input, expected) in [
+        ("0.12345678", 0.12345678f64),
+        ("1.1234567890123456", 1.1234567890123456f64),
+        ("1234567890123456.5", 1234567890123456.5f64),
+    ] {
+        assert_eq!(
+            from_str::<f64>(input).unwrap().to_bits(),
+            expected.to_bits(),
+            "from_str {input}",
+        );
+        assert_eq!(
+            from_slice::<f64>(input.as_bytes()).unwrap().to_bits(),
+            expected.to_bits(),
+            "from_slice {input}",
+        );
+        assert_eq!(
+            from_reader::<_, f64>(input.as_bytes()).unwrap().to_bits(),
+            expected.to_bits(),
+            "from_reader {input}",
+        );
+    }
+}
+
+#[test]
 fn test_parse_string() {
     test_parse_err::<String>(&[
         ("\"", "EOF while parsing a string at line 1 column 1"),
